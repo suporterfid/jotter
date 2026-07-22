@@ -1,6 +1,6 @@
 # Status
 
-## Done in PR0 scaffold
+## Done — PR0 scaffold
 
 - Laravel 12 application skeleton on PHP 8.2
 - Minimal Vue 3/Vite landing screen
@@ -11,10 +11,16 @@
 - Shared-hosting release zip, checksum, and artifact secret test
 - CI workflow and baseline documentation
 
-## In progress
+## In progress — PR1 data model
 
-PR0 is open for review. Its Docker-based CI has verified `jt up`, `jt test`, `jt e2e`, `jt release`, release checksum validation, and scanning the actual release zip for secrets.
+- Idempotent initial tenant/workspace projection and state schema
+- Focused Eloquent models and relationships
+- Configured, repeat-safe default tenant/workspace seeding without users or credentials
+- Data-model, scoping, relationship, and seeder feature tests
+- Schema/projection documentation
 
-## Next
+Runtime red/green evidence requires MySQL 8 in Docker CI; this environment supports static checks only.
 
-PR1 is the data model and migrations from §5. It must not begin until PR0 is reviewed, merged, and green.
+## Next — PR2 vault storage
+
+After PR1 is reviewed, merged, and green, implement the path-safe disk Markdown storage service and incremental projection updates from §7.1. Do not begin PR2 as part of PR1.
