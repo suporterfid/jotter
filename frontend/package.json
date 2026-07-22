@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "node scripts/wait-for-app.mjs && playwright test"
   },
   "dependencies": {
     "@vueuse/core": "^14.3.0",
