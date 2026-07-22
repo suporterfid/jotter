@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      JOTTER_CI: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap and start containers
+        run: ./scripts/jt.sh up
+
+      - name: Run Laravel and frontend tests
+        run: ./scripts/jt.sh test
+
+      - name: Run Playwright smoke test
+        run: ./scripts/jt.sh e2e
+
+      - name: Build shared-hosting release
+        run: ./scripts/jt.sh release
+
+      - name: Inspect release artifact for secrets
+        env:
+          JOTTER_RELEASE_ZIP: /var/www/html/dist/jotter-release.zip
+        run: ./scripts/jt.sh artisan test --filter=ReleaseZipSecurityTest
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jotter-release
+          path: |
+            dist/jotter-release.zip
+            dist/jotter-release.zip.sha256
+
+      - name: Stop containers
+        if: always()
+        run: ./scripts/jt.sh down --volumes

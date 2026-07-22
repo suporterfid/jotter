@@ -1,0 +1,86 @@
+name: jotter
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - .:/var/www/html
+      - composer_cache:/root/.composer
+    networks:
+      default:
+        aliases:
+          - jotter-web
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE?DB_DATABASE must be set in .env}
+      DB_USERNAME: ${DB_USERNAME?DB_USERNAME must be set in .env}
+      DB_PASSWORD: ${DB_PASSWORD?DB_PASSWORD must be set in .env}
+      JOTTER_RELEASE_ZIP: ${JOTTER_RELEASE_ZIP:-}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 80) ? 0 : 1);"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE?DB_DATABASE must be set in .env}
+      MYSQL_USER: ${DB_USERNAME?DB_USERNAME must be set in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD?DB_PASSWORD must be set in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD?MYSQL_ROOT_PASSWORD must be set in .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root --password=\"$${MYSQL_ROOT_PASSWORD}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  node:
+    profiles:
+      - dev
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+    working_dir: /var/www/html/frontend
+    volumes:
+      - .:/var/www/html
+      - npm_cache:/root/.npm
+    environment:
+      CI: ${CI:-false}
+      PLAYWRIGHT_BASE_URL: http://jotter-web
+
+  release:
+    profiles:
+      - tools
+    build:
+      context: .
+      dockerfile: docker/release/Dockerfile
+      target: release
+    volumes:
+      - ./dist:/dist
+    command:
+      - sh
+      - -c
+      - cp /jotter-release.zip /jotter-release.zip.sha256 /dist/
+
+volumes:
+  mysql_data:
+  composer_cache:
+  npm_cache:
