@@ -268,6 +268,26 @@ class DataModelTest extends TestCase
         ]);
     }
 
+    public function test_workspace_deletion_is_restricted_while_scoped_memberships_exist(): void
+    {
+        $tenant = Tenant::create(['slug' => 'scoped', 'name' => 'Scoped']);
+        $workspace = $tenant->workspaces()->create([
+            'slug' => 'membership',
+            'name' => 'Membership',
+            'vault_path' => '/vaults/membership',
+        ]);
+        Membership::create([
+            'subject_id' => 'local:1',
+            'tenant_id' => $tenant->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'owner',
+        ]);
+
+        $this->expectException(QueryException::class);
+
+        $workspace->delete();
+    }
+
     public function test_audit_log_entries_cannot_be_updated(): void
     {
         $audit = AuditLog::create(['event' => 'created']);

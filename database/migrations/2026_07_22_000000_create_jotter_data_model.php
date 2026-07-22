@@ -166,7 +166,7 @@ return new class extends Migration
                 $table->foreignId('workspace_id')
                     ->nullable()
                     ->constrained('workspaces')
-                    ->nullOnDelete();
+                    ->restrictOnDelete();
                 $table->unsignedBigInteger('workspace_scope_id')
                     ->storedAs('COALESCE(workspace_id, 0)');
                 $table->string('role', 50);
