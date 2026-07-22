@@ -35,6 +35,7 @@ return new class extends Migration
                 $table->timestamps();
 
                 $table->unique(['tenant_id', 'slug'], 'workspaces_tenant_slug_unique');
+                $table->unique(['tenant_id', 'id'], 'workspaces_tenant_id_unique');
                 $table->index(['tenant_id', 'name'], 'workspaces_tenant_name_index');
             });
         }
@@ -163,15 +164,19 @@ return new class extends Migration
                 $table->foreignId('tenant_id')
                     ->constrained('tenants')
                     ->cascadeOnDelete();
-                $table->foreignId('workspace_id')
-                    ->nullable()
-                    ->constrained('workspaces')
-                    ->restrictOnDelete();
+                $table->foreignId('workspace_id')->nullable();
                 $table->unsignedBigInteger('workspace_scope_id')
                     ->storedAs('COALESCE(workspace_id, 0)');
                 $table->string('role', 50);
                 $table->timestamps();
 
+                $table->foreign(
+                    ['tenant_id', 'workspace_id'],
+                    'memberships_tenant_workspace_foreign',
+                )
+                    ->references(['tenant_id', 'id'])
+                    ->on('workspaces')
+                    ->restrictOnDelete();
                 $table->unique(
                     ['subject_id', 'tenant_id', 'workspace_scope_id'],
                     'memberships_subject_tenant_workspace_unique',

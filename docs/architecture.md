@@ -10,7 +10,9 @@ Per §13 Q1's default, `notes.search_content` is a nullable `LONGTEXT` search pr
 
 Foreign keys cascade deletion for owned projection/state rows. Nullable references that can safely lose their target (`note_links.target_note_id` and identities' local user) use `SET NULL`. Membership workspaces use restricted deletes because MySQL cannot combine `SET NULL` with the stored workspace-scope uniqueness expression; scoped memberships must be explicitly removed first. Audit scopes also use restricted deletes so tenant or workspace removal cannot mutate or erase historical entries. Audit entries have `created_at` only. Their final event vocabulary, context, and retention policy remain a required specification decision before PR7.
 
-Membership uniqueness uses a generated workspace scope key so MySQL also rejects duplicate tenant-level memberships when `workspace_id` is `NULL`. Audit-log models reject updates and deletes, preserving the table's append-only contract while the detailed retention policy remains unresolved.
+Membership uniqueness uses a generated workspace scope key so MySQL also rejects duplicate tenant-level memberships when `workspace_id` is `NULL`. A composite tenant/workspace foreign key prevents memberships from crossing tenant boundaries.
+
+Audit-log models reject instance updates and deletes, while restricted scope foreign keys prevent cascading history changes. Query-builder or direct-SQL mutation is not blocked at the database layer yet; the least-privilege/trigger and retention contract remains a required security decision before PR7.
 
 ## Modular monolith and provider seams
 

@@ -17,3 +17,5 @@ Follow the ordered PR sequence in the authoritative spec. PR1 deliberately defer
 - TODO(spec: Q5): Confirm local sessions only in v0, with GrandpaSSOn limited to a later stub interface.
 - TODO(spec: Q6): Confirm `jt` as the development verb prefix for `scripts/jt.sh` and `scripts/jt.ps1`.
 - TODO(spec: Before PR7, define the final audit event vocabulary, required actor/request context, metadata redaction rules, access controls, and retention/deletion contract. The initial columns are structural only; security details must not be guessed.)
+- TODO(spec: Before PR7, choose portable database-level append-only enforcement for `audit_log`; PR1 model guards do not cover query-builder or direct-SQL writes.)
+- TODO(spec: PR3/PR5 must reject cross-workspace note-link and note-tag associations in application services; the §5 link/pivot shapes do not carry workspace keys for composite database enforcement.)

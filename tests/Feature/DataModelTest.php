@@ -89,10 +89,27 @@ class DataModelTest extends TestCase
 
     public function test_migration_up_is_safe_to_invoke_after_tables_exist(): void
     {
+        Schema::disableForeignKeyConstraints();
+        foreach ([
+            'audit_log',
+            'memberships',
+            'identities',
+            'attachments',
+            'note_tags',
+            'tags',
+            'note_links',
+        ] as $table) {
+            Schema::dropIfExists($table);
+        }
+        Schema::enableForeignKeyConstraints();
+
         $migration = require database_path('migrations/2026_07_22_000000_create_jotter_data_model.php');
 
         $migration->up();
 
+        $this->assertTrue(Schema::hasTable('note_links'));
+        $this->assertTrue(Schema::hasTable('note_tags'));
+        $this->assertTrue(Schema::hasTable('memberships'));
         $this->assertTrue(Schema::hasTable('audit_log'));
         $this->assertTrue(Schema::hasColumn('notes', 'search_content'));
     }
@@ -286,6 +303,26 @@ class DataModelTest extends TestCase
         $this->expectException(QueryException::class);
 
         $workspace->delete();
+    }
+
+    public function test_workspace_memberships_cannot_cross_tenant_boundaries(): void
+    {
+        $tenant = Tenant::create(['slug' => 'tenant-a', 'name' => 'Tenant A']);
+        $otherTenant = Tenant::create(['slug' => 'tenant-b', 'name' => 'Tenant B']);
+        $otherWorkspace = $otherTenant->workspaces()->create([
+            'slug' => 'other',
+            'name' => 'Other',
+            'vault_path' => '/vaults/other',
+        ]);
+
+        $this->expectException(QueryException::class);
+
+        Membership::create([
+            'subject_id' => 'local:1',
+            'tenant_id' => $tenant->id,
+            'workspace_id' => $otherWorkspace->id,
+            'role' => 'owner',
+        ]);
     }
 
     public function test_audit_log_entries_cannot_be_updated(): void
