@@ -76,7 +76,9 @@ class ReleaseZipSecurityTest extends TestCase
         }
 
         if (preg_match('/["\']'.$credentialName.'["\']\s*(?:=>|[:=])\s*["\']([^"\']+)["\']/i', $line, $matches) === 1) {
-            return trim($matches[1]) !== '';
+            $literal = trim($matches[1]);
+
+            return $literal !== '' && strtolower($literal) !== 'hashed';
         }
 
         if (preg_match('/(?:\$|const\s+|let\s+|var\s+)?'.$credentialName.'\s*=\s*["\']([^"\']+)["\']/i', $line, $matches) === 1) {
