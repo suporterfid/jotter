@@ -105,7 +105,7 @@ $VerbArgs = if ($args.Count -gt 1) { $args[1..($args.Count - 1)] } else { @() }
 switch ($Verb) {
     'up' {
         Invoke-Bootstrap
-        Invoke-Compose @('up', '-d', '--build', 'app')
+        Invoke-Compose @('up', '-d', '--build', '--wait', 'app')
         Write-Output 'Jotter is available at http://localhost:8080'
     }
     'down' {
@@ -119,7 +119,7 @@ switch ($Verb) {
     }
     'e2e' {
         Invoke-Bootstrap
-        Invoke-Compose @('up', '-d', '--build', 'app')
+        Invoke-Compose @('up', '-d', '--build', '--wait', 'app')
         Invoke-Compose (@('--profile', 'dev', 'run', '--rm', 'node', 'npm', 'run', 'e2e', '--') + $VerbArgs)
     }
     'artisan' {

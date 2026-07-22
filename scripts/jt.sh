@@ -77,7 +77,7 @@ EOF
 
 cmd_up() {
   bootstrap
-  compose up -d --build app
+  compose up -d --build --wait app
   echo "Jotter is available at http://localhost:${APP_PORT:-8080}"
 }
 
@@ -89,7 +89,7 @@ cmd_test() {
 
 cmd_e2e() {
   bootstrap
-  compose up -d --build app
+  compose up -d --build --wait app
   compose --profile dev run --rm node npm run e2e -- "$@"
 }
 
