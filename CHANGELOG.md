@@ -15,3 +15,7 @@ All notable changes to Jotter will be documented here.
 - Multi-workspace tenant, workspace, note-index, link, tag, attachment, identity, membership, and audit data model
 - Idempotent default tenant/workspace seeding with a configured on-disk vault path
 - Rebuildable note search projection while Markdown files remain canonical
+- Path-safe workspace vault storage service for Markdown read/write
+- YAML front-matter parsing into the notes projection with incremental tag updates
+- Bounded `vault:reindex` Artisan reconcile command for out-of-band disk edits
+- Production Composer dependency on `symfony/yaml` for front-matter handling
