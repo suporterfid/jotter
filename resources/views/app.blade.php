@@ -12,7 +12,9 @@
         }
     }
 
-    $entry = $manifest['src/main.ts'] ?? null;
+    $entry = $manifest['src/main.ts']
+        ?? $manifest['index.html']
+        ?? null;
 @endphp
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
