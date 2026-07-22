@@ -26,4 +26,10 @@ The command writes `dist/jotter-release.zip` and `dist/jotter-release.zip.sha256
 
 The artifact includes production `vendor/` dependencies and compiled `public/build/` assets. It excludes tests, frontend sources, container files, development tooling, and secrets.
 
-The bounded `vault:reindex` cron entry described by the product spec will be documented when that command is implemented in its later PR. PR0 does not provide a placeholder command.
+Schedule a bounded reconcile for each workspace vault (adjust the id and frequency to the host):
+
+```sh
+php artisan vault:reindex --workspace=1
+```
+
+Keep vault directories outside the web root. Notes are never served as static files from `public/`.

@@ -11,16 +11,24 @@
 - Shared-hosting release zip, checksum, and artifact secret test
 - CI workflow and baseline documentation
 
-## In progress — PR1 data model
+## Done — PR1 data model
 
 - Idempotent initial tenant/workspace projection and state schema
 - Focused Eloquent models and relationships
 - Configured, repeat-safe default tenant/workspace seeding without users or credentials
 - Data-model, scoping, relationship, and seeder feature tests
 - Schema/projection documentation
+- Merged to `main` with green Docker CI
 
-Docker CI is green for the MySQL 8 migration and model tests, frontend tests, Playwright smoke path, release build/checksum, and release secret scan.
+## In progress — PR2 vault storage
 
-## Next — PR2 vault storage
+- Path-safe vault Markdown read/write rooted at each workspace `vault_path`
+- Symfony YAML front-matter parsing into the rebuildable `notes` projection
+- Incremental projection updates on write (path, title, frontmatter, content_hash, search_content, tags)
+- Bounded `vault:reindex --workspace=<id>` reconcile for out-of-band disk edits
+- Path-traversal rejection with audit coverage (§7.1 / §8 S2)
+- Wikilink / `note_links` extraction left as explicit PR3 TODO
 
-After PR1 is reviewed, merged, and green, implement the path-safe disk Markdown storage service and incremental projection updates from §7.1. Do not begin PR2 as part of PR1.
+## Next — PR3 links & backlinks
+
+After PR2 is reviewed, merged, and green, implement wikilink parsing, resolution, and backlinks from §7.2. Do not begin PR3 as part of PR2.

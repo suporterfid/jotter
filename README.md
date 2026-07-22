@@ -4,7 +4,7 @@
 
 Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. Plain `.md` files, PHP + MySQL, your notes stay yours.
 
-Jotter currently contains the PR0 application scaffold: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, tests, and shared-hosting release packaging. Note, vault, search, attachment, and identity-provider features are intentionally not part of this scaffold.
+Jotter currently ships through PR2: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, the multi-workspace data model, and a path-safe vault storage service that keeps Markdown files on disk as the source of truth. Search endpoints, notes CRUD APIs, wikilinks/backlinks, attachment upload, and identity-provider features remain later PRs.
 
 ## Requirements
 

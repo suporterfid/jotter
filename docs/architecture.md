@@ -8,6 +8,8 @@ The initial hierarchy is tenant → workspace → note/attachment, with note lin
 
 Per §13 Q1's default, `notes.search_content` is a nullable `LONGTEXT` search projection. It is not canonical note content and can be rebuilt from disk. The schema deliberately has no `body` or `content` column, and PR1 adds no `FULLTEXT` index or search behavior; those belong to PR4.
 
+PR2's vault storage service reads and writes Markdown under each workspace `vault_path`, parses YAML front-matter with Symfony YAML, and refreshes the `notes` / tag projection on every write. Nested folders are allowed (Q4) only when the canonical path remains inside the vault root. Path-traversal attempts are rejected before candidate filesystem access and appended to `audit_log` as `vault.path_traversal_rejected`. `php artisan vault:reindex --workspace=<id>` reconciles the projection from disk in bounded batches for shared-hosting limits. Wikilink extraction into `note_links` is deferred to PR3.
+
 Foreign keys cascade deletion for owned projection/state rows. Nullable references that can safely lose their target (`note_links.target_note_id` and identities' local user) use `SET NULL`. Membership workspaces use restricted deletes because MySQL cannot combine `SET NULL` with the stored workspace-scope uniqueness expression; scoped memberships must be explicitly removed first. Audit scopes also use restricted deletes so tenant or workspace removal cannot mutate or erase historical entries. Audit entries have `created_at` only. Their final event vocabulary, context, and retention policy remain a required specification decision before PR7.
 
 Membership uniqueness uses a generated workspace scope key so MySQL also rejects duplicate tenant-level memberships when `workspace_id` is `NULL`. A composite tenant/workspace foreign key prevents memberships from crossing tenant boundaries.
@@ -24,7 +26,7 @@ Only local providers may perform work in v0. Jotter must remain fully useful wit
 
 - The deployable web root is `public/`; vault content must never be placed there.
 - Requests cannot rely on daemons, workers, websockets, or long-lived processes.
-- Cron-invoked, bounded Artisan commands are the future scheduling boundary.
+- Cron-invoked, bounded Artisan commands are the scheduling boundary (`vault:reindex` in PR2).
 - Application code must not call `exec`, `shell_exec`, `proc_open`, or external command-line tools.
 - Work must fit ordinary PHP execution, memory, upload, inode, and disk quotas.
 - Deployment is a zip containing `vendor/` and built public assets, followed by migrations.
@@ -33,6 +35,6 @@ Docker is a development and build tool only. Production requires PHP 8.2+, MySQL
 
 ## Scope boundary
 
-PR1 defines schema, models, seed configuration, and projection boundaries only. It does not create vault directories or implement filesystem access, indexing, parsing, search, CRUD APIs, providers, uploads, or UI.
+PR2 implements path-safe vault I/O, front-matter projection, incremental index-on-write, and bounded reconcile only. It does not implement wikilink/backlink resolution, search endpoints, notes CRUD APIs, auth providers, uploads, or UI.
 
 There is no v1 work in this implementation. WebDAV, publishing, graph views, GrandpaSSOn integration, TaskConnect delegation, AI retrieval, MCP, daily notes, and related features remain out of scope.
