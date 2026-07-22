@@ -12,3 +12,6 @@ All notable changes to Jotter will be documented here.
 - Local administrator bootstrap command
 - Shared-hosting release artifact and secret inspection
 - CI and project documentation
+- Multi-workspace tenant, workspace, note-index, link, tag, attachment, identity, membership, and audit data model
+- Idempotent default tenant/workspace seeding with a configured on-disk vault path
+- Rebuildable note search projection while Markdown files remain canonical
