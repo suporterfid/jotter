@@ -1,6 +1,6 @@
 # Backlog
 
-Follow the ordered PR sequence in the authoritative spec. PR2 delivers vault storage only; later PRs remain deferred:
+Follow the ordered PR sequence in the authoritative spec. PR0–PR2 are on `main`; later PRs remain deferred:
 
 - PR3: wikilink parsing, resolution, and backlinks (`note_links` projection).
 - PR4: the MySQL `FULLTEXT` index, query behavior, ranking, snippets, and search endpoint.

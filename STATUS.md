@@ -18,9 +18,9 @@
 - Configured, repeat-safe default tenant/workspace seeding without users or credentials
 - Data-model, scoping, relationship, and seeder feature tests
 - Schema/projection documentation
-- Merged to `main` with green Docker CI
+- Merged to `main` with green Docker CI (#2)
 
-## In progress — PR2 vault storage
+## Done — PR2 vault storage
 
 - Path-safe vault Markdown read/write rooted at each workspace `vault_path`
 - Symfony YAML front-matter parsing into the rebuildable `notes` projection
@@ -28,7 +28,8 @@
 - Bounded `vault:reindex --workspace=<id>` reconcile for out-of-band disk edits
 - Path-traversal rejection with audit coverage (§7.1 / §8 S2)
 - Wikilink / `note_links` extraction left as explicit PR3 TODO
+- Merged to `main` with green Docker CI (#3)
 
 ## Next — PR3 links & backlinks
 
-After PR2 is reviewed, merged, and green, implement wikilink parsing, resolution, and backlinks from §7.2. Do not begin PR3 as part of PR2.
+PR2 is merged and green. Next ordered unit is wikilink parsing, resolution, and backlinks from §7.2. Do not begin PR3 until explicitly scheduled after this status reconcile.
