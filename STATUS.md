@@ -19,7 +19,7 @@
 - Data-model, scoping, relationship, and seeder feature tests
 - Schema/projection documentation
 
-Runtime red/green evidence requires MySQL 8 in Docker CI; this environment supports static checks only.
+Docker CI is green for the MySQL 8 migration and model tests, frontend tests, Playwright smoke path, release build/checksum, and release secret scan.
 
 ## Next — PR2 vault storage
 
