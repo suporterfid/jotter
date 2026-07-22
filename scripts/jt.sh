@@ -57,6 +57,11 @@ bootstrap() {
   compose run --rm app php artisan migrate --force
 }
 
+prepare_test_database() {
+  compose exec -T mysql sh -c \
+    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -e "CREATE DATABASE IF NOT EXISTS jotter_testing; GRANT ALL PRIVILEGES ON jotter_testing.* TO '\''${MYSQL_USER}'\''@'\''%'\'';"'
+}
+
 usage() {
   cat <<'EOF'
 Jotter Docker toolchain
@@ -83,6 +88,7 @@ cmd_up() {
 
 cmd_test() {
   bootstrap
+  prepare_test_database
   compose run --rm app php artisan test "$@"
   compose --profile dev run --rm --no-deps node npm test -- "$@"
 }
@@ -99,6 +105,7 @@ cmd_release() {
   compose --profile tools run --rm --build release
   test -s dist/jotter-release.zip
   test -s dist/jotter-release.zip.sha256
+  (cd dist && sha256sum -c jotter-release.zip.sha256)
   echo "Release written to dist/jotter-release.zip"
 }
 

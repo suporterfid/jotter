@@ -11,9 +11,14 @@ class ReleaseZipSecurityTest extends TestCase
 {
     public function test_release_zip_contains_no_secrets_or_private_keys(): void
     {
-        $path = getenv('JOTTER_RELEASE_ZIP') ?: base_path('dist/jotter-release.zip');
+        $configuredPath = getenv('JOTTER_RELEASE_ZIP');
+        $path = $configuredPath ?: base_path('dist/jotter-release.zip');
 
         if (! is_file($path)) {
+            if (is_string($configuredPath) && $configuredPath !== '') {
+                $this->fail("Configured release zip does not exist: {$configuredPath}");
+            }
+
             $this->markTestSkipped('Set JOTTER_RELEASE_ZIP to inspect a built release artifact.');
         }
 
@@ -69,7 +74,7 @@ class ReleaseZipSecurityTest extends TestCase
 
     private function containsCredentialLiteral(string $line): bool
     {
-        $credentialName = '(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|PRIVATE_KEY|CLIENT_SECRET|CREDENTIALS?)';
+        $credentialName = '(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APP_KEY|PRIVATE_KEY|CLIENT_SECRET|CREDENTIALS?)';
 
         if (preg_match('/^\s*'.$credentialName.'\s*=\s*(.*?)\s*$/i', $line, $matches) === 1) {
             return trim($matches[1], " \t\"'") !== '';

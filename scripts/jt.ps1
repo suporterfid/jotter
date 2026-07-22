@@ -89,6 +89,11 @@ function Invoke-Bootstrap {
     Invoke-Compose @('run', '--rm', 'app', 'php', 'artisan', 'migrate', '--force')
 }
 
+function Initialize-TestDatabase {
+    $command = 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -e "CREATE DATABASE IF NOT EXISTS jotter_testing; GRANT ALL PRIVILEGES ON jotter_testing.* TO ''${MYSQL_USER}''@''%'';"'
+    Invoke-Compose @('exec', '-T', 'mysql', 'sh', '-c', $command)
+}
+
 function Show-Usage {
 @'
 Jotter Docker toolchain
@@ -114,6 +119,7 @@ switch ($Verb) {
     }
     'test' {
         Invoke-Bootstrap
+        Initialize-TestDatabase
         Invoke-Compose (@('run', '--rm', 'app', 'php', 'artisan', 'test') + $VerbArgs)
         Invoke-Compose (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test', '--') + $VerbArgs)
     }

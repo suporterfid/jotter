@@ -67,7 +67,8 @@ RUN cd /release/app \
 
 RUN cd /release \
     && zip -q -r /jotter-release.zip app \
-    && sha256sum /jotter-release.zip > /jotter-release.zip.sha256
+    && cd / \
+    && sha256sum jotter-release.zip > jotter-release.zip.sha256
 
 FROM scratch AS export
 
