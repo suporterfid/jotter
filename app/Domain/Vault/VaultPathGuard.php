@@ -27,13 +27,13 @@ final class VaultPathGuard
         $root = $this->canonicalVaultRoot($workspace);
         $absolute = $this->join($root, $relative);
 
-        if (! $this->isInsideRoot($root, $absolute)) {
+        if (! $this->isUnderVaultRoot($root, $absolute)) {
             $this->reject($workspace, $relativePath);
         }
 
         if ($mustExist) {
             $real = realpath($absolute);
-            if ($real === false || ! $this->isInsideRoot($root, $real)) {
+            if ($real === false || ! $this->isUnderVaultRoot($root, $real)) {
                 $this->reject($workspace, $relativePath);
             }
 
@@ -42,7 +42,7 @@ final class VaultPathGuard
 
         if (is_link($absolute) || file_exists($absolute)) {
             $real = realpath($absolute);
-            if ($real === false || ! $this->isInsideRoot($root, $real)) {
+            if ($real === false || ! $this->isUnderVaultRoot($root, $real)) {
                 $this->reject($workspace, $relativePath);
             }
 
@@ -52,7 +52,8 @@ final class VaultPathGuard
         $parent = dirname($absolute);
         if (is_dir($parent) || is_link($parent)) {
             $realParent = realpath($parent);
-            if ($realParent === false || ! $this->isInsideRoot($root, $realParent)) {
+            // Parent may be the vault root itself for root-level notes.
+            if ($realParent === false || ! $this->isUnderVaultRoot($root, $realParent, allowRoot: true)) {
                 $this->reject($workspace, $relativePath);
             }
 
@@ -89,11 +90,11 @@ final class VaultPathGuard
         $absolute = str_replace('\\', '/', $absolutePath);
         $rootNormalized = str_replace('\\', '/', $root);
 
-        if (! $this->isInsideRoot($rootNormalized, $absolute)) {
+        if (! $this->isUnderVaultRoot($rootNormalized, $absolute)) {
             $this->reject($workspace, $absolutePath);
         }
 
-        $relative = substr($absolute, strlen($rootNormalized));
+        $relative = substr($absolute, strlen(rtrim($rootNormalized, '/')));
         $relative = ltrim(str_replace('\\', '/', $relative), '/');
 
         return $this->assertSafeRelativePath($workspace, $relative);
@@ -168,13 +169,17 @@ final class VaultPathGuard
         return rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
     }
 
-    private function isInsideRoot(string $root, string $absolute): bool
+    /**
+     * True when $absolute is inside the vault root. When $allowRoot is true, the root
+     * directory itself is accepted (needed for parent-dir checks of root-level notes).
+     */
+    private function isUnderVaultRoot(string $root, string $absolute, bool $allowRoot = false): bool
     {
         $root = rtrim(str_replace('\\', '/', $root), '/');
-        $absolute = str_replace('\\', '/', $absolute);
+        $absolute = rtrim(str_replace('\\', '/', $absolute), '/');
 
         if ($absolute === $root) {
-            return false;
+            return $allowRoot;
         }
 
         return str_starts_with($absolute, $root.'/');
