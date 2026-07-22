@@ -1,0 +1,11 @@
+services:
+  app:
+    ports: !override
+      - "8080:80"
+
+  mysql:
+    ports: !override []
+
+  node:
+    environment:
+      CI: "true"
