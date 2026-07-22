@@ -10,6 +10,10 @@ services:
     volumes:
       - .:/var/www/html
       - composer_cache:/root/.composer
+    networks:
+      default:
+        aliases:
+          - jotter-web
     depends_on:
       mysql:
         condition: service_healthy
@@ -60,7 +64,7 @@ services:
       - npm_cache:/root/.npm
     environment:
       CI: ${CI:-false}
-      PLAYWRIGHT_BASE_URL: http://app
+      PLAYWRIGHT_BASE_URL: http://jotter-web
 
   release:
     profiles:

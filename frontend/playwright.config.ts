@@ -7,10 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://app',
-    launchOptions: {
-      args: ['--no-proxy-server'],
-    },
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://jotter-web',
     trace: 'on-first-retry',
   },
   projects: [

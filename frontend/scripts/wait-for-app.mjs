@@ -1,6 +1,6 @@
 import { lookup } from 'node:dns/promises'
 
-const target = new URL(process.env.PLAYWRIGHT_BASE_URL ?? 'http://app')
+const target = new URL(process.env.PLAYWRIGHT_BASE_URL ?? 'http://jotter-web')
 const attempts = 20
 
 console.log(`Resolving ${target.hostname}:`, await lookup(target.hostname, { all: true }))
