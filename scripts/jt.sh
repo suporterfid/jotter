@@ -54,7 +54,7 @@ bootstrap() {
   compose up -d --build --wait mysql
   install_dependencies
   compose --profile dev run --rm --no-deps node npm run build
-  compose run --rm app php artisan migrate --force
+  compose run --rm app php artisan migrate --force --seed
 }
 
 prepare_test_database() {

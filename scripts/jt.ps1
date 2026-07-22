@@ -86,7 +86,7 @@ function Invoke-Bootstrap {
     Invoke-Compose @('up', '-d', '--build', '--wait', 'mysql')
     Install-Dependencies
     Invoke-Compose @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'run', 'build')
-    Invoke-Compose @('run', '--rm', 'app', 'php', 'artisan', 'migrate', '--force')
+    Invoke-Compose @('run', '--rm', 'app', 'php', 'artisan', 'migrate', '--force', '--seed')
 }
 
 function Initialize-TestDatabase {
