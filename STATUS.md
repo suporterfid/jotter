@@ -13,7 +13,7 @@
 
 ## In progress
 
-Runtime verification is delegated to the Docker-based PR checks because Docker is unavailable in the scaffold authoring environment.
+PR0 is open for review. Its Docker-based CI has verified `jt up`, `jt test`, `jt e2e`, `jt release`, release checksum validation, and scanning the actual release zip for secrets.
 
 ## Next
 
