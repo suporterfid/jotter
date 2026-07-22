@@ -8,6 +8,9 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://app',
+    launchOptions: {
+      args: ['--no-proxy-server'],
+    },
     trace: 'on-first-retry',
   },
   projects: [
