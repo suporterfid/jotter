@@ -22,8 +22,14 @@ function Invoke-Compose {
 function Test-ComposeCommand {
     param([string[]]$Arguments)
 
-    & docker compose @ComposeFiles @Arguments *> $null
-    return $LASTEXITCODE -eq 0
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker compose @ComposeFiles @Arguments *> $null
+        return $LASTEXITCODE -eq 0
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
 }
 
 function Initialize-Env {
@@ -42,7 +48,7 @@ function Initialize-Env {
         return
     }
 
-    Invoke-Compose @('build', 'app')
+    Invoke-Compose -Arguments @('build', 'app')
     $script = @'
 echo "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;
 echo "DB_PASSWORD=".bin2hex(random_bytes(24)).PHP_EOL;
@@ -73,25 +79,48 @@ echo "MYSQL_ROOT_PASSWORD=".bin2hex(random_bytes(24)).PHP_EOL;
 
 function Install-Dependencies {
     if (-not (Test-ComposeCommand @('run', '--rm', '--no-deps', 'app', 'test', '-f', 'vendor/autoload.php'))) {
-        Invoke-Compose @('run', '--rm', '--no-deps', 'app', 'composer', 'install', '--no-interaction', '--prefer-dist')
+        Invoke-Compose -Arguments @('run', '--rm', '--no-deps', 'app', 'composer', 'install', '--no-interaction', '--prefer-dist')
     }
 
     if (-not (Test-ComposeCommand @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'test', '-d', 'node_modules'))) {
-        Invoke-Compose @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'ci')
+        Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'ci')
     }
 }
 
 function Invoke-Bootstrap {
     Initialize-Env
-    Invoke-Compose @('up', '-d', '--build', '--wait', 'mysql')
+    Invoke-Compose -Arguments @('up', '-d', '--build', '--wait', 'mysql')
     Install-Dependencies
-    Invoke-Compose @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'run', 'build')
-    Invoke-Compose @('run', '--rm', 'app', 'php', 'artisan', 'migrate', '--force', '--seed')
+    Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'run', 'build')
+    Invoke-Compose -Arguments @('run', '--rm', 'app', 'php', 'artisan', 'migrate', '--force', '--seed')
 }
 
 function Initialize-TestDatabase {
-    $command = 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -e "CREATE DATABASE IF NOT EXISTS jotter_testing; GRANT ALL PRIVILEGES ON jotter_testing.* TO ''${MYSQL_USER}''@''%'';"'
-    Invoke-Compose @('exec', '-T', 'mysql', 'sh', '-c', $command)
+    $values = @{}
+    Get-Content '.env' | ForEach-Object {
+        if ($_ -match '^([^#=]+)=(.*)$') {
+            $values[$Matches[1]] = $Matches[2]
+        }
+    }
+
+    $rootPassword = $values['MYSQL_ROOT_PASSWORD']
+    $databaseUser = $values['DB_USERNAME']
+    if (-not $rootPassword -or -not $databaseUser) {
+        throw 'MYSQL_ROOT_PASSWORD and DB_USERNAME must be configured before running tests.'
+    }
+
+    $escapedUser = $databaseUser.Replace("'", "''")
+    $sql = "CREATE DATABASE IF NOT EXISTS jotter_testing; GRANT ALL PRIVILEGES ON jotter_testing.* TO '$escapedUser'@'%';"
+
+    Invoke-Compose -Arguments @(
+        'exec',
+        '-T',
+        '-e', "MYSQL_PWD=$rootPassword",
+        'mysql',
+        'mysql',
+        '-uroot',
+        '-e', $sql
+    )
 }
 
 function Show-Usage {
@@ -110,40 +139,40 @@ $VerbArgs = if ($args.Count -gt 1) { $args[1..($args.Count - 1)] } else { @() }
 switch ($Verb) {
     'up' {
         Invoke-Bootstrap
-        Invoke-Compose @('up', '-d', '--build', '--wait', 'app')
+        Invoke-Compose -Arguments @('up', '-d', '--build', '--wait', 'app')
         Write-Output 'Jotter is available at http://localhost:8080'
     }
     'down' {
         Initialize-Env
-        Invoke-Compose (@('down') + $VerbArgs)
+        Invoke-Compose -Arguments (@('down') + $VerbArgs)
     }
     'test' {
         Invoke-Bootstrap
         Initialize-TestDatabase
-        Invoke-Compose (@('run', '--rm', 'app', 'php', 'artisan', 'test') + $VerbArgs)
-        Invoke-Compose (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test', '--') + $VerbArgs)
+        Invoke-Compose -Arguments (@('run', '--rm', 'app', 'php', 'artisan', 'test') + $VerbArgs)
+        Invoke-Compose -Arguments (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test', '--') + $VerbArgs)
     }
     'e2e' {
         Invoke-Bootstrap
-        Invoke-Compose @('up', '-d', '--build', '--wait', 'app')
-        Invoke-Compose (@('--profile', 'dev', 'run', '--rm', 'node', 'npm', 'run', 'e2e', '--') + $VerbArgs)
+        Invoke-Compose -Arguments @('up', '-d', '--build', '--wait', 'app')
+        Invoke-Compose -Arguments (@('--profile', 'dev', 'run', '--rm', 'node', 'npm', 'run', 'e2e', '--') + $VerbArgs)
     }
     'artisan' {
         Initialize-Env
-        Invoke-Compose (@('run', '--rm', 'app', 'php', 'artisan') + $VerbArgs)
+        Invoke-Compose -Arguments (@('run', '--rm', 'app', 'php', 'artisan') + $VerbArgs)
     }
     'composer' {
         Initialize-Env
-        Invoke-Compose (@('run', '--rm', '--no-deps', 'app', 'composer') + $VerbArgs)
+        Invoke-Compose -Arguments (@('run', '--rm', '--no-deps', 'app', 'composer') + $VerbArgs)
     }
     'npm' {
         Initialize-Env
-        Invoke-Compose (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm') + $VerbArgs)
+        Invoke-Compose -Arguments (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm') + $VerbArgs)
     }
     'release' {
         Initialize-Env
         New-Item -ItemType Directory -Force -Path 'dist' | Out-Null
-        Invoke-Compose @('--profile', 'tools', 'run', '--rm', '--build', 'release')
+        Invoke-Compose -Arguments @('--profile', 'tools', 'run', '--rm', '--build', 'release')
 
         $zipPath = 'dist/jotter-release.zip'
         $checksumPath = 'dist/jotter-release.zip.sha256'

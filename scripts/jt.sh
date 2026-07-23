@@ -59,7 +59,7 @@ bootstrap() {
 
 prepare_test_database() {
   compose exec -T mysql sh -c \
-    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -e "CREATE DATABASE IF NOT EXISTS jotter_testing; GRANT ALL PRIVILEGES ON jotter_testing.* TO '\''${MYSQL_USER}'\''@'\''%'\'';"'
+    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -e "CREATE DATABASE IF NOT EXISTS jotter_testing; GRANT ALL PRIVILEGES ON jotter_testing.* TO '\''${JOTTER_DB_USERNAME}'\''@'\''%'\'';"'
 }
 
 usage() {

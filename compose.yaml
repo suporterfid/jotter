@@ -39,6 +39,7 @@ services:
   mysql:
     image: mysql:8.0
     environment:
+      JOTTER_DB_USERNAME: ${DB_USERNAME?DB_USERNAME must be set in .env}
       MYSQL_DATABASE: ${DB_DATABASE?DB_DATABASE must be set in .env}
       MYSQL_USER: ${DB_USERNAME?DB_USERNAME must be set in .env}
       MYSQL_PASSWORD: ${DB_PASSWORD?DB_PASSWORD must be set in .env}

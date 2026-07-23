@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vault;
 
+use App\Domain\Links\WikilinkProjector;
 use App\Models\Note;
 use App\Models\Tag;
 use App\Models\Workspace;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class NoteProjector
 {
+    public function __construct(
+        private readonly WikilinkProjector $wikilinks = new WikilinkProjector,
+    ) {}
+
     public function project(Workspace $workspace, string $relativePath, MarkdownDocument $document): Note
     {
         return DB::transaction(function () use ($workspace, $relativePath, $document): Note {
@@ -31,8 +36,7 @@ final class NoteProjector
 
             $this->syncTags($workspace, $note, $document->tags);
 
-            // TODO(spec: PR3): extract [[wikilinks]] from the body and project note_links / backlinks.
-            // Reindex and writes intentionally leave note_links untouched in PR2.
+            $this->wikilinks->project($workspace, $note, $document->body);
 
             return $note->refresh();
         });

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vault;
 
+use App\Domain\Links\WikilinkProjector;
 use App\Models\Note;
 use App\Models\Workspace;
 use FilesystemIterator;
@@ -17,6 +18,7 @@ final class VaultReindexer
     public function __construct(
         private readonly VaultPathGuard $paths = new VaultPathGuard,
         private readonly NoteProjector $projector = new NoteProjector,
+        private readonly WikilinkProjector $wikilinks = new WikilinkProjector,
     ) {}
 
     /**
@@ -48,6 +50,7 @@ final class VaultReindexer
         }
 
         $removed = $this->removeMissingNotes($workspace, $root, $batchSize);
+        $this->wikilinks->resolveWorkspaceLinks($workspace);
 
         return [
             'scanned' => $scanned,
@@ -117,7 +120,6 @@ final class VaultReindexer
             $this->projector->project($workspace, $relative, $document);
             $count++;
 
-            // TODO(spec: PR3): when reindexing, also refresh note_links from wikilink extraction.
         }
 
         return $count;

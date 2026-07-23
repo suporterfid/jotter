@@ -30,6 +30,10 @@
 - Wikilink / `note_links` extraction left as explicit PR3 TODO
 - Merged to `main` with green Docker CI (#3)
 
-## Next — PR3 links & backlinks
+## Done — PR3 links & backlinks
 
-PR2 is merged and green. Next ordered unit is wikilink parsing, resolution, and backlinks from §7.2. Do not begin PR3 until explicitly scheduled after this status reconcile.
+PR3 projects `[[note]]`, `[[note|alias]]`, and `[[note#heading]]` into the rebuildable `note_links` index; unresolved targets are retained with `NULL target_note_id`; writes and `vault:reindex` reconcile resolution; and backlinks are MySQL relations/queries only. Markdown bodies remain canonical files on disk and are not persisted to MySQL. Merged after green Docker CI (#5).
+
+## Next — PR4 search
+
+The next ordered unit is the §7.3 MySQL `FULLTEXT` search index and search endpoint.
