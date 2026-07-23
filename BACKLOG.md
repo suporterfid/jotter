@@ -1,8 +1,7 @@
 # Backlog
 
-Follow the ordered PR sequence in the authoritative spec. PR0–PR2 are on `main`; PR3 is active and later PRs remain deferred:
+Follow the ordered PR sequence in the authoritative spec. PR0–PR3 are on `main`; later PRs remain deferred:
 
-- PR3: in progress — wikilink parsing, resolution, and backlinks (`note_links` projection).
 - PR4: the MySQL `FULLTEXT` index, query behavior, ranking, snippets, and search endpoint.
 - PR5–PR9: notes CRUD, UI/rendering, auth providers, attachment upload, and deployment hardening.
 - v1+: WebDAV, publishing, graph view, GrandpaSSOn/TaskConnect integrations, AI retrieval/MCP, and all other post-v0 work.
