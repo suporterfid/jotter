@@ -44,9 +44,7 @@ install_dependencies() {
     compose run --rm --no-deps app composer install --no-interaction --prefer-dist
   fi
 
-  if ! compose --profile dev run --rm --no-deps node test -d node_modules; then
-    compose --profile dev run --rm --no-deps node npm ci
-  fi
+  compose --profile dev run --rm --no-deps node npm ci
 }
 
 bootstrap() {
@@ -89,7 +87,7 @@ cmd_up() {
 cmd_test() {
   bootstrap
   prepare_test_database
-  compose run --rm app php artisan test "$@"
+  compose run --rm -e DB_DATABASE=jotter_testing app php artisan test "$@"
   compose --profile dev run --rm --no-deps node npm test -- "$@"
 }
 

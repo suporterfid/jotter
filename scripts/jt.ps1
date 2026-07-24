@@ -82,9 +82,7 @@ function Install-Dependencies {
         Invoke-Compose -Arguments @('run', '--rm', '--no-deps', 'app', 'composer', 'install', '--no-interaction', '--prefer-dist')
     }
 
-    if (-not (Test-ComposeCommand @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'test', '-d', 'node_modules'))) {
-        Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'ci')
-    }
+    Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'ci')
 }
 
 function Invoke-Bootstrap {
@@ -149,7 +147,7 @@ switch ($Verb) {
     'test' {
         Invoke-Bootstrap
         Initialize-TestDatabase
-        Invoke-Compose -Arguments (@('run', '--rm', 'app', 'php', 'artisan', 'test') + $VerbArgs)
+        Invoke-Compose -Arguments (@('run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app', 'php', 'artisan', 'test') + $VerbArgs)
         Invoke-Compose -Arguments (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test', '--') + $VerbArgs)
     }
     'e2e' {
