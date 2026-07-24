@@ -12,6 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Markdown is canonical file content: preserve intentional whitespace and empty notes.
+        $middleware->trimStrings(except: ['content']);
+        $middleware->convertEmptyStringsToNull(except: [
+            fn (\Illuminate\Http\Request $request): bool => $request->is('api/workspaces/*/notes*')
+                && $request->has('content'),
+        ]);
+
         $middleware->alias([
             'workspace.authorization' => \App\Http\Middleware\WorkspaceAuthorizationPlaceholder::class,
         ]);
