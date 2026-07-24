@@ -4,7 +4,7 @@
 
 Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. Plain `.md` files, PHP + MySQL, your notes stay yours.
 
-Jotter currently ships through PR3: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, the multi-workspace data model, path-safe vault storage, and rebuildable wikilink/backlink projection. PR4 adds the workspace-scoped search API; notes CRUD APIs, the editor UI, attachment upload, and identity-provider features remain later PRs.
+Jotter currently ships through PR4: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, the multi-workspace data model, path-safe vault storage, rebuildable wikilink/backlink projection, and the workspace-scoped search API. Notes CRUD APIs, the editor UI, attachment upload, and identity-provider features remain later PRs.
 
 ## Requirements
 

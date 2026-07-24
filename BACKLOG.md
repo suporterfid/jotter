@@ -1,6 +1,6 @@
 # Backlog
 
-Follow the ordered PR sequence in the authoritative spec. PR0–PR3 are on `main`; PR4 is ready for review and has not yet merged:
+Follow the ordered PR sequence in the authoritative spec. PR0–PR4 are on `main`; later PRs remain deferred:
 
 - PR5–PR9: notes CRUD, UI/rendering, auth providers, attachment upload, and deployment hardening.
 - v1+: WebDAV, publishing, graph view, GrandpaSSOn/TaskConnect integrations, AI retrieval/MCP, and all other post-v0 work.
