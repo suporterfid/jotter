@@ -19,3 +19,6 @@ All notable changes to Jotter will be documented here.
 - YAML front-matter parsing into the notes projection with incremental tag updates
 - Bounded `vault:reindex` Artisan reconcile command for out-of-band disk edits
 - Production Composer dependency on `symfony/yaml` for front-matter handling
+- Workspace-scoped notes CRUD API backed by path-safe vault reads/writes/deletes
+- Fail-closed notes authorization seam pending the PR7 identity provider
+- 404 handling for out-of-band deleted Markdown files without false traversal audit entries
