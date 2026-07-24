@@ -45,6 +45,14 @@ PR3 projects `[[note]]`, `[[note|alias]]`, and `[[note#heading]]` into the rebui
 - `jt test` forces Laravel onto `jotter_testing`, keeping test migrations out of the seeded development database
 - Merged to `main` with green Docker CI (#6)
 
-## Next — PR5 notes CRUD API
+## Done — PR5 notes CRUD API (ready for review)
 
-The next ordered unit is the §7.4 workspace-scoped notes CRUD API behind the future auth guard placeholder.
+- Workspace-scoped `GET/POST/PUT/DELETE /api/workspaces/{workspace}/notes[/{note}]`
+- All file access flows through the path-safe vault service; Markdown remains canonical and MySQL remains a rebuildable projection
+- Cross-workspace note identifiers return 404; traversal attempts are audited before becoming validation failures
+- Fail-closed `workspace.authorization` middleware seam for PR7's local identity/membership enforcement
+- Docker feature tests cover CRUD, disk reads, workspace isolation, and traversal rejection
+
+## Next — PR6 frontend
+
+The next ordered unit after PR5 merges green is the §7.5 Vue browser/editor, safe rendering, wikilink autocomplete, backlinks panel, search UI, and its Playwright happy path.

@@ -18,6 +18,14 @@ final class VaultStorage
 
     public function read(Workspace $workspace, string $relativePath): MarkdownDocument
     {
+        return MarkdownDocument::parse(
+            $this->readContents($workspace, $relativePath),
+            $this->fallbackTitle($relativePath),
+        );
+    }
+
+    public function readContents(Workspace $workspace, string $relativePath): string
+    {
         $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: true);
 
         $raw = file_get_contents($absolute);
@@ -25,7 +33,7 @@ final class VaultStorage
             throw new \RuntimeException("Unable to read vault note [{$relativePath}].");
         }
 
-        return MarkdownDocument::parse($raw, $this->fallbackTitle($relativePath));
+        return $raw;
     }
 
     public function write(Workspace $workspace, string $relativePath, string $contents): Note
@@ -69,6 +77,21 @@ final class VaultStorage
         }
 
         return is_file($absolute);
+    }
+
+    public function delete(Workspace $workspace, string $relativePath): void
+    {
+        $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: true);
+        $relative = $this->paths->toRelative($workspace, $absolute);
+
+        if (! unlink($absolute)) {
+            throw new \RuntimeException("Unable to delete vault note [{$relative}].");
+        }
+
+        Note::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('path', $relative)
+            ->delete();
     }
 
     private function ensureParentDirectory(Workspace $workspace, string $absolute): void

@@ -3,6 +3,7 @@
 namespace App\Domain\Vault;
 
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
+use App\Domain\Vault\Exceptions\VaultNoteNotFound;
 use App\Models\AuditLog;
 use App\Models\Workspace;
 
@@ -19,6 +20,7 @@ final class VaultPathGuard
      * Traversal attempts are rejected using path-string rules before any access to the candidate path.
      *
      * @throws PathTraversalRejected
+     * @throws VaultNoteNotFound
      */
     public function resolve(Workspace $workspace, string $relativePath, bool $mustExist = false): string
     {
@@ -33,7 +35,11 @@ final class VaultPathGuard
 
         if ($mustExist) {
             $real = realpath($absolute);
-            if ($real === false || ! $this->isUnderVaultRoot($root, $real)) {
+            if ($real === false) {
+                throw new VaultNoteNotFound($relativePath);
+            }
+
+            if (! $this->isUnderVaultRoot($root, $real)) {
                 $this->reject($workspace, $relativePath);
             }
 
