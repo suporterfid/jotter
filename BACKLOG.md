@@ -1,14 +1,13 @@
 # Backlog
 
-Follow the ordered PR sequence in the authoritative spec. PR0–PR3 are on `main`; later PRs remain deferred:
+Follow the ordered PR sequence in the authoritative spec. PR0–PR3 are on `main`; PR4 is ready for review and has not yet merged:
 
-- PR4: the MySQL `FULLTEXT` index, query behavior, ranking, snippets, and search endpoint.
 - PR5–PR9: notes CRUD, UI/rendering, auth providers, attachment upload, and deployment hardening.
 - v1+: WebDAV, publishing, graph view, GrandpaSSOn/TaskConnect integrations, AI retrieval/MCP, and all other post-v0 work.
 
 ## Specification decisions and open items
 
-- Q1 default adopted: nullable `notes.search_content` is a rebuildable search projection; disk Markdown remains canonical. Creating its `FULLTEXT` index and implementing search remain deferred to PR4.
+- Q1 default adopted: nullable `notes.search_content` is a rebuildable search projection; disk Markdown remains canonical. PR4 adds the `FULLTEXT` index and search endpoint without persisting canonical note bodies.
 - Q4 default adopted: nested folders are allowed within each workspace vault; every path is canonicalized and must resolve inside the workspace root before filesystem access.
 - TODO(spec: Q2): Confirm `league/commonmark` plus a custom `[[ ]]` inline parser.
 - TODO(spec: Q3): Confirm sanitizing Markdown both server-side and with DOMPurify in the SPA.

@@ -34,6 +34,16 @@
 
 PR3 projects `[[note]]`, `[[note|alias]]`, and `[[note#heading]]` into the rebuildable `note_links` index; unresolved targets are retained with `NULL target_note_id`; writes and `vault:reindex` reconcile resolution; and backlinks are MySQL relations/queries only. Markdown bodies remain canonical files on disk and are not persisted to MySQL. Merged after green Docker CI (#5).
 
-## Next — PR4 search
+## Done — PR4 search (ready for review)
 
-The next ordered unit is the §7.3 MySQL `FULLTEXT` search index and search endpoint.
+- MySQL `FULLTEXT(title, search_content)` index, kept rebuildable from the vault projection
+- Read-only `GET /api/workspaces/{workspace}/search?q=` endpoint with workspace scope, ranking, bounded snippets, and input validation
+- No canonical Markdown body is returned or stored outside the rebuildable `search_content` projection
+- Docker feature tests cover the index, ranking, workspace isolation, snippets, and query validation
+- Frontend dependencies run from a named Docker volume; `jt test` no longer starts jsdom workers from the slow host bind mount
+- Playwright navigation and test timeouts allow the Docker browser to finish the cold app load without aborting its frame
+- `jt test` forces Laravel onto `jotter_testing`, keeping test migrations out of the seeded development database
+
+## Next — PR5 notes CRUD API
+
+The next ordered unit after PR4 merges green is the §7.4 workspace-scoped notes CRUD API behind the future auth guard placeholder. PR4 has not been merged into `main` yet.

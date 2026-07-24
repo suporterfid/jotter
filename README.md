@@ -4,12 +4,14 @@
 
 Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. Plain `.md` files, PHP + MySQL, your notes stay yours.
 
-Jotter currently ships through PR2: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, the multi-workspace data model, and a path-safe vault storage service that keeps Markdown files on disk as the source of truth. Search endpoints, notes CRUD APIs, wikilinks/backlinks, attachment upload, and identity-provider features remain later PRs.
+Jotter currently ships through PR3: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, the multi-workspace data model, path-safe vault storage, and rebuildable wikilink/backlink projection. PR4 adds the workspace-scoped search API; notes CRUD APIs, the editor UI, attachment upload, and identity-provider features remain later PRs.
 
 ## Requirements
 
 - Docker with Docker Compose V2
 - No host PHP, Composer, Node, npm, or MySQL installation
+
+The frontend dependency tree runs from a Docker named volume, so the `jt` commands do not depend on a host `node_modules` directory or its bind-mount performance.
 
 ## Start from a clean clone
 
@@ -53,6 +55,10 @@ The release zip contains a deployable `app/` tree with production Composer depen
 ## Architecture
 
 The intended source of truth is Markdown on disk; MySQL is a rebuildable index and application-state store. See [docs/architecture.md](docs/architecture.md) and the [authoritative initial spec](docs/jotter-initial-spec-and-build-plan.md).
+
+## Search API
+
+PR4 exposes `GET /api/workspaces/{workspace}/search?q=...`. It searches the MySQL `FULLTEXT(title, search_content)` projection within one workspace and returns at most 50 ranked matches with an id, path, title, bounded snippet, and relevance score. `search_content` is never returned or treated as canonical note content; the Markdown file remains the source of truth. Authentication is intentionally deferred to PR7, following the ordered build plan.
 
 ## License
 
