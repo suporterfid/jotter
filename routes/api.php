@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\AuditLogQueryController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\WorkspaceExportController;
 use App\Http\Controllers\WorkspaceNoteController;
@@ -23,6 +24,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
         ]);
     });
 
+    Route::get('/workspaces/{workspace}/audit-logs', [AuditLogQueryController::class, 'index']);
     Route::get('/workspaces/{workspace}/export', [WorkspaceExportController::class, 'export']);
     Route::get('/workspaces/{workspace}/sync', [WorkspaceSyncController::class, 'sync']);
     Route::get('/workspaces/{workspace}/search', WorkspaceSearchController::class);
