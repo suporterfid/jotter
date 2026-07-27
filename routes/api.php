@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogQueryController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\LlmsTxtController;
 use App\Http\Controllers\WebDavController;
 use App\Http\Controllers\WorkspaceExportController;
 use App\Http\Controllers\WorkspaceNoteController;
@@ -17,6 +18,7 @@ Route::post('/auth/logout', [AuthController::class, 'logout']);
 Route::get('/auth/me', [AuthController::class, 'me']);
 
 Route::middleware('workspace.authorization')->group(function (): void {
+    Route::get('/workspaces/{workspace}/llms.txt', [LlmsTxtController::class, 'workspaceLlmsTxt']);
     Route::match(['PROPFIND', 'GET', 'PUT', 'DELETE', 'OPTIONS'], '/webdav/{workspace}/{path?}', [WebDavController::class, 'handle'])->where('path', '.*');
     Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish']);
     Route::get('/workspaces', function () {
