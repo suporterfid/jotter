@@ -50,9 +50,24 @@ final class WorkspaceNoteController extends Controller
             abort(404);
         }
 
+        $backlinks = $note->incomingLinks()
+            ->with('sourceNote')
+            ->get()
+            ->filter(fn ($link) => $link->sourceNote !== null)
+            ->map(fn ($link) => [
+                'id' => $link->sourceNote->id,
+                'path' => $link->sourceNote->path,
+                'title' => $link->sourceNote->title,
+                'target_ref' => $link->target_ref,
+            ])
+            ->unique('id')
+            ->values()
+            ->all();
+
         return response()->json([
             'data' => array_merge($this->metadata($note), [
                 'content' => $content,
+                'backlinks' => $backlinks,
             ]),
         ]);
     }

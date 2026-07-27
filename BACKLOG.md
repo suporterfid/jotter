@@ -1,8 +1,8 @@
 # Backlog
 
-Follow the ordered PR sequence in the authoritative spec. PR0–PR5 are on `main`; later PRs remain deferred:
+Follow the ordered PR sequence in the authoritative spec. All v0 units PR0–PR9 are completed on `main` and live on Hostinger shared hosting:
 
-- PR6–PR9: UI/rendering, auth providers, attachment upload, and deployment hardening.
+- All v0 roadmap units (PR0 through PR9) complete.
 - v1+: WebDAV, publishing, graph view, GrandpaSSOn/TaskConnect integrations, AI retrieval/MCP, and all other post-v0 work.
 
 ## Specification decisions and open items

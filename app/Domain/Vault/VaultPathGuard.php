@@ -8,7 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Workspace;
 
 /**
- * Canonicalizes in-vault note paths and rejects anything that escapes the workspace root (§8/S2).
+ * Canonicalizes in-vault paths and rejects anything that escapes the workspace root (§8/S2).
  */
 final class VaultPathGuard
 {
@@ -22,10 +22,14 @@ final class VaultPathGuard
      * @throws PathTraversalRejected
      * @throws VaultNoteNotFound
      */
-    public function resolve(Workspace $workspace, string $relativePath, bool $mustExist = false): string
-    {
+    public function resolve(
+        Workspace $workspace,
+        string $relativePath,
+        bool $mustExist = false,
+        bool $mustBeMarkdown = true,
+    ): string {
         // Validate the candidate path string before any filesystem access (§7.1 / §8 S2).
-        $relative = $this->assertSafeRelativePath($workspace, $relativePath);
+        $relative = $this->assertSafeRelativePath($workspace, $relativePath, $mustBeMarkdown);
         $root = $this->canonicalVaultRoot($workspace);
         $absolute = $this->join($root, $relative);
 
@@ -58,6 +62,7 @@ final class VaultPathGuard
         $parent = dirname($absolute);
         if (is_dir($parent) || is_link($parent)) {
             $realParent = realpath($parent);
+
             // Parent may be the vault root itself for root-level notes.
             if ($realParent === false || ! $this->isUnderVaultRoot($root, $realParent, allowRoot: true)) {
                 $this->reject($workspace, $relativePath);
@@ -90,7 +95,7 @@ final class VaultPathGuard
         return $real;
     }
 
-    public function toRelative(Workspace $workspace, string $absolutePath): string
+    public function toRelative(Workspace $workspace, string $absolutePath, bool $mustBeMarkdown = true): string
     {
         $root = $this->canonicalVaultRoot($workspace);
         $absolute = str_replace('\\', '/', $absolutePath);
@@ -103,7 +108,7 @@ final class VaultPathGuard
         $relative = substr($absolute, strlen(rtrim($rootNormalized, '/')));
         $relative = ltrim(str_replace('\\', '/', $relative), '/');
 
-        return $this->assertSafeRelativePath($workspace, $relative);
+        return $this->assertSafeRelativePath($workspace, $relative, $mustBeMarkdown);
     }
 
     private function canonicalVaultRoot(Workspace $workspace): string
@@ -111,7 +116,7 @@ final class VaultPathGuard
         return $this->ensureVaultRoot($workspace);
     }
 
-    private function assertSafeRelativePath(Workspace $workspace, string $relativePath): string
+    private function assertSafeRelativePath(Workspace $workspace, string $relativePath, bool $mustBeMarkdown = true): string
     {
         $path = str_replace('\\', '/', $relativePath);
         $path = trim($path);
@@ -145,7 +150,7 @@ final class VaultPathGuard
 
         $normalizedPath = implode('/', $normalized);
 
-        if (! str_ends_with(strtolower($normalizedPath), '.md')) {
+        if ($mustBeMarkdown && ! str_ends_with(strtolower($normalizedPath), '.md')) {
             $this->reject($workspace, $relativePath, 'Vault note paths must end with .md.');
         }
 
@@ -158,65 +163,55 @@ final class VaultPathGuard
             return true;
         }
 
-        if (str_starts_with($path, '~')) {
+        if (preg_match('/^[a-zA-Z]:[\/\\\\]/', $path) === 1) {
             return true;
         }
 
-        // Windows drive or UNC
-        if (preg_match('#^[a-zA-Z]:#', $path) === 1) {
-            return true;
-        }
-
-        return str_starts_with($path, '//');
+        return false;
     }
 
     private function join(string $root, string $relative): string
     {
-        return rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+        $root = rtrim(str_replace('\\', '/', $root), '/');
+        $relative = ltrim(str_replace('\\', '/', $relative), '/');
+
+        return $root.'/'.$relative;
     }
 
-    /**
-     * True when $absolute is inside the vault root. When $allowRoot is true, the root
-     * directory itself is accepted (needed for parent-dir checks of root-level notes).
-     */
-    private function isUnderVaultRoot(string $root, string $absolute, bool $allowRoot = false): bool
+    private function isUnderVaultRoot(string $root, string $candidate, bool $allowRoot = false): bool
     {
-        $root = rtrim(str_replace('\\', '/', $root), '/');
-        $absolute = rtrim(str_replace('\\', '/', $absolute), '/');
+        $rootNormalized = rtrim(str_replace('\\', '/', $root), '/');
+        $candidateNormalized = rtrim(str_replace('\\', '/', $candidate), '/');
 
-        if ($absolute === $root) {
-            return $allowRoot;
+        if ($allowRoot && $candidateNormalized === $rootNormalized) {
+            return true;
         }
 
-        return str_starts_with($absolute, $root.'/');
+        return str_starts_with($candidateNormalized, $rootNormalized.'/');
     }
 
-    private function normalizeConfiguredRoot(string $vaultPath): string
+    private function normalizeConfiguredRoot(string $configured): string
     {
-        $path = str_replace('\\', '/', trim($vaultPath));
+        $path = trim($configured);
 
         if ($path === '' || str_contains($path, "\0")) {
-            throw new \InvalidArgumentException('Workspace vault_path is empty or invalid.');
-        }
-
-        if (! $this->looksAbsolute($path) && ! str_starts_with($vaultPath, DIRECTORY_SEPARATOR)) {
-            // Relative configured roots are resolved from the application base path.
-            $path = base_path($path);
+            throw new \RuntimeException('Configured vault_path must not be empty.');
         }
 
         return $path;
     }
 
-    private function reject(Workspace $workspace, string $attemptedPath, ?string $message = null): never
+    private function reject(Workspace $workspace, string $attemptedPath, ?string $message = null): void
     {
         AuditLog::query()->create([
             'tenant_id' => $workspace->tenant_id,
             'workspace_id' => $workspace->id,
-            'actor_subject_id' => null,
             'event' => self::AUDIT_EVENT,
+            'actor_type' => 'system',
+            'actor_id' => null,
             'metadata' => [
-                // TODO(spec: Before PR7, finalize audit event vocabulary and metadata redaction.)
                 'attempted_path' => $attemptedPath,
+                'reason' => 'path_traversal_or_unsafe_relative_path',
             ],
             'ip_address' => null,
         ]);

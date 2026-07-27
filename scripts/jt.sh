@@ -94,6 +94,7 @@ cmd_test() {
 cmd_e2e() {
   bootstrap
   compose up -d --build --wait app
+  compose run --rm app php artisan platform:bootstrap-admin admin@example.com password12345 || true
   compose --profile dev run --rm node npm run e2e -- "$@"
 }
 

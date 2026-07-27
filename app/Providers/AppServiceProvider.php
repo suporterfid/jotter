@@ -11,7 +11,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Domain\Auth\Contracts\IdentityProvider::class, function (): \App\Domain\Auth\Contracts\IdentityProvider {
+            $provider = config('jotter.auth_provider', 'local');
+
+            return match ($provider) {
+                'grandpasson' => new \App\Domain\Auth\Providers\GrandpaSSOnIdentityProvider,
+                default => new \App\Domain\Auth\Providers\LocalIdentityProvider,
+            };
+        });
     }
 
     /**

@@ -12,6 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(append: [
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        ]);
+
         // Markdown is canonical file content: preserve intentional whitespace and empty notes.
         $middleware->trimStrings(except: ['content']);
         $middleware->convertEmptyStringsToNull(except: [
@@ -20,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'workspace.authorization' => \App\Http\Middleware\WorkspaceAuthorizationPlaceholder::class,
+            'workspace.authorization' => \App\Http\Middleware\AuthorizeWorkspaceAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

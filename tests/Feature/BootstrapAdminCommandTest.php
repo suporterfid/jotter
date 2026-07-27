@@ -41,16 +41,15 @@ class BootstrapAdminCommandTest extends TestCase
         $this->assertStringNotContainsString($password, Artisan::output());
     }
 
-    public function test_it_rejects_an_existing_email_without_changing_its_password(): void
+    public function test_it_updates_an_existing_admin_user_password(): void
     {
         $user = User::factory()->create(['email' => 'existing@example.test']);
-        $originalHash = $user->password;
 
         $this->artisan('platform:bootstrap-admin', [
             'email' => $user->email,
             'password' => 'replacement-password',
-        ])->assertFailed();
+        ])->assertSuccessful();
 
-        $this->assertSame($originalHash, $user->fresh()->password);
+        $this->assertTrue(Hash::check('replacement-password', $user->fresh()->password));
     }
 }

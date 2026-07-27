@@ -1,14 +1,42 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
-
+import { describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 
-describe('App', () => {
-  it('renders the Jotter landing screen', () => {
-    const wrapper = mount(App)
+vi.mock('./services/api', () => ({
+  getWorkspaces: vi.fn().mockResolvedValue([
+    { id: 1, tenant_id: 1, slug: 'default', name: 'Default Workspace' }
+  ]),
+  getNotes: vi.fn().mockResolvedValue([
+    { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, updated_at: '2026-07-27T00:00:00Z' }
+  ]),
+  getNote: vi.fn().mockResolvedValue({
+    id: 10,
+    path: 'welcome.md',
+    title: 'Welcome Note',
+    frontmatter: null,
+    updated_at: '2026-07-27T00:00:00Z',
+    content: '# Welcome to Jotter\n\n[[Other Note]]',
+    backlinks: []
+  }),
+  createNote: vi.fn(),
+  updateNote: vi.fn(),
+  deleteNote: vi.fn(),
+  searchNotes: vi.fn().mockResolvedValue([]),
+  getMe: vi.fn().mockResolvedValue({
+    subject_id: '1',
+    email: 'admin@example.com',
+    name: 'Admin',
+    is_admin: true
+  }),
+  login: vi.fn(),
+  logout: vi.fn(),
+  getCsrfCookie: vi.fn().mockResolvedValue(undefined),
+  setUnauthenticatedHandler: vi.fn()
+}))
 
-    expect(wrapper.get('h1').text()).toBe('Jotter')
-    expect(wrapper.text()).toContain('Your pocket notebook')
-    expect(wrapper.text()).toContain('Markdown files stay yours')
+describe('App Component', () => {
+  it('renders the Jotter sidebar brand title', () => {
+    const wrapper = mount(App)
+    expect(wrapper.find('.brand-title').text()).toBe('Jotter')
   })
 })

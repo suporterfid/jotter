@@ -22,6 +22,9 @@ class WorkspaceNotesApiTest extends TestCase
 
         $this->vaultRoot = sys_get_temp_dir().'/jotter-notes-api-'.uniqid('', true);
         mkdir($this->vaultRoot, 0755, true);
+
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin);
     }
 
     protected function tearDown(): void
@@ -173,6 +176,9 @@ class WorkspaceNotesApiTest extends TestCase
     public function test_note_routes_fail_closed_until_pr7_configures_an_identity_provider(): void
     {
         $workspace = $this->makeWorkspace('protected');
+
+        $this->flushSession();
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
 
         $this->getJson("/api/workspaces/{$workspace->id}/notes")
             ->assertUnauthorized();

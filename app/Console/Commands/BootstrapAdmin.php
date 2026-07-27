@@ -12,7 +12,7 @@ class BootstrapAdmin extends Command
 {
     protected $signature = 'platform:bootstrap-admin {email} {password}';
 
-    protected $description = 'Create the first local platform administrator';
+    protected $description = 'Create or update the first local platform administrator';
 
     public function handle(): int
     {
@@ -35,10 +35,18 @@ class BootstrapAdmin extends Command
             return self::FAILURE;
         }
 
-        if (User::query()->where('email', $email)->exists()) {
-            $this->error('A user with that email already exists.');
+        /** @var User|null $existing */
+        $existing = User::query()->where('email', $email)->first();
 
-            return self::FAILURE;
+        if ($existing) {
+            $existing->update([
+                'password' => Hash::make($password),
+                'is_admin' => true,
+            ]);
+
+            $this->info("Administrator password updated for {$email}.");
+
+            return self::SUCCESS;
         }
 
         User::query()->create([

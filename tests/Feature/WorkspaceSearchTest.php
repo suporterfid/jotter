@@ -21,6 +21,9 @@ class WorkspaceSearchTest extends TestCase
 
         $this->vaultRoot = sys_get_temp_dir().'/jotter-search-'.uniqid('', true);
         mkdir($this->vaultRoot, 0755, true);
+
+        $admin = \App\Models\User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin);
     }
 
     protected function tearDown(): void

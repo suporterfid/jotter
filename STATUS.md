@@ -54,6 +54,42 @@ PR3 projects `[[note]]`, `[[note|alias]]`, and `[[note#heading]]` into the rebui
 - Docker feature tests cover CRUD, disk reads, workspace isolation, and traversal rejection
 - Merged to `main` with green Docker CI (#8)
 
-## Next — PR6 frontend
+## Done — PR6 frontend
 
-The next ordered unit is the §7.5 Vue browser/editor, safe rendering, wikilink autocomplete, backlinks panel, search UI, and its Playwright happy path.
+- Vue 3 SPA workspace note browser, creation modal, note filtering, and note deletion
+- Markdown editor with live preview (split/editor/preview mode toggles) and auto-save / manual save
+- Wikilink (`[[note]]`, `[[note|alias]]`, `[[note#heading]]`) parsing and click navigation
+- Wikilink autocomplete popup triggered when typing `[[` in the Markdown editor
+- Backlinks panel displaying incoming database links for the selected note
+- Full-text search UI with snippet display and ranked match navigation
+- Safe Markdown HTML rendering sanitized with DOMPurify to prevent XSS and script execution
+- Unit tests (`vitest`) and Playwright E2E happy path tests (`jt e2e`) green in Docker
+
+## Done — PR7 auth abstraction & local identity (§7.6)
+
+- Domain interface `App\Domain\Auth\Contracts\IdentityProvider` and `AuthenticatedSubject` DTO
+- `LocalIdentityProvider` handling session authentication via web guard, password hashing, workspace membership check, and audit logging
+- `GrandpaSSOnIdentityProvider` fail-closed stub for future GrandpaSSOn v1 integration
+- Configurable service container binding (`JOTTER_AUTH_PROVIDER=local|grandpasson`) and `AuthorizeWorkspaceAccess` middleware enforcing workspace access
+- Stateful API session middleware on API routes with CSRF cookie endpoint and audit log coverage (`auth.login.success`, `auth.login.failed`, `auth.logout`, `auth.rejected`)
+- Vue 3 modal login workflow, user profile status badge, logout lifecycle, and 401 unauthenticated interceptor
+- 100% green unit, feature, and Playwright E2E test suites in Docker
+
+## Done — PR8 attachment uploads (§7.7)
+
+- `AttachmentStorage` domain service storing files outside `public/` inside vault `_resources/` directory
+- Workspace-scoped attachment endpoints: `GET/POST/DELETE /api/workspaces/{workspace}/attachments` and file streaming `GET /api/workspaces/{workspace}/attachments/{path}`
+- Content-type and file extension allowlist validation with 20MB file size limit
+- Path traversal protection via `VaultPathGuard` auditing `vault.path_traversal_rejected`
+- Audit log tracking for attachment creation (`attachment.created`) and deletion (`attachment.deleted`)
+- Vue 3 toolbar attachment button and automatic Markdown image/file link insertion
+- 100% green feature (`AttachmentUploadTest`) and Playwright E2E test suites
+
+## Done — PR9 deployment & shared hosting hardening (§7.8)
+
+- Configured Hostinger Shared Web Hosting environment with PHP 8.2 & MariaDB 11.8.8
+- Single shared database deployment (`u250556264_taskconnecthub`) with namespaced table prefixes (`jt_`, `tc_`, `sso_`)
+- Integrated Apache master `.htaccess` subpath routing (`/` -> Jotter, `/tc` -> TaskConnect, `/sso` -> GrandpaSSOn)
+- Fresh clean-slate database reset, automated remote migrations, and admin account seeding (`admin@taskconnect.com.br`)
+- Live production verification: `https://hub.taskconnect.com.br/` (Jotter 200 OK), `https://hub.taskconnect.com.br/tc` (TaskConnect 200 OK), `https://hub.taskconnect.com.br/sso/login` (GrandpaSSOn 200 OK)
+
