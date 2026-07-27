@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\WebDavController;
 use App\Http\Controllers\WorkspaceExportController;
 use App\Http\Controllers\WorkspaceNoteController;
+use App\Http\Controllers\WorkspacePublishController;
 use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceSyncController;
 use App\Models\Workspace;
@@ -17,6 +18,7 @@ Route::get('/auth/me', [AuthController::class, 'me']);
 
 Route::middleware('workspace.authorization')->group(function (): void {
     Route::match(['PROPFIND', 'GET', 'PUT', 'DELETE', 'OPTIONS'], '/webdav/{workspace}/{path?}', [WebDavController::class, 'handle'])->where('path', '.*');
+    Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish']);
     Route::get('/workspaces', function () {
         return response()->json([
             'data' => Workspace::query()
