@@ -14,9 +14,18 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
+      <!-- Graph View Mode -->
+      <GraphView
+        v-if="isGraphViewActive"
+        :notes="notes"
+        :active-note-id="activeNoteId"
+        @select-note="handleSelectNoteFromGraph"
+        @close="isGraphViewActive = false"
+      />
+
       <!-- Search View Mode -->
       <SearchResults
-        v-if="isSearchActive"
+        v-else-if="isSearchActive"
         :query="searchQuery"
         :results="searchResults"
         @select-note="handleSelectNote"
@@ -58,6 +67,7 @@
       @select-note="handleSelectNote"
       @create-note="() => handleCreateNote(`untitled-${Date.now().toString(36)}.md`)"
       @search="() => handleSearch(' ')"
+      @toggle-graph="isGraphViewActive = !isGraphViewActive"
       @logout="handleLogout"
     />
   </div>
@@ -70,6 +80,7 @@ import NoteEditor from './components/NoteEditor.vue'
 import SearchResults from './components/SearchResults.vue'
 import LoginModal from './components/LoginModal.vue'
 import CommandPalette from './components/CommandPalette.vue'
+import GraphView from './components/GraphView.vue'
 import {
   getWorkspaces,
   getNotes,
@@ -92,10 +103,16 @@ const activeNoteDetail = ref<NoteDetail | null>(null)
 
 const currentUser = ref<AuthUser | null>(null)
 const showLoginModal = ref(false)
+const isGraphViewActive = ref(false)
 
 const isSearchActive = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<SearchResult[]>([])
+
+async function handleSelectNoteFromGraph(noteId: number) {
+  isGraphViewActive.value = false
+  await handleSelectNote(noteId)
+}
 
 onMounted(async () => {
   setUnauthenticatedHandler(() => {

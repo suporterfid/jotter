@@ -90,6 +90,7 @@ const emit = defineEmits<{
   (e: 'select-note', noteId: number): void
   (e: 'create-note'): void
   (e: 'search'): void
+  (e: 'toggle-graph'): void
   (e: 'logout'): void
 }>()
 
@@ -113,6 +114,13 @@ const actions: ActionItem[] = [
     icon: '📝',
     shortcut: 'N',
     action: () => emit('create-note')
+  },
+  {
+    id: 'graph',
+    title: 'Open Relationship Graph View',
+    icon: '🕸️',
+    shortcut: 'G',
+    action: () => emit('toggle-graph')
   },
   {
     id: 'search',
