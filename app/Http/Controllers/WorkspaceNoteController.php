@@ -40,7 +40,7 @@ final class WorkspaceNoteController extends Controller
         return response()->json(['data' => $this->metadata($note)], 201);
     }
 
-    public function show(Workspace $workspace, int $note, VaultStorage $storage): JsonResponse
+    public function show(Workspace $workspace, int $note, VaultStorage $storage, \App\Domain\Vault\MarkdownServerRenderer $renderer): JsonResponse
     {
         $note = $this->scopedNote($workspace, $note);
 
@@ -67,6 +67,7 @@ final class WorkspaceNoteController extends Controller
         return response()->json([
             'data' => array_merge($this->metadata($note), [
                 'content' => $content,
+                'html_rendered' => $renderer->render($content),
                 'backlinks' => $backlinks,
             ]),
         ]);
