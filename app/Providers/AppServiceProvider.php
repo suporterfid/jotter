@@ -19,6 +19,15 @@ class AppServiceProvider extends ServiceProvider
                 default => new \App\Domain\Auth\Providers\LocalIdentityProvider,
             };
         });
+
+        $this->app->singleton(\App\Domain\Jobs\Contracts\JobDispatcher::class, function (): \App\Domain\Jobs\Contracts\JobDispatcher {
+            $dispatcher = config('jotter.job_dispatcher', 'local');
+
+            return match ($dispatcher) {
+                'taskconnect' => new \App\Domain\Jobs\TaskConnectJobDispatcher,
+                default => new \App\Domain\Jobs\LocalJobDispatcher,
+            };
+        });
     }
 
     /**
