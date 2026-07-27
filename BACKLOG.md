@@ -1,20 +1,16 @@
-# Backlog
+# Jotter — Backlog (v1 and v2 Feature Roadmap)
 
-Follow the ordered PR sequence in the authoritative spec. All v0 units PR0–PR9 are completed on `main` and live on Hostinger shared hosting:
+## v1 Roadmap (Next Cycle)
 
-- All v0 roadmap units (PR0 through PR9) complete.
-- v1+: WebDAV, publishing, graph view, GrandpaSSOn/TaskConnect integrations, AI retrieval/MCP, and all other post-v0 work.
+- [ ] **SabreDAV WebDAV Integration**: Direct sync endpoint for Obsidian Mobile / Desktop native syncing.
+- [ ] **Static Site Publishing**: Export workspace notes as a static HTML website with navigation.
+- [ ] **AI-KB Layer 1 & MCP Server**: `llms.txt` generation and Model Context Protocol (MCP) server for AI agent integration.
+- [ ] **Daily Notes & Templates**: Automatic daily note generator and Markdown template support.
+- [ ] **Broken Link Report**: Workspace-wide report of unresolved `[[wikilinks]]`.
 
-## Specification decisions and open items
+## v2 Roadmap (Future)
 
-- Q1 default adopted: nullable `notes.search_content` is a rebuildable search projection; disk Markdown remains canonical. PR4 adds the `FULLTEXT` index and search endpoint without persisting canonical note bodies.
-- Q4 default adopted: nested folders are allowed within each workspace vault; every path is canonicalized and must resolve inside the workspace root before filesystem access.
-- TODO(spec: Q2): Confirm `league/commonmark` plus a custom `[[ ]]` inline parser.
-- TODO(spec: Q3): Confirm sanitizing Markdown both server-side and with DOMPurify in the SPA.
-- TODO(spec: Q5): Confirm local sessions only in v0, with GrandpaSSOn limited to a later stub interface.
-- TODO(spec: Q6): Confirm `jt` as the development verb prefix for `scripts/jt.sh` and `scripts/jt.ps1`.
-- TODO(spec: PR3): Confirm the user-facing resolution policy for duplicate titles and case-insensitive wikilinks. Until specified, exact workspace-relative paths take precedence, exact unique titles resolve, and ambiguous references remain unresolved.
-- TODO(spec: PR5): Confirm whether a future notes API update may rename/move a Markdown path. This PR safely updates content at the existing indexed path only.
-- TODO(spec: Before PR7, define the final audit event vocabulary, required actor/request context, metadata redaction rules, access controls, and retention/deletion contract. The initial columns are structural only; security details must not be guessed.)
-- TODO(spec: Before PR7, choose portable database-level append-only enforcement for `audit_log`; PR1 model guards do not cover query-builder or direct-SQL writes.)
-- TODO(spec: PR3/PR5 must reject cross-workspace note-link and note-tag associations in application services; the §5 link/pivot shapes do not carry workspace keys for composite database enforcement.)
+- [ ] **Document Parsing**: PDF / DOCX / PPTX conversion to Markdown via TaskConnect.
+- [ ] **Web Crawler**: Web page capture to Markdown notes.
+- [ ] **Embeddings & RAG**: Vector store index for semantic note search.
+- [ ] **Visual Canvas & Mind Map**: Node canvas editor for notes.
