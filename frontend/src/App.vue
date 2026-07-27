@@ -51,6 +51,15 @@
       :show="showLoginModal"
       @login-success="handleLoginSuccess"
     />
+
+    <!-- Command Palette (Cmd + K) -->
+    <CommandPalette
+      :notes="notes"
+      @select-note="handleSelectNote"
+      @create-note="() => handleCreateNote(`untitled-${Date.now().toString(36)}.md`)"
+      @search="() => handleSearch(' ')"
+      @logout="handleLogout"
+    />
   </div>
 </template>
 
@@ -60,6 +69,7 @@ import Sidebar from './components/Sidebar.vue'
 import NoteEditor from './components/NoteEditor.vue'
 import SearchResults from './components/SearchResults.vue'
 import LoginModal from './components/LoginModal.vue'
+import CommandPalette from './components/CommandPalette.vue'
 import {
   getWorkspaces,
   getNotes,
