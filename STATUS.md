@@ -42,6 +42,7 @@
   - MCP HTTP Transport & Machine-Token Auth (`POST /api/mcp`, `machine_tokens` table, SHA-256 tokens via `IdentityProvider` seam, `McpTransportAuthTest`)
   - Read-Only MCP Tools & Cross-Workspace Denial (`list_notes`, `read_note`, `search_notes`, `get_backlinks`, `McpReadOnlyToolsTest`)
   - MCP Write Tools Decision & Scope (`docs/mcp.md`, write tools intentionally deferred and gated per §8 S2 & S5)
+  - Visual Identity Specification & Brand Assets (`docs/visual-identity.md`, `assets/brand/README.md`, brand assets inventory)
 
 ---
 

@@ -6,6 +6,12 @@ Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. 
 
 Jotter currently ships through PR5: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, the multi-workspace data model, path-safe vault storage, rebuildable wikilink/backlink projection, workspace-scoped search, and workspace-scoped note CRUD. The notes authorization seam fails closed until PR7; the editor UI, attachment upload, and identity-provider features remain later PRs.
 
+## Documentation
+
+- [Architecture Specification](file:///home/ubuntu/projects/web/iroh/jotter/docs/architecture.md)
+- [Visual Identity Specification](file:///home/ubuntu/projects/web/iroh/jotter/docs/visual-identity.md)
+- [Model Context Protocol (MCP)](file:///home/ubuntu/projects/web/iroh/jotter/docs/mcp.md)
+
 ## Requirements
 
 - Docker with Docker Compose V2

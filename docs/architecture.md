@@ -47,4 +47,8 @@ PR4 adds the MySQL FULLTEXT index and read-only search endpoint only. It does no
 
 For AI assistant integration, Jotter provides a Model Context Protocol server over HTTP JSON-RPC 2.0 (`POST /api/mcp`). Read-only tools (`list_notes`, `read_note`, `search_notes`, `get_backlinks`) are implemented with per-workspace authorization. Write tools are intentionally deferred and gated per security policy §8 S2 & S5. See [docs/mcp.md](file:///home/ubuntu/projects/web/iroh/jotter/docs/mcp.md) for details.
 
+## Visual Identity
+
+The user interface follows the shared visual identity specification, documented in [docs/visual-identity.md](file:///home/ubuntu/projects/web/iroh/jotter/docs/visual-identity.md) and asset inventory in `assets/brand/`.
+
 There is no v1 work in this implementation. WebDAV, publishing, graph views, GrandpaSSOn integration, TaskConnect delegation, daily notes, and related features remain out of scope.
