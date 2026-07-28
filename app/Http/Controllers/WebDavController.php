@@ -35,10 +35,12 @@ final class WebDavController extends Controller
             return response()->json(['message' => 'Workspace not found.'], 404);
         }
 
-        $targetPath = $path ?? '';
+        $targetPath = trim($path ?? '', '/');
 
         try {
-            $fullPath = $this->pathGuard->resolve($workspace, $targetPath, mustExist: false, mustBeMarkdown: false);
+            $fullPath = $targetPath === ''
+                ? $this->pathGuard->ensureVaultRoot($workspace)
+                : $this->pathGuard->resolve($workspace, $targetPath, mustExist: false, mustBeMarkdown: false);
         } catch (PathTraversalRejected) {
             return response()->json(['message' => 'Invalid path traversal detected.'], 400);
         }
@@ -47,7 +49,9 @@ final class WebDavController extends Controller
             'PROPFIND' => $this->handlePropfind($fullPath, $targetPath),
             'GET' => $this->handleGet($fullPath),
             'PUT' => $this->handlePut($workspace, $targetPath, $request->getContent()),
+            'MKCOL' => $this->handleMkcol($fullPath),
             'DELETE' => $this->handleDelete($workspace, $targetPath),
+            'OPTIONS' => response('', 200, ['Allow' => 'OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, MKCOL', 'DAV' => '1, 2']),
             default => response("Method {$request->method()} not implemented", 405),
         };
     }
@@ -95,5 +99,14 @@ final class WebDavController extends Controller
         $this->storage->delete($workspace, $relativePath);
 
         return response('', 204);
+    }
+
+    private function handleMkcol(string $fullPath): Response
+    {
+        if (! is_dir($fullPath)) {
+            @mkdir($fullPath, 0755, true);
+        }
+
+        return response('', 201);
     }
 }

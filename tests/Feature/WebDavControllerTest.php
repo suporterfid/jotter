@@ -33,4 +33,25 @@ final class WebDavControllerTest extends TestCase
         $response->assertStatus(207);
         $this->assertStringContainsString('multistatus', $response->getContent());
     }
+
+    public function test_webdav_options_and_mkcol_methods(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
+        $vaultPath = storage_path('app/vaults/webdav_test_options');
+        @mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'main',
+            'name' => 'Main',
+            'vault_path' => $vaultPath,
+        ]);
+
+        $optionsRes = $this->actingAs($admin)->call('OPTIONS', "/api/webdav/{$workspace->id}");
+        $optionsRes->assertStatus(200)->assertHeader('DAV', '1, 2');
+
+        $mkcolRes = $this->actingAs($admin)->call('MKCOL', "/api/webdav/{$workspace->id}/subfolder");
+        $mkcolRes->assertStatus(201);
+    }
 }
