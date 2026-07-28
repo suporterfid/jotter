@@ -18,7 +18,7 @@ final class WorkspaceImportApiTest extends TestCase
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
-        $vaultPath = storage_path('app/vaults/import_api_test');
+        $vaultPath = storage_path('app/vaults/import_api_test_'.uniqid());
         @mkdir($vaultPath, 0755, true);
 
         $workspace = Workspace::create([
