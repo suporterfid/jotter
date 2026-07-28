@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Vault\VaultStorage;
 use App\Models\MachineToken;
 use App\Models\Membership;
 use App\Models\Note;
@@ -87,5 +88,22 @@ class McpReadOnlyToolsTest extends TestCase
             $deniedRes->assertStatus(403);
             $deniedRes->assertJsonPath('error.code', -32003);
         }
+
+        // 3. read_note on an existing, authorized note returns its actual content
+        $storage = $this->app->make(VaultStorage::class);
+        $storage->write($workspaceA, 'mcp-read-note.md', "# MCP Read Note\nActual content.");
+
+        $readRes = $this->withHeader('Authorization', 'Bearer '.$plainToken)
+            ->postJson('/api/mcp', [
+                'jsonrpc' => '2.0',
+                'method' => 'tools/call',
+                'params' => [
+                    'name' => 'read_note',
+                    'arguments' => ['workspace_id' => $workspaceA->id, 'path' => 'mcp-read-note.md'],
+                ],
+                'id' => 1,
+            ]);
+        $readRes->assertOk();
+        $readRes->assertJsonPath('result.content.0.text', "# MCP Read Note\nActual content.");
     }
 }
