@@ -69,6 +69,11 @@
   - Milestone B: Daily notes and note templates (#56 — `_templates/` folder, `TemplateEngine` variable substitution, `POST /notes/from-template`, `GET|POST /daily/{date?}`)
   - Milestone B: Richer block and slash-command surface epic (#57 — declarative block registry, dual-path sanitization, callouts, toggles, tables, dividers, slash insertion menu)
   - Milestone B: MCP server epic (#58 — machine-token auth over IdentityProvider seam, read-only vault tools & resources)
+  - Milestone C: GrandpaSSOn identity adapter (#59 — `GrandpaSSOnIdentityProvider` adapter over `IdentityProvider` seam)
+  - Milestone C: Workspace and membership administration epic (#60 — workspace CRUD, membership & role management, local user management)
+  - Spec Debt: Audit log hardening epic (#64 — standardized event vocabulary, redaction, append-only DB enforcement, retention)
+  - Spec Debt: Note identity epic (#65 — path rename/move endpoint, wikilink case-insensitive & ambiguity resolution policy)
+  - Visual Identity: Shared dark/purple design system epic (#96 — semantic token layer, Open Sans typography, WCAG 2.2 AA audit, CI token guard)
 
 ---
 

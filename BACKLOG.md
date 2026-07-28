@@ -34,10 +34,16 @@ The only Phase 1 items the product does not already have.
 
 ## Milestone C — team collaboration
 
-- [ ] **GrandpaSSOn identity adapter** — consume tenancy claims and RBAC. The stub and the `IdentityProvider` seam already exist.
-- [ ] **Workspace administration UI** — `tenants` / `workspaces` / `memberships` with roles exist and are enforced; there is no surface for managing them.
+- [x] **GrandpaSSOn identity adapter** — consume tenancy claims, RBAC, machine tokens over IdentityProvider seam (#59).
+- [x] **Workspace administration UI** — CRUD workspace API, membership management, local user management (#60, #82, #83, #84).
 - [ ] **Comments and mentions** — roadmap priority 9. Needs new §5 schema and §8 S5 authorization. Asynchronous only (see C1).
 - [ ] **Notification / event bus** — should reuse the audit-log event infrastructure per the roadmap's dependency map.
+
+## Spec Debt & Foundation Epics
+
+- [x] **Audit log hardening** — standardized event vocabulary, redaction, database append-only enforcement, retention & pruning (#64, #70, #71, #72).
+- [x] **Note identity** — path rename/move endpoint, wikilink case-insensitive & ambiguity resolution policy (#65, #73, #74, #75).
+- [x] **Visual identity design system** — adopted shared dark/purple design system across every surface with CI token guard (#96, #97-#110).
 
 ## Milestone D — structured work
 
