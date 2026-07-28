@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Domain\Vault\VaultPathGuard;
-use App\Http\Middleware\WorkspaceAuthorizationPlaceholder;
 use App\Models\Note;
 use App\Models\Tenant;
 use App\Models\Workspace;
@@ -36,7 +35,6 @@ class WorkspaceNotesApiTest extends TestCase
 
     public function test_create_and_list_keep_markdown_on_disk_and_return_only_note_metadata(): void
     {
-        $this->withoutMiddleware(WorkspaceAuthorizationPlaceholder::class);
         $workspace = $this->makeWorkspace('primary');
         $markdown = "---\ntitle: API Note\ntags: [api]\n---\nCanonical body.\n";
 
@@ -190,6 +188,23 @@ class WorkspaceNotesApiTest extends TestCase
             ->assertCreated();
 
         return Note::query()->findOrFail($response->json('data.id'));
+    }
+
+    public function test_note_rename_and_move_endpoint(): void
+    {
+        $workspace = $this->makeWorkspace('move_test');
+        $storage = app(\App\Domain\Vault\VaultStorage::class);
+        $note = $storage->write($workspace, 'original.md', "# Original\n");
+
+        $response = $this->postJson("/api/workspaces/{$workspace->id}/notes/{$note->id}/move", [
+            'new_path' => 'archived/renamed.md',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.path', 'archived/renamed.md');
+
+        $this->assertFileExists($this->vaultRoot.'/move_test/archived/renamed.md');
+        $this->assertFileDoesNotExist($this->vaultRoot.'/move_test/original.md');
     }
 
     private function makeWorkspace(string $suffix): Workspace
