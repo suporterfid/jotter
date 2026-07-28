@@ -48,11 +48,14 @@ final class WorkspaceExportController extends Controller
         $notes = Note::query()->where('workspace_id', $workspaceId)->get();
         $hasFiles = false;
 
+        $pathGuard = new \App\Domain\Vault\VaultPathGuard();
         foreach ($notes as $note) {
-            $fullPath = rtrim($workspace->vault_path, '/').'/'.$note->path;
-            if (file_exists($fullPath)) {
+            try {
+                $fullPath = $pathGuard->resolve($workspace, $note->path, mustExist: true, mustBeMarkdown: false);
                 $zip->addFile($fullPath, $note->path);
                 $hasFiles = true;
+            } catch (\Throwable) {
+                // file missing
             }
         }
 
@@ -62,6 +65,6 @@ final class WorkspaceExportController extends Controller
 
         $zip->close();
 
-        return response()->download($zipPath, "workspace_{$workspace->slug}_export.zip")->deleteFileAfterSend(true);
+        return response()->download($zipPath, "workspace_{$workspace->slug}_export.zip");
     }
 }

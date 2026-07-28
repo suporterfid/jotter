@@ -26,7 +26,9 @@
   - WebDAV Adapter (`WebDavController`) with `PROPFIND`, `GET`, `PUT`, `MKCOL`, `DELETE`, `OPTIONS`
   - Note Rename & Relocation Endpoint (`POST /api/workspaces/{w}/notes/{n}/move`)
   - Case-Insensitive Wikilink Resolution Policy (`WikilinkProjector.php`)
-  - Audit Log Hardening Suite (`AuditEvent` enum, `AuditRecorder` with automatic redaction, append-only immutability, tenant-scoped queries), static-site publishing, `llms.txt` (AI-KB Layer 1).
+  - Audit Log Hardening Suite (`AuditEvent` enum, `AuditRecorder` with automatic redaction, append-only immutability, tenant-scoped queries)
+  - Audit Log Retention & Pruning Command (`audit:prune --days=90` with chunked deletion)
+  - Hardened Vault Import Pipeline (`VaultExtractor` with Zip-Slip protection, `POST /api/workspaces/{w}/import` endpoint, overwrite collision policy, and full export-import round-trip equivalence), static-site publishing, `llms.txt` (AI-KB Layer 1).
 
 ---
 

@@ -22,7 +22,7 @@ final class VaultExtractor
     /**
      * @return array{extracted: list<string>, skipped: list<string>, errors: list<string>}
      */
-    public function extract(Workspace $workspace, string $zipPath): array
+    public function extract(Workspace $workspace, string $zipPath, bool $overwrite = false): array
     {
         $zip = new ZipArchive();
         if ($zip->open($zipPath) !== true) {
@@ -86,6 +86,11 @@ final class VaultExtractor
 
             if (! in_array($ext, $allowedExtensions, true)) {
                 $skipped[] = "Disallowed file extension [{$ext}] for [{$entryName}]";
+                continue;
+            }
+
+            if (is_file($absolutePath) && ! $overwrite) {
+                $skipped[] = "Collision: file already exists [{$entryName}] (overwrite=false)";
                 continue;
             }
 
