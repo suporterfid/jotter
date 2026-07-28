@@ -380,7 +380,7 @@ async function handleSave() {
   flex-direction: column;
   flex: 1;
   height: 100%;
-  background: var(--bg-main, #0f0f12);
+  background: var(--color-canvas);
   overflow: hidden;
 }
 
@@ -388,9 +388,9 @@ async function handleSave() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.5rem;
-  background: var(--bg-surface, #1e1e24);
-  border-bottom: 1px solid var(--border-color, #2d2d38);
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .note-meta-info {
@@ -402,63 +402,65 @@ async function handleSave() {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 700;
-  color: var(--text-light, #f8fafc);
+  color: var(--color-text);
 }
 
 .editor-path {
   font-size: 0.75rem;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
 }
 
 .editor-controls {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .view-mode-toggle {
   display: flex;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 0.2rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--border-color, #2d2d38);
+  background: var(--color-canvas);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
 }
 
 .toggle-btn {
   background: transparent;
   border: none;
-  color: var(--text-dim, #64748b);
-  padding: 0.25rem 0.625rem;
-  border-radius: 0.25rem;
+  color: var(--color-text-muted);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+  min-height: 28px;
 }
 
 .toggle-btn.active {
-  background: var(--accent-color, #818cf8);
-  color: white;
+  background: var(--color-action);
+  color: var(--color-neutral-0);
 }
 
 .btn-attach {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-color, #2d2d38);
-  color: var(--text-light, #f8fafc);
-  padding: 0.4rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
+  gap: var(--space-2);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+  min-height: 36px;
 }
 
 .btn-attach:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--accent-color, #818cf8);
+  border-color: var(--color-action);
 }
 
 .btn-attach:disabled {
@@ -467,20 +469,25 @@ async function handleSave() {
 }
 
 .btn-save {
-  background: var(--accent-color, #818cf8);
-  color: white;
+  background: var(--color-action);
+  color: var(--color-neutral-0);
   border: none;
-  padding: 0.4rem 0.875rem;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+  min-height: 36px;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: var(--color-action-hover);
 }
 
 .btn-save:disabled {
-  background: var(--bg-hover, #2d3748);
-  color: var(--text-dim, #64748b);
+  background: var(--color-surface-emphasis);
+  color: var(--color-text-muted);
   cursor: default;
 }
 
@@ -507,37 +514,37 @@ async function handleSave() {
 .textarea-wrapper {
   position: relative;
   height: 100%;
-  border-right: 1px solid var(--border-color, #2d2d38);
+  border-right: 1px solid var(--color-border);
 }
 
 .markdown-textarea {
   width: 100%;
   height: 100%;
-  background: #111115;
-  color: var(--text-light, #f8fafc);
-  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-mono);
   font-size: 0.9375rem;
   line-height: 1.6;
-  padding: 1.25rem;
+  padding: var(--space-4);
   border: none;
-  outline: none;
   resize: none;
+  /* outline:none removed — global :focus-visible handles ring */
 }
 
 .preview-wrapper {
   height: 100%;
   overflow-y: auto;
-  background: #0f0f12;
+  background: var(--color-canvas);
 }
 
 .autocomplete-dropdown {
   position: absolute;
   top: 3.5rem;
   left: 2rem;
-  background: #1e1e24;
-  border: 1px solid var(--accent-color, #818cf8);
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-action);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
   z-index: 50;
   min-width: 240px;
   overflow: hidden;
@@ -546,9 +553,9 @@ async function handleSave() {
 .autocomplete-header {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-dim, #64748b);
-  padding: 0.5rem 0.75rem;
-  background: rgba(0, 0, 0, 0.3);
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-emphasis);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -556,9 +563,9 @@ async function handleSave() {
 .autocomplete-item {
   display: flex;
   flex-direction: column;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .autocomplete-item:last-child {
@@ -566,38 +573,38 @@ async function handleSave() {
 }
 
 .autocomplete-item.active, .autocomplete-item:hover {
-  background: rgba(129, 140, 248, 0.2);
+  background: color-mix(in srgb, var(--color-action) 20%, transparent);
 }
 
 .suggestion-title {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--text-light, #f8fafc);
+  color: var(--color-text);
 }
 
 .suggestion-path {
   font-size: 0.75rem;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
 }
 
+/* Solid drag-upload overlay — no backdrop-filter */
 .drag-upload-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(11, 15, 25, 0.85);
-  backdrop-filter: blur(8px);
+  background: rgb(0 0 0 / 82%);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px dashed var(--accent-color, #6366f1);
+  border: 2px dashed var(--color-action);
 }
 
 .drag-upload-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  color: var(--accent-color, #6366f1);
+  gap: var(--space-4);
+  color: var(--color-action);
   font-weight: 600;
   font-size: 1.1rem;
 }
@@ -606,48 +613,48 @@ async function handleSave() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.4rem 1.25rem;
-  background: rgba(15, 23, 42, 0.9);
-  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
-  font-size: 0.775rem;
-  color: var(--text-dim, #64748b);
+  padding: var(--space-1) var(--space-4);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 .status-left, .status-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-1);
   font-size: 0.75rem;
-  color: #10b981;
+  color: var(--color-status-success);
 }
 
 .status-pill .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--color-status-success);
 }
 
 .status-pill.dirty {
-  color: #f59e0b;
+  color: var(--color-status-warning);
 }
 
 .status-pill.dirty .dot {
-  background: #f59e0b;
+  background: var(--color-status-warning);
 }
 
 .status-pill.saving {
-  color: #6366f1;
+  color: var(--color-action);
 }
 
 .status-pill.saving .dot {
-  background: #6366f1;
+  background: var(--color-action);
   animation: pulse 1s infinite;
 }
 
@@ -657,6 +664,6 @@ async function handleSave() {
 }
 
 .stat-item strong {
-  color: var(--text-main, #e2e8f0);
+  color: var(--color-text);
 }
 </style>

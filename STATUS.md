@@ -45,6 +45,10 @@
   - Visual Identity Specification & Brand Assets (`docs/visual-identity.md`, `assets/brand/README.md`, brand assets inventory)
   - Visual Identity Semantic Design-Token Layer (`frontend/src/styles/tokens.css` with semantic variables, status extension tokens & contrast ratios table in `docs/visual-identity.md`)
   - Visual Identity Self-Host Open Sans & Remove Google Fonts CDN (`frontend/src/styles/fonts.css`, WOFF2 files under `frontend/src/assets/fonts/`, removed Google Fonts CDN links)
+  - Visual Identity: Migrate SPA components off raw color literals onto semantic tokens (#100 — all 8 components, glassmorphism retired, `--color-*` tokens throughout)
+  - Visual Identity: Type scale, responsive headings, heading hierarchy (#101 — scale tokens added to `tokens.css`, `style.css` H1 fixed from 6.5rem/lh-0.9 to fluid clamp, ≥16px prose enforced)
+  - Visual Identity: Spacing, layout widths, radius, borders, elevation — retire glassmorphism (#102 — `--space-*`/`--radius-*` tokens everywhere, all `backdrop-filter` removed, solid overlay backgrounds, radial-gradient body removed)
+  - Visual Identity: Buttons, links, inputs, focus rings, touch targets (#103 — all six `outline: none` declarations removed, global `:focus-visible` ring added in `App.vue`, `min-height: 36–44px` touch targets enforced, primary/secondary button vocabulary defined)
 
 ---
 

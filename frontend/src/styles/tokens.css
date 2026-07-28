@@ -45,6 +45,18 @@
   --font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono",
     monospace;
 
+  /* Type scale — §4.2 desktop (Jotter product UI uses body/small, not lead) */
+  --text-display: 3.2rem;    /* H1 display: 51.2px, weight 700, lh 1.2 */
+  --text-section: 2.5rem;    /* H2 section: 40px, weight 700, lh 1.2, UC */
+  --text-subsection: 1.5rem; /* H3 subsection: 24px, weight 700, lh 1.3 */
+  --text-lead: 1.2rem;       /* Lead body: 19.2px — marketing / landing only */
+  --text-body: 1rem;         /* Body: 16px (minimum for running prose) */
+  --text-small: 0.875rem;    /* Metadata / labels: 14px */
+
+  /* Responsive heading sizes via clamp() — §4.3 */
+  --text-h1: clamp(2.25rem, 1.7rem + 2.4vw, 3.2rem);
+  --text-h2: clamp(1.75rem, 1.35rem + 1.75vw, 2.5rem);
+
   /* Spacing */
   --space-1: 0.25rem;  --space-2: 0.5rem;   --space-3: 0.75rem;
   --space-4: 1rem;     --space-6: 1.5rem;   --space-8: 2rem;
