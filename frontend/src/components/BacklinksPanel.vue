@@ -43,20 +43,20 @@ defineEmits<{
 
 <style scoped>
 .backlinks-panel {
-  background: var(--bg-surface, #1e1e24);
-  border-top: 1px solid var(--border-color, #2d2d38);
-  padding: 1rem;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-4);
   font-size: 0.875rem;
-  color: var(--text-main, #e2e8f0);
+  color: var(--color-text);
 }
 
 .backlinks-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
   font-weight: 600;
-  color: var(--text-muted, #94a3b8);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.75rem;
@@ -65,21 +65,21 @@ defineEmits<{
 .header-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .count-badge {
-  background: var(--bg-hover, #2d3748);
-  color: var(--accent-color, #818cf8);
+  background: var(--color-surface-emphasis);
+  color: var(--color-action);
   padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
 }
 
 .backlinks-empty {
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   font-style: italic;
-  padding: 0.5rem 0;
+  padding: var(--space-2) 0;
 }
 
 .backlinks-list {
@@ -88,31 +88,31 @@ defineEmits<{
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .backlink-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color, #2d2d38);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
+  background: var(--color-surface-emphasis);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
 }
 
 .backlink-item:hover {
-  background: rgba(129, 140, 248, 0.1);
-  border-color: var(--accent-color, #818cf8);
+  border-color: var(--color-action);
 }
 
 .backlink-title {
   font-weight: 500;
-  color: var(--text-light, #f8fafc);
+  color: var(--color-text);
 }
 
 .backlink-path {
   font-size: 0.75rem;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   margin-top: 0.125rem;
 }
 </style>

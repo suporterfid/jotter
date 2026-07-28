@@ -71,69 +71,71 @@ function handleCheckboxChange(event: Event) {
 }
 
 :deep(.wikilink) {
-  color: var(--accent-color, #818cf8);
-  background: rgba(129, 140, 248, 0.12);
+  color: var(--color-action);
+  background: color-mix(in srgb, var(--color-action) 12%, transparent);
   padding: 0.1rem 0.35rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   text-decoration: none;
   font-weight: 500;
-  border-bottom: 1px dashed var(--accent-color, #818cf8);
-  transition: all 0.15s ease;
+  border-bottom: 1px dashed var(--color-action);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
 }
 
 :deep(.wikilink:hover) {
-  background: rgba(129, 140, 248, 0.25);
+  background: color-mix(in srgb, var(--color-action) 25%, transparent);
   border-bottom-style: solid;
 }
 
 :deep(h1) {
   font-size: 1.75rem;
   font-weight: 700;
-  border-bottom: 1px solid var(--border-color, #2d2d38);
-  padding-bottom: 0.5rem;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  color: var(--text-light, #f8fafc);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-4);
+  color: var(--color-text);
 }
 
 :deep(h2) {
   font-size: 1.35rem;
   font-weight: 600;
-  margin-top: 1.25rem;
-  margin-bottom: 0.75rem;
-  color: var(--text-light, #f8fafc);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-3);
+  color: var(--color-text);
 }
 
 :deep(p) {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 :deep(ul), :deep(ol) {
-  padding-left: 1.5rem;
-  margin-bottom: 1rem;
+  padding-left: var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 :deep(li) {
-  margin-bottom: 0.35rem;
+  margin-bottom: var(--space-1);
 }
 
 :deep(input[type="checkbox"]) {
   appearance: none;
   width: 1.1rem;
   height: 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 0.25rem;
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
   cursor: pointer;
   vertical-align: middle;
-  margin-right: 0.5rem;
+  margin-right: var(--space-2);
   position: relative;
-  transition: all 0.15s ease;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
 }
 
 :deep(input[type="checkbox"]:checked) {
-  background: var(--accent-color, #6366f1);
-  border-color: var(--accent-color, #6366f1);
+  background: var(--color-action);
+  border-color: var(--color-action);
 }
 
 :deep(input[type="checkbox"]:checked::after) {
@@ -142,54 +144,57 @@ function handleCheckboxChange(event: Event) {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: #ffffff;
+  color: var(--color-neutral-0);
   font-size: 0.75rem;
   font-weight: bold;
 }
 
 :deep(code) {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface-emphasis);
   padding: 0.2rem 0.4rem;
-  border-radius: 0.25rem;
-  font-family: monospace;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
   font-size: 0.875em;
 }
 
 :deep(.code-block-wrapper) {
   position: relative;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-4);
 }
 
 :deep(.copy-code-btn) {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #94a3b8;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: var(--color-surface-emphasis);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   padding: 0.2rem 0.5rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
   font-family: inherit;
   z-index: 10;
 }
 
 :deep(.copy-code-btn:hover) {
-  background: rgba(99, 102, 241, 0.3);
-  color: #f8fafc;
-  border-color: #818cf8;
+  background: color-mix(in srgb, var(--color-action) 30%, transparent);
+  color: var(--color-text);
+  border-color: var(--color-action);
 }
 
 :deep(pre) {
-  background: #0d1117;
-  padding: 1rem 1.25rem;
-  border-radius: 0.5rem;
+  background: var(--color-surface);
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-md);
   overflow-x: auto;
   margin: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e6edf3;
-  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-mono);
 }
 </style>
+

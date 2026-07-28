@@ -70,3 +70,15 @@
   --duration-fast: 120ms; --duration-standard: 180ms; --duration-slow: 240ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
+
+/* Reduced motion preference (Issue #104 / Spec §9 / WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

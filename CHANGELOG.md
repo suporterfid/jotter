@@ -7,6 +7,11 @@ All notable changes to Jotter will be documented here.
 ### Added
 
 - Laravel 12 and Vue 3/Vite scaffold
+
+### Removed
+
+- Unused `welcome.blade.php` default Laravel scaffold view and unused `tailwindcss` devDependencies (#105).
+
 - Docker-only local, test, E2E, and release workflows
 - MySQL 8 development service
 - Local administrator bootstrap command
