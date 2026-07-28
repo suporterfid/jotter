@@ -30,29 +30,39 @@ function wrapCodeBlocks(html: string): string {
   })
 }
 
+import { getClientAllowedAttributes, getClientAllowedTags } from './blockRegistry'
+
 /**
- * Parses markdown to HTML, processes wikilinks, code block wrappers, and sanitizes output.
+ * Transforms callouts like > [!NOTE] content into styled div containers.
+ */
+export function renderCallouts(text: string): string {
+  return text.replace(/>\s*\[!([A-Z]+)\]\s*(.*?)(?=\n\n|\n$|$)/gs, (_match, type, content) => {
+    const cleanType = type.toLowerCase().trim()
+    const cleanContent = DOMPurify.sanitize(content.trim())
+    return `<div class="callout" data-callout-type="${cleanType}"><p>${cleanContent}</p></div>`
+  })
+}
+
+/**
+ * Parses markdown to HTML, processes wikilinks, callouts, code block wrappers, and sanitizes output.
  */
 export function renderMarkdown(markdownText: string): string {
   if (!markdownText) return ''
   
-  // First convert wikilinks to custom anchor tokens
+  // Convert wikilinks and callouts
   const withWikilinks = renderWikilinks(markdownText)
+  const withCallouts = renderCallouts(withWikilinks)
   
   // Convert markdown to HTML
-  let rawHtml = marked.parse(withWikilinks, { async: false }) as string
+  let rawHtml = marked.parse(withCallouts, { async: false }) as string
 
   // Wrap code blocks
   rawHtml = wrapCodeBlocks(rawHtml)
 
-  // Sanitize with DOMPurify ensuring required tags and attributes are allowed
+  // Sanitize with DOMPurify ensuring derived tags and attributes from block registry are allowed
   return DOMPurify.sanitize(rawHtml, {
-    ADD_ATTR: ['data-target', 'type', 'checked', 'class'],
-    ALLOWED_TAGS: [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'ul', 'ol', 'li', 'code', 'pre',
-      'blockquote', 'strong', 'em', 'del', 'hr', 'br', 'table', 'thead', 'tbody',
-      'tr', 'th', 'td', 'img', 'span', 'div', 'input', 'button'
-    ],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'data-target', 'type', 'checked']
+    ADD_ATTR: getClientAllowedAttributes(),
+    ALLOWED_TAGS: getClientAllowedTags(),
+    ALLOWED_ATTR: getClientAllowedAttributes(),
   })
 }

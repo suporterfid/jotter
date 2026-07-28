@@ -19,4 +19,19 @@ final class MarkdownServerRendererTest extends TestCase
         $this->assertStringContainsString('class="wikilink"', $cleanHtml);
         $this->assertStringContainsString('Target Note', $cleanHtml);
     }
+
+    public function test_renders_callouts_toggles_tables_and_dividers(): void
+    {
+        $renderer = new MarkdownServerRenderer();
+
+        $markdown = "> [!NOTE] Callout body\n\n<details><summary>Summary</summary>Details body</details>\n\n| H1 | H2 |\n| --- | --- |\n| C1 | C2 |\n\n---";
+        $html = $renderer->render($markdown);
+
+        $this->assertStringContainsString('class="callout"', $html);
+        $this->assertStringContainsString('data-callout-type="note"', $html);
+        $this->assertStringContainsString('<details>', $html);
+        $this->assertStringContainsString('<summary>', $html);
+        $this->assertStringContainsString('<table>', $html);
+        $this->assertStringContainsString('<hr', $html);
+    }
 }

@@ -36,4 +36,16 @@ describe('Markdown rendering & XSS security', () => {
     expect(html).not.toContain('onerror')
     expect(html).not.toContain('href="javascript:')
   })
+
+  it('renders callouts, toggles, tables, and dividers', () => {
+    const md = '> [!NOTE] Callout body\n\n<details><summary>Summary</summary>Body</details>\n\n| H1 | H2 |\n| --- | --- |\n| C1 | C2 |\n\n---'
+    const html = renderMarkdown(md)
+
+    expect(html).toContain('class="callout"')
+    expect(html).toContain('data-callout-type="note"')
+    expect(html).toContain('<details>')
+    expect(html).toContain('<summary>')
+    expect(html).toContain('<table>')
+    expect(html).toContain('<hr')
+  })
 })
