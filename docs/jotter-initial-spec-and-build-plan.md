@@ -9,6 +9,7 @@
 - **Companion specs (siblings, not hard dependencies for v0):**
   - `grandpasson-spec-v1-extension.md` — identity (SSO, tenancy claims, machine tokens)
   - `taskconnect-spec-v1-extension.md` — background jobs (idempotent, workspace-scoped, pipelines)
+- **Post-v0 planning input:** `docs/20260727-jotter-roadmap-ai-agent.md` — product roadmap and competitive gap analysis. It governs *sequencing after* the §12 stop line; this document remains the authority for v0 contracts, §8 security constraints, and the §1–§4 architectural invariants. See §14 for the mapping, the delivered-state reconciliation, and the unresolved conflicts.
 - **One-line description (repo About):** Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. Plain `.md` files, PHP + MySQL, your notes stay yours.
 
 ---
@@ -120,10 +121,14 @@ Vault store on disk · index in MySQL · wikilinks + backlinks · full-text sear
 WebDAV endpoint (SabreDAV) for Obsidian sync · graph endpoint · GrandpaSSOn identity adapter (tenancy claims, RBAC) · publishing a workspace as a static site · AI-KB **Layer 1** (retrieval API + `llms.txt`) and **MCP server** · daily notes/templates · orphan/broken-link report · TaskConnect delegation for reconcile/publish.
 
 ### v2 — Later
-Document parsing (PDF/DOCX/PPTX/XLSX → MD) · website crawling → MD · embeddings/RAG · PWA/offline · version history/diffs · plugins · canvas.
+Document parsing (PDF/DOCX/PPTX/XLSX → MD) · website crawling → MD · embeddings/RAG · PWA/offline · plugins · canvas.
+
+> **Re-prioritized by the roadmap (§14):** *version history/diffs* moved from v2 to v1. The roadmap ranks it 6th of 12 near-term priorities and places it in Phase 1 as a durability primitive, alongside hierarchy, search, and attachments — all of which v0 already ships. Its storage design is constrained by §4 (inode/disk quotas); see §14.5 C6.
 
 ### Won't (this iteration)
 Anything in v1/v2, real-time collab, non-MySQL backends.
+
+> The roadmap's Phase 3 lists presence indicators and its baseline assumes realtime collaboration. That remains a **Won't** here — N1 and §4 rule it out on shared hosting. See §14.5 C1.
 
 ---
 
@@ -265,6 +270,8 @@ Each item is one PR. Merge in order; DoD (§0.3) applies to all.
 >
 > **Stop here and request review.** Do not start v1 (WebDAV, publishing, GrandpaSSOn adapter, MCP/AI-KB).
 
+**Status of this stop line (2026-07-28):** the v0 contracts in §7 are implemented and the stop line has been passed — work continued into v1 (WebDAV sync, static-site publishing, `llms.txt`) and into UI work beyond §7.5. Post-v0 sequencing is therefore no longer governed by §11; it is governed by §14 and the roadmap. `STATUS.md` carries the authoritative current state, including CI. This paragraph records what happened; it does not retroactively authorize it.
+
 ---
 
 ## 13. Open questions (resolve before/with implementation)
@@ -280,4 +287,67 @@ Each item is one PR. Merge in order; DoD (§0.3) applies to all.
 
 ---
 
-*Green-field build. Start at PR0, ship the PR sequence in order, keep CI green, and stop at the §12 stop line for review. Jotter must run fully on its own; GrandpaSSOn and TaskConnect are seams, not dependencies.*
+## 14. Product roadmap alignment (post-v0)
+
+`docs/20260727-jotter-roadmap-ai-agent.md` (the "AI-agent roadmap") is the product planning input for cycles after the §12 stop line. Its **sequencing logic, dependency map, and feature definitions are adopted**. Its **assessment of Jotter's current state is not** — see §14.1.
+
+Precedence: where the roadmap and this document disagree, the §8 security constraints, the §4 shared-hosting constraints, and the §1 Markdown-on-disk invariant win. Disagreements are recorded in §14.5 as open decisions rather than resolved silently.
+
+### 14.1 Baseline discrepancy — read this before planning from the roadmap
+
+The roadmap's *Scope and baseline* describes Jotter as "a lightweight notes product with offline-first behavior, rich note taking, Material You styling, Markdown support, keyboard shortcuts, slash commands, code highlighting, and realtime collaboration," and its *Feature gap summary* concludes that Jotter lacks "structured databases, page hierarchy, backlinks, file attachments, granular permissions, wiki spaces, page history, comments, diagrams, or visual canvases."
+
+That baseline does not describe this repository:
+
+- This Jotter is a **self-hosted PHP 8.2 / Laravel 12 + Vue 3 server application for cPanel-style shared hosting** (§2). It is not offline-first, has no Material You surface, and **does not do realtime collaboration** — §3 N1 excludes it and §4 explains why (no websockets, no long-running processes).
+- **Five of the roadmap's top six near-term priorities already shipped in v0**: full-text search, nested folders, tags, backlinks, and attachments. Only version history is genuinely absent. See §14.3.
+
+The offline-first, Material You, and realtime-collaboration signals suggest the gap analysis was drawn from a different product carrying the same name. Plan from §14.3's delivered-state column, not from the roadmap's gap summary.
+
+`TODO(spec): confirm the provenance of the roadmap's baseline. Until confirmed, §14.3 governs what is considered already delivered.`
+
+### 14.2 Product direction
+
+The roadmap's recommended direction — "begin as a notes-first and knowledge-first product, then selectively expand into workspace capabilities after the knowledge model is mature" — is **accepted**, and it is consistent with §1. Its Phase 5 differentiator candidates of *offline-first excellence* and *Android/mobile-first speed* are **not** accepted as stated: §2's local-first inversion is a deliberate architectural position, and the sanctioned answer to mobile and offline use is an Obsidian vault over WebDAV, not a Jotter offline client. See §14.5 C5.
+
+### 14.3 Roadmap near-term priorities vs. delivered state
+
+| # | Roadmap priority | State in this repo | Notes |
+|---|---|---|---|
+| 1 | Full-text search | **Delivered** (v0 PR4) | MySQL `FULLTEXT(title, search_content)`, ranked, snippets. Roadmap also asks for *filters* (title, tags, modified date) — those are **not** built; natural-language match only. |
+| 2 | Nested pages/folders | **Delivered** (v0 PR2, Q4) | Nested folders inside each workspace vault, every path canonicalized against the root. Filesystem hierarchy, not a database page-tree. |
+| 3 | Tags and properties | **Partial** | `tags` / `note_tags` plus YAML front-matter projected into `notes.frontmatter`. No typed or schema'd property layer. |
+| 4 | Backlinks | **Delivered** (v0 PR3) | `note_links` with resolved and unresolved refs; backlinks are a query, never a scan. |
+| 5 | Attachments | **Delivered** (v0 PR8) | Type/size allowlist, stored outside `public/`, streamed through authorized routes (§8 S4/S9). |
+| 6 | Version history | **Not delivered** | The single real gap in Phase 1. Promoted from v2 to v1 in §6. Constrained by §4 — see §14.5 C6. |
+| 7 | Templates | **Not delivered** | Already scoped as v1 ("daily notes/templates"). |
+| 8 | Synced blocks | **Not delivered** | Conflicts with plain-Markdown portability — see §14.5 C3. |
+| 9 | Comments and mentions | **Not delivered** | No data model yet. Needs §8 S5 authorization and §5 schema work. |
+| 10 | Shared workspaces and permissions | **Partial** | `tenants` / `workspaces` / `memberships` with roles exist (§5) and are enforced per request; there is no administration UI, and RBAC-from-claims remains the v1 GrandpaSSOn adapter. |
+| 11 | Metadata table view | **Not delivered** | Gated by the property layer (#3). |
+| 12 | Board/calendar views | **Not delivered** | Gated by §14.5 C2. |
+
+### 14.4 Roadmap phases mapped to this document's releases
+
+| Roadmap | Maps to | Remaining work |
+|---|---|---|
+| Phase 1 / Milestone A — knowledge foundations | v0 (delivered) + v1 | Version history, search filters, Markdown/JSON import. Export already ships. |
+| Phase 2 / Milestone B — connected knowledge | v1 | Templates, broken-link report, richer block/slash-command surface. Command palette and graph view already shipped post-v0. |
+| Phase 3 / Milestone C — team collaboration | v1 (identity/RBAC) + new scope | GrandpaSSOn adapter covers roles/claims. Comments, mentions, and notifications are new scope. **Presence is excluded** (C1). |
+| Phase 4 / Milestone D — structured work | Beyond current v2 | Blocked on C2. Do not begin without that decision. |
+| Phase 5 — differentiators | Partly delivered | AI-KB Layer 1 (`llms.txt`) ships; MCP server is v1. Offline/mobile-first and canvas are not adopted (C4, C5). |
+
+### 14.5 Conflicts to resolve before the affected roadmap items are planned
+
+Each is a decision, not a defect. Until resolved, the constraint wins and the roadmap item stays unplanned.
+
+- **C1 — Realtime collaboration and presence** (roadmap baseline, Phase 3) vs **§3 N1 / §4**. Shared hosting has no websockets or daemons. Any "live" behavior must be polling or deferred. `TODO(spec): confirm collaboration stays asynchronous — comments and mentions yes, presence and live cursors no.`
+- **C2 — Database-like collections and board/calendar views** (Phase 4) vs **§1**. MySQL is an index, not the source of truth. A collections feature is only admissible if it stays a rebuildable projection of front-matter on disk. `TODO(spec): decide whether structured collections project from front-matter, or whether the Markdown-on-disk invariant is being amended.`
+- **C3 — Synced/reusable blocks** (Phase 2) vs **§1 Obsidian compatibility**. Transclusion that does not survive as plain Markdown breaks the "if Jotter disappears, you still have a readable folder of notes" guarantee. `TODO(spec): choose a syntax that degrades to readable Markdown, or drop the item.`
+- **C4 — Visual canvas / whiteboard** (Phase 5) vs **§3 N3 / §6 v2**. The roadmap itself lists whiteboard parity as a non-goal for the next cycle. No action needed unless the product direction changes.
+- **C5 — Offline-first and mobile-first differentiators** (Phase 5) vs **§2**. See §14.2. `TODO(spec): confirm WebDAV + Obsidian is the mobile/offline answer.`
+- **C6 — Page history storage** (Phase 1) vs **§4 inode and disk quotas**. A vault is already thousands of small files; per-note revision files would multiply inode usage. `TODO(spec): choose DB-stored deltas or bounded snapshot retention; do not write per-revision files into the vault.`
+
+---
+
+*Green-field build. Start at PR0, ship the PR sequence in order, keep CI green, and stop at the §12 stop line for review. Jotter must run fully on its own; GrandpaSSOn and TaskConnect are seams, not dependencies. Post-v0, sequence from §14.*
