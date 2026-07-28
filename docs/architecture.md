@@ -43,4 +43,8 @@ Docker is a development and build tool only. Production requires PHP 8.2+, MySQL
 
 PR4 adds the MySQL FULLTEXT index and read-only search endpoint only. It does not add notes CRUD APIs, auth providers, uploads, UI, or any v1 feature.
 
-There is no v1 work in this implementation. WebDAV, publishing, graph views, GrandpaSSOn integration, TaskConnect delegation, AI retrieval, MCP, daily notes, and related features remain out of scope.
+## Model Context Protocol (MCP)
+
+For AI assistant integration, Jotter provides a Model Context Protocol server over HTTP JSON-RPC 2.0 (`POST /api/mcp`). Read-only tools (`list_notes`, `read_note`, `search_notes`, `get_backlinks`) are implemented with per-workspace authorization. Write tools are intentionally deferred and gated per security policy §8 S2 & S5. See [docs/mcp.md](file:///home/ubuntu/projects/web/iroh/jotter/docs/mcp.md) for details.
+
+There is no v1 work in this implementation. WebDAV, publishing, graph views, GrandpaSSOn integration, TaskConnect delegation, daily notes, and related features remain out of scope.
