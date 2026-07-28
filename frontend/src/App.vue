@@ -55,6 +55,18 @@
       </div>
     </main>
 
+    <!-- Error Banner -->
+    <div v-if="errorMessage" class="error-banner" data-testid="error-banner" role="alert">
+      <span>{{ errorMessage }}</span>
+      <button
+        type="button"
+        class="error-banner-dismiss"
+        data-testid="error-banner-dismiss"
+        aria-label="Dismiss error"
+        @click="errorMessage = null"
+      >&times;</button>
+    </div>
+
     <!-- Login Modal -->
     <LoginModal
       :show="showLoginModal"
@@ -108,6 +120,8 @@ const isGraphViewActive = ref(false)
 const isSearchActive = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<SearchResult[]>([])
+
+const errorMessage = ref<string | null>(null)
 
 async function handleSelectNoteFromGraph(noteId: number) {
   isGraphViewActive.value = false
@@ -211,7 +225,7 @@ async function handleCreateNote(path: string) {
     await handleSelectNote(created.id)
   } catch (err: any) {
     console.error('Failed to create note:', err)
-    alert(`Failed to create note: ${err.response?.data?.message || err.message || 'Unknown error'}`)
+    errorMessage.value = `Failed to create note: ${err.response?.data?.message || err.message || 'Unknown error'}`
   }
 }
 
@@ -321,6 +335,35 @@ body {
   height: 100%;
   overflow: hidden;
   background: var(--color-canvas);
+}
+
+/* Error banner */
+.error-banner {
+  position: fixed;
+  top: var(--space-md, 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 8px);
+  max-width: min(90vw, 480px);
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  background: var(--color-status-danger);
+  color: #ffffff;
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+}
+
+.error-banner-dismiss {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 var(--space-xs, 4px);
 }
 
 /* Empty state */

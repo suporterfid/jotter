@@ -63,7 +63,6 @@ class WorkspaceNotesApiTest extends TestCase
 
     public function test_show_reads_the_current_markdown_file_instead_of_a_database_body(): void
     {
-        $this->withoutMiddleware(WorkspaceAuthorizationPlaceholder::class);
         $workspace = $this->makeWorkspace('read');
         $note = $this->createNote($workspace, 'read.md', "# Before\n");
 
@@ -78,7 +77,6 @@ class WorkspaceNotesApiTest extends TestCase
 
     public function test_show_returns_not_found_without_a_false_traversal_audit_when_the_file_is_missing(): void
     {
-        $this->withoutMiddleware(WorkspaceAuthorizationPlaceholder::class);
         $workspace = $this->makeWorkspace('missing');
         $note = $this->createNote($workspace, 'missing.md', "# Missing\n");
 
@@ -92,7 +90,6 @@ class WorkspaceNotesApiTest extends TestCase
 
     public function test_delete_returns_not_found_without_a_false_traversal_audit_when_the_file_is_missing(): void
     {
-        $this->withoutMiddleware(WorkspaceAuthorizationPlaceholder::class);
         $workspace = $this->makeWorkspace('missing-delete');
         $note = $this->createNote($workspace, 'missing.md', "# Missing\n");
 
@@ -106,7 +103,6 @@ class WorkspaceNotesApiTest extends TestCase
 
     public function test_update_and_delete_change_the_vault_file_and_rebuildable_index(): void
     {
-        $this->withoutMiddleware(WorkspaceAuthorizationPlaceholder::class);
         $workspace = $this->makeWorkspace('mutate');
         $note = $this->createNote($workspace, 'nested/note.md', "# Before\n");
 
@@ -128,7 +124,6 @@ class WorkspaceNotesApiTest extends TestCase
 
     public function test_create_and_update_allow_an_explicitly_empty_markdown_document(): void
     {
-        $this->withoutMiddleware(WorkspaceAuthorizationPlaceholder::class);
         $workspace = $this->makeWorkspace('empty');
 
         $created = $this->postJson("/api/workspaces/{$workspace->id}/notes", [
@@ -146,7 +141,6 @@ class WorkspaceNotesApiTest extends TestCase
 
     public function test_note_routes_cannot_cross_workspace_boundaries_or_accept_unsafe_paths(): void
     {
-        $this->withoutMiddleware(WorkspaceAuthorizationPlaceholder::class);
         $workspace = $this->makeWorkspace('primary');
         $otherWorkspace = $this->makeWorkspace('other');
         $otherNote = $this->createNote($otherWorkspace, 'other.md', "# Other\n");
