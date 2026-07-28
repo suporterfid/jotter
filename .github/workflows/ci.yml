@@ -35,6 +35,14 @@ jobs:
           path: frontend/test-results
           retention-days: 7
 
+      - name: Dump Laravel log on failure
+        if: failure()
+        run: |
+          echo "--- storage/logs/laravel.log ---"
+          cat storage/logs/laravel.log || echo "(no laravel.log)"
+          echo "--- docker compose logs app (tail) ---"
+          docker compose -f compose.yaml -f compose.ci.yaml logs --tail=200 app || true
+
       - name: Build shared-hosting release
         run: ./scripts/jt.sh release
 
