@@ -74,6 +74,8 @@
   - Spec Debt: Audit log hardening epic (#64 — standardized event vocabulary, redaction, append-only DB enforcement, retention)
   - Spec Debt: Note identity epic (#65 — path rename/move endpoint, wikilink case-insensitive & ambiguity resolution policy)
   - Visual Identity: Shared dark/purple design system epic (#96 — semantic token layer, Open Sans typography, WCAG 2.2 AA audit, CI token guard)
+  - Decisions: Resolved all six roadmap/spec conflicts C1–C6 in `BACKLOG.md` (#50)
+  - Tracking: Completed post-v0 implementation plan tracking (#68)
 
 ---
 
