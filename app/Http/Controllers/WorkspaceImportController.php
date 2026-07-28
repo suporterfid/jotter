@@ -32,7 +32,8 @@ final class WorkspaceImportController extends Controller
         $file->move(dirname($tempPath), basename($tempPath));
 
         try {
-            $result = $this->extractor->extract($workspace, $tempPath);
+            $overwrite = $request->boolean('overwrite', false);
+            $result = $this->extractor->extract($workspace, $tempPath, $overwrite);
             $this->reindexer->reindex($workspace);
         } finally {
             if (file_exists($tempPath)) {
