@@ -18,9 +18,9 @@ final class LocalIdentityProvider implements IdentityProvider
     public function resolveIdentity(Request $request): ?AuthenticatedSubject
     {
         /** @var User|null $user */
-        $user = Auth::guard('web')->user();
+        $user = Auth::guard('web')->user() ?? Auth::user();
 
-        if (! $user) {
+        if (! $user || $user->is_active === false) {
             return null;
         }
 
@@ -56,7 +56,7 @@ final class LocalIdentityProvider implements IdentityProvider
         /** @var User|null $user */
         $user = User::query()->where('email', $email)->first();
 
-        if (! $user || ! Hash::check($password, $user->password)) {
+        if (! $user || $user->is_active === false || ! Hash::check($password, $user->password)) {
             (new \App\Domain\Audit\AuditRecorder)->record(
                 \App\Domain\Audit\AuditEvent::AUTH_LOGIN_FAILURE,
                 null,

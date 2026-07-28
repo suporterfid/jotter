@@ -16,8 +16,14 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 Route::get('/auth/me', [AuthController::class, 'me']);
+Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);
 
 Route::middleware('workspace.authorization')->group(function (): void {
+    Route::get('/admin/users', [\App\Http\Controllers\AdminUserController::class, 'index']);
+    Route::post('/admin/users', [\App\Http\Controllers\AdminUserController::class, 'store']);
+    Route::post('/admin/users/{user}/deactivate', [\App\Http\Controllers\AdminUserController::class, 'deactivate']);
+    Route::post('/admin/users/{user}/reactivate', [\App\Http\Controllers\AdminUserController::class, 'reactivate']);
+    Route::post('/admin/users/{user}/reset-password', [\App\Http\Controllers\AdminUserController::class, 'resetPassword']);
     Route::get('/workspaces/{workspace}/llms.txt', [LlmsTxtController::class, 'workspaceLlmsTxt']);
     Route::match(['PROPFIND', 'GET', 'PUT', 'MKCOL', 'DELETE', 'OPTIONS'], '/webdav/{workspace}/{path?}', [WebDavController::class, 'handle'])->where('path', '.*');
     Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish']);
