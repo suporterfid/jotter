@@ -65,6 +65,10 @@
   - Milestone B: Rebuildable typed property projection (#80 — `note_properties` schema, `NotePropertyProjector`, `VaultReindexer` integration, drop-and-rebuild test)
   - Milestone B: Expose properties in notes API (#81 — `GET /api/workspaces/{w}/properties`, front-matter write-through via `VaultStorage`)
   - Milestone B: Broken-link and orphan report (#55 — `GET /api/workspaces/{w}/link-report` endpoint returning unresolved wikilinks and orphan notes)
+  - Milestone A: Note version history with restore (#51 — `note_revisions` schema, `NoteRevisions` service with content-hash deduplication, `vault:prune-revisions` command, REST revision endpoints)
+  - Milestone B: Daily notes and note templates (#56 — `_templates/` folder, `TemplateEngine` variable substitution, `POST /notes/from-template`, `GET|POST /daily/{date?}`)
+  - Milestone B: Richer block and slash-command surface epic (#57 — declarative block registry, dual-path sanitization, callouts, toggles, tables, dividers, slash insertion menu)
+  - Milestone B: MCP server epic (#58 — machine-token auth over IdentityProvider seam, read-only vault tools & resources)
 
 ---
 

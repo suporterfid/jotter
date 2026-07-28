@@ -14,6 +14,7 @@ final class VaultStorage
     public function __construct(
         private readonly VaultPathGuard $paths = new VaultPathGuard,
         private readonly NoteProjector $projector = new NoteProjector,
+        private readonly NoteRevisions $revisions = new NoteRevisions,
     ) {}
 
     public function read(Workspace $workspace, string $relativePath): MarkdownDocument
@@ -53,7 +54,10 @@ final class VaultStorage
 
         $document = MarkdownDocument::parse($contents, $this->fallbackTitle($relative));
 
-        return $this->projector->project($workspace, $relative, $document);
+        $note = $this->projector->project($workspace, $relative, $document);
+        $this->revisions->recordRevision($note, $contents);
+
+        return $note;
     }
 
     /**
