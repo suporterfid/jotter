@@ -123,7 +123,7 @@ final class McpController extends Controller
                 }
 
                 $vaultStorage = new \App\Domain\Vault\VaultStorage();
-                $content = $vaultStorage->getNoteContent($workspace, $path);
+                $content = $vaultStorage->readContents($workspace, $path);
 
                 return response()->json([
                     'jsonrpc' => '2.0',
