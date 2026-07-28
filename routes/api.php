@@ -50,9 +50,18 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/audit-logs', [AuditLogQueryController::class, 'index']);
     Route::get('/workspaces/{workspace}/export', [WorkspaceExportController::class, 'export']);
     Route::get('/workspaces/{workspace}/sync', [WorkspaceSyncController::class, 'sync']);
-    Route::get('/workspaces/{workspace}/link-report', [\App\Http\Controllers\WorkspaceLinkReportController::class, 'report']);
     Route::get('/workspaces/{workspace}/search', WorkspaceSearchController::class);
+    Route::get('/workspaces/{workspace}/link-report', [\App\Http\Controllers\WorkspaceLinkReportController::class, 'report']);
     Route::get('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'index']);
+    Route::get('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'index']);
+    Route::post('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'store']);
+    Route::delete('/workspaces/{workspace}/notes/{note}/comments/{comment}', [\App\Http\Controllers\WorkspaceCommentController::class, 'destroy']);
+
+    Route::get('/workspaces/{workspace}/notifications', [\App\Http\Controllers\WorkspaceNotificationController::class, 'index']);
+    Route::post('/workspaces/{workspace}/notifications/{notification}/read', [\App\Http\Controllers\WorkspaceNotificationController::class, 'markAsRead']);
+    Route::delete('/workspaces/{workspace}/notifications/{notification}', [\App\Http\Controllers\WorkspaceNotificationController::class, 'destroy']);
+
+    Route::get('/workspaces/{workspace}/collections', [\App\Http\Controllers\WorkspaceCollectionController::class, 'index']);
     Route::post('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'store']);
     Route::post('/workspaces/{workspace}/notes/from-template', [\App\Http\Controllers\WorkspaceTemplateController::class, 'createFromTemplate']);
     Route::match(['get', 'post'], '/workspaces/{workspace}/daily/{date?}', [\App\Http\Controllers\WorkspaceTemplateController::class, 'dailyNote']);

@@ -76,6 +76,10 @@
   - Visual Identity: Shared dark/purple design system epic (#96 — semantic token layer, Open Sans typography, WCAG 2.2 AA audit, CI token guard)
   - Decisions: Resolved all six roadmap/spec conflicts C1–C6 in `BACKLOG.md` (#50)
   - Tracking: Completed post-v0 implementation plan tracking (#68)
+  - Milestone C: Inline comments and mentions (#61 — `note_comments` schema, `WorkspaceCommentController`, mention parsing)
+  - Milestone C: Notification and event bus (#62 — `notifications` schema, `WorkspaceEventEmitter`, `WorkspaceNotificationController`)
+  - Milestone D: Structured collections and views (#63 — `WorkspaceCollectionController` table view over `note_properties`)
+  - v2 Epic: Heavy content processing delegated to TaskConnect (#67 — `docs/taskconnect-integration.md` delegation contract)
 
 ---
 

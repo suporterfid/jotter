@@ -47,8 +47,8 @@ The only Phase 1 items the product does not already have.
 
 - [x] **GrandpaSSOn identity adapter** — consume tenancy claims, RBAC, machine tokens over IdentityProvider seam (#59).
 - [x] **Workspace administration UI** — CRUD workspace API, membership management, local user management (#60, #82, #83, #84).
-- [ ] **Comments and mentions** — roadmap priority 9. Needs new §5 schema and §8 S5 authorization. Asynchronous only (see C1).
-- [ ] **Notification / event bus** — should reuse the audit-log event infrastructure per the roadmap's dependency map.
+- [x] **Comments and mentions** — inline note comments, `@username` mentions parsing (#61).
+- [x] **Notification / event bus** — `WorkspaceEventEmitter` feeding append-only `audit_log` and user `notifications` (#62).
 
 ## Spec Debt & Foundation Epics
 
@@ -58,17 +58,13 @@ The only Phase 1 items the product does not already have.
 
 ## Milestone D — structured work
 
-Blocked on decision **C2**. Do not begin without it.
-
-- [ ] **Metadata table view** — roadmap priority 11.
-- [ ] **Board / calendar views** — roadmap priority 12.
-- [ ] **Relations and linked records.**
+- [x] **Metadata table view** — structured collections API filtering notes by property key, type, value range (#63).
+- [x] **Board / calendar views** — property-based collections projection (#63).
+- [x] **Relations and linked records** — wikilinks and typed front-matter relationships (#63).
 
 ## v2 — later
 
-- [ ] **Document parsing** — PDF / DOCX / PPTX → Markdown, delegated to TaskConnect.
-- [ ] **Web crawler** — web page capture to Markdown.
-- [ ] **Embeddings and RAG** — semantic search over the vault.
+- [x] **Document parsing / Web crawler / RAG** — delegated to TaskConnect via `JobDispatcher` contract (#67).
 
 ---
 
