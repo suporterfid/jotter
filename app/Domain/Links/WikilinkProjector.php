@@ -52,12 +52,14 @@ final class WikilinkProjector
 
         foreach ($notes as $note) {
             foreach ($this->pathKeys((string) $note->path) as $key) {
-                $pathCandidates[$key][] = $note->id;
+                $lowerKey = mb_strtolower($key, 'UTF-8');
+                $pathCandidates[$lowerKey][] = $note->id;
             }
 
             $title = trim((string) $note->title);
             if ($title !== '') {
-                $titleCandidates[$title][] = $note->id;
+                $lowerTitle = mb_strtolower($title, 'UTF-8');
+                $titleCandidates[$lowerTitle][] = $note->id;
             }
         }
 
@@ -66,7 +68,7 @@ final class WikilinkProjector
             ->whereIn('source_note_id', $notes->pluck('id'))
             ->orderBy('id')
             ->each(function (NoteLink $link) use ($pathCandidates, $titleCandidates): void {
-                $targetKey = $this->extractor->targetKey($link->target_ref);
+                $targetKey = mb_strtolower($this->extractor->targetKey($link->target_ref), 'UTF-8');
                 $candidates = $pathCandidates[$targetKey] ?? $titleCandidates[$targetKey] ?? [];
                 $candidateIds = array_values(array_unique($candidates));
                 $targetNoteId = count($candidateIds) === 1 ? $candidateIds[0] : null;
