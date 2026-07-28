@@ -6,13 +6,13 @@ Roadmap priorities 1–5 (search, nested folders, tags, backlinks, attachments) 
 
 ---
 
-## Known gaps (open, 2026-07-28)
+## Known gaps (as of 2026-07-28)
 
-Found during a review of whether `main` is 100% adherent to the roadmap and this backlog. All backlog milestones below are checked off, but three gaps mean that claim doesn't fully hold without these caveats. Each has a detailed GitHub issue; none are resolved by this pass except where noted.
+Found during a review of whether `main` is 100% adherent to the roadmap and this backlog. All backlog milestones below are checked off; the gaps below are the exceptions to that claim. All three are now closed.
 
-- **CI red on `main`: #140 — fixed.** `docker/php/entrypoint.sh` chowned `storage/app/private` for `www-data` but never `storage/app/vaults`, the default vault root (`config/jotter.php`). On a genuinely fresh checkout that directory doesn't exist yet, and the app's `mkdir()` (`VaultPathGuard.php:85`) fails with permission denied on note creation — a real 500, confirmed via diagnostics added to `notes.spec.ts` and a Laravel-log dump added to CI, and reproduced locally by resetting `storage/app` permissions to match a fresh checkout. Fixed by adding `storage/app/vaults` to the entrypoint's ownership loop; verified locally both ways (fails without the fix, passes with it). See `STATUS.md` §3.
-- **This file was self-contradictory.** The "Recorded Decisions" section marked C1–C6 resolved while the "Needs a decision" section below it still listed the same five as open blockers — added by different commits that were never reconciled. **Fixed in this pass**; see **#141**.
-- ~~**Dead-code cleanup from #66 was incomplete.**~~ **Fixed** (`claude/fix-140-142-ci-and-dead-tests`): the six dead `withoutMiddleware(WorkspaceAuthorizationPlaceholder::class)` calls in `tests/Feature/WorkspaceNotesApiTest.php` are removed — every test in that file already authenticates as an admin, and admins bypass workspace-membership checks in `LocalIdentityProvider`, so no bypass was ever needed. Tracked in **#142**.
+- ~~**CI red on `main`: #140.**~~ **Closed**, merged via PR #144. `docker/php/entrypoint.sh` chowned `storage/app/private` for `www-data` but never `storage/app/vaults`, the default vault root (`config/jotter.php`). On a genuinely fresh checkout that directory doesn't exist yet, and the app's `mkdir()` (`VaultPathGuard.php:85`) fails with permission denied on note creation — a real 500, confirmed via diagnostics added to `notes.spec.ts` and a Laravel-log dump added to CI, and reproduced locally by resetting `storage/app` permissions to match a fresh checkout. Fixed by adding `storage/app/vaults` to the entrypoint's ownership loop; verified both ways locally (fails without the fix, passes with it) and on two green GitHub Actions runs on the PR. See `STATUS.md` §3.
+- ~~**This file was self-contradictory.**~~ **Closed** (#141). The "Recorded Decisions" section marked C1–C6 resolved while the "Needs a decision" section below it still listed the same five as open blockers — added by different commits that were never reconciled.
+- ~~**Dead-code cleanup from #66 was incomplete.**~~ **Closed** (#142, merged via PR #144). The six dead `withoutMiddleware(WorkspaceAuthorizationPlaceholder::class)` calls in `tests/Feature/WorkspaceNotesApiTest.php` are removed — every test in that file already authenticates as an admin, and admins bypass workspace-membership checks in `LocalIdentityProvider`, so no bypass was ever needed.
 
 ---
 
