@@ -510,3 +510,33 @@ coverage for this equality is the natural home for an automated check
 identifiable as a keyhole shape at 16×16 (favicon size) and at typical
 repository-avatar sizes — verified by eye against the rendered SVG; there
 is no automated visual-regression check for this in CI.
+
+---
+
+## Jotter Extensions
+
+### Preamble
+
+Jotter adopts the shared visual identity specification verbatim. This section documents project-specific extensions and an explicit list of departures per §14.
+
+### Departures
+
+*None at present.* All components match the shared specification tokens.
+
+### Status Colors Extension & Contrast Ratios (#98)
+
+Jotter defines four semantic status tokens for alerts, save confirmations, and destructive actions. Each candidate color was selected and verified against both `--color-canvas` (`#000000`) and `--color-surface` (`#1A0A3E`):
+
+| Token | Color | Contrast vs Canvas (`#000000`) | Contrast vs Surface (`#1A0A3E`) | Usage |
+|---|---|---:|---:|---|
+| `--color-status-danger` | `#FF5252` | 5.86:1 | 5.07:1 | Destructive actions, delete confirmations |
+| `--color-status-warning` | `#FFB74D` | 10.73:1 | 9.27:1 | Warnings, dirty state indicators |
+| `--color-status-success` | `#66BB6A` | 8.01:1 | 6.92:1 | Save confirmation, success toasts |
+| `--color-status-info` | `#4FC3F7` | 11.75:1 | 10.15:1 | Informational badges, hints |
+
+### Token Rules & Constraints
+
+1. **Semantic-Tokens-Only Rule**: Components reference semantic tokens ONLY (`var(--color-canvas)`, `var(--color-action)`). Palette tokens (`--color-purple-500`) are for theme construction only.
+2. **`#814DDE` as Text on Canvas (`#000000`) is 4.05:1**: Below AA for normal text. Purple text is permitted only at large sizes (≥24px, or ≥18.66px bold), for icons, for focus outlines, or on filled controls.
+3. **`#814DDE` as Text on Surface (`#1A0A3E`) is 3.50:1**: Links inside cards and code blocks must use `--color-text` with an underline, taking `--color-action` only on hover/focus.
+

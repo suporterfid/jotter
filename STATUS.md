@@ -43,6 +43,7 @@
   - Read-Only MCP Tools & Cross-Workspace Denial (`list_notes`, `read_note`, `search_notes`, `get_backlinks`, `McpReadOnlyToolsTest`)
   - MCP Write Tools Decision & Scope (`docs/mcp.md`, write tools intentionally deferred and gated per §8 S2 & S5)
   - Visual Identity Specification & Brand Assets (`docs/visual-identity.md`, `assets/brand/README.md`, brand assets inventory)
+  - Visual Identity Semantic Design-Token Layer (`frontend/src/styles/tokens.css` with semantic variables, status extension tokens & contrast ratios table in `docs/visual-identity.md`)
 
 ---
 

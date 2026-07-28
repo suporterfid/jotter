@@ -275,24 +275,25 @@ async function handleWikilinkNavigation(target: string) {
 </script>
 
 <style>
+/* DEPRECATED — removed by the component-migration issue. */
 :root {
-  --bg-main: #0b0f19;
-  --bg-sidebar: rgba(15, 23, 42, 0.85);
-  --bg-surface: rgba(30, 41, 59, 0.65);
-  --bg-glass: rgba(15, 23, 42, 0.75);
-  --bg-hover: rgba(99, 102, 241, 0.15);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(99, 102, 241, 0.3);
-  --text-light: #f8fafc;
-  --text-main: #e2e8f0;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --accent-color: #6366f1;
-  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --bg-main: var(--color-canvas);
+  --bg-sidebar: var(--color-surface);
+  --bg-surface: var(--color-surface);
+  --bg-glass: var(--color-surface-emphasis);
+  --bg-hover: var(--color-action-hover);
+  --border-color: var(--color-border);
+  --border-glow: var(--color-border-strong);
+  --text-light: var(--color-text);
+  --text-main: var(--color-text);
+  --text-muted: var(--color-text-muted);
+  --text-dim: var(--color-text-muted);
+  --accent-color: var(--color-action);
+  --accent-gradient: linear-gradient(135deg, var(--color-action) 0%, var(--color-action-hover) 100%);
   --glass-blur: blur(16px);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: var(--font-sans);
+  --font-body: var(--font-sans);
 }
 
 * {
