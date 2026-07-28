@@ -43,7 +43,7 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
                             [
                                 'name' => $ssoUser->display_name ?? 'SSO User',
                                 'password' => bcrypt(uniqid('sso_', true)),
-                                'is_admin' => true,
+                                'is_admin' => false,
                             ],
                         );
 
@@ -51,7 +51,7 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
                             subjectId: (string) $ssoUser->id,
                             email: $ssoUser->primary_email,
                             name: $ssoUser->display_name ?? 'SSO User',
-                            isAdmin: (bool) ($user->is_admin ?? true),
+                            isAdmin: (bool) ($user->is_admin ?? false),
                             user: $user,
                             attributes: ['sso_provider' => 'grandpasson'],
                         );
