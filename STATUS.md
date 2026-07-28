@@ -49,6 +49,10 @@
   - Visual Identity: Type scale, responsive headings, heading hierarchy (#101 — scale tokens added to `tokens.css`, `style.css` H1 fixed from 6.5rem/lh-0.9 to fluid clamp, ≥16px prose enforced)
   - Visual Identity: Spacing, layout widths, radius, borders, elevation — retire glassmorphism (#102 — `--space-*`/`--radius-*` tokens everywhere, all `backdrop-filter` removed, solid overlay backgrounds, radial-gradient body removed)
   - Visual Identity: Buttons, links, inputs, focus rings, touch targets (#103 — all six `outline: none` declarations removed, global `:focus-visible` ring added in `App.vue`, `min-height: 36–44px` touch targets enforced, primary/secondary button vocabulary defined)
+  - Visual Identity: Motion tokens and prefers-reduced-motion support (#104 — `--duration-*`/`--ease-standard` used across SPA, `@media (prefers-reduced-motion: reduce)` block added to `tokens.css`)
+  - Visual Identity: Reconcile landing and welcome-page themes (#105 — removed unused `welcome.blade.php` and `tailwindcss` devDependencies, cleaned `style.css` base layer, documented import order in `main.ts`)
+  - Visual Identity: Theme published static site (#106 — Blade view `publish/page.blade.php` + `publish.css` + self-hosted Open Sans WOFF2 fonts copied to output, responsive reading column, visited link styles, reduced motion block)
+  - Visual Identity: App-shell document metadata — favicon, theme-color, color-scheme, social card (#107 — `app.blade.php` and `index.html` synchronized with `color-scheme: dark`, `theme-color: #000000`, favicons SVG/ICO/Apple, OG & Twitter cards)
 
 ---
 
