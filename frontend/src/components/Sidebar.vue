@@ -59,8 +59,8 @@
 
     <!-- Controls Bar: Sort Selector -->
     <div class="sidebar-sort-bar">
-      <span class="sort-label">Sort:</span>
-      <select v-model="sortBy" class="sort-select">
+      <label for="sidebar-sort-select" class="sort-label">Sort:</label>
+      <select id="sidebar-sort-select" v-model="sortBy" class="sort-select" aria-label="Sort notes by">
         <option value="recent">Recently Modified</option>
         <option value="name">Alphabetical</option>
         <option value="path">Vault Path</option>
@@ -526,7 +526,7 @@ function handleCreateNote() {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 72%);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -539,7 +539,7 @@ function handleCreateNote() {
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   width: 360px;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
+  box-shadow: var(--shadow-lg);
 }
 
 .modal-card h3 {

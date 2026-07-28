@@ -540,3 +540,19 @@ Jotter defines four semantic status tokens for alerts, save confirmations, and d
 2. **`#814DDE` as Text on Canvas (`#000000`) is 4.05:1**: Below AA for normal text. Purple text is permitted only at large sizes (≥24px, or ≥18.66px bold), for icons, for focus outlines, or on filled controls.
 3. **`#814DDE` as Text on Surface (`#1A0A3E`) is 3.50:1**: Links inside cards and code blocks must use `--color-text` with an underline, taking `--color-action` only on hover/focus.
 
+### Accessibility & axe-core Audit (#109)
+
+Jotter automates structural accessibility checks via `axe-core` across all nine SPA views (`Sidebar.vue`, `LoginModal.vue`, `CommandPalette.vue`, `SearchResults.vue`, `BacklinksPanel.vue`, `MarkdownPreview.vue`, `NoteEditor.vue`, `GraphView.vue`, `App.vue`):
+- Mounted Vitest specs (`frontend/src/a11y.spec.ts`) run `axe.run()` against rendered DOM structures to guard against invalid ARIA, missing labels, duplicate IDs, and malformed headings.
+- Real color-contrast verification is performed via browser E2E and verified against the contrast matrix above.
+
+### Visual Identity CI Guard (#110)
+
+Jotter enforces design token compliance via `./scripts/check-design-tokens.sh`:
+1. **Raw Color Literal Guard**: Rejects raw `#hex`, `rgb()`, `rgba()`, `hsl()`, `oklch()` colors in Vue components (`frontend/src/App.vue` and `frontend/src/components/*.vue`). Exceptions: `transparent`, `currentColor`, or lines annotated with `/* token-ok: reason */`.
+2. **Palette Token Guard**: Rejects direct palette token usage (`--color-purple-*`) in components. Only `--color-neutral-0` is permitted for text on filled purple elements.
+3. **External Font Source Guard**: Rejects external font CDN domains (`fonts.googleapis.com`, `fonts.gstatic.com`, `fonts.bunny.net`).
+4. **Focus Ring Guard**: Rejects `outline: none` or `outline: 0` without a replacement focus indicator or `/* a11y-ok: reason */` comment.
+
+
+

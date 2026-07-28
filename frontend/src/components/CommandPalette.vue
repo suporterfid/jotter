@@ -222,7 +222,7 @@ defineExpose({ open, close })
 .command-palette-backdrop {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 72%);
+  background: var(--color-overlay);
   z-index: 9999;
   display: flex;
   align-items: flex-start;
@@ -235,7 +235,7 @@ defineExpose({ open, close })
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;

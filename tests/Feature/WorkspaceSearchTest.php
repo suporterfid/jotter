@@ -71,7 +71,7 @@ class WorkspaceSearchTest extends TestCase
         $this->assertArrayNotHasKey('search_content', $results[0]);
     }
 
-    public function test_search_requires_a_non_blank_bounded_query(): void
+    public function test_search_requires_a_non_blank_bounded_query_or_filters(): void
     {
         $workspace = $this->makeWorkspace('validation');
 
@@ -116,6 +116,32 @@ class WorkspaceSearchTest extends TestCase
             str_contains($snippet, 'Nebulaquartz') || str_contains($snippet, 'Cometfrost'),
             "Expected a snippet around one of the matched query terms, got [{$snippet}].",
         );
+    }
+
+    public function test_filtered_search_by_title_tags_and_date_range(): void
+    {
+        $workspace = $this->makeWorkspace('filtered');
+        $storage = new VaultStorage;
+
+        $note1 = $storage->write($workspace, 'project-a.md', "---\ntitle: Project Alpha\ntags: [project, active]\n---\nAlpha notes.\n");
+        $note2 = $storage->write($workspace, 'project-b.md', "---\ntitle: Project Beta\ntags: [project, archived]\n---\nBeta notes.\n");
+        $note3 = $storage->write($workspace, 'task-a.md', "---\ntitle: Task Alpha\ntags: [task]\n---\nTask notes.\n");
+
+        // Filter by title
+        $responseTitle = $this->getJson("/api/workspaces/{$workspace->id}/search?title=Alpha");
+        $responseTitle->assertOk();
+        $this->assertCount(2, $responseTitle->json('data'));
+
+        // Filter by tag
+        $responseTag = $this->getJson("/api/workspaces/{$workspace->id}/search?tags[]=project");
+        $responseTag->assertOk();
+        $this->assertCount(2, $responseTag->json('data'));
+
+        // Filter by tag AND title
+        $responseCombo = $this->getJson("/api/workspaces/{$workspace->id}/search?tags[]=project&title=Alpha");
+        $responseCombo->assertOk();
+        $this->assertCount(1, $responseCombo->json('data'));
+        $this->assertEquals($note1->id, $responseCombo->json('data.0.id'));
     }
 
     private function makeWorkspace(string $suffix): Workspace
