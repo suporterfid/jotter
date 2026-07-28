@@ -98,6 +98,25 @@ final class WorkspaceNoteController extends Controller
         return response()->json(status: 204);
     }
 
+    public function move(Request $request, Workspace $workspace, int $note, VaultStorage $storage): JsonResponse
+    {
+        $validated = $request->validate([
+            'new_path' => ['required', 'string', 'max:700'],
+        ]);
+
+        $note = $this->scopedNote($workspace, $note);
+
+        try {
+            $movedNote = $storage->move($workspace, $note->path, $validated['new_path']);
+        } catch (PathTraversalRejected $exception) {
+            throw ValidationException::withMessages(['new_path' => [$exception->getMessage()]]);
+        }
+
+        return response()->json([
+            'data' => $this->metadata($movedNote),
+        ]);
+    }
+
     private function scopedNote(Workspace $workspace, int $noteId): Note
     {
         return $workspace->notes()->findOrFail($noteId);

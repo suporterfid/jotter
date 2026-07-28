@@ -94,6 +94,33 @@ final class VaultStorage
             ->delete();
     }
 
+    public function move(Workspace $workspace, string $oldPath, string $newPath): Note
+    {
+        $oldAbsolute = $this->paths->resolve($workspace, $oldPath, mustExist: true);
+        $newAbsolute = $this->paths->resolve($workspace, $newPath, mustExist: false);
+        $newRelative = $this->paths->toRelative($workspace, $newAbsolute);
+
+        $this->ensureParentDirectory($workspace, $newAbsolute);
+
+        if (! rename($oldAbsolute, $newAbsolute)) {
+            throw new \RuntimeException("Unable to move vault note from [{$oldPath}] to [{$newPath}].");
+        }
+
+        $note = Note::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('path', $oldPath)
+            ->first();
+
+        $contents = file_get_contents($newAbsolute) ?: '';
+        $document = MarkdownDocument::parse($contents, $this->fallbackTitle($newRelative));
+
+        if ($note) {
+            $note->delete();
+        }
+
+        return $this->projector->project($workspace, $newRelative, $document);
+    }
+
     private function ensureParentDirectory(Workspace $workspace, string $absolute): void
     {
         $root = $this->paths->ensureVaultRoot($workspace);
