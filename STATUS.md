@@ -40,6 +40,7 @@
   - Callouts, Toggles, Tables, and Dividers Dual-Path Rendering (`MarkdownServerRenderer.php` with TableExtension & callout regex, `markdown.ts` callout renderer)
   - Slash-Command Insertion Menu (`SlashMenu.vue` component driven by `blockRegistry.ts`, filter/navigation & `SlashMenu.spec.ts`)
   - MCP HTTP Transport & Machine-Token Auth (`POST /api/mcp`, `machine_tokens` table, SHA-256 tokens via `IdentityProvider` seam, `McpTransportAuthTest`)
+  - Read-Only MCP Tools & Cross-Workspace Denial (`list_notes`, `read_note`, `search_notes`, `get_backlinks`, `McpReadOnlyToolsTest`)
 
 ---
 
