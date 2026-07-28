@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Vault\VaultExtractor;
+use App\Domain\Vault\VaultPathGuard;
 use App\Models\Tenant;
-use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,36 +15,65 @@ final class VaultExtractorTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $tempDir;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tempDir = sys_get_temp_dir().'/jotter-extractor-'.uniqid();
+        mkdir($this->tempDir, 0755, true);
+    }
+
+    protected function tearDown(): void
+    {
+        $this->deleteTree($this->tempDir);
+        parent::tearDown();
+    }
+
     public function test_vault_extractor_extracts_allowed_files_and_rejects_zip_slip(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
-        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
-        $vaultPath = storage_path('app/vaults/extractor_test_'.uniqid());
-        @mkdir($vaultPath, 0755, true);
+        $tenant = Tenant::create(['slug' => 'test', 'name' => 'Test']);
+        $vaultDir = $this->tempDir.'/vault';
+        mkdir($vaultDir, 0755, true);
 
         $workspace = Workspace::create([
             'tenant_id' => $tenant->id,
             'slug' => 'main',
             'name' => 'Main',
-            'vault_path' => $vaultPath,
+            'vault_path' => $vaultDir,
         ]);
 
-        $zipPath = sys_get_temp_dir().'/test_archive_'.uniqid().'.zip';
-        $zip = new ZipArchive();
-        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-        $zip->addFromString('valid_note.md', "# Valid Note\n");
-        $zip->addFromString('../../etc/passwd', 'malicious');
-        $zip->addFromString('script.sh', '#!/bin/bash');
+        $zipPath = $this->tempDir.'/test.zip';
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE);
+        $zip->addFromString('index.md', '# Index Note');
+        $zip->addFromString('docs/guide.md', '# Guide');
+        $zip->addFromString('../outside.md', '# Outside Vault');
+        $zip->addFromString('malicious.php', '<?php echo "evil";');
         $zip->close();
 
-        $extractor = new VaultExtractor();
+        $pathGuard = new VaultPathGuard;
+        $auditRecorder = $this->app->make(AuditRecorder::class);
+        $extractor = new VaultExtractor($pathGuard, $auditRecorder);
+
         $result = $extractor->extract($workspace, $zipPath);
 
-        $this->assertContains('valid_note.md', $result['extracted']);
-        $this->assertNotEmpty($result['errors']);
-        $this->assertNotEmpty($result['skipped']);
-        $this->assertFileExists("{$vaultPath}/valid_note.md");
+        $this->assertCount(2, $result['extracted']);
+        $this->assertGreaterThanOrEqual(2, count($result['skipped']));
+        $this->assertFileExists($vaultDir.'/index.md');
+        $this->assertFileExists($vaultDir.'/docs/guide.md');
+        $this->assertFileDoesNotExist($vaultDir.'/../outside.md');
+        $this->assertFileDoesNotExist($vaultDir.'/malicious.php');
+    }
 
-        @unlink($zipPath);
+    private function deleteTree(string $path): void
+    {
+        if (! is_dir($path)) return;
+        foreach (scandir($path) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $sub = $path.'/'.$item;
+            is_dir($sub) ? $this->deleteTree($sub) : unlink($sub);
+        }
+        rmdir($path);
     }
 }

@@ -37,6 +37,29 @@ final class WorkspaceExportController extends Controller
             mkdir($exportDir, 0755, true);
         }
 
+        if ($request->query('format') === 'json') {
+            $notes = Note::query()->where('workspace_id', $workspaceId)->get();
+            $pathGuard = new \App\Domain\Vault\VaultPathGuard();
+            $exportedNotes = [];
+            foreach ($notes as $note) {
+                try {
+                    $fullPath = $pathGuard->resolve($workspace, $note->path, mustExist: true, mustBeMarkdown: false);
+                    $exportedNotes[] = [
+                        'path' => $note->path,
+                        'content' => file_get_contents($fullPath),
+                    ];
+                } catch (\Throwable) {
+                    // file missing
+                }
+            }
+            return response()->json([
+                'version' => '1.0',
+                'workspace_slug' => $workspace->slug,
+                'exported_at' => now()->toIso8601String(),
+                'notes' => $exportedNotes,
+            ]);
+        }
+
         $zipPath = "{$exportDir}/export_workspace_{$workspace->id}.zip";
         @unlink($zipPath);
 

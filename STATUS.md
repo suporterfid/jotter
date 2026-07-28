@@ -57,6 +57,10 @@
   - Visual Identity: WCAG 2.2 AA audit and axe-core regression test (#109 — `frontend/src/a11y.spec.ts` automated axe-core Vitest spec covering all SPA views, documented contrast audit matrix and manual checklist in `docs/visual-identity.md`)
   - Visual Identity: CI guard against raw color literals and unapproved font sources (#110 — `./scripts/check-design-tokens.sh` executable guard script enforcing raw color literal ban, palette token ban, font CDN ban, and un-annotated outline:none ban)
   - Milestone A: Filtered search by title, tags, and modified-date range (#52 — `SearchCriteria` value object, extended `GET /api/workspaces/{w}/search` params, index-backed multi-tag/title/date filtering)
+  - CI stability: Playwright notes.spec.ts login wait & SPA error surfacing (#49 — aligned login wait to 10s, surfaced createNote errors in SPA)
+  - Milestone A: Hardened archive extraction (#76 — `VaultExtractor` domain service with zip-slip, symlink, path-aliasing, type allowlist, and size/entry bounds)
+  - Milestone A: Bounded import job and upload endpoint (#77 — `VaultImportCommand` Artisan command, `POST /api/workspaces/{w}/import` endpoint, staged upload cleanup)
+  - Milestone A: Collision policy and JSON backup format round-trip (#78 — `VaultBackupRoundTripTest` equivalence suite, JSON v1.0 backup export/import support, configurable overwrite collision policy)
 
 ---
 

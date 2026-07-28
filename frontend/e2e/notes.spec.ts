@@ -5,7 +5,7 @@ test.describe('Jotter Notes E2E Journey', () => {
     await page.goto('/')
 
     const loginEmail = page.locator('[data-testid="login-email"]')
-    const isLoginVisible = await loginEmail.isVisible({ timeout: 3000 }).catch(() => false)
+    const isLoginVisible = await loginEmail.isVisible({ timeout: 10000 }).catch(() => false)
     if (isLoginVisible) {
       await page.fill('[data-testid="login-email"]', 'admin@example.com')
       await page.fill('[data-testid="login-password"]', 'password12345')

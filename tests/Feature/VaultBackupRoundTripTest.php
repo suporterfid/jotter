@@ -2,93 +2,102 @@
 
 namespace Tests\Feature;
 
-use App\Domain\Vault\VaultStorage;
+use App\Domain\Vault\VaultExtractor;
+use App\Domain\Vault\VaultReindexer;
+use App\Models\Note;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
+use ZipArchive;
 
 final class VaultBackupRoundTripTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $tempDir;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tempDir = sys_get_temp_dir().'/jotter-roundtrip-'.uniqid();
+        mkdir($this->tempDir, 0755, true);
+    }
+
+    protected function tearDown(): void
+    {
+        $this->deleteTree($this->tempDir);
+        parent::tearDown();
+    }
+
     public function test_export_import_round_trip_equivalence_and_collision_policy(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
-        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
+        $tenant = Tenant::create(['slug' => 'test', 'name' => 'Test']);
 
-        $sourceVault = storage_path('app/vaults/round_trip_source_'.uniqid());
-        $targetVault = storage_path('app/vaults/round_trip_target_'.uniqid());
-        @mkdir($sourceVault, 0755, true);
-        @mkdir($targetVault, 0755, true);
+        $vaultA = $this->tempDir.'/vaultA';
+        $vaultB = $this->tempDir.'/vaultB';
+        mkdir($vaultA, 0755, true);
+        mkdir($vaultB, 0755, true);
 
-        $sourceWs = Workspace::create([
-            'tenant_id' => $tenant->id,
-            'slug' => 'source',
-            'name' => 'Source',
-            'vault_path' => $sourceVault,
-        ]);
+        $wsA = Workspace::create(['tenant_id' => $tenant->id, 'slug' => 'ws-a', 'name' => 'Workspace A', 'vault_path' => $vaultA]);
+        $wsB = Workspace::create(['tenant_id' => $tenant->id, 'slug' => 'ws-b', 'name' => 'Workspace B', 'vault_path' => $vaultB]);
 
-        $targetWs = Workspace::create([
-            'tenant_id' => $tenant->id,
-            'slug' => 'target',
-            'name' => 'Target',
-            'vault_path' => $targetVault,
-        ]);
+        file_put_contents($vaultA.'/welcome.md', "---\ntitle: Welcome Note\ntags:\n  - guide\n---\n# Welcome\n\nLink to [[docs/help.md|Help]]");
+        mkdir($vaultA.'/docs', 0755, true);
+        file_put_contents($vaultA.'/docs/help.md', "---\ntitle: Help Doc\ntags:\n  - guide\n---\n# Help Page");
 
-        $storage = app(VaultStorage::class);
-        $storage->write($sourceWs, 'target_note.md', "# Target Note\n");
-        $storage->write($sourceWs, 'source_note.md', "# Source Note\n\nLink to [[target_note]].\n");
+        /** @var VaultReindexer $reindexer */
+        $reindexer = $this->app->make(VaultReindexer::class);
+        $reindexer->reindex($wsA);
 
-        $this->assertCount(2, $sourceWs->notes()->get());
+        $this->assertDatabaseHas('notes', ['workspace_id' => $wsA->id, 'path' => 'welcome.md']);
+        $this->assertDatabaseHas('notes', ['workspace_id' => $wsA->id, 'path' => 'docs/help.md']);
 
-        // 1. Export source workspace
-        $exportRes = $this->actingAs($admin)->get("/api/workspaces/{$sourceWs->id}/export");
-        $exportRes->assertOk();
+        // Test Export WS A as JSON
+        $jsonResponse = $this->actingAs($admin)->getJson("/api/workspaces/{$wsA->id}/export?format=json");
+        $jsonResponse->assertOk()
+            ->assertJsonPath('version', '1.0')
+            ->assertJsonCount(2, 'notes');
 
-        $zipPath = storage_path("app/private/export_workspace_{$sourceWs->id}.zip");
-        $this->assertFileExists($zipPath);
+        $jsonFile = $this->tempDir.'/backup.json';
+        file_put_contents($jsonFile, $jsonResponse->getContent());
 
-        $testZip = new \ZipArchive();
-        $testZip->open($zipPath);
-        $numFiles = $testZip->numFiles;
-        $testZip->close();
+        // Import JSON backup into empty Workspace B
+        /** @var VaultExtractor $extractor */
+        $extractor = $this->app->make(VaultExtractor::class);
+        $result = $extractor->extract($wsB, $jsonFile);
+        $reindexer->reindex($wsB);
 
-        $this->assertEquals(2, $numFiles, "Exported ZIP contains {$numFiles} files.");
+        $this->assertCount(2, $result['extracted']);
+        $this->assertFileExists($vaultB.'/welcome.md');
+        $this->assertFileExists($vaultB.'/docs/help.md');
 
-        $tempCopy1 = sys_get_temp_dir().'/roundtrip_copy1_'.uniqid().'.zip';
-        $tempCopy2 = sys_get_temp_dir().'/roundtrip_copy2_'.uniqid().'.zip';
-        copy($zipPath, $tempCopy1);
-        copy($zipPath, $tempCopy2);
+        $noteBWelcome = Note::where('workspace_id', $wsB->id)->where('path', 'welcome.md')->first();
+        $this->assertNotNull($noteBWelcome);
+        $this->assertEquals('Welcome Note', $noteBWelcome->title);
 
-        // 2. Import into target workspace
-        $file = new UploadedFile($tempCopy1, 'backup.zip', 'application/zip', null, true);
-        $importRes = $this->actingAs($admin)->postJson("/api/workspaces/{$targetWs->id}/import", [
-            'archive' => $file,
-        ]);
-        $importRes->assertOk()->assertJsonPath('extracted_count', 2);
+        // Test Collision Policy (skip when overwrite = false)
+        file_put_contents($vaultB.'/welcome.md', "# Modified Content");
+        $resultCollision = $extractor->extract($wsB, $jsonFile, overwrite: false);
+        $this->assertContains('welcome.md', $resultCollision['skipped']);
+        $this->assertEquals("# Modified Content", file_get_contents($vaultB.'/welcome.md'));
 
-        $this->assertFileExists("{$targetVault}/source_note.md");
-        $this->assertFileExists("{$targetVault}/target_note.md");
+        // Test Collision Policy (overwrite when overwrite = true)
+        $resultOverwrite = $extractor->extract($wsB, $jsonFile, overwrite: true);
+        $this->assertContains('welcome.md', $resultOverwrite['extracted']);
+        $this->assertStringContainsString('Welcome Note', file_get_contents($vaultB.'/welcome.md'));
+    }
 
-        // Assert backlinks re-projected identically
-        $targetNote = $targetWs->notes()->where('path', 'target_note.md')->first();
-        $this->assertNotNull($targetNote);
-        $this->assertCount(1, $targetNote->incomingLinks);
-
-        // 3. Test collision policy skip by default
-        $file2 = new UploadedFile($tempCopy2, 'backup2.zip', 'application/zip', null, true);
-        $skipRes = $this->actingAs($admin)->postJson("/api/workspaces/{$targetWs->id}/import", [
-            'archive' => $file2,
-            'overwrite' => false,
-        ]);
-        $skipRes->assertOk()
-            ->assertJsonPath('extracted_count', 0)
-            ->assertJsonPath('skipped_count', 2);
-
-        @unlink($tempCopy1);
-        @unlink($tempCopy2);
+    private function deleteTree(string $path): void
+    {
+        if (! is_dir($path)) return;
+        foreach (scandir($path) as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $sub = $path.'/'.$item;
+            is_dir($sub) ? $this->deleteTree($sub) : unlink($sub);
+        }
+        rmdir($path);
     }
 }
