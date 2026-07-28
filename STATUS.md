@@ -38,6 +38,7 @@
   - Admin Administration UI (`frontend/src/components/AdminPanel.vue`, Workspaces/Members/Users tabs, modal & Vitest test suite)
   - Declarative Block Registry (`app/Domain/Vault/BlockRegistry.php`, `frontend/src/services/blockRegistry.ts`, PHPUnit `BlockRegistryTest` & Vitest `blockRegistry.spec.ts`)
   - Callouts, Toggles, Tables, and Dividers Dual-Path Rendering (`MarkdownServerRenderer.php` with TableExtension & callout regex, `markdown.ts` callout renderer)
+  - Slash-Command Insertion Menu (`SlashMenu.vue` component driven by `blockRegistry.ts`, filter/navigation & `SlashMenu.spec.ts`)
 
 ---
 
