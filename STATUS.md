@@ -33,6 +33,7 @@
   - Rebuildable Typed Property Projection (`note_properties` table, `NotePropertyProjector`, and drop-and-rebuild parity test `NotePropertyProjectionTest.php`)
   - Typed Properties API & Front-Matter Write-Through (`GET /api/workspaces/{w}/properties`, `POST` & `DELETE` note properties with disk write-through)
   - Admin Workspace CRUD & Validated Vault Root (`POST /api/admin/workspaces`, `PUT`, `archive`, `VaultRootGuard` base path confinement & nesting collision protection)
+  - Admin Membership & Role Management (`GET/POST/PUT/DELETE /api/admin/workspaces/{w}/members`, role definitions, last owner protection)
 
 ---
 
