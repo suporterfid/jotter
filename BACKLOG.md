@@ -55,6 +55,19 @@ Blocked on decision **C2**. Do not begin without it.
 
 ---
 
+## Visual identity (cross-cutting)
+
+Not a roadmap item and not blocked on any §14.5 decision. Adopts a shared dark/purple design system — semantic tokens, Open Sans, WCAG 2.2 AA — across the SPA, the Laravel shell, and the published static site. Presentation layer only: no API contract, no change to the Markdown-on-disk invariant (spec §1), no change to §8 security requirements.
+
+Tracked in **#96**. Today the product ships four unrelated visual treatments (SPA glassmorphism, a light-serif landing stylesheet, the stock Laravel welcome page, and an unstyled published site), three sub-AA color pairs, six `outline: none` sites with no replacement focus indicator, and no `prefers-reduced-motion` handling.
+
+- [ ] Foundation — #97 spec + asset structure, #98 token layer, #99 self-hosted Open Sans.
+- [ ] Application — #100 component migration, #101 typography, #102 spacing/shape/elevation, #103 controls and focus, #104 motion.
+- [ ] Other surfaces — #105 theme reconciliation, #106 published static site, #107 app-shell metadata, #108 project mark.
+- [ ] Verification — #109 WCAG 2.2 AA audit (acceptance gate), #110 CI token guard (lands last).
+
+---
+
 ## Needs a decision (spec §14.5)
 
 These block the roadmap items above. Until each is answered, the constraint wins.
