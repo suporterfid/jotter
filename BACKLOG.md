@@ -23,7 +23,7 @@ Found via a codebase audit of authorization, path safety, and identity-provider 
 - ~~**#145 — comment deletion had no ownership check.**~~ **Closed**, merged via PR #149. Any workspace member could delete any other member's comment. Fixed with an author-or-admin check plus regression tests.
 - ~~**#146 — MCP `read_note` calls undefined `VaultStorage::getNoteContent()`.**~~ **Closed**, merged via PR #150. Fatal error on every call; fixed to call `readContents()`.
 - ~~**#147 — `GrandpaSSOnIdentityProvider` creates every new SSO user as an admin.**~~ **Closed**, merged via PR #151. Both the hardcoded creation default and the null-coalesce now default to non-admin. A separate, pre-existing dead-code bug in the same method (AUTHSESSID branch's `expires_at` comparison never matches on MySQL) was found but is out of scope — noted for a future follow-up.
-- **#148 — no branch protection on `main` requiring green CI before merge.** The mechanism behind #140's silent regression after #49. Open, next in the queue.
+- ~~**#148 — no branch protection on `main` requiring green CI before merge.**~~ **Closed.** The mechanism behind #140's silent regression after #49. Fixed via `gh api` on the repo's branch protection endpoint (required status check `test`, `enforce_admins`, no force-push/delete) — a repo-settings change, not a code diff. Verified live by confirming a direct push to `main` is rejected.
 
 ---
 
