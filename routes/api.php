@@ -17,6 +17,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 Route::get('/auth/me', [AuthController::class, 'me']);
 Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);
+Route::post('/mcp', [\App\Http\Controllers\McpController::class, 'handle']);
 
 Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/admin/users', [\App\Http\Controllers\AdminUserController::class, 'index']);
