@@ -74,19 +74,18 @@ final class AttachmentStorage
             ],
         );
 
-        AuditLog::query()->create([
-            'tenant_id' => $workspace->tenant_id,
-            'workspace_id' => $workspace->id,
-            'event' => 'attachment.created',
-            'actor_type' => 'user',
-            'actor_id' => (string) (auth()->id() ?? 'system'),
-            'metadata' => [
+        (new \App\Domain\Audit\AuditRecorder)->record(
+            \App\Domain\Audit\AuditEvent::ATTACHMENT_CREATED,
+            $workspace->tenant_id,
+            $workspace->id,
+            (string) (auth()->id() ?? 'system'),
+            [
                 'attachment_id' => $attachment->id,
                 'path' => $relative,
                 'mime' => $mime,
                 'size' => $size,
-            ],
-        ]);
+            ]
+        );
 
         return $attachment;
     }
@@ -132,16 +131,15 @@ final class AttachmentStorage
                 ->delete();
         }
 
-        AuditLog::query()->create([
-            'tenant_id' => $workspace->tenant_id,
-            'workspace_id' => $workspace->id,
-            'event' => 'attachment.deleted',
-            'actor_type' => 'user',
-            'actor_id' => (string) (auth()->id() ?? 'system'),
-            'metadata' => [
+        (new \App\Domain\Audit\AuditRecorder)->record(
+            \App\Domain\Audit\AuditEvent::ATTACHMENT_DELETED,
+            $workspace->tenant_id,
+            $workspace->id,
+            (string) (auth()->id() ?? 'system'),
+            [
                 'path' => $relativePath,
-            ],
-        ]);
+            ]
+        );
     }
 
     public function findAttachment(Workspace $workspace, string|int $idOrPath): ?Attachment

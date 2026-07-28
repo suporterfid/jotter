@@ -25,7 +25,8 @@
   - Background Job Dispatcher Seam (`JobDispatcher` + `LocalJobDispatcher`)
   - WebDAV Adapter (`WebDavController`) with `PROPFIND`, `GET`, `PUT`, `MKCOL`, `DELETE`, `OPTIONS`
   - Note Rename & Relocation Endpoint (`POST /api/workspaces/{w}/notes/{n}/move`)
-  - Case-Insensitive Wikilink Resolution Policy (`WikilinkProjector.php`), static-site publishing, `llms.txt` (AI-KB Layer 1).
+  - Case-Insensitive Wikilink Resolution Policy (`WikilinkProjector.php`)
+  - Audit Log Hardening Suite (`AuditEvent` enum, `AuditRecorder` with automatic redaction, append-only immutability, tenant-scoped queries), static-site publishing, `llms.txt` (AI-KB Layer 1).
 
 ---
 

@@ -39,15 +39,16 @@ final class LocalIdentityProvider implements IdentityProvider
         $password = (string) ($credentials['password'] ?? '');
 
         if (! $email || ! $password) {
-            AuditLog::create([
-                'actor_subject_id' => null,
-                'event' => 'auth.login.failed',
-                'metadata' => [
+            (new \App\Domain\Audit\AuditRecorder)->record(
+                \App\Domain\Audit\AuditEvent::AUTH_LOGIN_FAILURE,
+                null,
+                null,
+                null,
+                [
                     'email' => $email,
                     'reason' => 'missing_credentials',
-                ],
-                'ip_address' => $request->ip(),
-            ]);
+                ]
+            );
 
             return null;
         }
@@ -56,15 +57,16 @@ final class LocalIdentityProvider implements IdentityProvider
         $user = User::query()->where('email', $email)->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
-            AuditLog::create([
-                'actor_subject_id' => null,
-                'event' => 'auth.login.failed',
-                'metadata' => [
+            (new \App\Domain\Audit\AuditRecorder)->record(
+                \App\Domain\Audit\AuditEvent::AUTH_LOGIN_FAILURE,
+                null,
+                null,
+                null,
+                [
                     'email' => $email,
                     'reason' => 'invalid_credentials',
-                ],
-                'ip_address' => $request->ip(),
-            ]);
+                ]
+            );
 
             return null;
         }
@@ -75,15 +77,16 @@ final class LocalIdentityProvider implements IdentityProvider
             $request->session()->regenerate();
         }
 
-        AuditLog::create([
-            'actor_subject_id' => (string) $user->id,
-            'event' => 'auth.login.success',
-            'metadata' => [
+        (new \App\Domain\Audit\AuditRecorder)->record(
+            \App\Domain\Audit\AuditEvent::AUTH_LOGIN_SUCCESS,
+            null,
+            null,
+            (string) $user->id,
+            [
                 'email' => $user->email,
                 'is_admin' => (bool) $user->is_admin,
-            ],
-            'ip_address' => $request->ip(),
-        ]);
+            ]
+        );
 
         return new AuthenticatedSubject(
             subjectId: (string) $user->id,
@@ -100,12 +103,13 @@ final class LocalIdentityProvider implements IdentityProvider
         $user = Auth::guard('web')->user();
 
         if ($user) {
-            AuditLog::create([
-                'actor_subject_id' => (string) $user->id,
-                'event' => 'auth.logout',
-                'metadata' => ['email' => $user->email],
-                'ip_address' => $request->ip(),
-            ]);
+            (new \App\Domain\Audit\AuditRecorder)->record(
+                \App\Domain\Audit\AuditEvent::AUTH_LOGOUT,
+                null,
+                null,
+                (string) $user->id,
+                ['email' => $user->email]
+            );
         }
 
         Auth::guard('web')->logout();

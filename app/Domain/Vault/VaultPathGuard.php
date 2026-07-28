@@ -203,18 +203,16 @@ final class VaultPathGuard
 
     private function reject(Workspace $workspace, string $attemptedPath, ?string $message = null): void
     {
-        AuditLog::query()->create([
-            'tenant_id' => $workspace->tenant_id,
-            'workspace_id' => $workspace->id,
-            'event' => self::AUDIT_EVENT,
-            'actor_type' => 'system',
-            'actor_id' => null,
-            'metadata' => [
+        (new \App\Domain\Audit\AuditRecorder)->record(
+            \App\Domain\Audit\AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
+            $workspace->tenant_id,
+            $workspace->id,
+            null,
+            [
                 'attempted_path' => $attemptedPath,
                 'reason' => 'path_traversal_or_unsafe_relative_path',
-            ],
-            'ip_address' => null,
-        ]);
+            ]
+        );
 
         throw new PathTraversalRejected(
             (int) $workspace->id,
