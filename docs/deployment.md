@@ -32,4 +32,10 @@ Schedule a bounded reconcile for each workspace vault (adjust the id and frequen
 php artisan vault:reindex --workspace=1
 ```
 
+Schedule a daily audit log prune to enforce retention limits (adjust days as needed):
+
+```sh
+php artisan audit:prune --days=90
+```
+
 Keep vault directories outside the web root. Notes are never served as static files from `public/`.
