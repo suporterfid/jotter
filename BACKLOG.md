@@ -6,6 +6,16 @@ Roadmap priorities 1–5 (search, nested folders, tags, backlinks, attachments) 
 
 ---
 
+## Known gaps (open, 2026-07-28)
+
+Found during a review of whether `main` is 100% adherent to the roadmap and this backlog. All backlog milestones below are checked off, but three gaps mean that claim doesn't fully hold without these caveats. Each has a detailed GitHub issue; none are resolved by this pass except where noted.
+
+- **CI is red on `main`, still, after the prior fix.** `frontend/e2e/notes.spec.ts` fails on the current `main` HEAD with the same symptom #49 diagnosed and closed as fixed — the fix didn't hold, and code landed after it (the version-history epic, #51/#136) that changed the exact code path the failing test exercises. Root cause needs re-investigation in a Docker-capable environment. Tracked in **#140**.
+- **This file was self-contradictory.** The "Recorded Decisions" section marked C1–C6 resolved while the "Needs a decision" section below it still listed the same five as open blockers — added by different commits that were never reconciled. **Fixed in this pass**; see **#141**.
+- **Dead-code cleanup from #66 was incomplete.** `WorkspaceAuthorizationPlaceholder` was deleted from `app/`, but six tests in `tests/Feature/WorkspaceNotesApiTest.php` still reference it by name; since nothing imports the class, PHP resolves it to an unrelated string and the `withoutMiddleware()` calls silently no-op instead of bypassing anything. `STATUS.md`'s description of this item was also stale (it said the file was still present). Tracked in **#142**.
+
+---
+
 ## Delivered (not backlog — recorded so the roadmap is not re-planned against it)
 
 - Full-text search, nested vault folders, tags + front-matter projection, backlinks, attachments — v0 §7.
@@ -112,13 +122,8 @@ If Note A assigns string `"2"` to property `priority` and Note B assigns integer
 
 ## Needs a decision (spec §14.5)
 
-These block the roadmap items above. Until each is answered, the constraint wins.
+C1, C2, C3, C5, and C6 were resolved — see **Recorded Decisions** above. This section previously still listed them as open `TODO(spec)` blockers after they were resolved; that self-contradiction was found and fixed here (#141).
 
-- **C1 — Collaboration model.** Roadmap Phase 3 lists presence indicators; its baseline assumes realtime collaboration. Spec §3 N1 and §4 exclude both — no websockets on shared hosting. `TODO(spec): confirm collaboration stays asynchronous — comments and mentions yes, presence and live cursors no.`
-- **C2 — Structured collections.** Roadmap Phase 4 wants database-like collections over note metadata. Spec §1 says MySQL is only an index. `TODO(spec): decide whether collections project from front-matter on disk, or whether the Markdown-on-disk invariant is being amended.`
-- **C3 — Synced blocks.** Roadmap priority 8. Transclusion that does not degrade to readable Markdown breaks Obsidian compatibility. `TODO(spec): choose a plain-Markdown-safe syntax, or drop the item.`
-- **C5 — Offline / mobile-first.** Roadmap Phase 5 differentiators contradict §2's deliberate local-first inversion. `TODO(spec): confirm WebDAV + Obsidian is the mobile and offline answer.`
-- **C6 — History storage.** See Milestone A. `TODO(spec): DB deltas or bounded snapshots; no per-revision files in the vault.`
 - **Roadmap baseline provenance.** `TODO(spec): confirm whether the roadmap's gap analysis was drawn from a different product of the same name. Until confirmed, spec §14.3 governs what counts as delivered.`
 
 ## Not adopted

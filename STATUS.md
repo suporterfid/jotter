@@ -4,7 +4,7 @@
 - **Last Updated:** 2026-07-28
 - **Repo:** https://github.com/suporterfid/jotter
 - **Production Site:** https://hub.taskconnect.com.br/
-- **CI Status:** 🔴 Red on `main` — PHPUnit and Vitest pass; one Playwright spec fails (see §3)
+- **CI Status:** 🔴 Red on `main` — PHPUnit and Vitest pass; one Playwright spec fails, confirmed still failing on the current HEAD, not just historically (see §3, #140)
 - **Planning authority:** `docs/jotter-initial-spec-and-build-plan.md` §14 sequences post-v0 work from `docs/20260727-jotter-roadmap-ai-agent.md`
 
 ---
@@ -100,15 +100,17 @@ Six roadmap items conflict with hard constraints and are parked pending decision
 
 ## 3. Known issues
 
-- **CI is red on `main`.** The workflow has failed on every run since 2026-07-27 22:28, including the latest (`f57003d`). The current failure is narrow: `frontend/e2e/notes.spec.ts:26` times out waiting for `[data-testid="editor-title"]` to contain `e2e-demo` (1 failed, 1 passed). PHPUnit and Vitest pass. §0.3 of the spec requires green CI per PR, so this blocks the next unit.
-- **`WorkspaceAuthorizationPlaceholder` is still present** in `app/Http/Middleware/` but is no longer aliased — `AuthorizeWorkspaceAccess` replaced it. Dead code pending removal.
+- **CI is red on `main`, and #49's fix did not hold.** #49 diagnosed this as a login-modal race, fixed the timeout, and was closed `completed` on 2026-07-28. The identical failure reproduces on the current `main` HEAD (`4d10b087`, run [30386678242](https://github.com/suporterfid/jotter/actions/runs/30386678242)) in a CI run that started after that fix and after three more feature PRs landed on top of it: `frontend/e2e/notes.spec.ts:26` still times out waiting for `[data-testid="editor-title"]` to contain `e2e-demo` (1 failed, 1 passed). PHPUnit and Vitest pass. The already-fixed login timeout rules out the original hypothesis; the version-history epic (#51/#136) added a synchronous revision-write to the exact code path this test exercises and is the leading new candidate, but is not confirmed — this sandbox has no Docker daemon available to reproduce and trace it. §0.3 of the spec requires green CI per PR, so this blocks the next unit. Tracked in **#140**.
+- **`WorkspaceAuthorizationPlaceholder` is fully deleted from `app/`** (#66's file-removal criterion was met), but its "and any test referencing it" criterion wasn't: six tests in `tests/Feature/WorkspaceNotesApiTest.php` still call `withoutMiddleware(WorkspaceAuthorizationPlaceholder::class)` against a class name that no longer resolves to anything, which silently no-ops instead of bypassing authorization as the tests assume. Tracked in **#142**.
 - **The WebDAV adapter is hand-rolled, not SabreDAV.** `sabre/dav` is not a dependency despite the commit message and earlier status notes saying so.
+- ~~**`BACKLOG.md` was self-contradictory**~~ — the "Recorded Decisions" and "Needs a decision" sections disagreed about whether C1–C6 were resolved. Fixed; see #141.
 
 ---
 
 ## 4. Next
 
-1. Fix the failing Playwright spec and restore green CI; add branch protection so §0.3 is enforced rather than conventional.
-2. Resolve the §14.5 decisions that block planning — C1, C2, and C6 gate the nearest work.
-3. Then Milestone A's remainder: version history (once C6 is decided), search filters, import.
-4. **Visual identity (#96)** — cross-cutting presentation workstream adopting a shared dark/purple design system with semantic tokens, Open Sans, and WCAG 2.2 AA across the SPA, the Laravel shell, and the published static site. Sequenced independently of Milestones A–D and blocked on none of the §14.5 decisions, but gated behind item 1 like every other PR. See `BACKLOG.md`.
+1. **Root-cause and fix #140** (CI red on `main`, again) in an environment with a working Docker daemon — this blocks everything else per §0.3, and the fact that #49's fix didn't hold means this needs an actual green post-merge run before being called done, not just a local pass.
+2. Clean up **#142** (dead middleware-name references in `WorkspaceNotesApiTest.php`) — small, but it's a latent test-authorization gap.
+3. Resolve the remaining §14.5 decision — roadmap baseline provenance is the only one still open; C1–C6 are recorded resolved (see `BACKLOG.md`).
+4. Then Milestone A/B/C/D are all recorded complete — re-verify against a green CI before treating that as trustworthy, since #140 shows a "done" item can regress silently without branch protection.
+5. **Visual identity (#96)** — cross-cutting presentation workstream adopting a shared dark/purple design system with semantic tokens, Open Sans, and WCAG 2.2 AA across the SPA, the Laravel shell, and the published static site. Recorded complete; gated behind item 1 like every other PR for the same reason as item 4.
