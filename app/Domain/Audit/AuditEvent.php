@@ -18,6 +18,11 @@ enum AuditEvent: string
     case MEMBERSHIP_UPDATED = 'membership.updated';
     case MEMBERSHIP_REVOKED = 'membership.revoked';
 
+    case USER_CREATED = 'user.created';
+    case USER_DEACTIVATED = 'user.deactivated';
+    case USER_REACTIVATED = 'user.reactivated';
+    case USER_PASSWORD_RESET = 'user.password_reset';
+
     case ATTACHMENT_CREATED = 'attachment.created';
     case ATTACHMENT_DELETED = 'attachment.deleted';
 
