@@ -39,8 +39,8 @@ defineEmits<{
 
 <style scoped>
 .search-results-panel {
-  padding: 1rem;
-  background: var(--bg-surface, #1e1e24);
+  padding: var(--space-4);
+  background: var(--color-canvas);
   height: 100%;
   overflow-y: auto;
 }
@@ -50,66 +50,67 @@ defineEmits<{
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
-  color: var(--text-muted, #94a3b8);
+  color: var(--color-text-muted);
   font-size: 0.875rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color, #2d2d38);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .count {
-  background: var(--bg-hover, #2d3748);
-  color: var(--accent-color, #818cf8);
+  background: var(--color-surface-emphasis);
+  color: var(--color-action);
   padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
 }
 
 .no-results {
-  color: var(--text-dim, #64748b);
-  padding: 2rem 0;
+  color: var(--color-text-muted);
+  padding: var(--space-8) 0;
   text-align: center;
 }
 
 .results-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .result-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-color, #2d2d38);
-  border-radius: 0.5rem;
-  padding: 0.875rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: border-color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
 }
 
 .result-card:hover {
-  background: rgba(129, 140, 248, 0.08);
-  border-color: var(--accent-color, #818cf8);
+  background: var(--color-surface-emphasis);
+  border-color: var(--color-action);
 }
 
 .result-title {
   font-weight: 600;
-  color: var(--text-light, #f8fafc);
+  color: var(--color-text);
   font-size: 1rem;
 }
 
 .result-path {
   font-size: 0.75rem;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   margin-top: 0.125rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .result-snippet {
   font-size: 0.875rem;
-  color: var(--text-main, #cbd5e1);
+  color: var(--color-text-muted);
   line-height: 1.4;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.5rem;
-  border-radius: 0.25rem;
+  background: var(--color-canvas);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
 }
 </style>

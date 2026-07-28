@@ -137,31 +137,31 @@ const graphEdges = computed<GraphEdge[]>(() => {
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background: var(--bg-main, #0b0f19);
+  background: var(--color-canvas);
 }
 
 .graph-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
-  background: rgba(15, 23, 42, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .graph-title-group {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  color: #f8fafc;
+  gap: var(--space-3);
+  color: var(--color-text);
 }
 
 .graph-icon {
-  color: #6366f1;
+  color: var(--color-action);
 }
 
 .graph-title-group h2 {
-  font-family: var(--font-heading, sans-serif);
+  font-family: var(--font-sans);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -169,19 +169,22 @@ const graphEdges = computed<GraphEdge[]>(() => {
 .btn-close-graph {
   background: transparent;
   border: none;
-  color: #94a3b8;
-  padding: 0.4rem;
-  border-radius: 0.375rem;
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  min-width: 36px;
+  min-height: 36px;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
 }
 
 .btn-close-graph:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8fafc;
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
 }
 
 .graph-canvas-wrapper {
@@ -200,42 +203,43 @@ const graphEdges = computed<GraphEdge[]>(() => {
   max-height: 700px;
 }
 
+/* SVG colors — use CSS custom properties; JS reads via getComputedStyle */
 .graph-edge {
-  stroke: rgba(99, 102, 241, 0.25);
+  stroke: var(--color-border-strong);
   stroke-width: 1.5;
   stroke-dasharray: 4 2;
 }
 
 .graph-node-group {
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-standard) var(--ease-standard);
 }
 
 .graph-node-circle {
-  fill: rgba(30, 41, 59, 0.9);
-  stroke: #6366f1;
+  fill: var(--color-surface);
+  stroke: var(--color-action);
   stroke-width: 2;
-  transition: all 0.2s ease;
+  transition: fill var(--duration-standard) var(--ease-standard),
+              stroke var(--duration-standard) var(--ease-standard);
 }
 
 .graph-node-group:hover .graph-node-circle,
 .graph-node-group.active .graph-node-circle {
-  fill: #6366f1;
-  stroke: #8b5cf6;
-  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
+  fill: var(--color-action);
+  stroke: var(--color-border-strong);
 }
 
 .graph-node-label {
-  fill: #cbd5e1;
-  font-size: 0.775rem;
+  fill: var(--color-text-muted);
+  font-size: 0.75rem;
   font-weight: 500;
   pointer-events: none;
-  font-family: var(--font-body, sans-serif);
+  font-family: var(--font-sans);
 }
 
 .graph-node-group:hover .graph-node-label,
 .graph-node-group.active .graph-node-label {
-  fill: #f8fafc;
+  fill: var(--color-text);
   font-weight: 600;
 }
 </style>

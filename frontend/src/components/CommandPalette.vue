@@ -218,12 +218,11 @@ defineExpose({ open, close })
 </script>
 
 <style scoped>
+/* Solid overlay — no backdrop-filter */
 .command-palette-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgb(0 0 0 / 72%);
   z-index: 9999;
   display: flex;
   align-items: flex-start;
@@ -233,12 +232,10 @@ defineExpose({ open, close })
 
 .command-palette-modal {
   width: min(90vw, 640px);
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 1rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -247,13 +244,13 @@ defineExpose({ open, close })
 .palette-header {
   display: flex;
   align-items: center;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  gap: 0.75rem;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-3);
 }
 
 .search-icon {
-  color: var(--accent-color, #6366f1);
+  color: var(--color-action);
   flex-shrink: 0;
 }
 
@@ -261,55 +258,57 @@ defineExpose({ open, close })
   flex: 1;
   background: transparent;
   border: none;
-  color: #f8fafc;
+  color: var(--color-text);
   font-size: 1.05rem;
   font-family: inherit;
-  outline: none;
+  /* No outline:none — global :focus-visible handles ring */
 }
 
 .shortcut-badge {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.25rem;
+  background: var(--color-surface-emphasis);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   padding: 0.15rem 0.4rem;
   font-size: 0.7rem;
-  color: #94a3b8;
-  font-family: monospace;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .palette-results {
   max-height: 380px;
   overflow-y: auto;
-  padding: 0.5rem;
+  padding: var(--space-2);
 }
 
 .group-section {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .group-label {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.725rem;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .palette-item {
   display: flex;
   align-items: center;
-  padding: 0.65rem 0.85rem;
-  border-radius: 0.5rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  gap: 0.75rem;
-  transition: all 0.15s ease;
-  color: #cbd5e1;
+  gap: var(--space-3);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+  color: var(--color-text-muted);
+  min-height: 44px;
 }
 
 .palette-item.active {
-  background: rgba(99, 102, 241, 0.2);
-  color: #f8fafc;
+  background: color-mix(in srgb, var(--color-action) 20%, transparent);
+  color: var(--color-text);
 }
 
 .item-icon {
@@ -317,7 +316,7 @@ defineExpose({ open, close })
 }
 
 .item-icon-svg {
-  color: #818cf8;
+  color: var(--color-action);
   flex-shrink: 0;
 }
 
@@ -332,57 +331,57 @@ defineExpose({ open, close })
 
 .item-path {
   font-size: 0.775rem;
-  color: #64748b;
-  font-family: monospace;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .item-kbd {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.25rem;
+  background: var(--color-surface-emphasis);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   padding: 0.1rem 0.35rem;
   font-size: 0.7rem;
-  color: #94a3b8;
-  font-family: monospace;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .no-results {
-  padding: 2rem;
+  padding: var(--space-8);
   text-align: center;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
 .palette-footer {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.65rem 1.25rem;
-  background: rgba(0, 0, 0, 0.25);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-emphasis);
+  border-top: 1px solid var(--color-border);
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .hint-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .hint-item kbd {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   padding: 0.05rem 0.3rem;
   font-size: 0.65rem;
-  color: #94a3b8;
-  font-family: monospace;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-standard) var(--ease-standard);
 }
 
 .fade-enter-from,

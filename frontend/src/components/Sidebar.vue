@@ -233,8 +233,8 @@ function handleCreateNote() {
 .sidebar {
   width: 280px;
   min-width: 280px;
-  background: var(--bg-sidebar, #16161a);
-  border-right: 1px solid var(--border-color, #2d2d38);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -244,88 +244,93 @@ function handleCreateNote() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border-color, #2d2d38);
+  padding: var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  color: var(--text-light, #f8fafc);
+  gap: var(--space-2);
+  color: var(--color-text);
   font-weight: 700;
   font-size: 1.125rem;
 }
 
 .brand-icon {
-  color: var(--accent-color, #818cf8);
+  color: var(--color-action);
 }
 
 .btn-icon {
   background: transparent;
   border: none;
-  color: var(--text-muted, #94a3b8);
-  padding: 0.4rem;
-  border-radius: 0.375rem;
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .btn-icon:hover {
-  background: var(--bg-hover, #2d3748);
-  color: var(--text-light, #f8fafc);
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
 }
 
 .search-box {
   position: relative;
-  margin: 1rem 1.25rem 0.5rem 1.25rem;
+  margin: var(--space-4) var(--space-4) var(--space-2);
 }
 
 .search-icon {
   position: absolute;
-  left: 0.75rem;
+  left: var(--space-3);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 .search-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-color, #2d2d38);
-  border-radius: 0.5rem;
-  padding: 0.5rem 2rem 0.5rem 2.25rem;
-  color: var(--text-light, #f8fafc);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-8);
+  color: var(--color-text);
   font-size: 0.875rem;
-  outline: none;
-  transition: all 0.15s ease;
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
 .search-input:focus {
-  border-color: var(--accent-color, #818cf8);
-  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
+  border-color: var(--color-action);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-action) 25%, transparent);
 }
 
 .clear-btn {
   position: absolute;
-  right: 0.5rem;
+  right: var(--space-2);
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   cursor: pointer;
   font-size: 1.1rem;
+  padding: var(--space-1);
+  line-height: 1;
 }
 
 .tag-cloud-bar {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 1.25rem;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-4);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -335,26 +340,29 @@ function handleCreateNote() {
 }
 
 .tag-pill {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   padding: 0.15rem 0.5rem;
-  border-radius: 1rem;
-  font-size: 0.725rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+  min-height: 24px;
 }
 
 .tag-pill:hover {
-  background: rgba(99, 102, 241, 0.15);
-  color: #e2e8f0;
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
 }
 
 .tag-pill.active {
-  background: rgba(99, 102, 241, 0.3);
-  color: #818cf8;
-  border-color: #818cf8;
+  background: color-mix(in srgb, var(--color-action) 25%, transparent);
+  color: var(--color-action);
+  border-color: var(--color-action);
   font-weight: 600;
 }
 
@@ -362,9 +370,9 @@ function handleCreateNote() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.25rem 1.25rem 0.5rem 1.25rem;
+  padding: var(--space-1) var(--space-4) var(--space-2);
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .sort-label {
@@ -372,60 +380,66 @@ function handleCreateNote() {
 }
 
 .sort-select {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
-  color: #cbd5e1;
-  border-radius: 0.375rem;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.4rem;
-  font-size: 0.725rem;
-  outline: none;
+  font-size: 0.75rem;
   cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
 .sort-select:focus {
-  border-color: #818cf8;
+  border-color: var(--color-action);
 }
 
 .notes-container {
   flex: 1;
   overflow-y: auto;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
 }
 
 .section-label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.5rem 0.25rem 0.5rem;
+  padding: var(--space-2) var(--space-2) var(--space-1);
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .note-count {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-emphasis);
   padding: 0.1rem 0.4rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
 }
 
 .notes-empty {
-  padding: 2rem 1rem;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   font-size: 0.875rem;
 }
 
 .btn-create-inline {
-  margin-top: 0.75rem;
-  background: var(--accent-color, #818cf8);
-  color: white;
+  margin-top: var(--space-3);
+  background: var(--color-action);
+  color: var(--color-neutral-0);
   border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
   cursor: pointer;
+  min-height: 36px;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-create-inline:hover {
+  background: var(--color-action-hover);
 }
 
 .notes-list {
@@ -434,28 +448,29 @@ function handleCreateNote() {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .note-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.375rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.15s ease;
-  color: var(--text-muted, #94a3b8);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+  color: var(--color-text-muted);
 }
 
 .note-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-light, #f8fafc);
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
 }
 
 .note-item.active {
-  background: rgba(129, 140, 248, 0.15);
-  color: var(--accent-color, #818cf8);
+  background: color-mix(in srgb, var(--color-action) 20%, transparent);
+  color: var(--color-action);
   font-weight: 600;
 }
 
@@ -474,7 +489,7 @@ function handleCreateNote() {
 
 .note-path {
   font-size: 0.75rem;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -483,12 +498,19 @@ function handleCreateNote() {
 .btn-delete {
   background: transparent;
   border: none;
-  color: var(--text-dim, #64748b);
-  padding: 0.25rem;
-  border-radius: 0.25rem;
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   opacity: 0;
-  transition: all 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard),
+              opacity var(--duration-fast) var(--ease-standard);
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .note-item:hover .btn-delete {
@@ -496,15 +518,15 @@ function handleCreateNote() {
 }
 
 .btn-delete:hover {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.1);
+  color: var(--color-status-danger);
+  background: color-mix(in srgb, var(--color-status-danger) 12%, transparent);
 }
 
+/* Modal overlay — solid, no blur */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgb(0 0 0 / 72%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -512,59 +534,82 @@ function handleCreateNote() {
 }
 
 .modal-card {
-  background: var(--bg-surface, #1e1e24);
-  border: 1px solid var(--border-color, #2d2d38);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
   width: 360px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
 }
 
 .modal-card h3 {
-  margin: 0 0 0.5rem 0;
-  color: var(--text-light, #f8fafc);
+  margin: 0 0 var(--space-2);
+  color: var(--color-text);
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
 .modal-desc {
   font-size: 0.875rem;
-  color: var(--text-muted, #94a3b8);
-  margin-bottom: 1rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
 }
 
 .modal-input {
   width: 100%;
-  background: #111115;
-  border: 1px solid var(--border-color, #2d2d38);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  color: var(--text-light, #f8fafc);
-  margin-bottom: 1.25rem;
-  outline: none;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+  font-size: 0.875rem;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.modal-input:focus {
+  border-color: var(--color-action);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .btn-secondary {
   background: transparent;
-  border: 1px solid var(--border-color, #2d2d38);
-  color: var(--text-muted, #94a3b8);
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  min-height: 36px;
+  font-size: 0.875rem;
+  transition: border-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
 .btn-primary {
-  background: var(--accent-color, #818cf8);
-  color: white;
+  background: var(--color-action);
+  color: var(--color-neutral-0);
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 500;
+  font-size: 0.875rem;
+  min-height: 36px;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-action-hover);
 }
 
 .btn-primary:disabled {
@@ -573,12 +618,12 @@ function handleCreateNote() {
 }
 
 .sidebar-footer {
-  padding: 0.85rem 1rem;
-  border-top: 1px solid var(--border-color, #2d2d38);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--color-surface-emphasis);
 }
 
 .user-badge {
@@ -588,9 +633,9 @@ function handleCreateNote() {
 }
 
 .user-name {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-light, #f8fafc);
+  color: var(--color-text);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -598,7 +643,7 @@ function handleCreateNote() {
 
 .user-email {
   font-size: 0.75rem;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -607,18 +652,22 @@ function handleCreateNote() {
 .btn-logout {
   background: transparent;
   border: none;
-  color: var(--text-dim, #64748b);
+  color: var(--color-text-muted);
   cursor: pointer;
-  padding: 0.35rem;
-  border-radius: 4px;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s, background-color 0.2s;
+  min-width: 36px;
+  min-height: 36px;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
 }
 
 .btn-logout:hover {
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-status-danger);
+  background: color-mix(in srgb, var(--color-status-danger) 12%, transparent);
 }
 </style>
+

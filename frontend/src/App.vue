@@ -275,7 +275,8 @@ async function handleWikilinkNavigation(target: string) {
 </script>
 
 <style>
-/* DEPRECATED — removed by the component-migration issue. */
+/* Legacy token aliases — kept only while components still reference --bg-*, --text-*, --accent-*.
+   Remove this block once Issue #100 component migration is complete. */
 :root {
   --bg-main: var(--color-canvas);
   --bg-sidebar: var(--color-surface);
@@ -290,45 +291,40 @@ async function handleWikilinkNavigation(target: string) {
   --text-dim: var(--color-text-muted);
   --accent-color: var(--color-action);
   --accent-gradient: linear-gradient(135deg, var(--color-action) 0%, var(--color-action-hover) 100%);
-  --glass-blur: blur(16px);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   --font-heading: var(--font-sans);
   --font-body: var(--font-sans);
 }
 
-* {
+/* Global reset */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* Global focus ring — Issue #103 */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 body {
   font-family: var(--font-body);
-  background-color: var(--bg-main);
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.12) 0px, transparent 50%);
-  color: var(--text-main);
+  background-color: var(--color-canvas);
+  color: var(--color-text);
   height: 100vh;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-sm);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.4);
-}
+::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
 
 .app-layout {
   display: flex;
@@ -343,53 +339,50 @@ body {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-main);
+  background: var(--color-canvas);
 }
 
+/* Empty state */
 .empty-workspace-state {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .empty-card {
   text-align: center;
   max-width: 420px;
-  padding: 3rem 2.5rem;
-  background: var(--bg-surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--border-color);
-  border-radius: 1.25rem;
-  box-shadow: var(--glass-shadow);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  padding: var(--space-12) var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
+  transition: border-color var(--duration-standard) var(--ease-standard);
 }
 
 .empty-card:hover {
-  border-color: var(--border-glow);
-  transform: translateY(-2px);
+  border-color: var(--color-border-strong);
 }
 
 .empty-icon {
-  color: var(--accent-color);
-  margin-bottom: 1.25rem;
-  filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.3));
+  color: var(--color-action);
+  margin-bottom: var(--space-4);
 }
 
 .empty-card h2 {
   font-family: var(--font-heading);
-  color: var(--text-light);
+  color: var(--color-text);
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 .empty-card p {
-  font-size: 0.925rem;
-  color: var(--text-dim);
+  font-size: 1rem; /* was 0.925rem — spec §4 mandates ≥ 16px for prose */
+  color: var(--color-text-muted);
   line-height: 1.6;
 }
 </style>
