@@ -32,6 +32,7 @@
   - Typed Property Model Specification & Inference Matrix (`NotePropertyType` enum & decision record in `BACKLOG.md`)
   - Rebuildable Typed Property Projection (`note_properties` table, `NotePropertyProjector`, and drop-and-rebuild parity test `NotePropertyProjectionTest.php`)
   - Typed Properties API & Front-Matter Write-Through (`GET /api/workspaces/{w}/properties`, `POST` & `DELETE` note properties with disk write-through)
+  - Admin Workspace CRUD & Validated Vault Root (`POST /api/admin/workspaces`, `PUT`, `archive`, `VaultRootGuard` base path confinement & nesting collision protection)
 
 ---
 

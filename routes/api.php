@@ -31,6 +31,10 @@ Route::middleware('workspace.authorization')->group(function (): void {
         ]);
     });
 
+    Route::post('/admin/workspaces', [\App\Http\Controllers\AdminWorkspaceController::class, 'store']);
+    Route::put('/admin/workspaces/{workspace}', [\App\Http\Controllers\AdminWorkspaceController::class, 'update']);
+    Route::post('/admin/workspaces/{workspace}/archive', [\App\Http\Controllers\AdminWorkspaceController::class, 'archive']);
+
     Route::get('/workspaces/{workspace}/audit-logs', [AuditLogQueryController::class, 'index']);
     Route::get('/workspaces/{workspace}/export', [WorkspaceExportController::class, 'export']);
     Route::get('/workspaces/{workspace}/sync', [WorkspaceSyncController::class, 'sync']);
