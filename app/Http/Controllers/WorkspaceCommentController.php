@@ -121,6 +121,10 @@ final class WorkspaceCommentController extends Controller
             return response()->json(['message' => 'Comment not found.'], 404);
         }
 
+        if ($comment->user_id !== $subject->user?->id && ! $subject->isAdmin) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
         $comment->delete();
 
         return response()->json(['message' => 'Comment deleted.']);
