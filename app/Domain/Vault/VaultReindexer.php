@@ -19,6 +19,7 @@ final class VaultReindexer
         private readonly VaultPathGuard $paths = new VaultPathGuard,
         private readonly NoteProjector $projector = new NoteProjector,
         private readonly WikilinkProjector $wikilinks = new WikilinkProjector,
+        private readonly NoteRevisions $revisions = new NoteRevisions,
     ) {}
 
     /**
@@ -117,7 +118,8 @@ final class VaultReindexer
             }
 
             $document = MarkdownDocument::parse($raw, $this->fallbackTitle($relative));
-            $this->projector->project($workspace, $relative, $document);
+            $note = $this->projector->project($workspace, $relative, $document);
+            $this->revisions->recordRevision($note, $raw);
             $count++;
 
         }

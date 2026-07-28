@@ -54,10 +54,16 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/search', WorkspaceSearchController::class);
     Route::get('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'index']);
     Route::post('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'store']);
+    Route::post('/workspaces/{workspace}/notes/from-template', [\App\Http\Controllers\WorkspaceTemplateController::class, 'createFromTemplate']);
+    Route::match(['get', 'post'], '/workspaces/{workspace}/daily/{date?}', [\App\Http\Controllers\WorkspaceTemplateController::class, 'dailyNote']);
     Route::get('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'show']);
     Route::put('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'update']);
     Route::post('/workspaces/{workspace}/notes/{note}/move', [WorkspaceNoteController::class, 'move']);
     Route::delete('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'destroy']);
+
+    Route::get('/workspaces/{workspace}/notes/{note}/revisions', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'index']);
+    Route::get('/workspaces/{workspace}/notes/{note}/revisions/{revision}', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'show']);
+    Route::post('/workspaces/{workspace}/notes/{note}/revisions/{revision}/restore', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'restore']);
 
     Route::get('/workspaces/{workspace}/properties', [\App\Http\Controllers\WorkspacePropertyController::class, 'index']);
     Route::post('/workspaces/{workspace}/notes/{note}/properties', [\App\Http\Controllers\WorkspacePropertyController::class, 'setProperty']);

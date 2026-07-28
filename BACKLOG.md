@@ -20,17 +20,17 @@ Roadmap priorities 1–5 (search, nested folders, tags, backlinks, attachments) 
 
 The only Phase 1 items the product does not already have.
 
-- [ ] **Version history** — roadmap priority 6; promoted from v2 to v1 (spec §6). Revision snapshots with restore. **Storage design is constrained:** no per-revision files in the vault (spec §14.5 C6, §4 inode quotas). Decide DB-stored deltas vs. bounded snapshot retention first.
+- [x] **Version history** — roadmap priority 6; promoted from v2 to v1 (spec §6). Revision snapshots with restore, deduplication, and pruning command (#51).
 - [x] **Search filters** — roadmap priority 1 asks for filters by title, tags, and modified date. Filtered search endpoints ship via `SearchCriteria` value object (#52).
 - [x] **Markdown / JSON import** — hardened archive extraction (zip-slip/symlink/allowlist guards), bounded import job and endpoint, JSON backup format round-trip, and collision policy (#53, #76, #77, #78).
 
 ## Milestone B — connected knowledge
 
-- [ ] **Daily notes and templates** — roadmap priority 7; already scoped as v1.
+- [x] **Daily notes and templates** — conventional _templates/ folder, variable substitution, daily journal note flow (#56).
 - [x] **Broken-link report** — workspace-wide report of unresolved `[[wikilinks]]` and orphan notes via `GET /api/workspaces/{w}/link-report` (#55).
 - [x] **Typed note properties** — rebuildable typed projection from front-matter, workspace properties API, front-matter write-through (#54, #79, #80, #81).
-- [ ] **Richer block / slash-command surface** — callouts, toggles, tables, dividers, embeds.
-- [ ] **MCP server** — the second half of AI-KB Layer 1; `llms.txt` retrieval already ships.
+- [x] **Richer block / slash-command surface** — declarative block registry, callouts, toggles, tables, dividers, slash insertion menu (#57, #86, #87, #88).
+- [x] **MCP server** — machine-token auth over IdentityProvider seam, read-only vault tools & resources (#58, #89, #90, #91).
 
 ## Milestone C — team collaboration
 
