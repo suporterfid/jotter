@@ -14,6 +14,10 @@ enum AuditEvent: string
     case VAULT_ROOT_REJECTED = 'vault.root_rejected';
     case WORKSPACE_ARCHIVED = 'workspace.archived';
 
+    case MEMBERSHIP_GRANTED = 'membership.granted';
+    case MEMBERSHIP_UPDATED = 'membership.updated';
+    case MEMBERSHIP_REVOKED = 'membership.revoked';
+
     case ATTACHMENT_CREATED = 'attachment.created';
     case ATTACHMENT_DELETED = 'attachment.deleted';
 
