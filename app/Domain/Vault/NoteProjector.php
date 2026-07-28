@@ -15,6 +15,7 @@ final class NoteProjector
 {
     public function __construct(
         private readonly WikilinkProjector $wikilinks = new WikilinkProjector,
+        private readonly NotePropertyProjector $properties = new NotePropertyProjector,
     ) {}
 
     public function project(Workspace $workspace, string $relativePath, MarkdownDocument $document): Note
@@ -35,6 +36,8 @@ final class NoteProjector
             );
 
             $this->syncTags($workspace, $note, $document->tags);
+
+            $this->properties->project($note, $document->frontmatter);
 
             $this->wikilinks->project($workspace, $note, $document->body);
 
