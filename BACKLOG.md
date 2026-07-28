@@ -68,6 +68,35 @@ Tracked in **#96**. Today the product ships four unrelated visual treatments (SP
 
 ---
 
+## Decision Record — Typed Property Model (Issue #79)
+
+The property model projects YAML front-matter key-value pairs into typed, indexed MySQL storage (`note_properties`) while keeping Markdown files on disk as the single source of truth.
+
+### 1. Schema & Data Storage Shape
+- **Table**: `note_properties` (`id`, `note_id`, `name`, `type`, `value_string`, `value_numeric`, `value_boolean`, `value_datetime`, `value_json`, `created_at`, `updated_at`).
+- **Indexes**: `(note_id, name)` unique key; composite search indexes on `(name, value_string)`, `(name, value_numeric)`, `(name, value_boolean)`, `(name, value_datetime)`.
+
+### 2. Type Inference Matrix
+| YAML Input Pattern | Inferred Type | Stored Column |
+| :--- | :--- | :--- |
+| `"active"`, `"high"` | `string` | `value_string` |
+| `42`, `3.14159`, `-10` | `numeric` | `value_numeric` |
+| `true`, `false` | `boolean` | `value_boolean` |
+| `"2026-07-28"`, `"2026-07-28T10:00:00Z"` | `datetime` | `value_datetime` |
+| `["apple", "banana"]`, `[1, 2, 3]` | `list` | `value_json` |
+| Nested objects / dicts | `json` | `value_json` |
+
+### 3. Mixed-Type Conflict Resolution Policy
+If Note A assigns string `"2"` to property `priority` and Note B assigns integer `2` to `priority`:
+- Both rows exist independently in `note_properties`. Note A populates `value_string`, Note B populates `value_numeric`.
+- Query filters match within their targeted typed column without forcing lossy type coercions or throwing runtime errors.
+
+### 4. Tag Relationship
+- Note tags remain first-class in `tags` and `note_tags`.
+- Front-matter `tags:` array continues to project into `tags` / `note_tags`. Property projection is strictly additive.
+
+---
+
 ## Needs a decision (spec §14.5)
 
 These block the roadmap items above. Until each is answered, the constraint wins.
