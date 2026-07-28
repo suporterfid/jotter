@@ -27,8 +27,8 @@ The only Phase 1 items the product does not already have.
 ## Milestone B — connected knowledge
 
 - [ ] **Daily notes and templates** — roadmap priority 7; already scoped as v1.
-- [ ] **Broken-link report** — workspace-wide report of unresolved `[[wikilinks]]`. The unresolved rows already exist in `note_links`; this is the reporting surface.
-- [ ] **Typed note properties** — roadmap priority 3's missing half. Front-matter is parsed and projected, but there is no typed property layer. Gates the metadata table view.
+- [x] **Broken-link report** — workspace-wide report of unresolved `[[wikilinks]]` and orphan notes via `GET /api/workspaces/{w}/link-report` (#55).
+- [x] **Typed note properties** — rebuildable typed projection from front-matter, workspace properties API, front-matter write-through (#54, #79, #80, #81).
 - [ ] **Richer block / slash-command surface** — callouts, toggles, tables, dividers, embeds.
 - [ ] **MCP server** — the second half of AI-KB Layer 1; `llms.txt` retrieval already ships.
 
