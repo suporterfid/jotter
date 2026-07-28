@@ -11,6 +11,8 @@ enum AuditEvent: string
     case AUTH_FORBIDDEN = 'auth.forbidden';
 
     case VAULT_PATH_TRAVERSAL_REJECTED = 'vault.path_traversal_rejected';
+    case VAULT_ROOT_REJECTED = 'vault.root_rejected';
+    case WORKSPACE_ARCHIVED = 'workspace.archived';
 
     case ATTACHMENT_CREATED = 'attachment.created';
     case ATTACHMENT_DELETED = 'attachment.deleted';
