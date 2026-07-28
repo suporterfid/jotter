@@ -23,6 +23,10 @@ enum AuditEvent: string
     case USER_REACTIVATED = 'user.reactivated';
     case USER_PASSWORD_RESET = 'user.password_reset';
 
+    case MCP_CONNECTED = 'mcp.connected';
+    case MCP_METHOD_CALLED = 'mcp.method_called';
+    case MCP_AUTH_FAILED = 'mcp.auth_failed';
+
     case ATTACHMENT_CREATED = 'attachment.created';
     case ATTACHMENT_DELETED = 'attachment.deleted';
 
