@@ -58,3 +58,4 @@ Six roadmap items conflict with hard constraints and are parked pending decision
 1. Fix the failing Playwright spec and restore green CI; add branch protection so §0.3 is enforced rather than conventional.
 2. Resolve the §14.5 decisions that block planning — C1, C2, and C6 gate the nearest work.
 3. Then Milestone A's remainder: version history (once C6 is decided), search filters, import.
+4. **Visual identity (#96)** — cross-cutting presentation workstream adopting a shared dark/purple design system with semantic tokens, Open Sans, and WCAG 2.2 AA across the SPA, the Laravel shell, and the published static site. Sequenced independently of Milestones A–D and blocked on none of the §14.5 decisions, but gated behind item 1 like every other PR. See `BACKLOG.md`.
