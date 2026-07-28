@@ -36,6 +36,7 @@
   - Admin Membership & Role Management (`GET/POST/PUT/DELETE /api/admin/workspaces/{w}/members`, role definitions, last owner protection)
   - Admin Local User Management (`GET/POST /api/admin/users`, deactivate, reactivate, password reset, self-service change password, provider gating)
   - Admin Administration UI (`frontend/src/components/AdminPanel.vue`, Workspaces/Members/Users tabs, modal & Vitest test suite)
+  - Declarative Block Registry (`app/Domain/Vault/BlockRegistry.php`, `frontend/src/services/blockRegistry.ts`, PHPUnit `BlockRegistryTest` & Vitest `blockRegistry.spec.ts`)
 
 ---
 
