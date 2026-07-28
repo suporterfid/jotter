@@ -2,6 +2,17 @@ import { expect, test } from '@playwright/test'
 
 test.describe('Jotter Notes E2E Journey', () => {
   test('creates, edits, renders wikilinks, and searches notes', async ({ page }) => {
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') console.log(`[browser console] ${msg.text()}`)
+    })
+    page.on('pageerror', (err) => console.log(`[browser pageerror] ${err.message}`))
+    page.on('requestfailed', (req) => console.log(`[requestfailed] ${req.method()} ${req.url()} ${req.failure()?.errorText}`))
+    page.on('response', (res) => {
+      if (res.url().includes('/api/') && res.status() >= 400) {
+        console.log(`[api error] ${res.status()} ${res.request().method()} ${res.url()}`)
+      }
+    })
+
     await page.goto('/')
 
     const loginEmail = page.locator('[data-testid="login-email"]')
