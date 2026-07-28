@@ -31,6 +31,11 @@ final class AuditLogQueryController extends Controller
         }
 
         $logs = AuditLog::query()
+            ->where('tenant_id', $workspace->tenant_id)
+            ->where(function ($q) use ($workspaceId) {
+                $q->where('workspace_id', $workspaceId)
+                    ->orWhereNull('workspace_id');
+            })
             ->latest('id')
             ->limit(50)
             ->get()

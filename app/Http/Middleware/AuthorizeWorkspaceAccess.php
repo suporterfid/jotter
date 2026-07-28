@@ -27,16 +27,17 @@ final class AuthorizeWorkspaceAccess
         $subject = $this->identityProvider->resolveIdentity($request);
 
         if (! $subject) {
-            AuditLog::create([
-                'actor_subject_id' => null,
-                'event' => 'auth.rejected',
-                'metadata' => [
+            (new \App\Domain\Audit\AuditRecorder)->record(
+                \App\Domain\Audit\AuditEvent::AUTH_UNAUTHORIZED,
+                null,
+                null,
+                null,
+                [
                     'reason' => 'unauthenticated',
                     'path' => $request->path(),
                     'method' => $request->method(),
-                ],
-                'ip_address' => $request->ip(),
-            ]);
+                ]
+            );
 
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
@@ -56,18 +57,17 @@ final class AuthorizeWorkspaceAccess
             }
 
             if ($workspaceId && ! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-                AuditLog::create([
-                    'tenant_id' => $tenantId,
-                    'workspace_id' => $workspaceId,
-                    'actor_subject_id' => $subject->subjectId,
-                    'event' => 'auth.rejected',
-                    'metadata' => [
+                (new \App\Domain\Audit\AuditRecorder)->record(
+                    \App\Domain\Audit\AuditEvent::AUTH_FORBIDDEN,
+                    $tenantId,
+                    $workspaceId,
+                    $subject->subjectId,
+                    [
                         'reason' => 'unauthorized_workspace',
                         'path' => $request->path(),
                         'method' => $request->method(),
-                    ],
-                    'ip_address' => $request->ip(),
-                ]);
+                    ]
+                );
 
                 return response()->json(['message' => 'Forbidden workspace access.'], 403);
             }
