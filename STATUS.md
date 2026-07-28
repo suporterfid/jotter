@@ -61,6 +61,10 @@
   - Milestone A: Hardened archive extraction (#76 — `VaultExtractor` domain service with zip-slip, symlink, path-aliasing, type allowlist, and size/entry bounds)
   - Milestone A: Bounded import job and upload endpoint (#77 — `VaultImportCommand` Artisan command, `POST /api/workspaces/{w}/import` endpoint, staged upload cleanup)
   - Milestone A: Collision policy and JSON backup format round-trip (#78 — `VaultBackupRoundTripTest` equivalence suite, JSON v1.0 backup export/import support, configurable overwrite collision policy)
+  - Milestone B: Typed property model design decisions (#79 — recorded in `BACKLOG.md`)
+  - Milestone B: Rebuildable typed property projection (#80 — `note_properties` schema, `NotePropertyProjector`, `VaultReindexer` integration, drop-and-rebuild test)
+  - Milestone B: Expose properties in notes API (#81 — `GET /api/workspaces/{w}/properties`, front-matter write-through via `VaultStorage`)
+  - Milestone B: Broken-link and orphan report (#55 — `GET /api/workspaces/{w}/link-report` endpoint returning unresolved wikilinks and orphan notes)
 
 ---
 

@@ -50,6 +50,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/audit-logs', [AuditLogQueryController::class, 'index']);
     Route::get('/workspaces/{workspace}/export', [WorkspaceExportController::class, 'export']);
     Route::get('/workspaces/{workspace}/sync', [WorkspaceSyncController::class, 'sync']);
+    Route::get('/workspaces/{workspace}/link-report', [\App\Http\Controllers\WorkspaceLinkReportController::class, 'report']);
     Route::get('/workspaces/{workspace}/search', WorkspaceSearchController::class);
     Route::get('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'index']);
     Route::post('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'store']);

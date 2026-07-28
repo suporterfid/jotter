@@ -26,7 +26,8 @@ final class NotePropertyProjector
                     'name' => (string) $key,
                 ],
                 [
-                    'type' => $inferred['type'],
+                    'workspace_id' => $note->workspace_id,
+                    'type' => $inferred['type'] instanceof NotePropertyType ? $inferred['type']->value : $inferred['type'],
                     'value_string' => $inferred['value_string'],
                     'value_numeric' => $inferred['value_numeric'],
                     'value_boolean' => $inferred['value_boolean'],
@@ -76,7 +77,7 @@ final class NotePropertyProjector
                 $result['value_datetime'] = Carbon::parse($value)->toDateTimeString();
             } else {
                 $result['type'] = NotePropertyType::STRING;
-                $result['value_string'] = mb_substr($value, 0, 255);
+                $result['value_string'] = $value;
             }
         } elseif (is_array($value)) {
             if (array_is_list($value)) {
@@ -87,7 +88,7 @@ final class NotePropertyProjector
             $result['value_json'] = $value;
         } else {
             $result['type'] = NotePropertyType::STRING;
-            $result['value_string'] = mb_substr((string) $value, 0, 255);
+            $result['value_string'] = (string) $value;
         }
 
         return $result;
