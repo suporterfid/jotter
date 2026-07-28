@@ -4,41 +4,142 @@ namespace App\Domain\Vault;
 
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
-use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Models\Workspace;
+use InvalidArgumentException;
+use RuntimeException;
 use ZipArchive;
 
 final class VaultExtractor
 {
-    public const MAX_ENTRIES = 10000;
+    private const MAX_ENTRY_COUNT = 5000;
 
-    public const MAX_TOTAL_BYTES = 524288000; // 500 MB
+    private const MAX_TOTAL_UNCOMPRESSED_SIZE = 104_857_600; // 100 MB
+
+    private const ALLOWED_EXTENSIONS = [
+        'md', 'markdown', 'txt',
+        'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp',
+        'pdf', 'json',
+    ];
+
+    private const DISALLOWED_EXTENSIONS = [
+        'php', 'phtml', 'php3', 'php4', 'php5', 'phar', 'inc',
+        'sh', 'bash', 'exe', 'bat', 'cmd', 'js', 'py', 'pl', 'rb',
+    ];
 
     public function __construct(
-        private readonly VaultPathGuard $pathGuard = new VaultPathGuard,
-        private readonly AuditRecorder $recorder = new AuditRecorder,
+        private readonly VaultPathGuard $pathGuard,
+        private readonly AuditRecorder $auditRecorder
     ) {}
+
+    /**
+     * Extracts and validates an archive (ZIP or JSON backup) into the workspace vault.
+     *
+     * @return array{extracted: list<string>, skipped: list<string>, errors: list<string>}
+     */
+    public function extract(Workspace $workspace, string $archivePath, bool $overwrite = false): array
+    {
+        if (! file_exists($archivePath)) {
+            throw new InvalidArgumentException("Archive file does not exist: {$archivePath}");
+        }
+
+        $ext = strtolower(pathinfo($archivePath, PATHINFO_EXTENSION));
+        if ($ext === 'json') {
+            return $this->processJsonBackup($workspace, $archivePath, $overwrite);
+        }
+
+        $zip = new ZipArchive;
+        $openResult = $zip->open($archivePath);
+        if ($openResult !== true) {
+            throw new RuntimeException("Failed to open zip archive, error code: {$openResult}");
+        }
+
+        try {
+            return $this->processZip($workspace, $zip, $overwrite);
+        } finally {
+            $zip->close();
+        }
+    }
 
     /**
      * @return array{extracted: list<string>, skipped: list<string>, errors: list<string>}
      */
-    public function extract(Workspace $workspace, string $zipPath, bool $overwrite = false): array
+    private function processJsonBackup(Workspace $workspace, string $jsonPath, bool $overwrite): array
     {
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath) !== true) {
-            throw new \RuntimeException("Unable to open ZIP archive [{$zipPath}].");
+        $raw = file_get_contents($jsonPath);
+        $data = json_decode($raw, true);
+
+        if (! is_array($data) || ! isset($data['version'])) {
+            throw new InvalidArgumentException("Invalid JSON backup schema: missing version header");
         }
 
+        if ($data['version'] !== '1.0') {
+            throw new InvalidArgumentException("Unsupported JSON backup format version: {$data['version']}");
+        }
+
+        $notes = $data['notes'] ?? [];
         $extracted = [];
         $skipped = [];
         $errors = [];
-        $totalBytes = 0;
-        $numFiles = $zip->numFiles;
 
-        if ($numFiles > self::MAX_ENTRIES) {
-            $zip->close();
-            throw new \RuntimeException("Archive exceeds maximum entry count of ".self::MAX_ENTRIES.".");
+        foreach ($notes as $note) {
+            $name = $note['path'] ?? null;
+            $content = $note['content'] ?? '';
+
+            if (! $name) {
+                continue;
+            }
+
+            try {
+                $resolvedPath = $this->pathGuard->resolve($workspace, $name, mustExist: false, mustBeMarkdown: false);
+            } catch (\Throwable $e) {
+                $errors[] = "Zip-slip path traversal rejected: {$name}";
+                $skipped[] = $name;
+                continue;
+            }
+
+            if (! $overwrite && file_exists($resolvedPath)) {
+                $skipped[] = $name;
+                continue;
+            }
+
+            $destDir = dirname($resolvedPath);
+            if (! is_dir($destDir)) {
+                mkdir($destDir, 0755, true);
+            }
+
+            file_put_contents($resolvedPath, $content);
+            $extracted[] = $name;
         }
+
+        return [
+            'extracted' => $extracted,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * @return array{extracted: list<string>, skipped: list<string>, errors: list<string>}
+     */
+    private function processZip(Workspace $workspace, ZipArchive $zip, bool $overwrite): array
+    {
+        $numFiles = $zip->numFiles;
+        if ($numFiles > self::MAX_ENTRY_COUNT) {
+            $this->auditRecorder->record(
+                AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
+                $workspace->tenant_id,
+                $workspace->id,
+                null,
+                ['reason' => 'max_entry_count_exceeded', 'count' => $numFiles]
+            );
+            throw new RuntimeException("Archive exceeds maximum allowed entry count of ".self::MAX_ENTRY_COUNT);
+        }
+
+        $totalSize = 0;
+        $validEntries = [];
+        $errors = [];
+        $skipped = [];
+        $extracted = [];
 
         for ($i = 0; $i < $numFiles; $i++) {
             $stat = $zip->statIndex($i);
@@ -46,78 +147,123 @@ final class VaultExtractor
                 continue;
             }
 
-            $entryName = $stat['name'];
-            $size = $stat['size'];
+            $name = $stat['name'];
 
-            $totalBytes += $size;
-            if ($totalBytes > self::MAX_TOTAL_BYTES) {
-                $zip->close();
-                throw new \RuntimeException("Archive exceeds maximum uncompressed size bound of 500 MB.");
-            }
-
-            // Skip directory entries ending in slash
-            if (str_ends_with($entryName, '/')) {
+            if (str_ends_with($name, '/')) {
                 continue;
             }
 
-            // Path Traversal & Zip-Slip Protection
-            try {
-                $absolutePath = $this->pathGuard->resolve(
-                    $workspace,
-                    $entryName,
-                    mustExist: false,
-                    mustBeMarkdown: false
-                );
-            } catch (PathTraversalRejected) {
-                $errors[] = "Zip-slip / path traversal rejected for [{$entryName}]";
-                $this->recorder->record(
+            $externalAttr = 0;
+            $opsys = 0;
+            $zip->getExternalAttributesIndex($i, $opsys, $externalAttr);
+            if ($opsys === 3 && (($externalAttr >> 16) & 0170000) === 0120000) {
+                $this->auditRecorder->record(
                     AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
                     $workspace->tenant_id,
                     $workspace->id,
                     null,
-                    ['attempted_entry' => $entryName, 'reason' => 'zip_slip_rejected']
+                    ['reason' => 'symlink_entry_prohibited', 'target' => $name]
                 );
+                $errors[] = "Symlink entry prohibited: {$name}";
+                $skipped[] = $name;
                 continue;
             }
 
-            // Type allowlist
-            $ext = strtolower(pathinfo($entryName, PATHINFO_EXTENSION));
-            $allowedExtensions = ['md', 'markdown', 'txt', 'png', 'jpg', 'jpeg', 'svg', 'gif', 'webp', 'pdf', 'json'];
-
-            if (! in_array($ext, $allowedExtensions, true)) {
-                $skipped[] = "Disallowed file extension [{$ext}] for [{$entryName}]";
+            if (str_contains($name, "\0") || str_contains($name, '\\') || preg_match('/\.[ \.]+$|^\.\.|\/\.\.\//', $name)) {
+                $this->auditRecorder->record(
+                    AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
+                    $workspace->tenant_id,
+                    $workspace->id,
+                    null,
+                    ['reason' => 'invalid_path_encoding', 'target' => $name]
+                );
+                $errors[] = "Invalid or aliased path rejected: {$name}";
+                $skipped[] = $name;
                 continue;
             }
 
-            if (is_file($absolutePath) && ! $overwrite) {
-                $skipped[] = "Collision: file already exists [{$entryName}] (overwrite=false)";
+            try {
+                $resolvedPath = $this->pathGuard->resolve($workspace, $name, mustExist: false, mustBeMarkdown: false);
+            } catch (\Throwable $e) {
+                $this->auditRecorder->record(
+                    AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
+                    $workspace->tenant_id,
+                    $workspace->id,
+                    null,
+                    ['reason' => 'path_traversal_zip_slip', 'target' => $name]
+                );
+                $errors[] = "Zip-slip path traversal rejected: {$name}";
+                $skipped[] = $name;
                 continue;
             }
 
-            $parentDir = dirname($absolutePath);
-            if (! is_dir($parentDir)) {
-                @mkdir($parentDir, 0755, true);
-            }
-
-            $stream = $zip->getStream($entryName);
-            if (! $stream) {
-                $errors[] = "Failed to open stream for [{$entryName}]";
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            if (in_array($ext, self::DISALLOWED_EXTENSIONS, true) || ! in_array($ext, self::ALLOWED_EXTENSIONS, true)) {
+                $this->auditRecorder->record(
+                    AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
+                    $workspace->tenant_id,
+                    $workspace->id,
+                    null,
+                    ['reason' => 'disallowed_extension', 'extension' => $ext, 'target' => $name]
+                );
+                $errors[] = "Disallowed file type: {$name}";
+                $skipped[] = $name;
                 continue;
             }
 
-            $outStream = fopen($absolutePath, 'wb');
-            if ($outStream) {
-                stream_copy_to_stream($stream, $outStream);
-                fclose($outStream);
-                $extracted[] = $this->pathGuard->toRelative($workspace, $absolutePath);
-            } else {
-                $errors[] = "Failed to write target file for [{$entryName}]";
+            if (! $overwrite && file_exists($resolvedPath)) {
+                $skipped[] = $name;
+                continue;
             }
 
-            fclose($stream);
+            $uncompressedSize = $stat['size'];
+            $totalSize += $uncompressedSize;
+
+            if ($totalSize > self::MAX_TOTAL_UNCOMPRESSED_SIZE) {
+                $this->auditRecorder->record(
+                    AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
+                    $workspace->tenant_id,
+                    $workspace->id,
+                    null,
+                    ['reason' => 'max_total_size_exceeded', 'total_size' => $totalSize]
+                );
+                throw new RuntimeException("Archive total size exceeds maximum limit of ".self::MAX_TOTAL_UNCOMPRESSED_SIZE." bytes");
+            }
+
+            $validEntries[] = [
+                'index' => $i,
+                'name' => $name,
+                'destination' => $resolvedPath,
+            ];
         }
 
-        $zip->close();
+        foreach ($validEntries as $entry) {
+            $stream = $zip->getStream($entry['name']);
+            if (! $stream) {
+                $errors[] = "Failed to stream entry: {$entry['name']}";
+                $skipped[] = $entry['name'];
+                continue;
+            }
+
+            $destDir = dirname($entry['destination']);
+            if (! is_dir($destDir)) {
+                mkdir($destDir, 0755, true);
+            }
+
+            $outStream = fopen($entry['destination'], 'wb');
+            if (! $outStream) {
+                fclose($stream);
+                $errors[] = "Failed to open output destination: {$entry['destination']}";
+                $skipped[] = $entry['name'];
+                continue;
+            }
+
+            stream_copy_to_stream($stream, $outStream);
+            fclose($stream);
+            fclose($outStream);
+
+            $extracted[] = $entry['name'];
+        }
 
         return [
             'extracted' => $extracted,

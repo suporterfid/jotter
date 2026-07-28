@@ -209,8 +209,9 @@ async function handleCreateNote(path: string) {
     const created = await createNote(activeWorkspaceId.value, path, initialContent)
     await refreshNotesList()
     await handleSelectNote(created.id)
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to create note:', err)
+    alert(`Failed to create note: ${err.response?.data?.message || err.message || 'Unknown error'}`)
   }
 }
 

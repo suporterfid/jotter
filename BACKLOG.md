@@ -21,9 +21,8 @@ Roadmap priorities 1–5 (search, nested folders, tags, backlinks, attachments) 
 The only Phase 1 items the product does not already have.
 
 - [ ] **Version history** — roadmap priority 6; promoted from v2 to v1 (spec §6). Revision snapshots with restore. **Storage design is constrained:** no per-revision files in the vault (spec §14.5 C6, §4 inode quotas). Decide DB-stored deltas vs. bounded snapshot retention first.
-- [ ] **Version history** — roadmap priority 6; promoted from v2 to v1 (spec §6). Revision snapshots with restore. **Storage design is constrained:** no per-revision files in the vault (spec §14.5 C6, §4 inode quotas). Decide DB-stored deltas vs. bounded snapshot retention first.
 - [x] **Search filters** — roadmap priority 1 asks for filters by title, tags, and modified date. Filtered search endpoints ship via `SearchCriteria` value object (#52).
-- [ ] **Markdown / JSON import** — export ships; the inbound half does not. Must route through `VaultPathGuard` and the reindex path.
+- [x] **Markdown / JSON import** — hardened archive extraction (zip-slip/symlink/allowlist guards), bounded import job and endpoint, JSON backup format round-trip, and collision policy (#53, #76, #77, #78).
 
 ## Milestone B — connected knowledge
 
