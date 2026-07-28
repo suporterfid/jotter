@@ -1,0 +1,60 @@
+/*
+ * Semantic Design Tokens for Jotter SPA.
+ * Specification Rule: Components must reference semantic tokens ONLY.
+ * Palette tokens (--color-purple-*) are for theme construction only.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Palette — theme construction only. Components must not reference these. */
+  --color-neutral-0: #ffffff;
+  --color-neutral-100: #ebebeb;
+  --color-neutral-200: #d3d3d3;
+  --color-neutral-300: #d0d0d0;
+  --color-neutral-500: #b0b0b0;
+  --color-neutral-950: #000000;
+
+  --color-purple-500: #814dde;
+  --color-purple-800: #1f0d69;
+  --color-purple-900: #1b0f46;
+  --color-purple-950: #1a0a3e;
+
+  /* Semantic — the only tokens components may use. */
+  --color-canvas: var(--color-neutral-950);
+  --color-surface: var(--color-purple-950);
+  --color-surface-emphasis: var(--color-purple-900);
+  --color-text: var(--color-neutral-100);
+  --color-text-muted: var(--color-neutral-500);
+  --color-text-inverse: var(--color-neutral-950);
+  --color-border: rgb(208 208 208 / 24%);
+  --color-border-strong: rgb(211 211 211 / 48%);
+  --color-action: var(--color-purple-500);
+  --color-action-hover: var(--color-purple-800);
+  --color-focus: var(--color-purple-500);
+
+  /* Status extension tokens (verified ≥ 4.5:1 against canvas & surface) */
+  --color-status-danger: #ff5252;
+  --color-status-warning: #ffb74d;
+  --color-status-success: #66bb6a;
+  --color-status-info: #4fc3f7;
+
+  /* Typography */
+  --font-sans: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono",
+    monospace;
+
+  /* Spacing */
+  --space-1: 0.25rem;  --space-2: 0.5rem;   --space-3: 0.75rem;
+  --space-4: 1rem;     --space-6: 1.5rem;   --space-8: 2rem;
+  --space-12: 3rem;    --space-16: 4rem;    --space-24: 6rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem; --radius-md: 0.5rem;
+  --radius-lg: 0.75rem; --radius-pill: 999px;
+
+  /* Motion */
+  --duration-fast: 120ms; --duration-standard: 180ms; --duration-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
