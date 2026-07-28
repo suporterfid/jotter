@@ -21,7 +21,11 @@
 - **PR7 — Auth Abstraction**: `IdentityProvider` seam with `LocalIdentityProvider` and a `GrandpaSSOnIdentityProvider` adapter; `AuthorizeWorkspaceAccess` replaced the fail-closed placeholder.
 - **PR8 — Attachment Management**: Uploads to vault `_resources/` with a 20 MB type/size allowlist and streaming endpoints.
 - **PR9 — Deployment Hardening**: Shared-hosting deployment, AutoSSL, production `.env` configuration.
-- **Post-v0 enhancements**: command palette, drag & drop uploads, GFM task lists, code-block copy, tag cloud + sorting, note graph view, sync endpoint, ZIP export, audit-log query, server-side CommonMark rendering + XSS sanitization, `JobDispatcher` seam, WebDAV endpoint, static-site publishing, `llms.txt` (AI-KB Layer 1).
+- **Post-v0 enhancements**: command palette, drag & drop uploads, GFM task lists, code-block copy, tag cloud + sorting, note graph view, sync endpoint, ZIP export, audit-log query,  - Server-Side CommonMark Renderer & XSS Sanitizer (`MarkdownServerRenderer.php`)
+  - Background Job Dispatcher Seam (`JobDispatcher` + `LocalJobDispatcher`)
+  - WebDAV Adapter (`WebDavController`) with `PROPFIND`, `GET`, `PUT`, `MKCOL`, `DELETE`, `OPTIONS`
+  - Note Rename & Relocation Endpoint (`POST /api/workspaces/{w}/notes/{n}/move`)
+  - Case-Insensitive Wikilink Resolution Policy (`WikilinkProjector.php`), static-site publishing, `llms.txt` (AI-KB Layer 1).
 
 ---
 
