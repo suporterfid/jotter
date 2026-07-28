@@ -44,4 +44,9 @@ class Note extends Model
     {
         return $this->belongsToMany(Tag::class, 'note_tags');
     }
+
+    public function properties(): HasMany
+    {
+        return $this->hasMany(NoteProperty::class);
+    }
 }
