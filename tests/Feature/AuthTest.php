@@ -62,7 +62,7 @@ class AuthTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertDatabaseHas('audit_log', [
             'actor_subject_id' => (string) $user->id,
-            'event' => 'auth.login.success',
+            'event' => \App\Domain\Audit\AuditEvent::AUTH_LOGIN_SUCCESS->value,
         ]);
     }
 
@@ -83,7 +83,7 @@ class AuthTest extends TestCase
 
         $this->assertGuest();
         $this->assertDatabaseHas('audit_log', [
-            'event' => 'auth.login.failed',
+            'event' => \App\Domain\Audit\AuditEvent::AUTH_LOGIN_FAILURE->value,
         ]);
     }
 
@@ -102,7 +102,7 @@ class AuthTest extends TestCase
             ->assertJson(['message' => 'Unauthenticated.']);
 
         $this->assertDatabaseHas('audit_log', [
-            'event' => 'auth.rejected',
+            'event' => \App\Domain\Audit\AuditEvent::AUTH_UNAUTHORIZED->value,
             'actor_subject_id' => null,
         ]);
     }
@@ -143,7 +143,7 @@ class AuthTest extends TestCase
             'tenant_id' => $tenant->id,
             'workspace_id' => $workspace->id,
             'actor_subject_id' => (string) $user->id,
-            'event' => 'auth.rejected',
+            'event' => \App\Domain\Audit\AuditEvent::AUTH_FORBIDDEN->value,
         ]);
     }
 
