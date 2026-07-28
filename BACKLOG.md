@@ -21,7 +21,7 @@ Found during a review of whether `main` is 100% adherent to the roadmap and this
 Found via a codebase audit of authorization, path safety, and identity-provider code. Each has a GitHub issue; worked one PR at a time.
 
 - ~~**#145 — comment deletion had no ownership check.**~~ **Closed**, merged via PR #149. Any workspace member could delete any other member's comment. Fixed with an author-or-admin check plus regression tests.
-- **#146 — MCP `read_note` calls undefined `VaultStorage::getNoteContent()`.** Fatal error on every call, breaking the tool entirely. Open.
+- ~~**#146 — MCP `read_note` calls undefined `VaultStorage::getNoteContent()`.**~~ **Closed**, merged via PR #150. Fatal error on every call; fixed to call `readContents()`.
 - **#147 — `GrandpaSSOnIdentityProvider` creates every new SSO user as an admin.** Privilege escalation; gated behind non-default `AUTH_PROVIDER=grandpasson`. Open.
 - **#148 — no branch protection on `main` requiring green CI before merge.** The mechanism behind #140's silent regression after #49. Open.
 
