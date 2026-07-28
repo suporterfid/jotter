@@ -127,11 +127,25 @@ final class WorkspaceNoteController extends Controller
      */
     private function metadata(Note $note): array
     {
+        $note->loadMissing('properties');
+        $properties = $note->properties->map(fn ($p) => [
+            'name' => $p->name,
+            'type' => $p->type instanceof \App\Domain\Vault\NotePropertyType ? $p->type->value : (string) $p->type,
+            'value' => match ($p->type) {
+                \App\Domain\Vault\NotePropertyType::BOOLEAN => $p->value_boolean,
+                \App\Domain\Vault\NotePropertyType::NUMERIC => $p->value_numeric,
+                \App\Domain\Vault\NotePropertyType::DATETIME => $p->value_datetime?->toIso8601String(),
+                \App\Domain\Vault\NotePropertyType::LIST, \App\Domain\Vault\NotePropertyType::JSON => $p->value_json,
+                default => $p->value_string,
+            },
+        ])->all();
+
         return [
             'id' => $note->id,
             'path' => $note->path,
             'title' => $note->title,
             'frontmatter' => $note->frontmatter,
+            'properties' => $properties,
             'updated_at' => $note->updated_at->toISOString(),
         ];
     }

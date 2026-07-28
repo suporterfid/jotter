@@ -42,6 +42,10 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/workspaces/{workspace}/notes/{note}/move', [WorkspaceNoteController::class, 'move']);
     Route::delete('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'destroy']);
 
+    Route::get('/workspaces/{workspace}/properties', [\App\Http\Controllers\WorkspacePropertyController::class, 'index']);
+    Route::post('/workspaces/{workspace}/notes/{note}/properties', [\App\Http\Controllers\WorkspacePropertyController::class, 'setProperty']);
+    Route::delete('/workspaces/{workspace}/notes/{note}/properties/{key}', [\App\Http\Controllers\WorkspacePropertyController::class, 'deleteProperty']);
+
     Route::get('/workspaces/{workspace}/attachments', [AttachmentController::class, 'index']);
     Route::post('/workspaces/{workspace}/attachments', [AttachmentController::class, 'store']);
     Route::get('/workspaces/{workspace}/attachments/{path}', [AttachmentController::class, 'show'])->where('path', '.*');
