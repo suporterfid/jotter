@@ -1,6 +1,11 @@
 # Jotter
 
+<p align="center">
+  <img src="assets/brand/wordmark.svg" alt="Jotter" width="280">
+</p>
+
 > Your pocket notebook — self-hosted, on the cPanel your grandpa never gave up.
+
 
 Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. Plain `.md` files, PHP + MySQL, your notes stay yours.
 

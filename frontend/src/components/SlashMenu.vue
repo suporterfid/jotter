@@ -105,39 +105,43 @@ defineExpose({ handleKeyDown })
   z-index: 1000;
 }
 .slash-menu-container {
-  background: #1e1e2e;
-  border: 1px solid #45475a;
-  border-radius: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   width: 260px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  color: #cdd6f4;
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text);
   overflow: hidden;
 }
 .slash-menu-header {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #a6adc8;
-  padding: 8px 12px;
-  border-bottom: 1px solid #313244;
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-emphasis);
 }
 .slash-menu-list {
   list-style: none;
   margin: 0;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
   max-height: 220px;
   overflow-y: auto;
 }
 .slash-menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
 }
-.slash-menu-item.selected {
-  background: #313244;
-  color: #cba6f7;
+.slash-menu-item.selected, .slash-menu-item:hover {
+  background: color-mix(in srgb, var(--color-action) 20%, transparent);
+  color: var(--color-text);
 }
 .slash-icon {
   font-size: 1rem;
@@ -152,12 +156,13 @@ defineExpose({ handleKeyDown })
 }
 .slash-syntax {
   font-size: 0.75rem;
-  color: #a6adc8;
+  color: var(--color-text-muted);
 }
 .slash-no-results {
-  padding: 10px 12px;
+  padding: var(--space-3);
   font-size: 0.85rem;
-  color: #a6adc8;
+  color: var(--color-text-muted);
   text-align: center;
 }
 </style>
+

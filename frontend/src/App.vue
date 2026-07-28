@@ -275,26 +275,6 @@ async function handleWikilinkNavigation(target: string) {
 </script>
 
 <style>
-/* Legacy token aliases — kept only while components still reference --bg-*, --text-*, --accent-*.
-   Remove this block once Issue #100 component migration is complete. */
-:root {
-  --bg-main: var(--color-canvas);
-  --bg-sidebar: var(--color-surface);
-  --bg-surface: var(--color-surface);
-  --bg-glass: var(--color-surface-emphasis);
-  --bg-hover: var(--color-action-hover);
-  --border-color: var(--color-border);
-  --border-glow: var(--color-border-strong);
-  --text-light: var(--color-text);
-  --text-main: var(--color-text);
-  --text-muted: var(--color-text-muted);
-  --text-dim: var(--color-text-muted);
-  --accent-color: var(--color-action);
-  --accent-gradient: linear-gradient(135deg, var(--color-action) 0%, var(--color-action-hover) 100%);
-  --font-heading: var(--font-sans);
-  --font-body: var(--font-sans);
-}
-
 /* Global reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -359,7 +339,7 @@ body {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
+  box-shadow: var(--shadow-lg);
   transition: border-color var(--duration-standard) var(--ease-standard);
 }
 

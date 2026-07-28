@@ -287,19 +287,21 @@ watch(() => props.isOpen, (val) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
 .admin-modal-container {
-  background: #1e1e2e;
-  color: #cdd6f4;
-  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   width: 600px;
   max-width: 90%;
-  padding: 20px;
+  padding: var(--space-6);
+  box-shadow: var(--shadow-lg);
 }
 .admin-header {
   display: flex;
@@ -308,40 +310,41 @@ watch(() => props.isOpen, (val) => {
 }
 .admin-tabs {
   display: flex;
-  gap: 10px;
-  margin: 15px 0;
-  border-bottom: 1px solid #313244;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
 }
 .tab-btn {
   background: none;
   border: none;
-  color: #a6adc8;
-  padding: 8px 16px;
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
 }
 .tab-btn.active {
-  color: #cba6f7;
-  border-bottom: 2px solid #cba6f7;
+  color: var(--color-action);
+  border-bottom: 2px solid var(--color-action);
 }
 .admin-error-banner {
-  background: #f38ba8;
-  color: #11111b;
-  padding: 10px;
-  border-radius: 4px;
-  margin-bottom: 15px;
+  background: color-mix(in srgb, var(--color-status-danger) 15%, transparent);
+  color: var(--color-status-danger);
+  border: 1px solid color-mix(in srgb, var(--color-status-danger) 40%, transparent);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
 }
 .admin-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 .admin-form input, .admin-form select {
-  background: #313244;
-  border: 1px solid #45475a;
-  color: #cdd6f4;
-  padding: 8px;
-  border-radius: 4px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
 }
 .admin-list {
   list-style: none;
@@ -351,10 +354,11 @@ watch(() => props.isOpen, (val) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #313244;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
 }
-.danger-btn { background: #f38ba8; color: #11111b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
-.warning-btn { background: #fab387; color: #11111b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
-.success-btn { background: #a6e3a1; color: #11111b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+.danger-btn { background: var(--color-status-danger); color: var(--color-neutral-0); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
+.warning-btn { background: var(--color-status-warning); color: var(--color-text-inverse); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
+.success-btn { background: var(--color-status-success); color: var(--color-neutral-0); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
 </style>
+

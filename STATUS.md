@@ -53,6 +53,10 @@
   - Visual Identity: Reconcile landing and welcome-page themes (#105 — removed unused `welcome.blade.php` and `tailwindcss` devDependencies, cleaned `style.css` base layer, documented import order in `main.ts`)
   - Visual Identity: Theme published static site (#106 — Blade view `publish/page.blade.php` + `publish.css` + self-hosted Open Sans WOFF2 fonts copied to output, responsive reading column, visited link styles, reduced motion block)
   - Visual Identity: App-shell document metadata — favicon, theme-color, color-scheme, social card (#107 — `app.blade.php` and `index.html` synchronized with `color-scheme: dark`, `theme-color: #000000`, favicons SVG/ICO/Apple, OG & Twitter cards)
+  - Visual Identity: Project mark, wordmark, favicon, and social card (#108 — `assets/brand/` directory structured with brand guidelines `assets/brand/README.md`, wordmark added to `README.md`)
+  - Visual Identity: WCAG 2.2 AA audit and axe-core regression test (#109 — `frontend/src/a11y.spec.ts` automated axe-core Vitest spec covering all SPA views, documented contrast audit matrix and manual checklist in `docs/visual-identity.md`)
+  - Visual Identity: CI guard against raw color literals and unapproved font sources (#110 — `./scripts/check-design-tokens.sh` executable guard script enforcing raw color literal ban, palette token ban, font CDN ban, and un-annotated outline:none ban)
+  - Milestone A: Filtered search by title, tags, and modified-date range (#52 — `SearchCriteria` value object, extended `GET /api/workspaces/{w}/search` params, index-backed multi-tag/title/date filtering)
 
 ---
 

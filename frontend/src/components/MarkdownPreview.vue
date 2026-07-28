@@ -65,7 +65,7 @@ function handleCheckboxChange(event: Event) {
 .markdown-preview {
   padding: 1.5rem;
   overflow-y: auto;
-  color: var(--text-main, #e2e8f0);
+  color: var(--color-text);
   line-height: 1.6;
   height: 100%;
 }

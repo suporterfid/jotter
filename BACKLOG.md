@@ -21,7 +21,8 @@ Roadmap priorities 1–5 (search, nested folders, tags, backlinks, attachments) 
 The only Phase 1 items the product does not already have.
 
 - [ ] **Version history** — roadmap priority 6; promoted from v2 to v1 (spec §6). Revision snapshots with restore. **Storage design is constrained:** no per-revision files in the vault (spec §14.5 C6, §4 inode quotas). Decide DB-stored deltas vs. bounded snapshot retention first.
-- [ ] **Search filters** — roadmap priority 1 asks for filters by title, tags, and modified date. Current search is unfiltered natural-language `FULLTEXT` matching only.
+- [ ] **Version history** — roadmap priority 6; promoted from v2 to v1 (spec §6). Revision snapshots with restore. **Storage design is constrained:** no per-revision files in the vault (spec §14.5 C6, §4 inode quotas). Decide DB-stored deltas vs. bounded snapshot retention first.
+- [x] **Search filters** — roadmap priority 1 asks for filters by title, tags, and modified date. Filtered search endpoints ship via `SearchCriteria` value object (#52).
 - [ ] **Markdown / JSON import** — export ships; the inbound half does not. Must route through `VaultPathGuard` and the reindex path.
 
 ## Milestone B — connected knowledge
@@ -63,8 +64,8 @@ Tracked in **#96**. Today the product ships four unrelated visual treatments (SP
 
 - [x] Foundation — #97 spec + asset structure, #98 token layer, #99 self-hosted Open Sans.
 - [x] Application — #100 component migration, #101 typography, #102 spacing/shape/elevation, #103 controls and focus, #104 motion.
-- [x] Other surfaces — #105 theme reconciliation, #106 published static site, #107 app-shell metadata. *(#108 project mark remains.)*
-- [ ] Verification — #109 WCAG 2.2 AA audit (acceptance gate), #110 CI token guard (lands last).
+- [x] Other surfaces — #105 theme reconciliation, #106 published static site, #107 app-shell metadata, #108 project mark.
+- [x] Verification — #109 WCAG 2.2 AA audit (acceptance gate), #110 CI token guard (lands last).
 
 ---
 

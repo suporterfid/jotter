@@ -544,7 +544,7 @@ async function handleSave() {
   background: var(--color-surface);
   border: 1px solid var(--color-action);
   border-radius: var(--radius-md);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
+  box-shadow: var(--shadow-lg);
   z-index: 50;
   min-width: 240px;
   overflow: hidden;
@@ -591,7 +591,7 @@ async function handleSave() {
 .drag-upload-overlay {
   position: absolute;
   inset: 0;
-  background: rgb(0 0 0 / 82%);
+  background: var(--color-overlay-dark);
   z-index: 100;
   display: flex;
   align-items: center;

@@ -106,7 +106,7 @@ async function handleLogin() {
 .login-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 85%);
+  background: var(--color-overlay-dark);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,7 +120,7 @@ async function handleLogin() {
   width: 100%;
   max-width: 400px;
   padding: var(--space-8);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 32%);
+  box-shadow: var(--shadow-lg);
 }
 
 .login-header {
