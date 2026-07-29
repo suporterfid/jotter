@@ -21,6 +21,7 @@
       @export-workspace="handleExportWorkspace"
       @toggle-link-report="handleToggleLinkReport"
       @publish-workspace="handlePublishWorkspace"
+      @toggle-table-view="handleToggleTableView"
     />
 
     <!-- Main Content Area -->
@@ -55,6 +56,19 @@
         :report="linkReport"
         :loading="linkReportLoading"
         @select-note="handleSelectNote"
+      />
+
+      <!-- Table (Collections) View Mode -->
+      <CollectionsTableView
+        v-else-if="isTableViewActive"
+        :page="collectionPage"
+        :loading="collectionLoading"
+        :sort-key="collectionSortKey"
+        :sort-dir="collectionSortDir"
+        @select-note="handleSelectNote"
+        @page-change="handleCollectionPageChange"
+        @filter-change="handleCollectionFilterChange"
+        @sort="handleCollectionSort"
       />
 
       <!-- Search View Mode -->
@@ -153,6 +167,7 @@ import GraphView from './components/GraphView.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
 import LinkReportViewer from './components/LinkReportViewer.vue'
+import CollectionsTableView from './components/CollectionsTableView.vue'
 import {
   getWorkspaces,
   getNotes,
@@ -172,11 +187,12 @@ import {
   importWorkspaceArchive,
   getLinkReport,
   publishWorkspace,
+  getCollection,
   getNotifications,
   markNotificationRead,
   deleteNotification
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem } from './services/types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage } from './services/types'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -206,6 +222,14 @@ const linkReport = ref<LinkReport>({ broken_links: [], orphans: [] })
 const linkReportLoading = ref(false)
 
 const notifications = ref<NotificationItem[]>([])
+
+const isTableViewActive = ref(false)
+const collectionPage = ref<CollectionPage>({ data: [], current_page: 1, last_page: 1, per_page: 50, total: 0 })
+const collectionLoading = ref(false)
+const collectionFilterProperty = ref('')
+const collectionFilterValue = ref('')
+const collectionSortKey = ref<string | null>(null)
+const collectionSortDir = ref<'asc' | 'desc'>('asc')
 
 const availableTagsForSearch = computed(() => {
   const tagSet = new Set<string>()
@@ -347,6 +371,7 @@ async function handleSelectNote(noteId: number) {
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
   isLinkReportActive.value = false
+  isTableViewActive.value = false
   await loadActiveNote(noteId)
 }
 
@@ -356,6 +381,7 @@ async function handleToggleAttachments() {
     isSearchActive.value = false
     isAuditLogActive.value = false
     isLinkReportActive.value = false
+    isTableViewActive.value = false
     await refreshAttachments()
   }
 }
@@ -366,6 +392,7 @@ async function handleToggleAuditLog() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isLinkReportActive.value = false
+    isTableViewActive.value = false
     await refreshAuditLog()
   }
 }
@@ -376,7 +403,54 @@ async function handleToggleLinkReport() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
+    isTableViewActive.value = false
     await refreshLinkReport()
+  }
+}
+
+async function handleToggleTableView() {
+  isTableViewActive.value = !isTableViewActive.value
+  if (isTableViewActive.value) {
+    isSearchActive.value = false
+    isAttachmentsActive.value = false
+    isAuditLogActive.value = false
+    isLinkReportActive.value = false
+    await refreshCollection()
+  }
+}
+
+async function refreshCollection(page = 1) {
+  if (!activeWorkspaceId.value) return
+  collectionLoading.value = true
+  try {
+    collectionPage.value = await getCollection(activeWorkspaceId.value, {
+      property: collectionFilterProperty.value || undefined,
+      value: collectionFilterValue.value || undefined,
+      page
+    })
+  } catch (err) {
+    console.error('Failed to load collection:', err)
+  } finally {
+    collectionLoading.value = false
+  }
+}
+
+async function handleCollectionPageChange(page: number) {
+  await refreshCollection(page)
+}
+
+async function handleCollectionFilterChange(propertyName: string, value: string) {
+  collectionFilterProperty.value = propertyName
+  collectionFilterValue.value = value
+  await refreshCollection(1)
+}
+
+function handleCollectionSort(key: string) {
+  if (collectionSortKey.value === key) {
+    collectionSortDir.value = collectionSortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    collectionSortKey.value = key
+    collectionSortDir.value = 'asc'
   }
 }
 
@@ -553,6 +627,7 @@ async function handleSearch(query: string) {
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
   isLinkReportActive.value = false
+  isTableViewActive.value = false
   searchQuery.value = query
   await runSearch(query, searchFilters.value)
 }

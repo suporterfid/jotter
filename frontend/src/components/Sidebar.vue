@@ -168,6 +168,19 @@
               </svg>
               <span>Publish Static Site</span>
             </button>
+            <button
+              class="more-menu-item"
+              data-testid="table-view-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-table-view'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="9" x2="9" y2="21"></line>
+              </svg>
+              <span>Table View</span>
+            </button>
           </div>
         </div>
         <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
@@ -356,6 +369,7 @@ const emit = defineEmits<{
   (e: 'export-workspace'): void
   (e: 'toggle-link-report'): void
   (e: 'publish-workspace'): void
+  (e: 'toggle-table-view'): void
 }>()
 
 const searchQuery = ref('')
