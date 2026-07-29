@@ -41,7 +41,8 @@ Every Milestone A–D item this file marks `[x]` is API-complete, but auditing t
 - ~~**#166 — audit log viewer missing, and the query silently excluded every workspace-scoped event.**~~ **Closed**, merged via PR #184. Added `AuditLogViewer.vue`; also fixed `AuditLogQueryController` requiring a `tenant_id` match that most recorder call sites never populate.
 - ~~**#164 — workspace import missing from the SPA, sidebar header overflow, storage/app/imports permissions.**~~ **Closed**, merged via PR #186. Added the import modal; also fixed the sidebar's 5-icon-button overflow (consolidated into a "More actions" menu) and `storage/app/imports` missing from `entrypoint.sh`'s ownership loop.
 - ~~**#163 — workspace export missing from the SPA.**~~ **Closed**, merged via PR #188. Added an "Export Workspace" item to the sidebar's More-actions menu.
-- **#167, #165** — broken-link report, publish (Tier 3, admin/ops UI). Open, being worked in priority order (#167 next).
+- ~~**#167 — broken-link/orphan report missing from the SPA.**~~ **Closed**, merged via PR #190. Added `LinkReportViewer.vue`, wired to the already-defined link-report endpoint.
+- **#165** — workspace publish UI (Tier 3's last item). Open, next in the queue.
 - **#159, #161** — notifications, collections/table/board/calendar views (Milestone D) — Tier 4, new app-shell surfaces. Open.
 
 ---
