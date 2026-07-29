@@ -58,4 +58,44 @@ final class MarkdownServerRendererTest extends TestCase
         $this->assertStringContainsString('Before.', $html);
         $this->assertStringContainsString('After.', $html);
     }
+
+    public function test_latex_and_mermaid_render_as_plain_code_by_default(): void
+    {
+        config(['jotter.rendering.katex_mermaid_enabled' => false]);
+        $renderer = new MarkdownServerRenderer();
+
+        $markdown = '$$E=mc^2$$'."\n\n```mermaid\ngraph TD; A-->B;\n```";
+        $html = $renderer->render($markdown);
+
+        $this->assertStringNotContainsString('class="jotter-math"', $html);
+        $this->assertStringNotContainsString('class="mermaid"', $html);
+        $this->assertStringContainsString('E=mc^2', $html);
+        $this->assertStringContainsString('<pre><code', $html);
+        $this->assertStringContainsString('graph TD', $html);
+    }
+
+    public function test_latex_and_mermaid_render_with_hydration_markup_when_enabled(): void
+    {
+        config(['jotter.rendering.katex_mermaid_enabled' => true]);
+        $renderer = new MarkdownServerRenderer();
+
+        $markdown = '$$E=mc^2$$'."\n\n```mermaid\ngraph TD; A-->B;\n```";
+        $html = $renderer->render($markdown);
+
+        $this->assertStringContainsString('class="jotter-math"', $html);
+        $this->assertStringContainsString('E=mc^2', $html);
+        $this->assertStringContainsString('class="mermaid"', $html);
+        $this->assertStringContainsString('graph TD', $html);
+    }
+
+    public function test_math_and_mermaid_markup_is_escaped_when_enabled(): void
+    {
+        config(['jotter.rendering.katex_mermaid_enabled' => true]);
+        $renderer = new MarkdownServerRenderer();
+
+        $html = $renderer->render('$$<script>alert(1)</script>$$');
+
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringContainsString('class="jotter-math"', $html);
+    }
 }

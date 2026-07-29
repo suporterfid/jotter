@@ -14,6 +14,15 @@ return [
         'reindex_batch_size' => (int) env('JOTTER_VAULT_REINDEX_BATCH', 50),
     ],
 
+    'rendering' => [
+        // Off by default: emits <span class="jotter-math">/<pre class="mermaid">
+        // markup for $$LaTeX$$ and ```mermaid blocks instead of plain code, for a
+        // client-side library (KaTeX/mermaid.js) to hydrate. When off, both
+        // constructs render as plain code, matching Obsidian's own fallback when
+        // the corresponding plugin/feature is unavailable.
+        'katex_mermaid_enabled' => (bool) env('JOTTER_ENABLE_MATH_MERMAID', false),
+    ],
+
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 
