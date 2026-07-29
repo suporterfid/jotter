@@ -17,6 +17,14 @@ return [
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 
+    // GrandpaSSOnIdentityProvider's AUTHSESSID cookie path reads GrandpaSSOn's own
+    // `sessions`/`users` tables directly. On shared hosting they share one MySQL
+    // database/schema with this app, distinguished only by table-name prefix — this
+    // must match GrandpaSSOn's own DB_PREFIX, not Jotter's (JOTTER_DB_PREFIX/DB_PREFIX).
+    'sso' => [
+        'db_prefix' => env('JOTTER_SSO_DB_PREFIX', 'sso_'),
+    ],
+
     'attachments' => [
         'max_size_kb' => (int) env('JOTTER_ATTACHMENT_MAX_SIZE_KB', 20480), // 20MB
         'allowed_mimes' => [
