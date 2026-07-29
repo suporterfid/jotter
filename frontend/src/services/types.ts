@@ -89,6 +89,29 @@ export interface AuditLogEntry {
   created_at: string | null
 }
 
+export interface BrokenLinkSource {
+  id: number
+  path: string
+  title: string
+}
+
+export interface BrokenLinkGroup {
+  target_ref: string
+  count: number
+  sources: BrokenLinkSource[]
+}
+
+export interface OrphanNote {
+  id: number
+  path: string
+  title: string
+}
+
+export interface LinkReport {
+  broken_links: BrokenLinkGroup[]
+  orphans: OrphanNote[]
+}
+
 export interface AttachmentItem {
   id: number
   workspace_id: number

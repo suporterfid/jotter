@@ -16,6 +16,7 @@
       @toggle-audit-log="handleToggleAuditLog"
       @import-workspace="handleImportWorkspace"
       @export-workspace="handleExportWorkspace"
+      @toggle-link-report="handleToggleLinkReport"
     />
 
     <!-- Main Content Area -->
@@ -42,6 +43,14 @@
         v-else-if="isAuditLogActive"
         :entries="auditLogEntries"
         :loading="auditLogLoading"
+      />
+
+      <!-- Link Report View Mode -->
+      <LinkReportViewer
+        v-else-if="isLinkReportActive"
+        :report="linkReport"
+        :loading="linkReportLoading"
+        @select-note="handleSelectNote"
       />
 
       <!-- Search View Mode -->
@@ -131,6 +140,7 @@ import CommandPalette from './components/CommandPalette.vue'
 import GraphView from './components/GraphView.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
+import LinkReportViewer from './components/LinkReportViewer.vue'
 import {
   getWorkspaces,
   getNotes,
@@ -147,9 +157,10 @@ import {
   createNoteFromTemplate,
   getOrCreateDailyNote,
   getAuditLogs,
-  importWorkspaceArchive
+  importWorkspaceArchive,
+  getLinkReport
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry } from './services/types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport } from './services/types'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -173,6 +184,10 @@ const attachmentsLoading = ref(false)
 const isAuditLogActive = ref(false)
 const auditLogEntries = ref<AuditLogEntry[]>([])
 const auditLogLoading = ref(false)
+
+const isLinkReportActive = ref(false)
+const linkReport = ref<LinkReport>({ broken_links: [], orphans: [] })
+const linkReportLoading = ref(false)
 
 const availableTagsForSearch = computed(() => {
   const tagSet = new Set<string>()
@@ -281,6 +296,7 @@ async function handleSelectNote(noteId: number) {
   isSearchActive.value = false
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
+  isLinkReportActive.value = false
   await loadActiveNote(noteId)
 }
 
@@ -289,6 +305,7 @@ async function handleToggleAttachments() {
   if (isAttachmentsActive.value) {
     isSearchActive.value = false
     isAuditLogActive.value = false
+    isLinkReportActive.value = false
     await refreshAttachments()
   }
 }
@@ -298,7 +315,30 @@ async function handleToggleAuditLog() {
   if (isAuditLogActive.value) {
     isSearchActive.value = false
     isAttachmentsActive.value = false
+    isLinkReportActive.value = false
     await refreshAuditLog()
+  }
+}
+
+async function handleToggleLinkReport() {
+  isLinkReportActive.value = !isLinkReportActive.value
+  if (isLinkReportActive.value) {
+    isSearchActive.value = false
+    isAttachmentsActive.value = false
+    isAuditLogActive.value = false
+    await refreshLinkReport()
+  }
+}
+
+async function refreshLinkReport() {
+  if (!activeWorkspaceId.value) return
+  linkReportLoading.value = true
+  try {
+    linkReport.value = await getLinkReport(activeWorkspaceId.value)
+  } catch (err) {
+    console.error('Failed to load link report:', err)
+  } finally {
+    linkReportLoading.value = false
   }
 }
 
@@ -450,6 +490,7 @@ async function runSearch(query: string, filters: SearchFilters) {
 async function handleSearch(query: string) {
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
+  isLinkReportActive.value = false
   searchQuery.value = query
   await runSearch(query, searchFilters.value)
 }

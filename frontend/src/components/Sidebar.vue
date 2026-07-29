@@ -95,6 +95,19 @@
               </svg>
               <span>Export Workspace</span>
             </button>
+            <button
+              class="more-menu-item"
+              data-testid="link-report-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-link-report'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>Broken Links &amp; Orphans</span>
+            </button>
           </div>
         </div>
         <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
@@ -278,6 +291,7 @@ const emit = defineEmits<{
   (e: 'toggle-audit-log'): void
   (e: 'import-workspace', archive: File, overwrite: boolean): void
   (e: 'export-workspace'): void
+  (e: 'toggle-link-report'): void
 }>()
 
 const searchQuery = ref('')

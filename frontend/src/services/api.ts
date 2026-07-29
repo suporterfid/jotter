@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -221,6 +221,11 @@ export async function getAuditLogs(workspaceId: number): Promise<AuditLogEntry[]
     `/workspaces/${workspaceId}/audit-logs`
   )
   return response.data.audit_logs
+}
+
+export async function getLinkReport(workspaceId: number): Promise<LinkReport> {
+  const response = await api.get<LinkReport>(`/workspaces/${workspaceId}/link-report`)
+  return response.data
 }
 
 export async function getAttachments(workspaceId: number): Promise<AttachmentItem[]> {
