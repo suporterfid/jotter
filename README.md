@@ -9,10 +9,11 @@
 
 Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. Plain `.md` files, PHP + MySQL, your notes stay yours.
 
-Jotter currently ships through PR5: Laravel 12, a minimal Vue 3 landing screen, MySQL 8, a Docker-only development loop, the multi-workspace data model, path-safe vault storage, rebuildable wikilink/backlink projection, workspace-scoped search, and workspace-scoped note CRUD. The notes authorization seam fails closed until PR7; the editor UI, attachment upload, and identity-provider features remain later PRs.
+Jotter's v0 spec is complete (PR0–PR9) and v1 work is in progress: Laravel 12, a Vue 3 SPA with a Markdown editor and `[[wikilink]]` autocomplete, MySQL 8, a Docker-only development loop, the multi-workspace data model, path-safe vault storage, rebuildable wikilink/backlink projection, workspace-scoped search, workspace-scoped note CRUD, attachment uploads, and an `IdentityProvider` auth seam (`LocalIdentityProvider` plus a `GrandpaSSOnIdentityProvider` adapter) with workspace-scoped authorization enforced by default. Post-v0 additions include WebDAV sync, static site publishing, an MCP server, typed properties, admin workspace/member/user management, and a full visual identity system. See [STATUS.md](STATUS.md) for the authoritative current state.
 
 ## Documentation
 
+- [Project Status](STATUS.md) — authoritative current state
 - [Architecture Specification](file:///home/ubuntu/projects/web/iroh/jotter/docs/architecture.md)
 - [Visual Identity Specification](file:///home/ubuntu/projects/web/iroh/jotter/docs/visual-identity.md)
 - [Model Context Protocol (MCP)](file:///home/ubuntu/projects/web/iroh/jotter/docs/mcp.md)
@@ -69,7 +70,7 @@ The intended source of truth is Markdown on disk; MySQL is a rebuildable index a
 
 ## Search API
 
-PR4 exposes `GET /api/workspaces/{workspace}/search?q=...`. It searches the MySQL `FULLTEXT(title, search_content)` projection within one workspace and returns at most 50 ranked matches with an id, path, title, bounded snippet, and relevance score. `search_content` is never returned or treated as canonical note content; the Markdown file remains the source of truth. Authentication is intentionally deferred to PR7, following the ordered build plan.
+`GET /api/workspaces/{workspace}/search?q=...` searches the MySQL `FULLTEXT(title, search_content)` projection within one workspace and returns at most 50 ranked matches with an id, path, title, bounded snippet, and relevance score. `search_content` is never returned or treated as canonical note content; the Markdown file remains the source of truth. The endpoint is authenticated and workspace-scoped like the rest of the notes API.
 
 ## License
 
