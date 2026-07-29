@@ -11,83 +11,122 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * GrandpaSSOnIdentityProvider::resolveIdentity() reads its AUTHSESSID cookie path against
- * generic `sessions`/`users` columns (expires_at, primary_email, display_name, status) that
- * do not exist on Jotter's own schema; these columns are added here only for the duration of
- * this test to faithfully exercise that code path.
+ * GrandpaSSOnIdentityProvider::resolveIdentity() reads GrandpaSSOn's own `sessions`/`users`
+ * tables directly via a raw PDO connection with a configurable prefix (jotter.sso.db_prefix),
+ * since on shared hosting they live in the same MySQL database/schema as Jotter's own tables
+ * but under a different prefix. These tables are created here (with GrandpaSSOn's real column
+ * shape: id CHAR(36) UUID, primary_email, display_name, status, expires_at as a Unix
+ * timestamp int) only for the duration of this test.
  */
 final class GrandpaSSOnAdminEscalationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const PREFIX = 'test_sso_';
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        // expires_at is an unsigned integer here (unix timestamp) to match how
-        // resolveIdentity() actually compares it (`> time()`); a real GrandpaSSOn
-        // deployment's `sessions` schema is unspecified and out of scope for this stub.
-        Schema::table('sessions', function ($table) {
-            $table->unsignedBigInteger('expires_at')->nullable();
+        config(['jotter.sso.db_prefix' => self::PREFIX]);
+
+        Schema::create(self::PREFIX.'users', function ($table) {
+            $table->string('id', 36)->primary();
+            $table->string('primary_email');
+            $table->string('display_name')->nullable();
+            $table->string('status')->default('active');
         });
 
-        Schema::table('users', function ($table) {
-            $table->string('primary_email')->nullable();
-            $table->string('display_name')->nullable();
-            $table->string('status')->nullable();
+        Schema::create(self::PREFIX.'sessions', function ($table) {
+            $table->string('id', 64)->primary();
+            $table->string('user_id', 36)->nullable();
+            $table->unsignedBigInteger('expires_at');
         });
     }
 
     protected function tearDown(): void
     {
-        Schema::table('sessions', function ($table) {
-            $table->dropColumn('expires_at');
-        });
-
-        Schema::table('users', function ($table) {
-            $table->dropColumn(['primary_email', 'display_name', 'status']);
-        });
+        Schema::dropIfExists(self::PREFIX.'sessions');
+        Schema::dropIfExists(self::PREFIX.'users');
 
         parent::tearDown();
     }
 
     public function test_a_brand_new_sso_user_is_not_granted_admin_by_default(): void
     {
-        $ssoUserId = 999001;
+        $ssoUserId = $this->insertSsoUser('new-sso-user@example.com', 'New SSO User');
+        $sessionId = $this->insertSsoSession($ssoUserId, time() + 3600);
 
-        DB::table('users')->insert([
-            'id' => $ssoUserId,
-            'name' => 'SSO Placeholder',
-            'email' => 'sso-placeholder-'.uniqid().'@example.com',
-            'password' => bcrypt('unused'),
-            'is_admin' => false,
-            'primary_email' => 'new-sso-user@example.com',
-            'display_name' => 'New SSO User',
-            'status' => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('sessions')->insert([
-            'id' => 'sso-session-'.uniqid(),
-            'user_id' => $ssoUserId,
-            'expires_at' => time() + 3600,
-            'last_activity' => time(),
-            'payload' => base64_encode(serialize([])),
-        ]);
-
-        $sessionId = DB::table('sessions')->where('user_id', $ssoUserId)->value('id');
-
-        $request = Request::create('/api/notes', 'GET');
-        $request->cookies->set('AUTHSESSID', $sessionId);
-
-        $provider = new GrandpaSSOnIdentityProvider();
-        $subject = $provider->resolveIdentity($request);
+        $subject = $this->resolveWithCookie($sessionId);
 
         $this->assertNotNull($subject);
         $this->assertFalse($subject->isAdmin);
+        $this->assertSame('new-sso-user@example.com', $subject->email);
 
         $localUser = User::query()->where('email', 'new-sso-user@example.com')->firstOrFail();
         $this->assertFalse((bool) $localUser->is_admin);
+    }
+
+    public function test_an_expired_session_is_not_resolved(): void
+    {
+        $ssoUserId = $this->insertSsoUser('expired-user@example.com', 'Expired User');
+        $sessionId = $this->insertSsoSession($ssoUserId, time() - 60);
+
+        $subject = $this->resolveWithCookie($sessionId);
+
+        $this->assertNull($subject);
+        $this->assertDatabaseMissing('users', ['email' => 'expired-user@example.com']);
+    }
+
+    public function test_an_unknown_session_id_is_not_resolved(): void
+    {
+        $subject = $this->resolveWithCookie('does-not-exist');
+
+        $this->assertNull($subject);
+    }
+
+    public function test_a_disabled_sso_user_is_not_resolved(): void
+    {
+        $ssoUserId = $this->insertSsoUser('disabled-user@example.com', 'Disabled User', 'disabled');
+        $sessionId = $this->insertSsoSession($ssoUserId, time() + 3600);
+
+        $subject = $this->resolveWithCookie($sessionId);
+
+        $this->assertNull($subject);
+    }
+
+    private function insertSsoUser(string $email, string $displayName, string $status = 'active'): string
+    {
+        $id = (string) \Illuminate\Support\Str::uuid();
+
+        DB::table(self::PREFIX.'users')->insert([
+            'id' => $id,
+            'primary_email' => $email,
+            'display_name' => $displayName,
+            'status' => $status,
+        ]);
+
+        return $id;
+    }
+
+    private function insertSsoSession(string $ssoUserId, int $expiresAt): string
+    {
+        $sessionId = 'sso-session-'.uniqid();
+
+        DB::table(self::PREFIX.'sessions')->insert([
+            'id' => $sessionId,
+            'user_id' => $ssoUserId,
+            'expires_at' => $expiresAt,
+        ]);
+
+        return $sessionId;
+    }
+
+    private function resolveWithCookie(string $authSessId): ?\App\Domain\Auth\AuthenticatedSubject
+    {
+        $request = Request::create('/api/notes', 'GET');
+        $request->cookies->set('AUTHSESSID', $authSessId);
+
+        return (new GrandpaSSOnIdentityProvider())->resolveIdentity($request);
     }
 }

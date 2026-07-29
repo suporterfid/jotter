@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use PDO;
 
 final class GrandpaSSOnIdentityProvider implements IdentityProvider
 {
@@ -24,41 +24,10 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
         // 1. Check GrandpaSSOn AUTHSESSID session cookie
         $authSessId = $request->cookie('AUTHSESSID') ?? ($_COOKIE['AUTHSESSID'] ?? null);
 
-        if ($authSessId && Schema::hasTable('sessions') && Schema::hasTable('users')) {
-            try {
-                $session = DB::table('sessions')
-                    ->where('id', $authSessId)
-                    ->where('expires_at', '>', time())
-                    ->first();
-
-                if ($session && ! empty($session->user_id)) {
-                    $ssoUser = DB::table('users')
-                        ->where('id', $session->user_id)
-                        ->where('status', 'active')
-                        ->first();
-
-                    if ($ssoUser) {
-                        $user = User::query()->firstOrCreate(
-                            ['email' => $ssoUser->primary_email],
-                            [
-                                'name' => $ssoUser->display_name ?? 'SSO User',
-                                'password' => bcrypt(uniqid('sso_', true)),
-                                'is_admin' => false,
-                            ],
-                        );
-
-                        return new AuthenticatedSubject(
-                            subjectId: (string) $ssoUser->id,
-                            email: $ssoUser->primary_email,
-                            name: $ssoUser->display_name ?? 'SSO User',
-                            isAdmin: (bool) ($user->is_admin ?? false),
-                            user: $user,
-                            attributes: ['sso_provider' => 'grandpasson'],
-                        );
-                    }
-                }
-            } catch (\Throwable) {
-                // Ignore missing table / DB error
+        if ($authSessId) {
+            $subject = $this->resolveFromGrandpaSsonSession((string) $authSessId);
+            if ($subject !== null) {
+                return $subject;
             }
         }
 
@@ -76,6 +45,61 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
         }
 
         return null;
+    }
+
+    /**
+     * GrandpaSSOn's `sessions`/`users` tables live in the same shared MySQL database as
+     * this app's own tables, distinguished only by table-name prefix. Eloquent/DB::table()
+     * would silently apply *this app's own* connection prefix (e.g. jt_) and query the
+     * wrong tables entirely, so this queries via the raw PDO connection with GrandpaSSOn's
+     * configured prefix (jotter.sso.db_prefix / JOTTER_SSO_DB_PREFIX) instead.
+     */
+    private function resolveFromGrandpaSsonSession(string $authSessId): ?AuthenticatedSubject
+    {
+        $prefix = (string) config('jotter.sso.db_prefix', '');
+        $sessionsTable = $prefix.'sessions';
+        $usersTable = $prefix.'users';
+
+        try {
+            $pdo = DB::connection()->getPdo();
+
+            $stmt = $pdo->prepare("SELECT * FROM {$sessionsTable} WHERE id = :id AND expires_at > :now LIMIT 1");
+            $stmt->execute(['id' => $authSessId, 'now' => time()]);
+            $session = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (! $session || empty($session->user_id)) {
+                return null;
+            }
+
+            $stmt = $pdo->prepare("SELECT * FROM {$usersTable} WHERE id = :id AND status = 'active' LIMIT 1");
+            $stmt->execute(['id' => $session->user_id]);
+            $ssoUser = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (! $ssoUser) {
+                return null;
+            }
+
+            $user = User::query()->firstOrCreate(
+                ['email' => $ssoUser->primary_email],
+                [
+                    'name' => $ssoUser->display_name ?? 'SSO User',
+                    'password' => bcrypt(uniqid('sso_', true)),
+                    'is_admin' => false,
+                ],
+            );
+
+            return new AuthenticatedSubject(
+                subjectId: (string) $ssoUser->id,
+                email: $ssoUser->primary_email,
+                name: $ssoUser->display_name ?? 'SSO User',
+                isAdmin: (bool) ($user->is_admin ?? false),
+                user: $user,
+                attributes: ['sso_provider' => 'grandpasson'],
+            );
+        } catch (\Throwable) {
+            // Missing table / DB error / GrandpaSSOn not deployed alongside this app
+            return null;
+        }
     }
 
     public function authenticate(array $credentials, Request $request): ?AuthenticatedSubject
