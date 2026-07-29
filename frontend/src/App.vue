@@ -7,10 +7,12 @@
       :current-user="currentUser"
       @select-note="handleSelectNote"
       @create-note="handleCreateNote"
+      @create-note-from-template="handleCreateNoteFromTemplate"
       @delete-note="handleDeleteNote"
       @search="handleSearch"
       @logout="handleLogout"
       @toggle-attachments="handleToggleAttachments"
+      @daily-note="handleDailyNote"
     />
 
     <!-- Main Content Area -->
@@ -118,7 +120,9 @@ import {
   logout,
   setUnauthenticatedHandler,
   getAttachments,
-  deleteAttachment
+  deleteAttachment,
+  createNoteFromTemplate,
+  getOrCreateDailyNote
 } from './services/api'
 import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem } from './services/types'
 
@@ -291,6 +295,30 @@ async function handleCreateNote(path: string) {
   } catch (err: any) {
     console.error('Failed to create note:', err)
     errorMessage.value = `Failed to create note: ${err.response?.data?.message || err.message || 'Unknown error'}`
+  }
+}
+
+async function handleCreateNoteFromTemplate(templatePath: string, targetPath: string) {
+  if (!activeWorkspaceId.value) return
+  try {
+    const created = await createNoteFromTemplate(activeWorkspaceId.value, templatePath, targetPath)
+    await refreshNotesList()
+    await handleSelectNote(created.id)
+  } catch (err: any) {
+    console.error('Failed to create note from template:', err)
+    errorMessage.value = `Failed to create note from template: ${err.response?.data?.message || err.message || 'Unknown error'}`
+  }
+}
+
+async function handleDailyNote() {
+  if (!activeWorkspaceId.value) return
+  try {
+    const note = await getOrCreateDailyNote(activeWorkspaceId.value)
+    await refreshNotesList()
+    await handleSelectNote(note.id)
+  } catch (err: any) {
+    console.error('Failed to open daily note:', err)
+    errorMessage.value = `Failed to open daily note: ${err.response?.data?.message || err.message || 'Unknown error'}`
   }
 }
 

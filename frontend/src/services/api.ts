@@ -148,6 +148,28 @@ export async function getWorkspaceProperties(workspaceId: number): Promise<Pick<
   return response.data.data
 }
 
+export async function createNoteFromTemplate(
+  workspaceId: number,
+  templatePath: string,
+  targetPath: string,
+  title?: string
+): Promise<{ id: number }> {
+  const response = await api.post<{ data: { id: number } }>(`/workspaces/${workspaceId}/notes/from-template`, {
+    template_path: templatePath,
+    target_path: targetPath,
+    title: title || undefined
+  })
+  return response.data.data
+}
+
+export async function getOrCreateDailyNote(workspaceId: number, dateStr?: string): Promise<{ id: number }> {
+  const url = dateStr
+    ? `/workspaces/${workspaceId}/daily/${dateStr}`
+    : `/workspaces/${workspaceId}/daily`
+  const response = await api.post<{ data: { id: number } }>(url)
+  return response.data.data
+}
+
 export async function getAttachments(workspaceId: number): Promise<AttachmentItem[]> {
   const response = await api.get<{ data: AttachmentItem[] }>(`/workspaces/${workspaceId}/attachments`)
   return response.data.data
