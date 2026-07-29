@@ -69,6 +69,17 @@ export interface NoteRevisionDetail extends NoteRevisionMeta {
   content: string
 }
 
+export interface NoteComment {
+  id: number
+  workspace_id: number
+  note_id: number
+  user_id: number | null
+  actor_name: string
+  content: string
+  anchor_line: number | null
+  created_at: string
+}
+
 export interface AttachmentItem {
   id: number
   workspace_id: number
