@@ -28,7 +28,10 @@
         v-else-if="isSearchActive"
         :query="searchQuery"
         :results="searchResults"
+        :filters="searchFilters"
+        :available-tags="availableTagsForSearch"
         @select-note="handleSelectNote"
+        @update:filters="handleSearchFiltersChange"
       />
 
       <!-- Active Note Editor -->
@@ -86,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import NoteEditor from './components/NoteEditor.vue'
 import SearchResults from './components/SearchResults.vue'
@@ -105,7 +108,7 @@ import {
   logout,
   setUnauthenticatedHandler
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser } from './services/types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters } from './services/types'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -120,6 +123,19 @@ const isGraphViewActive = ref(false)
 const isSearchActive = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<SearchResult[]>([])
+const searchFilters = ref<SearchFilters>({})
+
+const availableTagsForSearch = computed(() => {
+  const tagSet = new Set<string>()
+  for (const n of notes.value) {
+    if (n.frontmatter?.tags && Array.isArray(n.frontmatter.tags)) {
+      for (const t of n.frontmatter.tags) {
+        if (typeof t === 'string') tagSet.add(t.replace(/^#/, ''))
+      }
+    }
+  }
+  return Array.from(tagSet).sort()
+})
 
 const errorMessage = ref<string | null>(null)
 
@@ -254,21 +270,39 @@ async function handleDeleteNote(noteId: number) {
   }
 }
 
-async function handleSearch(query: string) {
-  searchQuery.value = query
-  if (!query.trim()) {
+function hasActiveFilters(filters: SearchFilters): boolean {
+  return Boolean(
+    filters.title?.trim() ||
+    filters.modifiedAfter ||
+    filters.modifiedBefore ||
+    (filters.tags && filters.tags.length > 0)
+  )
+}
+
+async function runSearch(query: string, filters: SearchFilters) {
+  if (!query.trim() && !hasActiveFilters(filters)) {
     isSearchActive.value = false
     searchResults.value = []
     return
   }
   if (!activeWorkspaceId.value) return
   try {
-    const results = await searchNotes(activeWorkspaceId.value, query)
+    const results = await searchNotes(activeWorkspaceId.value, query, filters)
     searchResults.value = results
     isSearchActive.value = true
   } catch (err) {
     console.error('Search failed:', err)
   }
+}
+
+async function handleSearch(query: string) {
+  searchQuery.value = query
+  await runSearch(query, searchFilters.value)
+}
+
+async function handleSearchFiltersChange(filters: SearchFilters) {
+  searchFilters.value = filters
+  await runSearch(searchQuery.value, filters)
 }
 
 async function handleWikilinkNavigation(target: string) {

@@ -33,6 +33,13 @@ export interface SearchResult {
   score: number
 }
 
+export interface SearchFilters {
+  title?: string
+  tags?: string[]
+  modifiedAfter?: string
+  modifiedBefore?: string
+}
+
 export interface AuthUser {
   subject_id: string
   email: string

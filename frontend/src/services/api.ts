@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -87,10 +87,24 @@ export async function deleteNote(workspaceId: number, noteId: number): Promise<v
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}`)
 }
 
-export async function searchNotes(workspaceId: number, query: string): Promise<SearchResult[]> {
-  if (!query.trim()) return []
+export async function searchNotes(
+  workspaceId: number,
+  query: string,
+  filters: SearchFilters = {}
+): Promise<SearchResult[]> {
+  const params = new URLSearchParams()
+  if (query.trim()) params.set('q', query.trim())
+  if (filters.title?.trim()) params.set('title', filters.title.trim())
+  if (filters.modifiedAfter) params.set('modified_after', filters.modifiedAfter)
+  if (filters.modifiedBefore) params.set('modified_before', filters.modifiedBefore)
+  for (const tag of filters.tags ?? []) {
+    if (tag.trim()) params.append('tags[]', tag.trim())
+  }
+
+  if ([...params.keys()].length === 0) return []
+
   const response = await api.get<{ data: SearchResult[] }>(
-    `/workspaces/${workspaceId}/search?q=${encodeURIComponent(query.trim())}`
+    `/workspaces/${workspaceId}/search?${params.toString()}`
   )
   return response.data.data
 }
