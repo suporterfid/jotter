@@ -79,30 +79,17 @@
         <button class="btn-create-inline" @click="showNewNoteModal = true">Create a note</button>
       </div>
 
-      <ul v-else class="notes-list">
-        <li 
-          v-for="note in filteredAndSortedNotes" 
-          :key="note.id"
-          class="note-item"
-          :class="{ active: selectedNoteId === note.id }"
-          @click="$emit('select-note', note.id)"
-        >
-          <div class="note-info">
-            <span class="note-title">{{ note.title || note.path }}</span>
-            <span class="note-path">{{ note.path }}</span>
-          </div>
-          <button 
-            class="btn-delete" 
-            title="Delete note"
-            @click.stop="$emit('delete-note', note.id)"
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
-        </li>
-      </ul>
+      <div v-else class="notes-list">
+        <NoteTreeNode
+          v-for="node in noteTree"
+          :key="node.type === 'folder' ? `f:${node.fullPath}` : `n:${node.note.id}`"
+          :node="node"
+          :selected-note-id="selectedNoteId"
+          :depth="0"
+          @select-note="$emit('select-note', $event)"
+          @delete-note="$emit('delete-note', $event)"
+        />
+      </div>
     </div>
 
     <!-- New Note Dialog -->
@@ -145,6 +132,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { NoteMeta, AuthUser } from '../services/types'
+import NoteTreeNode from './NoteTreeNode.vue'
+import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 
 const props = defineProps<{
   notes: NoteMeta[]
@@ -210,6 +199,43 @@ const filteredAndSortedNotes = computed(() => {
     return a.path.localeCompare(b.path)
   })
 })
+
+function buildTree(notes: NoteMeta[]): TreeNode[] {
+  const root: TreeFolder = { type: 'folder', name: '', fullPath: '', children: [] }
+  const folders = new Map<string, TreeFolder>([['', root]])
+
+  function getFolder(path: string): TreeFolder {
+    const existing = folders.get(path)
+    if (existing) return existing
+    const lastSlash = path.lastIndexOf('/')
+    const parentPath = lastSlash === -1 ? '' : path.slice(0, lastSlash)
+    const name = lastSlash === -1 ? path : path.slice(lastSlash + 1)
+    const parent = getFolder(parentPath)
+    const folder: TreeFolder = { type: 'folder', name, fullPath: path, children: [] }
+    parent.children.push(folder)
+    folders.set(path, folder)
+    return folder
+  }
+
+  for (const note of notes) {
+    const lastSlash = note.path.lastIndexOf('/')
+    const folderPath = lastSlash === -1 ? '' : note.path.slice(0, lastSlash)
+    getFolder(folderPath).children.push({ type: 'file', note })
+  }
+
+  function sortChildren(folder: TreeFolder) {
+    const subfolders = folder.children.filter((c): c is TreeFolder => c.type === 'folder')
+    const files = folder.children.filter((c) => c.type === 'file')
+    subfolders.sort((a, b) => a.name.localeCompare(b.name))
+    subfolders.forEach(sortChildren)
+    folder.children = [...subfolders, ...files]
+  }
+  sortChildren(root)
+
+  return root.children
+}
+
+const noteTree = computed(() => buildTree(filteredAndSortedNotes.value))
 
 function onSearchInput() {
   emit('search', searchQuery.value)
