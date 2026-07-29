@@ -12,6 +12,7 @@ import HistoryPanel from './components/HistoryPanel.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
 import CommentsPanel from './components/CommentsPanel.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
+import LinkReportViewer from './components/LinkReportViewer.vue'
 
 /*
  * Accessibility Audit Spec (Issue #109 / Spec §10 / WCAG 2.2 AA)
@@ -211,6 +212,28 @@ describe('Accessibility Audit (axe-core)', () => {
           { id: 1, actor_subject_id: 'user:1', event: 'note.created', metadata: { path: 'a.md' }, ip_address: '127.0.0.1', created_at: '2026-07-01T00:00:00Z' },
           { id: 2, actor_subject_id: null, event: 'auth.login_success', metadata: null, ip_address: '127.0.0.1', created_at: '2026-07-01T00:01:00Z' },
         ],
+      },
+    })
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
+  it('LinkReportViewer has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(LinkReportViewer, {
+      attachTo: document.body,
+      props: {
+        report: {
+          broken_links: [
+            { target_ref: 'missing-note', count: 2, sources: [{ id: 1, path: 'a.md', title: 'A' }] },
+          ],
+          orphans: [{ id: 2, path: 'b.md', title: 'B' }],
+        },
       },
     })
     const results = await axe.run(wrapper.element, {
