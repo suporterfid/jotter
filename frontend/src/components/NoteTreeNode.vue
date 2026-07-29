@@ -1,0 +1,232 @@
+<template>
+  <div v-if="node.type === 'folder'" class="tree-folder">
+    <button
+      type="button"
+      class="folder-row"
+      :style="{ paddingLeft: `${depth * 14 + 8}px` }"
+      :aria-expanded="expanded"
+      @click="expanded = !expanded"
+    >
+      <svg
+        class="chevron"
+        :class="{ collapsed: !expanded }"
+        viewBox="0 0 24 24"
+        width="12"
+        height="12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+      >
+        <polyline points="9 6 15 12 9 18"></polyline>
+      </svg>
+      <svg class="folder-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path>
+      </svg>
+      <span class="folder-name">{{ node.name }}</span>
+      <span class="folder-count">{{ noteCount }}</span>
+    </button>
+    <div v-if="expanded" class="folder-children">
+      <NoteTreeNode
+        v-for="child in node.children"
+        :key="child.type === 'folder' ? `f:${child.fullPath}` : `n:${child.note.id}`"
+        :node="child"
+        :selected-note-id="selectedNoteId"
+        :depth="depth + 1"
+        @select-note="$emit('select-note', $event)"
+        @delete-note="$emit('delete-note', $event)"
+      />
+    </div>
+  </div>
+
+  <div
+    v-else
+    class="note-item"
+    :class="{ active: selectedNoteId === node.note.id }"
+    :style="{ paddingLeft: `${depth * 14 + 8}px` }"
+    @click="$emit('select-note', node.note.id)"
+  >
+    <div class="note-info">
+      <span class="note-title">{{ node.note.title || node.note.path }}</span>
+      <span class="note-path">{{ node.note.path }}</span>
+    </div>
+    <button
+      class="btn-delete"
+      title="Delete note"
+      @click.stop="$emit('delete-note', node.note.id)"
+    >
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    </button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import type { NoteMeta } from '../services/types'
+
+export interface TreeFolder {
+  type: 'folder'
+  name: string
+  fullPath: string
+  children: TreeNode[]
+}
+
+export interface TreeFile {
+  type: 'file'
+  note: NoteMeta
+}
+
+export type TreeNode = TreeFolder | TreeFile
+
+const props = defineProps<{
+  node: TreeNode
+  selectedNoteId: number | null
+  depth: number
+}>()
+
+defineEmits<{
+  (e: 'select-note', noteId: number): void
+  (e: 'delete-note', noteId: number): void
+}>()
+
+const expanded = ref(true)
+
+function countNotes(node: TreeNode): number {
+  if (node.type === 'file') return 1
+  return node.children.reduce((sum, child) => sum + countNotes(child), 0)
+}
+
+const noteCount = computed(() => (props.node.type === 'folder' ? countNotes(props.node) : 0))
+</script>
+
+<style scoped>
+.folder-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  min-height: 32px;
+  text-align: left;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.folder-row:hover {
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+.folder-icon {
+  flex-shrink: 0;
+  color: var(--color-action);
+}
+
+.folder-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-count {
+  background: var(--color-surface-emphasis);
+  color: var(--color-text-muted);
+  padding: 0.05rem 0.375rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.note-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  padding-right: var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+  color: var(--color-text-muted);
+}
+
+.note-item:hover {
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
+}
+
+.note-item.active {
+  background: color-mix(in srgb, var(--color-action) 20%, transparent);
+  color: var(--color-action);
+  font-weight: 600;
+}
+
+.note-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.note-title {
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-path {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-delete {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard),
+              opacity var(--duration-fast) var(--ease-standard);
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note-item:hover .btn-delete {
+  opacity: 1;
+}
+
+.btn-delete:hover {
+  color: var(--color-status-danger);
+  background: color-mix(in srgb, var(--color-status-danger) 12%, transparent);
+}
+</style>
