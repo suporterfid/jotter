@@ -36,7 +36,30 @@ final class WorkspaceCollectionController extends Controller
             $query->whereHas('properties', function ($pQuery) use ($propertyKey, $propertyValue) {
                 $pQuery->where('name', $propertyKey);
                 if ($propertyValue !== null && $propertyValue !== '') {
-                    $pQuery->where('value_string', $propertyValue);
+                    // A property's actual value lives in one of several typed
+                    // columns (value_string/numeric/boolean/datetime) depending
+                    // on its type — matching only value_string meant filtering
+                    // could never find a match on any non-string property.
+                    // Each alternate column is only compared when the filter
+                    // value actually looks like that type, to avoid false
+                    // positives from loose coercion (e.g. a non-numeric string
+                    // matching value_numeric = 0, or any non-boolean string
+                    // matching value_boolean = false).
+                    $pQuery->where(function ($vQuery) use ($propertyValue) {
+                        $vQuery->where('value_string', $propertyValue);
+
+                        if (is_numeric($propertyValue)) {
+                            $vQuery->orWhere('value_numeric', $propertyValue);
+                        }
+
+                        if (in_array(strtolower($propertyValue), ['true', 'false'], true)) {
+                            $vQuery->orWhere('value_boolean', strtolower($propertyValue) === 'true');
+                        }
+
+                        if (strtotime($propertyValue) !== false) {
+                            $vQuery->orWhere('value_datetime', $propertyValue);
+                        }
+                    });
                 }
             });
         }

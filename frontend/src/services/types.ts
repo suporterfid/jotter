@@ -123,6 +123,33 @@ export interface NotificationItem {
   created_at: string
 }
 
+export interface RawNoteProperty {
+  id: number
+  note_id: number
+  name: string
+  type: NotePropertyType
+  value_string: string | null
+  value_numeric: number | null
+  value_boolean: boolean | null
+  value_datetime: string | null
+  value_json: unknown | null
+}
+
+export interface CollectionNote {
+  id: number
+  path: string
+  title: string
+  properties: RawNoteProperty[]
+}
+
+export interface CollectionPage {
+  data: CollectionNote[]
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
 export interface AttachmentItem {
   id: number
   workspace_id: number

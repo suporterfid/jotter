@@ -76,4 +76,36 @@ final class MilestoneCFinalTest extends TestCase
         $collectionRes = $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/collections?property=status&value=active");
         $collectionRes->assertOk()->assertJsonPath('total', 1);
     }
+
+    public function test_collections_filter_matches_non_string_property_types(): void
+    {
+        // Regression: filtering only ever compared against value_string, so a
+        // filter on a numeric/boolean/datetime property (whose value lives in
+        // a different column) could never match — the previous test only
+        // ever used a string property ("status"), which coincidentally
+        // masked this for every other type.
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'test-numeric', 'name' => 'Test Numeric']);
+        $vaultPath = storage_path('app/vaults/m_c_numeric_'.uniqid());
+        mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'numeric',
+            'name' => 'Numeric Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+
+        /** @var VaultStorage $storage */
+        $storage = $this->app->make(VaultStorage::class);
+        $storage->write($workspace, 'high.md', "---\npriority: 5\n---\n# High Priority");
+        $storage->write($workspace, 'low.md', "---\npriority: 1\n---\n# Low Priority");
+
+        $response = $this->actingAs($admin)
+            ->getJson("/api/workspaces/{$workspace->id}/collections?property=priority&value=5");
+
+        $response->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.title', 'High Priority');
+    }
 }

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -247,6 +247,20 @@ export async function markNotificationRead(workspaceId: number, notificationId: 
 
 export async function deleteNotification(workspaceId: number, notificationId: number): Promise<void> {
   await api.delete(`/workspaces/${workspaceId}/notifications/${notificationId}`)
+}
+
+export async function getCollection(
+  workspaceId: number,
+  filters: { property?: string; value?: string; page?: number } = {}
+): Promise<CollectionPage> {
+  const params = new URLSearchParams()
+  if (filters.property) params.set('property', filters.property)
+  if (filters.value) params.set('value', filters.value)
+  if (filters.page) params.set('page', String(filters.page))
+  params.set('per_page', '50')
+
+  const response = await api.get<CollectionPage>(`/workspaces/${workspaceId}/collections?${params.toString()}`)
+  return response.data
 }
 
 export async function getLinkReport(workspaceId: number): Promise<LinkReport> {
