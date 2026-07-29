@@ -32,7 +32,8 @@ Found via a codebase audit of authorization, path safety, and identity-provider 
 Every Milestone A–D item this file marks `[x]` is API-complete, but auditing the actual SPA against `docs/20260727-jotter-roadmap-ai-agent.md` found the frontend exposes only a fraction of it — the checkmarks below track backend delivery, not UX delivery. 14 gaps filed (#156–#169), prioritized and worked one issue at a time (see `STATUS.md` §3 for the full ranked list).
 
 - ~~**#156 — search filters (title/tags/modified-date) not exposed.**~~ **Closed**, merged via PR #170. `searchNotes()` only ever sent `?q=`; added a filter bar to `SearchResults.vue` wired to the existing `SearchCriteria` backend params.
-- **#157–#169** — version history, comments, notifications, typed properties, collections/table/board/calendar views (Milestone D), templates/daily notes, export, import, publish, audit log viewer, broken-link report, attachment browser, and the flat-list-not-tree folder UX. Open, being worked in priority order.
+- ~~**#169 — nested folders rendered as a flat list, not a tree.**~~ **Closed**, merged via PR #172. Sidebar now groups notes into a recursive, collapsible folder tree (`NoteTreeNode.vue`).
+- **#157–#168** — version history, comments, notifications, typed properties, collections/table/board/calendar views (Milestone D), templates/daily notes, export, import, publish, audit log viewer, broken-link report, attachment browser. Open, being worked in priority order (#168 next).
 
 ---
 
