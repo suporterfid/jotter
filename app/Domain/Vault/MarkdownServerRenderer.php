@@ -29,6 +29,10 @@ final class MarkdownServerRenderer
             return '';
         }
 
+        // Strip Obsidian comments %% ... %% before any further processing;
+        // they must never leak into rendered SPA or published output.
+        $processed = preg_replace('/%%.*?%%/s', '', $markdown);
+
         // Convert Wikilinks [[target|alias]] into safe anchor tags
         $processed = preg_replace_callback(
             '/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/',
@@ -38,7 +42,7 @@ final class MarkdownServerRenderer
 
                 return sprintf('<a class="wikilink" data-target="%s" href="#/note/%s">%s</a>', $target, urlencode($target), $label);
             },
-            $markdown
+            $processed
         );
 
         // Convert Callouts > [!NOTE] content into styled div block

@@ -34,4 +34,28 @@ final class MarkdownServerRendererTest extends TestCase
         $this->assertStringContainsString('<table>', $html);
         $this->assertStringContainsString('<hr', $html);
     }
+
+    public function test_strips_obsidian_comments_from_rendered_output(): void
+    {
+        $renderer = new MarkdownServerRenderer();
+
+        $markdown = "# Title\n\n%% internal note %%\n\nVisible content.";
+        $html = $renderer->render($markdown);
+
+        $this->assertStringNotContainsString('internal note', $html);
+        $this->assertStringNotContainsString('%%', $html);
+        $this->assertStringContainsString('Visible content.', $html);
+    }
+
+    public function test_strips_multiline_obsidian_comments(): void
+    {
+        $renderer = new MarkdownServerRenderer();
+
+        $markdown = "Before.\n\n%%\nsecret line one\nsecret line two\n%%\n\nAfter.";
+        $html = $renderer->render($markdown);
+
+        $this->assertStringNotContainsString('secret line', $html);
+        $this->assertStringContainsString('Before.', $html);
+        $this->assertStringContainsString('After.', $html);
+    }
 }
