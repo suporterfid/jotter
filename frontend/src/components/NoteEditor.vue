@@ -165,6 +165,14 @@
       @delete-property="handleDeleteProperty"
     />
 
+    <!-- Comments Panel -->
+    <CommentsPanel
+      :comments="comments"
+      :error-message="commentsError"
+      @add-comment="handleAddComment"
+      @delete-comment="handleDeleteComment"
+    />
+
     <!-- Backlinks Panel -->
     <BacklinksPanel
       :backlinks="note.backlinks || []"
@@ -188,12 +196,18 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
-import type { NoteDetail, NoteMeta, NoteRevisionMeta } from '../services/types'
-import { uploadAttachment, getNoteRevisions, getNoteRevision, restoreNoteRevision, setNoteProperty, deleteNoteProperty } from '../services/api'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment } from '../services/types'
+import {
+  uploadAttachment,
+  getNoteRevisions, getNoteRevision, restoreNoteRevision,
+  setNoteProperty, deleteNoteProperty,
+  getNoteComments, addNoteComment, deleteNoteComment
+} from '../services/api'
 import MarkdownPreview from './MarkdownPreview.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
+import CommentsPanel from './CommentsPanel.vue'
 
 const props = defineProps<{
   note: NoteDetail
@@ -222,6 +236,9 @@ const revisionsLoading = ref(false)
 const selectedRevisionId = ref<number | null>(null)
 const revisionPreviewContent = ref<string | null>(null)
 const revisionPreviewLoading = ref(false)
+
+const comments = ref<NoteComment[]>([])
+const commentsError = ref<string | null>(null)
 
 // Live Statistics
 const charCount = computed(() => editableContent.value.length)
@@ -276,7 +293,42 @@ watch(() => props.note, (newNote) => {
   isDirty.value = false
   showAutocomplete.value = false
   showHistory.value = false
+  loadComments(newNote.id)
 }, { immediate: true })
+
+async function loadComments(noteId: number) {
+  commentsError.value = null
+  if (!props.workspaceId) return
+  try {
+    comments.value = await getNoteComments(props.workspaceId, noteId)
+  } catch (err) {
+    console.error('Failed to load comments:', err)
+  }
+}
+
+async function handleAddComment(content: string) {
+  if (!props.workspaceId) return
+  commentsError.value = null
+  try {
+    const comment = await addNoteComment(props.workspaceId, props.note.id, content)
+    comments.value.push(comment)
+  } catch (err: any) {
+    console.error('Failed to add comment:', err)
+    commentsError.value = err.response?.data?.message || 'Failed to add comment.'
+  }
+}
+
+async function handleDeleteComment(commentId: number) {
+  if (!props.workspaceId) return
+  commentsError.value = null
+  try {
+    await deleteNoteComment(props.workspaceId, props.note.id, commentId)
+    comments.value = comments.value.filter(c => c.id !== commentId)
+  } catch (err: any) {
+    console.error('Failed to delete comment:', err)
+    commentsError.value = err.response?.data?.message || 'You can only delete your own comments.'
+  }
+}
 
 watch(editableContent, (newVal) => {
   if (newVal !== props.note.content) {

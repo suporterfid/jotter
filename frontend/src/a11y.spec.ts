@@ -10,6 +10,7 @@ import MarkdownPreview from './components/MarkdownPreview.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
+import CommentsPanel from './components/CommentsPanel.vue'
 
 /*
  * Accessibility Audit Spec (Issue #109 / Spec §10 / WCAG 2.2 AA)
@@ -169,6 +170,25 @@ describe('Accessibility Audit (axe-core)', () => {
         properties: [
           { name: 'status', type: 'string', value: 'draft' },
           { name: 'priority', type: 'numeric', value: 3 },
+        ],
+      },
+    })
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
+  it('CommentsPanel has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(CommentsPanel, {
+      attachTo: document.body,
+      props: {
+        comments: [
+          { id: 1, workspace_id: 1, note_id: 1, user_id: 1, actor_name: 'Alex', content: 'Looks good', anchor_line: null, created_at: '2026-07-01T00:00:00Z' },
         ],
       },
     })

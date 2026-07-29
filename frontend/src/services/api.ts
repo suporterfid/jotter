@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -168,6 +168,28 @@ export async function getOrCreateDailyNote(workspaceId: number, dateStr?: string
     : `/workspaces/${workspaceId}/daily`
   const response = await api.post<{ data: { id: number } }>(url)
   return response.data.data
+}
+
+export async function getNoteComments(workspaceId: number, noteId: number): Promise<NoteComment[]> {
+  const response = await api.get<{ data: NoteComment[] }>(`/workspaces/${workspaceId}/notes/${noteId}/comments`)
+  return response.data.data
+}
+
+export async function addNoteComment(
+  workspaceId: number,
+  noteId: number,
+  content: string,
+  anchorLine?: number
+): Promise<NoteComment> {
+  const response = await api.post<{ data: NoteComment }>(`/workspaces/${workspaceId}/notes/${noteId}/comments`, {
+    content,
+    anchor_line: anchorLine ?? undefined
+  })
+  return response.data.data
+}
+
+export async function deleteNoteComment(workspaceId: number, noteId: number, commentId: number): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/notes/${noteId}/comments/${commentId}`)
 }
 
 export async function getAttachments(workspaceId: number): Promise<AttachmentItem[]> {
