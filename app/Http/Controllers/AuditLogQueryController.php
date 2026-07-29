@@ -31,10 +31,16 @@ final class AuditLogQueryController extends Controller
         }
 
         $logs = AuditLog::query()
-            ->where('tenant_id', $workspace->tenant_id)
-            ->where(function ($q) use ($workspaceId) {
+            ->where(function ($q) use ($workspaceId, $workspace) {
+                // Workspace-scoped events: workspace_id alone already
+                // unambiguously identifies the tenant, so it's sufficient on
+                // its own — requiring a separately-populated tenant_id too
+                // silently hid every event whose recorder call omitted it
+                // (e.g. WorkspaceEventEmitter::emitMention()).
                 $q->where('workspace_id', $workspaceId)
-                    ->orWhereNull('workspace_id');
+                    ->orWhere(function ($q2) use ($workspace) {
+                        $q2->whereNull('workspace_id')->where('tenant_id', $workspace->tenant_id);
+                    });
             })
             ->latest('id')
             ->limit(50)

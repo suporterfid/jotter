@@ -80,6 +80,15 @@ export interface NoteComment {
   created_at: string
 }
 
+export interface AuditLogEntry {
+  id: number
+  actor_subject_id: string | null
+  event: string
+  metadata: Record<string, unknown> | null
+  ip_address: string | null
+  created_at: string | null
+}
+
 export interface AttachmentItem {
   id: number
   workspace_id: number

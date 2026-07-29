@@ -13,6 +13,7 @@
       @logout="handleLogout"
       @toggle-attachments="handleToggleAttachments"
       @daily-note="handleDailyNote"
+      @toggle-audit-log="handleToggleAuditLog"
     />
 
     <!-- Main Content Area -->
@@ -32,6 +33,13 @@
         :attachments="attachments"
         :loading="attachmentsLoading"
         @delete-attachment="handleDeleteAttachment"
+      />
+
+      <!-- Audit Log View Mode -->
+      <AuditLogViewer
+        v-else-if="isAuditLogActive"
+        :entries="auditLogEntries"
+        :loading="auditLogLoading"
       />
 
       <!-- Search View Mode -->
@@ -108,6 +116,7 @@ import LoginModal from './components/LoginModal.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import GraphView from './components/GraphView.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
+import AuditLogViewer from './components/AuditLogViewer.vue'
 import {
   getWorkspaces,
   getNotes,
@@ -122,9 +131,10 @@ import {
   getAttachments,
   deleteAttachment,
   createNoteFromTemplate,
-  getOrCreateDailyNote
+  getOrCreateDailyNote,
+  getAuditLogs
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem } from './services/types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry } from './services/types'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -144,6 +154,10 @@ const searchFilters = ref<SearchFilters>({})
 const isAttachmentsActive = ref(false)
 const attachments = ref<AttachmentItem[]>([])
 const attachmentsLoading = ref(false)
+
+const isAuditLogActive = ref(false)
+const auditLogEntries = ref<AuditLogEntry[]>([])
+const auditLogLoading = ref(false)
 
 const availableTagsForSearch = computed(() => {
   const tagSet = new Set<string>()
@@ -250,6 +264,7 @@ async function loadActiveNote(noteId: number) {
 async function handleSelectNote(noteId: number) {
   isSearchActive.value = false
   isAttachmentsActive.value = false
+  isAuditLogActive.value = false
   await loadActiveNote(noteId)
 }
 
@@ -257,7 +272,29 @@ async function handleToggleAttachments() {
   isAttachmentsActive.value = !isAttachmentsActive.value
   if (isAttachmentsActive.value) {
     isSearchActive.value = false
+    isAuditLogActive.value = false
     await refreshAttachments()
+  }
+}
+
+async function handleToggleAuditLog() {
+  isAuditLogActive.value = !isAuditLogActive.value
+  if (isAuditLogActive.value) {
+    isSearchActive.value = false
+    isAttachmentsActive.value = false
+    await refreshAuditLog()
+  }
+}
+
+async function refreshAuditLog() {
+  if (!activeWorkspaceId.value) return
+  auditLogLoading.value = true
+  try {
+    auditLogEntries.value = await getAuditLogs(activeWorkspaceId.value)
+  } catch (err) {
+    console.error('Failed to load audit log:', err)
+  } finally {
+    auditLogLoading.value = false
   }
 }
 
@@ -374,6 +411,7 @@ async function runSearch(query: string, filters: SearchFilters) {
 
 async function handleSearch(query: string) {
   isAttachmentsActive.value = false
+  isAuditLogActive.value = false
   searchQuery.value = query
   await runSearch(query, searchFilters.value)
 }
