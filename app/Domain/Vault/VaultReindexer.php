@@ -83,8 +83,14 @@ final class VaultReindexer
                 continue;
             }
 
-            $name = $file->getFilename();
-            if (! str_ends_with(strtolower($name), '.md')) {
+            $name = strtolower($file->getFilename());
+            if (! str_ends_with($name, '.md')) {
+                continue;
+            }
+
+            // Excalidraw diagrams are stored as `*.excalidraw.md` (JSON payload,
+            // not readable Markdown). Never index them as notes; leave on disk.
+            if (str_ends_with($name, '.excalidraw.md')) {
                 continue;
             }
 
