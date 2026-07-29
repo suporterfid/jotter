@@ -33,6 +33,15 @@ final class MarkdownServerRenderer
         // they must never leak into rendered SPA or published output.
         $processed = preg_replace('/%%.*?%%/s', '', $markdown);
 
+        // Optional LaTeX/Mermaid hydration markup (off by default). Placeholders
+        // survive the CommonMark pass untouched (plain alnum tokens), then get
+        // swapped for the real, escaped markup after conversion so CommonMark
+        // never has a chance to mangle or re-escape it.
+        $mathMermaidBlocks = [];
+        if ((bool) config('jotter.rendering.katex_mermaid_enabled', false)) {
+            $processed = $this->extractMathAndMermaid($processed ?? $markdown, $mathMermaidBlocks);
+        }
+
         // Convert Wikilinks [[target|alias]] into safe anchor tags
         $processed = preg_replace_callback(
             '/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/',
@@ -65,8 +74,50 @@ final class MarkdownServerRenderer
             $html
         );
 
+        if ($mathMermaidBlocks !== []) {
+            $html = strtr($html, $mathMermaidBlocks);
+        }
+
         // Server-side XSS sanitization pass
         return $this->sanitizeHtml($html);
+    }
+
+    /**
+     * Replaces $$LaTeX$$ and ```mermaid fenced blocks with plain-text
+     * placeholder tokens (so CommonMark cannot mangle them) and records the
+     * real, escaped hydration markup to swap back in after conversion.
+     *
+     * @param  array<string, string>  $blocks
+     */
+    private function extractMathAndMermaid(string $markdown, array &$blocks): string
+    {
+        $index = 0;
+
+        $markdown = preg_replace_callback(
+            '/```mermaid\s*\n(.*?)```/s',
+            function (array $matches) use (&$blocks, &$index): string {
+                $token = sprintf('JOTTERMERMAIDBLOCK%dTOKEN', $index++);
+                $source = htmlspecialchars(trim($matches[1]), ENT_QUOTES, 'UTF-8');
+                $blocks[$token] = sprintf('<pre class="mermaid">%s</pre>', $source);
+
+                return $token;
+            },
+            $markdown
+        ) ?? $markdown;
+
+        $markdown = preg_replace_callback(
+            '/\$\$(.+?)\$\$/s',
+            function (array $matches) use (&$blocks, &$index): string {
+                $token = sprintf('JOTTERMATHBLOCK%dTOKEN', $index++);
+                $source = htmlspecialchars(trim($matches[1]), ENT_QUOTES, 'UTF-8');
+                $blocks[$token] = sprintf('<span class="jotter-math" data-tex="%s">%s</span>', $source, $source);
+
+                return $token;
+            },
+            $markdown
+        ) ?? $markdown;
+
+        return $markdown;
     }
 
     private function sanitizeHtml(string $html): string
