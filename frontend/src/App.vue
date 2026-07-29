@@ -5,12 +5,15 @@
       :notes="notes"
       :selected-note-id="activeNoteId"
       :current-user="currentUser"
+      :notifications="notifications"
       @select-note="handleSelectNote"
       @create-note="handleCreateNote"
       @create-note-from-template="handleCreateNoteFromTemplate"
       @delete-note="handleDeleteNote"
       @search="handleSearch"
       @logout="handleLogout"
+      @mark-notification-read="handleMarkNotificationRead"
+      @delete-notification="handleDeleteNotification"
       @toggle-attachments="handleToggleAttachments"
       @daily-note="handleDailyNote"
       @toggle-audit-log="handleToggleAuditLog"
@@ -168,9 +171,12 @@ import {
   getAuditLogs,
   importWorkspaceArchive,
   getLinkReport,
-  publishWorkspace
+  publishWorkspace,
+  getNotifications,
+  markNotificationRead,
+  deleteNotification
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport } from './services/types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem } from './services/types'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -198,6 +204,8 @@ const auditLogLoading = ref(false)
 const isLinkReportActive = ref(false)
 const linkReport = ref<LinkReport>({ broken_links: [], orphans: [] })
 const linkReportLoading = ref(false)
+
+const notifications = ref<NotificationItem[]>([])
 
 const availableTagsForSearch = computed(() => {
   const tagSet = new Set<string>()
@@ -243,8 +251,39 @@ async function initWorkspace() {
       activeWorkspaceId.value = list[0].id
     }
     await refreshNotesList()
+    await refreshNotifications()
   } catch (err) {
     console.error('Failed to initialize workspace:', err)
+  }
+}
+
+async function refreshNotifications() {
+  if (!activeWorkspaceId.value) return
+  try {
+    notifications.value = await getNotifications(activeWorkspaceId.value)
+  } catch (err) {
+    console.error('Failed to load notifications:', err)
+  }
+}
+
+async function handleMarkNotificationRead(notificationId: number) {
+  if (!activeWorkspaceId.value) return
+  try {
+    const updated = await markNotificationRead(activeWorkspaceId.value, notificationId)
+    const idx = notifications.value.findIndex(n => n.id === notificationId)
+    if (idx !== -1) notifications.value[idx] = updated
+  } catch (err) {
+    console.error('Failed to mark notification as read:', err)
+  }
+}
+
+async function handleDeleteNotification(notificationId: number) {
+  if (!activeWorkspaceId.value) return
+  try {
+    await deleteNotification(activeWorkspaceId.value, notificationId)
+    notifications.value = notifications.value.filter(n => n.id !== notificationId)
+  } catch (err) {
+    console.error('Failed to delete notification:', err)
   }
 }
 

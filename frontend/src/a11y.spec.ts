@@ -45,6 +45,29 @@ describe('Accessibility Audit (axe-core)', () => {
     expect(seriousOrCritical).toEqual([])
   })
 
+  it('Sidebar with the notifications dropdown open has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(Sidebar, {
+      attachTo: document.body,
+      props: {
+        notes: [],
+        selectedNoteId: null,
+        currentUser: null,
+        notifications: [
+          { id: 1, workspace_id: 1, user_id: 1, type: 'mention', title: 'You were mentioned', data: { comment_snippet: 'hey @you check this' }, read_at: null, created_at: '2026-07-01T00:00:00Z' },
+        ],
+      },
+    })
+    await wrapper.get('[data-testid="notifications-btn"]').trigger('click')
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
   it('LoginModal has no serious or critical structural accessibility violations', async () => {
     const wrapper = mount(LoginModal, {
       attachTo: document.body,

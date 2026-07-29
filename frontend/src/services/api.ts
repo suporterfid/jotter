@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -233,6 +233,20 @@ export interface PublishResult {
 export async function publishWorkspace(workspaceId: number): Promise<PublishResult> {
   const response = await api.post<PublishResult>(`/workspaces/${workspaceId}/publish`)
   return response.data
+}
+
+export async function getNotifications(workspaceId: number): Promise<NotificationItem[]> {
+  const response = await api.get<{ data: NotificationItem[] }>(`/workspaces/${workspaceId}/notifications`)
+  return response.data.data
+}
+
+export async function markNotificationRead(workspaceId: number, notificationId: number): Promise<NotificationItem> {
+  const response = await api.post<{ data: NotificationItem }>(`/workspaces/${workspaceId}/notifications/${notificationId}/read`)
+  return response.data.data
+}
+
+export async function deleteNotification(workspaceId: number, notificationId: number): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/notifications/${notificationId}`)
 }
 
 export async function getLinkReport(workspaceId: number): Promise<LinkReport> {
