@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -190,6 +190,13 @@ export async function addNoteComment(
 
 export async function deleteNoteComment(workspaceId: number, noteId: number, commentId: number): Promise<void> {
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}/comments/${commentId}`)
+}
+
+export async function getAuditLogs(workspaceId: number): Promise<AuditLogEntry[]> {
+  const response = await api.get<{ workspace_id: number; audit_logs: AuditLogEntry[] }>(
+    `/workspaces/${workspaceId}/audit-logs`
+  )
+  return response.data.audit_logs
 }
 
 export async function getAttachments(workspaceId: number): Promise<AttachmentItem[]> {

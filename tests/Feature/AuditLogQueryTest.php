@@ -24,10 +24,30 @@ final class AuditLogQueryTest extends TestCase
             'vault_path' => storage_path('app/vaults/audit_test'),
         ]);
 
+        // Regression: workspace-scoped events must show up even when the
+        // recorder call site never populated tenant_id — this is the normal
+        // case in practice (e.g. WorkspaceEventEmitter::emitMention() only
+        // ever passes workspaceId). Requiring an exact tenant_id match on
+        // top of workspace_id silently hid every one of these.
         AuditLog::create([
+            'workspace_id' => $workspace->id,
             'actor_subject_id' => (string) $admin->id,
-            'event' => 'note.created',
+            'event' => 'note.updated',
             'metadata' => ['path' => 'welcome.md'],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        // A log for a different workspace must not leak in.
+        $otherWorkspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'other',
+            'name' => 'Other',
+            'vault_path' => storage_path('app/vaults/audit_test_other'),
+        ]);
+        AuditLog::create([
+            'workspace_id' => $otherWorkspace->id,
+            'event' => 'note.created',
+            'metadata' => [],
             'ip_address' => '127.0.0.1',
         ]);
 
@@ -38,6 +58,8 @@ final class AuditLogQueryTest extends TestCase
             ->assertJsonStructure([
                 'workspace_id',
                 'audit_logs',
-            ]);
+            ])
+            ->assertJsonCount(1, 'audit_logs')
+            ->assertJsonPath('audit_logs.0.event', 'note.updated');
     }
 }
