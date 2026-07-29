@@ -10,6 +10,7 @@
       @delete-note="handleDeleteNote"
       @search="handleSearch"
       @logout="handleLogout"
+      @toggle-attachments="handleToggleAttachments"
     />
 
     <!-- Main Content Area -->
@@ -21,6 +22,14 @@
         :active-note-id="activeNoteId"
         @select-note="handleSelectNoteFromGraph"
         @close="isGraphViewActive = false"
+      />
+
+      <!-- Attachments View Mode -->
+      <AttachmentsPanel
+        v-else-if="isAttachmentsActive"
+        :attachments="attachments"
+        :loading="attachmentsLoading"
+        @delete-attachment="handleDeleteAttachment"
       />
 
       <!-- Search View Mode -->
@@ -96,6 +105,7 @@ import SearchResults from './components/SearchResults.vue'
 import LoginModal from './components/LoginModal.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import GraphView from './components/GraphView.vue'
+import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import {
   getWorkspaces,
   getNotes,
@@ -106,9 +116,11 @@ import {
   searchNotes,
   getMe,
   logout,
-  setUnauthenticatedHandler
+  setUnauthenticatedHandler,
+  getAttachments,
+  deleteAttachment
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters } from './services/types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem } from './services/types'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -124,6 +136,10 @@ const isSearchActive = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<SearchResult[]>([])
 const searchFilters = ref<SearchFilters>({})
+
+const isAttachmentsActive = ref(false)
+const attachments = ref<AttachmentItem[]>([])
+const attachmentsLoading = ref(false)
 
 const availableTagsForSearch = computed(() => {
   const tagSet = new Set<string>()
@@ -229,7 +245,40 @@ async function loadActiveNote(noteId: number) {
 
 async function handleSelectNote(noteId: number) {
   isSearchActive.value = false
+  isAttachmentsActive.value = false
   await loadActiveNote(noteId)
+}
+
+async function handleToggleAttachments() {
+  isAttachmentsActive.value = !isAttachmentsActive.value
+  if (isAttachmentsActive.value) {
+    isSearchActive.value = false
+    await refreshAttachments()
+  }
+}
+
+async function refreshAttachments() {
+  if (!activeWorkspaceId.value) return
+  attachmentsLoading.value = true
+  try {
+    attachments.value = await getAttachments(activeWorkspaceId.value)
+  } catch (err) {
+    console.error('Failed to load attachments:', err)
+  } finally {
+    attachmentsLoading.value = false
+  }
+}
+
+async function handleDeleteAttachment(attachment: AttachmentItem) {
+  if (!activeWorkspaceId.value) return
+  if (!confirm(`Delete "${attachment.path.split('/').pop()}"? This cannot be undone.`)) return
+  try {
+    await deleteAttachment(activeWorkspaceId.value, attachment.id)
+    attachments.value = attachments.value.filter(a => a.id !== attachment.id)
+  } catch (err) {
+    console.error('Failed to delete attachment:', err)
+    errorMessage.value = 'Failed to delete attachment.'
+  }
 }
 
 async function handleCreateNote(path: string) {
@@ -296,6 +345,7 @@ async function runSearch(query: string, filters: SearchFilters) {
 }
 
 async function handleSearch(query: string) {
+  isAttachmentsActive.value = false
   searchQuery.value = query
   await runSearch(query, searchFilters.value)
 }
