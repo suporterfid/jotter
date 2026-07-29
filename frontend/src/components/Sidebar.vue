@@ -12,12 +12,19 @@
         </svg>
         <span class="brand-title">Jotter</span>
       </div>
-      <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
+      <div class="header-actions">
+        <button class="btn-icon" data-testid="attachments-btn" title="Attachments" @click="$emit('toggle-attachments')">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+          </svg>
+        </button>
+        <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Search Input -->
@@ -147,6 +154,7 @@ const emit = defineEmits<{
   (e: 'delete-note', noteId: number): void
   (e: 'search', query: string): void
   (e: 'logout'): void
+  (e: 'toggle-attachments'): void
 }>()
 
 const searchQuery = ref('')
@@ -285,6 +293,12 @@ function handleCreateNote() {
 
 .brand-icon {
   color: var(--color-action);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .btn-icon {
