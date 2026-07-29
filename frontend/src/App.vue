@@ -14,6 +14,7 @@
       @toggle-attachments="handleToggleAttachments"
       @daily-note="handleDailyNote"
       @toggle-audit-log="handleToggleAuditLog"
+      @import-workspace="handleImportWorkspace"
     />
 
     <!-- Main Content Area -->
@@ -89,6 +90,18 @@
       >&times;</button>
     </div>
 
+    <!-- Success Banner -->
+    <div v-if="successMessage" class="success-banner" data-testid="success-banner" role="status">
+      <span>{{ successMessage }}</span>
+      <button
+        type="button"
+        class="error-banner-dismiss"
+        data-testid="success-banner-dismiss"
+        aria-label="Dismiss message"
+        @click="successMessage = null"
+      >&times;</button>
+    </div>
+
     <!-- Login Modal -->
     <LoginModal
       :show="showLoginModal"
@@ -132,7 +145,8 @@ import {
   deleteAttachment,
   createNoteFromTemplate,
   getOrCreateDailyNote,
-  getAuditLogs
+  getAuditLogs,
+  importWorkspaceArchive
 } from './services/api'
 import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry } from './services/types'
 
@@ -172,6 +186,7 @@ const availableTagsForSearch = computed(() => {
 })
 
 const errorMessage = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
 
 async function handleSelectNoteFromGraph(noteId: number) {
   isGraphViewActive.value = false
@@ -283,6 +298,23 @@ async function handleToggleAuditLog() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     await refreshAuditLog()
+  }
+}
+
+async function handleImportWorkspace(archive: File, overwrite: boolean) {
+  if (!activeWorkspaceId.value) return
+  try {
+    const result = await importWorkspaceArchive(activeWorkspaceId.value, archive, overwrite)
+    await refreshNotesList()
+    const parts = [`${result.extracted_count} note(s) imported`, `${result.skipped_count} skipped`]
+    if (result.errors.length > 0) parts.push(`${result.errors.length} error(s)`)
+    successMessage.value = `Import complete: ${parts.join(', ')}.`
+    if (result.errors.length > 0) {
+      console.error('Import errors:', result.errors)
+    }
+  } catch (err: any) {
+    console.error('Failed to import workspace archive:', err)
+    errorMessage.value = `Failed to import archive: ${err.response?.data?.message || err.message || 'Unknown error'}`
   }
 }
 
@@ -500,6 +532,24 @@ body {
   max-width: min(90vw, 480px);
   padding: var(--space-sm, 8px) var(--space-md, 16px);
   background: var(--color-status-danger);
+  color: #ffffff;
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+}
+
+.success-banner {
+  position: fixed;
+  top: var(--space-md, 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 8px);
+  max-width: min(90vw, 480px);
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  background: var(--color-status-success);
   color: #ffffff;
   border-radius: var(--radius-sm, 6px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);

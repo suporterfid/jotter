@@ -192,6 +192,30 @@ export async function deleteNoteComment(workspaceId: number, noteId: number, com
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}/comments/${commentId}`)
 }
 
+export interface ImportResult {
+  status: string
+  extracted_count: number
+  skipped_count: number
+  errors: string[]
+}
+
+export async function importWorkspaceArchive(
+  workspaceId: number,
+  archive: File,
+  overwrite: boolean
+): Promise<ImportResult> {
+  const formData = new FormData()
+  formData.append('archive', archive)
+  formData.append('overwrite', overwrite ? '1' : '0')
+
+  const response = await api.post<ImportResult>(`/workspaces/${workspaceId}/import`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+  return response.data
+}
+
 export async function getAuditLogs(workspaceId: number): Promise<AuditLogEntry[]> {
   const response = await api.get<{ workspace_id: number; audit_logs: AuditLogEntry[] }>(
     `/workspaces/${workspaceId}/audit-logs`

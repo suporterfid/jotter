@@ -13,27 +13,77 @@
         <span class="brand-title">Jotter</span>
       </div>
       <div class="header-actions">
-        <button class="btn-icon" data-testid="attachments-btn" title="Attachments" @click="$emit('toggle-attachments')">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-          </svg>
-        </button>
-        <button class="btn-icon" data-testid="audit-log-btn" title="Audit Log" @click="$emit('toggle-audit-log')">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="9" y1="13" x2="15" y2="13"></line>
-            <line x1="9" y1="17" x2="13" y2="17"></line>
-          </svg>
-        </button>
-        <button class="btn-icon" data-testid="daily-note-btn" title="Today's Daily Note" @click="$emit('daily-note')">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
-        </button>
+        <div class="more-menu-wrapper">
+          <button
+            class="btn-icon"
+            data-testid="more-actions-btn"
+            title="More actions"
+            :aria-expanded="showMoreMenu"
+            aria-haspopup="true"
+            @click="showMoreMenu = !showMoreMenu"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="5" r="1.5"></circle>
+              <circle cx="12" cy="12" r="1.5"></circle>
+              <circle cx="12" cy="19" r="1.5"></circle>
+            </svg>
+          </button>
+          <div v-if="showMoreMenu" class="more-menu-backdrop" @click="showMoreMenu = false"></div>
+          <div v-if="showMoreMenu" class="more-menu" role="menu">
+            <button
+              class="more-menu-item"
+              data-testid="attachments-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-attachments'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+              </svg>
+              <span>Attachments</span>
+            </button>
+            <button
+              class="more-menu-item"
+              data-testid="daily-note-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('daily-note'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>Today's Daily Note</span>
+            </button>
+            <button
+              class="more-menu-item"
+              data-testid="audit-log-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-audit-log'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="9" y1="13" x2="15" y2="13"></line>
+                <line x1="9" y1="17" x2="13" y2="17"></line>
+              </svg>
+              <span>Audit Log</span>
+            </button>
+            <button
+              class="more-menu-item"
+              data-testid="import-workspace-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => { showImportModal = true })"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Import Workspace…</span>
+            </button>
+          </div>
+        </div>
         <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -149,6 +199,31 @@
       </form>
     </div>
 
+    <!-- Import Workspace Dialog -->
+    <div v-if="showImportModal" class="modal-overlay" @click.self="closeImportModal">
+      <form class="modal-card" @submit.prevent="handleImportSubmit">
+        <h3>Import Workspace Archive</h3>
+        <p class="modal-desc">Upload a <code>.zip</code> export (Markdown notes + attachments) to import into this workspace.</p>
+        <input
+          ref="importFileInputRef"
+          data-testid="import-file-input"
+          type="file"
+          accept=".zip"
+          class="modal-input"
+          required
+          @change="onImportFileSelected"
+        />
+        <label class="modal-checkbox-label">
+          <input v-model="importOverwrite" type="checkbox" data-testid="import-overwrite-checkbox" />
+          <span>Overwrite existing notes with the same path</span>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" @click="closeImportModal">Cancel</button>
+          <button type="submit" class="btn-primary" data-testid="import-submit-btn" :disabled="!importFile">Import</button>
+        </div>
+      </form>
+    </div>
+
     <!-- User Profile Footer -->
     <div v-if="currentUser" class="sidebar-footer">
       <div class="user-badge" data-testid="user-profile">
@@ -188,6 +263,7 @@ const emit = defineEmits<{
   (e: 'toggle-attachments'): void
   (e: 'daily-note'): void
   (e: 'toggle-audit-log'): void
+  (e: 'import-workspace', archive: File, overwrite: boolean): void
 }>()
 
 const searchQuery = ref('')
@@ -196,6 +272,16 @@ const sortBy = ref<'recent' | 'name' | 'path'>('recent')
 const showNewNoteModal = ref(false)
 const newNotePath = ref('')
 const newNoteTemplatePath = ref('')
+const showImportModal = ref(false)
+const showMoreMenu = ref(false)
+
+function closeMoreMenuAnd(action: () => void) {
+  showMoreMenu.value = false
+  action()
+}
+const importFile = ref<File | null>(null)
+const importOverwrite = ref(false)
+const importFileInputRef = ref<HTMLInputElement | null>(null)
 
 const availableTemplates = computed(() =>
   props.notes.filter(n => n.path.startsWith('_templates/'))
@@ -307,6 +393,24 @@ function handleCreateNote() {
   newNoteTemplatePath.value = ''
   showNewNoteModal.value = false
 }
+
+function onImportFileSelected(event: Event) {
+  const target = event.target as HTMLInputElement
+  importFile.value = target.files?.[0] ?? null
+}
+
+function closeImportModal() {
+  showImportModal.value = false
+  importFile.value = null
+  importOverwrite.value = false
+  if (importFileInputRef.value) importFileInputRef.value.value = ''
+}
+
+function handleImportSubmit() {
+  if (!importFile.value) return
+  emit('import-workspace', importFile.value, importOverwrite.value)
+  closeImportModal()
+}
 </script>
 
 <style scoped>
@@ -345,6 +449,51 @@ function handleCreateNote() {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.more-menu-wrapper {
+  position: relative;
+}
+
+.more-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+.more-menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-1);
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+}
+
+.more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  text-align: left;
+  min-height: 40px;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.more-menu-item:hover {
+  background: var(--color-surface-emphasis);
 }
 
 .btn-icon {
@@ -646,6 +795,16 @@ function handleCreateNote() {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   margin-bottom: var(--space-2);
+}
+
+.modal-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .modal-input {
