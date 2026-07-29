@@ -43,7 +43,8 @@ Every Milestone A–D item this file marks `[x]` is API-complete, but auditing t
 - ~~**#163 — workspace export missing from the SPA.**~~ **Closed**, merged via PR #188. Added an "Export Workspace" item to the sidebar's More-actions menu.
 - ~~**#167 — broken-link/orphan report missing from the SPA.**~~ **Closed**, merged via PR #190. Added `LinkReportViewer.vue`, wired to the already-defined link-report endpoint.
 - ~~**#165 — workspace publish missing from the SPA, plus two real backend bugs.**~~ **Closed**, merged via PR #192. Added the publish menu item; also fixed `storage/app/public` permissions (missing from `entrypoint.sh`) and a missing `index.html` on published sites. This completes Tier 3.
-- **#159, #161** — notifications, collections/table/board/calendar views (Milestone D) — Tier 4, new app-shell surfaces. Open, #159 next.
+- ~~**#159 — notifications missing from the SPA.**~~ **Closed**, merged via PR #194. Added a notifications bell/dropdown to the sidebar header, wired to the already-defined endpoints.
+- **#161** — collections/table/board/calendar views (Milestone D) — Tier 4's last item. Open, next in the queue.
 
 ---
 
