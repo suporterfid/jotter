@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -107,6 +107,20 @@ export async function searchNotes(
     `/workspaces/${workspaceId}/search?${params.toString()}`
   )
   return response.data.data
+}
+
+export async function getNoteRevisions(workspaceId: number, noteId: number): Promise<NoteRevisionMeta[]> {
+  const response = await api.get<{ data: NoteRevisionMeta[] }>(`/workspaces/${workspaceId}/notes/${noteId}/revisions`)
+  return response.data.data
+}
+
+export async function getNoteRevision(workspaceId: number, noteId: number, revisionId: number): Promise<NoteRevisionDetail> {
+  const response = await api.get<{ data: NoteRevisionDetail }>(`/workspaces/${workspaceId}/notes/${noteId}/revisions/${revisionId}`)
+  return response.data.data
+}
+
+export async function restoreNoteRevision(workspaceId: number, noteId: number, revisionId: number): Promise<void> {
+  await api.post(`/workspaces/${workspaceId}/notes/${noteId}/revisions/${revisionId}/restore`)
 }
 
 export async function getAttachments(workspaceId: number): Promise<AttachmentItem[]> {

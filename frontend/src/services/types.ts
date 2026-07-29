@@ -47,6 +47,19 @@ export interface AuthUser {
   is_admin: boolean
 }
 
+export interface NoteRevisionMeta {
+  id: number
+  note_id: number
+  content_hash: string
+  actor_id: string | null
+  created_at: string
+}
+
+export interface NoteRevisionDetail extends NoteRevisionMeta {
+  workspace_id: number
+  content: string
+}
+
 export interface AttachmentItem {
   id: number
   workspace_id: number
