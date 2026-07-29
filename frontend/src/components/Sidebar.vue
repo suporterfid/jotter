@@ -181,6 +181,32 @@
               </svg>
               <span>Table View</span>
             </button>
+            <button
+              class="more-menu-item"
+              data-testid="board-view-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-board-view'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="18" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="10" rx="1"></rect>
+              </svg>
+              <span>Board View</span>
+            </button>
+            <button
+              class="more-menu-item"
+              data-testid="calendar-view-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-calendar-view'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>Calendar View</span>
+            </button>
           </div>
         </div>
         <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
@@ -370,6 +396,8 @@ const emit = defineEmits<{
   (e: 'toggle-link-report'): void
   (e: 'publish-workspace'): void
   (e: 'toggle-table-view'): void
+  (e: 'toggle-board-view'): void
+  (e: 'toggle-calendar-view'): void
 }>()
 
 const searchQuery = ref('')

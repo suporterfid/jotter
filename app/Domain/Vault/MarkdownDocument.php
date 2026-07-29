@@ -83,7 +83,12 @@ final class MarkdownDocument
         }
 
         try {
-            $parsed = Yaml::parse($yamlBlock);
+            // PARSE_DATETIME: without this flag, Symfony's YAML parser resolves bare
+            // ISO date/datetime scalars (the natural, unquoted way to write them) to a
+            // Unix timestamp int rather than a date value — indistinguishable from a
+            // plain numeric property downstream. Forcing DateTimeImmutable here lets
+            // NotePropertyProjector classify them correctly as NotePropertyType::DATETIME.
+            $parsed = Yaml::parse($yamlBlock, Yaml::PARSE_DATETIME);
         } catch (ParseException) {
             return [[], $normalized];
         }

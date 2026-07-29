@@ -22,6 +22,8 @@
       @toggle-link-report="handleToggleLinkReport"
       @publish-workspace="handlePublishWorkspace"
       @toggle-table-view="handleToggleTableView"
+      @toggle-board-view="handleToggleBoardView"
+      @toggle-calendar-view="handleToggleCalendarView"
     />
 
     <!-- Main Content Area -->
@@ -69,6 +71,28 @@
         @page-change="handleCollectionPageChange"
         @filter-change="handleCollectionFilterChange"
         @sort="handleCollectionSort"
+      />
+
+      <!-- Board (Collections) View Mode -->
+      <CollectionsBoardView
+        v-else-if="isBoardViewActive"
+        :page="collectionPage"
+        :loading="collectionLoading"
+        :group-property="collectionGroupProperty"
+        @select-note="handleSelectNote"
+        @page-change="handleCollectionPageChange"
+        @group-change="handleCollectionGroupChange"
+      />
+
+      <!-- Calendar (Collections) View Mode -->
+      <CollectionsCalendarView
+        v-else-if="isCalendarViewActive"
+        :page="collectionPage"
+        :loading="collectionLoading"
+        :date-property="collectionDateProperty"
+        @select-note="handleSelectNote"
+        @page-change="handleCollectionPageChange"
+        @date-property-change="handleCollectionDatePropertyChange"
       />
 
       <!-- Search View Mode -->
@@ -168,6 +192,8 @@ import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
 import LinkReportViewer from './components/LinkReportViewer.vue'
 import CollectionsTableView from './components/CollectionsTableView.vue'
+import CollectionsBoardView from './components/CollectionsBoardView.vue'
+import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import {
   getWorkspaces,
   getNotes,
@@ -224,12 +250,16 @@ const linkReportLoading = ref(false)
 const notifications = ref<NotificationItem[]>([])
 
 const isTableViewActive = ref(false)
+const isBoardViewActive = ref(false)
+const isCalendarViewActive = ref(false)
 const collectionPage = ref<CollectionPage>({ data: [], current_page: 1, last_page: 1, per_page: 50, total: 0 })
 const collectionLoading = ref(false)
 const collectionFilterProperty = ref('')
 const collectionFilterValue = ref('')
 const collectionSortKey = ref<string | null>(null)
 const collectionSortDir = ref<'asc' | 'desc'>('asc')
+const collectionGroupProperty = ref<string | null>(null)
+const collectionDateProperty = ref<string | null>(null)
 
 const availableTagsForSearch = computed(() => {
   const tagSet = new Set<string>()
@@ -372,6 +402,8 @@ async function handleSelectNote(noteId: number) {
   isAuditLogActive.value = false
   isLinkReportActive.value = false
   isTableViewActive.value = false
+  isBoardViewActive.value = false
+  isCalendarViewActive.value = false
   await loadActiveNote(noteId)
 }
 
@@ -382,6 +414,8 @@ async function handleToggleAttachments() {
     isAuditLogActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
+    isBoardViewActive.value = false
+    isCalendarViewActive.value = false
     await refreshAttachments()
   }
 }
@@ -393,6 +427,8 @@ async function handleToggleAuditLog() {
     isAttachmentsActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
+    isBoardViewActive.value = false
+    isCalendarViewActive.value = false
     await refreshAuditLog()
   }
 }
@@ -404,6 +440,8 @@ async function handleToggleLinkReport() {
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
     isTableViewActive.value = false
+    isBoardViewActive.value = false
+    isCalendarViewActive.value = false
     await refreshLinkReport()
   }
 }
@@ -415,6 +453,34 @@ async function handleToggleTableView() {
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
     isLinkReportActive.value = false
+    isBoardViewActive.value = false
+    isCalendarViewActive.value = false
+    await refreshCollection()
+  }
+}
+
+async function handleToggleBoardView() {
+  isBoardViewActive.value = !isBoardViewActive.value
+  if (isBoardViewActive.value) {
+    isSearchActive.value = false
+    isAttachmentsActive.value = false
+    isAuditLogActive.value = false
+    isLinkReportActive.value = false
+    isTableViewActive.value = false
+    isCalendarViewActive.value = false
+    await refreshCollection()
+  }
+}
+
+async function handleToggleCalendarView() {
+  isCalendarViewActive.value = !isCalendarViewActive.value
+  if (isCalendarViewActive.value) {
+    isSearchActive.value = false
+    isAttachmentsActive.value = false
+    isAuditLogActive.value = false
+    isLinkReportActive.value = false
+    isTableViewActive.value = false
+    isBoardViewActive.value = false
     await refreshCollection()
   }
 }
@@ -452,6 +518,14 @@ function handleCollectionSort(key: string) {
     collectionSortKey.value = key
     collectionSortDir.value = 'asc'
   }
+}
+
+function handleCollectionGroupChange(property: string) {
+  collectionGroupProperty.value = property || null
+}
+
+function handleCollectionDatePropertyChange(property: string) {
+  collectionDateProperty.value = property || null
 }
 
 async function refreshLinkReport() {
@@ -628,6 +702,8 @@ async function handleSearch(query: string) {
   isAuditLogActive.value = false
   isLinkReportActive.value = false
   isTableViewActive.value = false
+  isBoardViewActive.value = false
+  isCalendarViewActive.value = false
   searchQuery.value = query
   await runSearch(query, searchFilters.value)
 }

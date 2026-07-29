@@ -14,6 +14,8 @@ import CommentsPanel from './components/CommentsPanel.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
 import LinkReportViewer from './components/LinkReportViewer.vue'
 import CollectionsTableView from './components/CollectionsTableView.vue'
+import CollectionsBoardView from './components/CollectionsBoardView.vue'
+import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 
 /*
  * Accessibility Audit Spec (Issue #109 / Spec §10 / WCAG 2.2 AA)
@@ -283,6 +285,58 @@ describe('Accessibility Audit (axe-core)', () => {
           per_page: 50,
           total: 51,
         },
+      },
+    })
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
+  it('CollectionsBoardView has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(CollectionsBoardView, {
+      attachTo: document.body,
+      props: {
+        page: {
+          data: [
+            { id: 1, path: 'a.md', title: 'A', properties: [{ id: 1, note_id: 1, name: 'status', type: 'string', value_string: 'draft', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null }] },
+          ],
+          current_page: 1,
+          last_page: 2,
+          per_page: 50,
+          total: 51,
+        },
+        groupProperty: 'status',
+      },
+    })
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
+  it('CollectionsCalendarView has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(CollectionsCalendarView, {
+      attachTo: document.body,
+      props: {
+        page: {
+          data: [
+            { id: 1, path: 'a.md', title: 'A', properties: [{ id: 1, note_id: 1, name: 'due_date', type: 'datetime', value_string: null, value_numeric: null, value_boolean: null, value_datetime: '2026-08-01T00:00:00Z', value_json: null }] },
+          ],
+          current_page: 1,
+          last_page: 2,
+          per_page: 50,
+          total: 51,
+        },
+        dateProperty: 'due_date',
       },
     })
     const results = await axe.run(wrapper.element, {
