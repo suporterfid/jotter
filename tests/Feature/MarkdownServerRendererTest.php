@@ -98,4 +98,37 @@ final class MarkdownServerRendererTest extends TestCase
         $this->assertStringNotContainsString('<script>', $html);
         $this->assertStringContainsString('class="jotter-math"', $html);
     }
+
+    public function test_dataview_code_block_degrades_to_readable_code_without_crashing(): void
+    {
+        $renderer = new MarkdownServerRenderer();
+
+        $markdown = "# Notes\n\n```dataview\nLIST FROM #project WHERE status = \"active\"\n```\n\nAfter.";
+        $html = $renderer->render($markdown);
+
+        $this->assertStringContainsString('<pre><code', $html);
+        $this->assertStringContainsString('LIST FROM', $html);
+        $this->assertStringContainsString('#project', $html);
+        $this->assertStringContainsString('After.', $html);
+    }
+
+    public function test_tasks_plugin_emoji_syntax_renders_as_readable_text_without_crashing(): void
+    {
+        $renderer = new MarkdownServerRenderer();
+
+        $markdown = "- [ ] Do thing \u{1F4C5} 2026-08-01 \u{1F501} every week\n- [x] Done thing \u{2705} 2026-07-01";
+        $html = $renderer->render($markdown);
+
+        // MarkdownServerRenderer has no GFM task-list extension registered (see
+        // constructor), so `- [ ]` prints as literal list-item text rather than a
+        // checkbox input -- a separate, tracked gap (#216), not a crash or dropped
+        // content. This test's contract is: no exception, and every character of
+        // the line -- including the Tasks-plugin emoji annotations -- survives.
+        $this->assertStringContainsString('<li>', $html);
+        $this->assertStringContainsString('Do thing', $html);
+        $this->assertStringContainsString("\u{1F4C5}", $html);
+        $this->assertStringContainsString('2026-08-01', $html);
+        $this->assertStringContainsString('every week', $html);
+        $this->assertStringContainsString("\u{2705}", $html);
+    }
 }
