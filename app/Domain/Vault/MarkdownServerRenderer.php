@@ -5,6 +5,7 @@ namespace App\Domain\Vault;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\Extension\Table\TableExtension;
+use League\CommonMark\Extension\TaskList\TaskListExtension;
 use League\CommonMark\MarkdownConverter;
 
 final class MarkdownServerRenderer
@@ -19,6 +20,7 @@ final class MarkdownServerRenderer
         ]);
         $environment->addExtension(new CommonMarkCoreExtension());
         $environment->addExtension(new TableExtension());
+        $environment->addExtension(new TaskListExtension());
 
         $this->converter = new MarkdownConverter($environment);
     }
