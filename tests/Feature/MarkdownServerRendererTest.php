@@ -119,16 +119,33 @@ final class MarkdownServerRendererTest extends TestCase
         $markdown = "- [ ] Do thing \u{1F4C5} 2026-08-01 \u{1F501} every week\n- [x] Done thing \u{2705} 2026-07-01";
         $html = $renderer->render($markdown);
 
-        // MarkdownServerRenderer has no GFM task-list extension registered (see
-        // constructor), so `- [ ]` prints as literal list-item text rather than a
-        // checkbox input -- a separate, tracked gap (#216), not a crash or dropped
-        // content. This test's contract is: no exception, and every character of
-        // the line -- including the Tasks-plugin emoji annotations -- survives.
-        $this->assertStringContainsString('<li>', $html);
+        // No exception, and every character of the line -- including the
+        // Tasks-plugin emoji annotations -- survives. Checkbox rendering itself
+        // is covered by test_renders_gfm_task_list_checkboxes below.
+        $this->assertStringContainsString('<li', $html);
         $this->assertStringContainsString('Do thing', $html);
         $this->assertStringContainsString("\u{1F4C5}", $html);
         $this->assertStringContainsString('2026-08-01', $html);
         $this->assertStringContainsString('every week', $html);
         $this->assertStringContainsString("\u{2705}", $html);
+    }
+
+    public function test_renders_gfm_task_list_checkboxes(): void
+    {
+        $renderer = new MarkdownServerRenderer();
+
+        $html = $renderer->render("- [ ] Open task\n- [x] Done task");
+
+        $this->assertStringContainsString('type="checkbox"', $html);
+        $this->assertStringContainsString('Open task', $html);
+        $this->assertStringContainsString('Done task', $html);
+        $this->assertMatchesRegularExpression(
+            '/<input checked="" disabled="" type="checkbox">\s*Done task/',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input disabled="" type="checkbox">\s*Open task/',
+            $html,
+        );
     }
 }
