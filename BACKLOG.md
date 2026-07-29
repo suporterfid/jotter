@@ -44,7 +44,9 @@ Every Milestone A–D item this file marks `[x]` is API-complete, but auditing t
 - ~~**#167 — broken-link/orphan report missing from the SPA.**~~ **Closed**, merged via PR #190. Added `LinkReportViewer.vue`, wired to the already-defined link-report endpoint.
 - ~~**#165 — workspace publish missing from the SPA, plus two real backend bugs.**~~ **Closed**, merged via PR #192. Added the publish menu item; also fixed `storage/app/public` permissions (missing from `entrypoint.sh`) and a missing `index.html` on published sites. This completes Tier 3.
 - ~~**#159 — notifications missing from the SPA.**~~ **Closed**, merged via PR #194. Added a notifications bell/dropdown to the sidebar header, wired to the already-defined endpoints.
-- **#161** — collections/table/board/calendar views (Milestone D) — Tier 4's last item. Open, next in the queue.
+- ~~**#161** — collections/table/board/calendar views (Milestone D) — Tier 4's last item.~~ **Closed** (table-view slice only), merged via PR #196. Added `CollectionsTableView.vue` (sortable/filterable table over `note_properties`), reachable from the sidebar's More-actions menu; also fixed `WorkspaceCollectionController`'s property filter (previously only compared `value_string`, so numeric/boolean/datetime property filters never matched) and a frontend sort bug (notes missing the sorted property sorted to the front instead of last). Board and calendar views were **not** part of this PR — tracked separately in **#197**.
+
+This closes out the original 14-issue UI-audit priority queue's active work. **#197** ("UI: collections board/calendar views (Milestone D follow-up)") is the only remaining open item from this audit.
 
 ---
 
