@@ -36,7 +36,17 @@
           </button>
         </div>
 
-        <button 
+        <button
+          class="btn-attach"
+          data-testid="history-btn"
+          title="Version History"
+          @click="openHistory"
+        >
+          <span>🕘</span>
+          <span>History</span>
+        </button>
+
+        <button
           class="btn-attach"
           data-testid="attach-file-btn"
           :disabled="isUploading"
@@ -149,19 +159,33 @@
     </footer>
 
     <!-- Backlinks Panel -->
-    <BacklinksPanel 
-      :backlinks="note.backlinks || []" 
+    <BacklinksPanel
+      :backlinks="note.backlinks || []"
       @select-note="$emit('select-note', $event)"
+    />
+
+    <!-- Version History Panel -->
+    <HistoryPanel
+      v-if="showHistory"
+      :revisions="revisions"
+      :loading="revisionsLoading"
+      :selected-revision-id="selectedRevisionId"
+      :preview-content="revisionPreviewContent"
+      :preview-loading="revisionPreviewLoading"
+      @close="showHistory = false"
+      @select-revision="handleSelectRevision"
+      @restore-revision="handleRestoreRevision"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
-import type { NoteDetail, NoteMeta } from '../services/types'
-import { uploadAttachment } from '../services/api'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta } from '../services/types'
+import { uploadAttachment, getNoteRevisions, getNoteRevision, restoreNoteRevision } from '../services/api'
 import MarkdownPreview from './MarkdownPreview.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
+import HistoryPanel from './HistoryPanel.vue'
 
 const props = defineProps<{
   note: NoteDetail
@@ -183,6 +207,13 @@ const isUploading = ref(false)
 const isDraggingOver = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const showHistory = ref(false)
+const revisions = ref<NoteRevisionMeta[]>([])
+const revisionsLoading = ref(false)
+const selectedRevisionId = ref<number | null>(null)
+const revisionPreviewContent = ref<string | null>(null)
+const revisionPreviewLoading = ref(false)
 
 // Live Statistics
 const charCount = computed(() => editableContent.value.length)
@@ -236,6 +267,7 @@ watch(() => props.note, (newNote) => {
   editableContent.value = newNote.content
   isDirty.value = false
   showAutocomplete.value = false
+  showHistory.value = false
 }, { immediate: true })
 
 watch(editableContent, (newVal) => {
@@ -360,6 +392,48 @@ function selectSuggestion(suggestion: NoteMeta) {
     const newCursorPos = start + insertText.length
     el.setSelectionRange(newCursorPos, newCursorPos)
   })
+}
+
+async function openHistory() {
+  showHistory.value = true
+  selectedRevisionId.value = null
+  revisionPreviewContent.value = null
+  if (!props.workspaceId) return
+  revisionsLoading.value = true
+  try {
+    revisions.value = await getNoteRevisions(props.workspaceId, props.note.id)
+  } catch (err) {
+    console.error('Failed to load revisions:', err)
+  } finally {
+    revisionsLoading.value = false
+  }
+}
+
+async function handleSelectRevision(revisionId: number) {
+  selectedRevisionId.value = revisionId
+  revisionPreviewContent.value = null
+  if (!props.workspaceId) return
+  revisionPreviewLoading.value = true
+  try {
+    const revision = await getNoteRevision(props.workspaceId, props.note.id, revisionId)
+    revisionPreviewContent.value = revision.content
+  } catch (err) {
+    console.error('Failed to load revision:', err)
+  } finally {
+    revisionPreviewLoading.value = false
+  }
+}
+
+async function handleRestoreRevision(revisionId: number) {
+  if (!props.workspaceId) return
+  if (!confirm('Restore this version? Any unsaved changes in the editor will be lost.')) return
+  try {
+    await restoreNoteRevision(props.workspaceId, props.note.id, revisionId)
+    showHistory.value = false
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to restore revision:', err)
+  }
 }
 
 async function handleSave() {

@@ -8,6 +8,7 @@ import SearchResults from './components/SearchResults.vue'
 import BacklinksPanel from './components/BacklinksPanel.vue'
 import MarkdownPreview from './components/MarkdownPreview.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
+import HistoryPanel from './components/HistoryPanel.vue'
 
 /*
  * Accessibility Audit Spec (Issue #109 / Spec §10 / WCAG 2.2 AA)
@@ -126,6 +127,28 @@ describe('Accessibility Audit (axe-core)', () => {
           { id: 1, workspace_id: 1, path: 'inbox/photo.png', mime: 'image/png', size: 2048, created_at: '2026-07-01T00:00:00Z', url: '/api/workspaces/1/attachments/inbox/photo.png' },
           { id: 2, workspace_id: 1, path: 'inbox/report.pdf', mime: 'application/pdf', size: 40960, created_at: '2026-07-02T00:00:00Z', url: '/api/workspaces/1/attachments/inbox/report.pdf' },
         ],
+      },
+    })
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
+  it('HistoryPanel has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(HistoryPanel, {
+      attachTo: document.body,
+      props: {
+        revisions: [
+          { id: 2, note_id: 1, content_hash: 'abc123def456', actor_id: null, created_at: '2026-07-02T00:00:00Z' },
+          { id: 1, note_id: 1, content_hash: '789xyz000111', actor_id: null, created_at: '2026-07-01T00:00:00Z' },
+        ],
+        selectedRevisionId: 2,
+        previewContent: '# Old content',
       },
     })
     const results = await axe.run(wrapper.element, {
