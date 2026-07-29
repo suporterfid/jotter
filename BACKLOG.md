@@ -36,7 +36,8 @@ Every Milestone A–D item this file marks `[x]` is API-complete, but auditing t
 - ~~**#168 — attachment browser/management missing.**~~ **Closed**, merged via PR #174. Added `AttachmentsPanel.vue`, wired to the already-defined `getAttachments()`/`deleteAttachment()` API functions.
 - ~~**#157 — version history/restore missing from the SPA.**~~ **Closed**, merged via PR #176. Added `HistoryPanel.vue`, wired to the already-defined revision list/show/restore endpoints.
 - ~~**#160 — typed properties missing from the SPA, and value serialization was broken.**~~ **Closed**, merged via PR #178. Added `PropertiesPanel.vue`; also fixed `NoteProperty::type` not being cast to its enum, which caused every non-string property value to silently return `null` from the API.
-- **#158, #162–#167** — comments, notifications, collections/table/board/calendar views (Milestone D), templates/daily notes, export, import, publish, audit log viewer, broken-link report. Open, being worked in priority order (#162 next).
+- ~~**#162 — templates/daily notes missing from the SPA.**~~ **Closed**, merged via PR #180. Added a template picker to the New Note modal and a daily-note header button, both wired to already-defined `WorkspaceTemplateController` endpoints.
+- **#158, #163–#167** — comments, notifications, collections/table/board/calendar views (Milestone D), export, import, publish, audit log viewer, broken-link report. Open, being worked in priority order (#158 next).
 
 ---
 
