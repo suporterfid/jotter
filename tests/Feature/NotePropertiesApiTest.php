@@ -54,6 +54,20 @@ class NotePropertiesApiTest extends TestCase
         ]);
         $setRes2->assertOk();
 
+        // Regression: the API response must return typed values, not just typed labels.
+        // NoteProperty::type was never cast to the NotePropertyType enum, so the
+        // match($p->type) in metadata() always fell through to the default
+        // (value_string) branch — numeric/boolean/datetime/list/json values were
+        // silently dropped from every API response despite being stored correctly.
+        $properties = collect($setRes2->json('data.properties'))->keyBy('name');
+        $this->assertSame('active', $properties->get('status')['value']);
+        $this->assertEquals(5.0, $properties->get('priority')['value']);
+
+        $showRes = $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/notes/{$noteId}");
+        $showProperties = collect($showRes->json('data.properties'))->keyBy('name');
+        $this->assertSame('active', $showProperties->get('status')['value']);
+        $this->assertEquals(5.0, $showProperties->get('priority')['value']);
+
         // 4. Test workspace distinct properties endpoint
         $propListRes = $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/properties");
         $propListRes->assertOk()->assertJsonCount(2, 'data');

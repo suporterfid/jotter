@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -121,6 +121,31 @@ export async function getNoteRevision(workspaceId: number, noteId: number, revis
 
 export async function restoreNoteRevision(workspaceId: number, noteId: number, revisionId: number): Promise<void> {
   await api.post(`/workspaces/${workspaceId}/notes/${noteId}/revisions/${revisionId}/restore`)
+}
+
+export async function setNoteProperty(
+  workspaceId: number,
+  noteId: number,
+  name: string,
+  value: unknown
+): Promise<NoteDetail> {
+  const response = await api.post<{ data: NoteDetail }>(
+    `/workspaces/${workspaceId}/notes/${noteId}/properties`,
+    { name, value }
+  )
+  return response.data.data
+}
+
+export async function deleteNoteProperty(workspaceId: number, noteId: number, name: string): Promise<NoteDetail> {
+  const response = await api.delete<{ data: NoteDetail }>(
+    `/workspaces/${workspaceId}/notes/${noteId}/properties/${encodeURIComponent(name)}`
+  )
+  return response.data.data
+}
+
+export async function getWorkspaceProperties(workspaceId: number): Promise<Pick<NoteProperty, 'name' | 'type'>[]> {
+  const response = await api.get<{ data: Pick<NoteProperty, 'name' | 'type'>[] }>(`/workspaces/${workspaceId}/properties`)
+  return response.data.data
 }
 
 export async function getAttachments(workspaceId: number): Promise<AttachmentItem[]> {

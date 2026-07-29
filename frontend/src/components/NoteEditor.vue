@@ -158,6 +158,13 @@
       </div>
     </footer>
 
+    <!-- Properties Panel -->
+    <PropertiesPanel
+      :properties="note.properties || []"
+      @add-property="handleAddProperty"
+      @delete-property="handleDeleteProperty"
+    />
+
     <!-- Backlinks Panel -->
     <BacklinksPanel
       :backlinks="note.backlinks || []"
@@ -182,10 +189,11 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta } from '../services/types'
-import { uploadAttachment, getNoteRevisions, getNoteRevision, restoreNoteRevision } from '../services/api'
+import { uploadAttachment, getNoteRevisions, getNoteRevision, restoreNoteRevision, setNoteProperty, deleteNoteProperty } from '../services/api'
 import MarkdownPreview from './MarkdownPreview.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
+import PropertiesPanel from './PropertiesPanel.vue'
 
 const props = defineProps<{
   note: NoteDetail
@@ -433,6 +441,26 @@ async function handleRestoreRevision(revisionId: number) {
     emit('select-note', props.note.id)
   } catch (err) {
     console.error('Failed to restore revision:', err)
+  }
+}
+
+async function handleAddProperty(name: string, value: unknown) {
+  if (!props.workspaceId) return
+  try {
+    await setNoteProperty(props.workspaceId, props.note.id, name, value)
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to set property:', err)
+  }
+}
+
+async function handleDeleteProperty(name: string) {
+  if (!props.workspaceId) return
+  try {
+    await deleteNoteProperty(props.workspaceId, props.note.id, name)
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to delete property:', err)
   }
 }
 
