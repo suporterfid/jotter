@@ -37,7 +37,9 @@ Every Milestone A–D item this file marks `[x]` is API-complete, but auditing t
 - ~~**#157 — version history/restore missing from the SPA.**~~ **Closed**, merged via PR #176. Added `HistoryPanel.vue`, wired to the already-defined revision list/show/restore endpoints.
 - ~~**#160 — typed properties missing from the SPA, and value serialization was broken.**~~ **Closed**, merged via PR #178. Added `PropertiesPanel.vue`; also fixed `NoteProperty::type` not being cast to its enum, which caused every non-string property value to silently return `null` from the API.
 - ~~**#162 — templates/daily notes missing from the SPA.**~~ **Closed**, merged via PR #180. Added a template picker to the New Note modal and a daily-note header button, both wired to already-defined `WorkspaceTemplateController` endpoints.
-- **#158, #163–#167** — comments, notifications, collections/table/board/calendar views (Milestone D), export, import, publish, audit log viewer, broken-link report. Open, being worked in priority order (#158 next).
+- ~~**#158 — comments missing from the SPA.**~~ **Closed**, merged via PR #182. Added `CommentsPanel.vue`, wired to the already-defined comment list/add/delete endpoints. This completes Tier 2 of the UI-audit queue.
+- **#163–#167** — export, import, publish, audit log viewer, broken-link report (Tier 3, admin/ops UI). Open, being worked in priority order (#166 next).
+- **#159, #161** — notifications, collections/table/board/calendar views (Milestone D) — Tier 4, new app-shell surfaces. Open.
 
 ---
 
