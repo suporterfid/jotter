@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Vault\NotePropertyType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,6 +24,7 @@ final class NoteProperty extends Model
     ];
 
     protected $casts = [
+        'type' => NotePropertyType::class,
         'value_numeric' => 'float',
         'value_boolean' => 'boolean',
         'value_datetime' => 'datetime',

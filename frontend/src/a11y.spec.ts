@@ -9,6 +9,7 @@ import BacklinksPanel from './components/BacklinksPanel.vue'
 import MarkdownPreview from './components/MarkdownPreview.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
+import PropertiesPanel from './components/PropertiesPanel.vue'
 
 /*
  * Accessibility Audit Spec (Issue #109 / Spec §10 / WCAG 2.2 AA)
@@ -149,6 +150,26 @@ describe('Accessibility Audit (axe-core)', () => {
         ],
         selectedRevisionId: 2,
         previewContent: '# Old content',
+      },
+    })
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
+  it('PropertiesPanel has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(PropertiesPanel, {
+      attachTo: document.body,
+      props: {
+        properties: [
+          { name: 'status', type: 'string', value: 'draft' },
+          { name: 'priority', type: 'numeric', value: 3 },
+        ],
       },
     })
     const results = await axe.run(wrapper.element, {

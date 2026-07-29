@@ -20,9 +20,18 @@ export interface Backlink {
   target_ref?: string
 }
 
+export type NotePropertyType = 'string' | 'numeric' | 'boolean' | 'datetime' | 'list' | 'json'
+
+export interface NoteProperty {
+  name: string
+  type: NotePropertyType
+  value: string | number | boolean | string[] | Record<string, unknown> | null
+}
+
 export interface NoteDetail extends NoteMeta {
   content: string
   backlinks: Backlink[]
+  properties?: NoteProperty[]
 }
 
 export interface SearchResult {
