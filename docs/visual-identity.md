@@ -523,6 +523,17 @@ Jotter adopts the shared visual identity specification verbatim. This section do
 
 *None at present.* All components match the shared specification tokens.
 
+### Implementation Tracking (#96–#110)
+
+Tracked under epic **#96**. Not a roadmap item and not blocked on any §14.5 decision — presentation layer only: no API contract, no change to the Markdown-on-disk invariant (spec §1), no change to §8 security requirements. Migrated from `BACKLOG.md` (#208) to keep design-system tracking next to the spec it tracks.
+
+Before this work, the product shipped four unrelated visual treatments (SPA glassmorphism, a light-serif landing stylesheet, the stock Laravel welcome page, and an unstyled published site), three sub-AA color pairs, six `outline: none` sites with no replacement focus indicator, and no `prefers-reduced-motion` handling. All items below are complete.
+
+- [x] Foundation — #97 spec + asset structure, #98 token layer, #99 self-hosted Open Sans.
+- [x] Application — #100 component migration, #101 typography, #102 spacing/shape/elevation, #103 controls and focus, #104 motion.
+- [x] Other surfaces — #105 theme reconciliation, #106 published static site, #107 app-shell metadata, #108 project mark.
+- [x] Verification — #109 WCAG 2.2 AA audit (acceptance gate), #110 CI token guard (lands last).
+
 ### Status Colors Extension & Contrast Ratios (#98)
 
 Jotter defines four semantic status tokens for alerts, save confirmations, and destructive actions. Each candidate color was selected and verified against both `--color-canvas` (`#000000`) and `--color-surface` (`#1A0A3E`):

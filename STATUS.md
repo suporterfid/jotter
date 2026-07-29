@@ -29,7 +29,7 @@
   - Audit Log Hardening Suite (`AuditEvent` enum, `AuditRecorder` with automatic redaction, append-only immutability, tenant-scoped queries)
   - Audit Log Retention & Pruning Command (`audit:prune --days=90` with chunked deletion)
   - Hardened Vault Import Pipeline (`VaultExtractor` with Zip-Slip protection, `POST /api/workspaces/{w}/import` endpoint, overwrite collision policy, and full export-import round-trip equivalence)
-  - Typed Property Model Specification & Inference Matrix (`NotePropertyType` enum & decision record in `BACKLOG.md`)
+  - Typed Property Model Specification & Inference Matrix (`NotePropertyType` enum & decision record in `docs/decisions.md`)
   - Rebuildable Typed Property Projection (`note_properties` table, `NotePropertyProjector`, and drop-and-rebuild parity test `NotePropertyProjectionTest.php`)
   - Typed Properties API & Front-Matter Write-Through (`GET /api/workspaces/{w}/properties`, `POST` & `DELETE` note properties with disk write-through)
   - Admin Workspace CRUD & Validated Vault Root (`POST /api/admin/workspaces`, `PUT`, `archive`, `VaultRootGuard` base path confinement & nesting collision protection)
@@ -61,7 +61,7 @@
   - Milestone A: Hardened archive extraction (#76 — `VaultExtractor` domain service with zip-slip, symlink, path-aliasing, type allowlist, and size/entry bounds)
   - Milestone A: Bounded import job and upload endpoint (#77 — `VaultImportCommand` Artisan command, `POST /api/workspaces/{w}/import` endpoint, staged upload cleanup)
   - Milestone A: Collision policy and JSON backup format round-trip (#78 — `VaultBackupRoundTripTest` equivalence suite, JSON v1.0 backup export/import support, configurable overwrite collision policy)
-  - Milestone B: Typed property model design decisions (#79 — recorded in `BACKLOG.md`)
+  - Milestone B: Typed property model design decisions (#79 — recorded in `docs/decisions.md`)
   - Milestone B: Rebuildable typed property projection (#80 — `note_properties` schema, `NotePropertyProjector`, `VaultReindexer` integration, drop-and-rebuild test)
   - Milestone B: Expose properties in notes API (#81 — `GET /api/workspaces/{w}/properties`, front-matter write-through via `VaultStorage`)
   - Milestone B: Broken-link and orphan report (#55 — `GET /api/workspaces/{w}/link-report` endpoint returning unresolved wikilinks and orphan notes)
@@ -74,7 +74,7 @@
   - Spec Debt: Audit log hardening epic (#64 — standardized event vocabulary, redaction, append-only DB enforcement, retention)
   - Spec Debt: Note identity epic (#65 — path rename/move endpoint, wikilink case-insensitive & ambiguity resolution policy)
   - Visual Identity: Shared dark/purple design system epic (#96 — semantic token layer, Open Sans typography, WCAG 2.2 AA audit, CI token guard)
-  - Decisions: Resolved all six roadmap/spec conflicts C1–C6 in `BACKLOG.md` (#50)
+  - Decisions: Resolved all six roadmap/spec conflicts C1–C6 in `docs/decisions.md` (#50)
   - Tracking: Completed post-v0 implementation plan tracking (#68)
   - Milestone C: Inline comments and mentions (#61 — `note_comments` schema, `WorkspaceCommentController`, mention parsing)
   - Milestone C: Notification and event bus (#62 — `notifications` schema, `WorkspaceEventEmitter`, `WorkspaceNotificationController`)
@@ -133,6 +133,6 @@ Six roadmap items conflict with hard constraints and are parked pending decision
 1. ~~Merge the `claude/fix-140-142-ci-and-dead-tests` PR~~ — **done.** PR #144 merged 2026-07-28, `main` is green on two consecutive GitHub Actions runs, #140 and #142 closed.
 2. ~~Clean up **#142**~~ — done in the same PR.
 3. ~~**Security/correctness audit findings #145–#148**~~ — **all closed.** #145, #146, #147 fixed and merged (PR #149, #150, #151); #148 fixed via a `main` branch-protection rule (required status check, `enforce_admins`, no force-push/delete), verified live. From this point on, every change to `main` (including doc-only updates like this one) must go through a PR with a green `test` check — direct pushes are rejected.
-4. Resolve the remaining §14.5 decision — roadmap baseline provenance is the only one still open; C1–C6 are recorded resolved (see `BACKLOG.md`).
+4. Resolve the remaining §14.5 decision — roadmap baseline provenance is the only one still open; C1–C6 are recorded resolved (see `docs/decisions.md`).
 5. Milestone A/B/C/D are all recorded complete, and CI is now green again — treat that claim as trustworthy for the current `main` HEAD, but note there is still no branch protection requiring green CI before merge (#148, open), so this can regress silently again (as #140 did after #49).
 6. **Visual identity (#96)** — cross-cutting presentation workstream adopting a shared dark/purple design system with semantic tokens, Open Sans, and WCAG 2.2 AA across the SPA, the Laravel shell, and the published static site. Recorded complete; now unblocked since item 1 is done.
