@@ -109,6 +109,37 @@ class WikilinkProjectionTest extends TestCase
         $this->assertSame($target->id, $source->outgoingLinks()->sole()->target_note_id);
     }
 
+    public function test_block_reference_is_persisted_and_queryable_via_backlinks(): void
+    {
+        $workspace = $this->makeWorkspace();
+        $storage = new VaultStorage;
+
+        $target = $storage->write($workspace, 'note.md', "Paragraph text\n^myblock\n\nAnother paragraph.\n");
+        $source = $storage->write($workspace, 'current.md', "See [[note#^myblock]] for details.\n");
+
+        $link = $source->outgoingLinks()->where('type', 'wikilink')->sole();
+        $this->assertSame('myblock', $link->target_block);
+        $this->assertSame($target->id, $link->target_note_id);
+
+        $blockBacklinks = $target->incomingBlockReferences('myblock');
+        $this->assertSame([$source->id], $blockBacklinks->pluck('source_note_id')->all());
+
+        $this->assertSame(0, $target->incomingBlockReferences('other-block')->count());
+    }
+
+    public function test_heading_fragment_is_not_treated_as_a_block_reference(): void
+    {
+        $workspace = $this->makeWorkspace();
+        $storage = new VaultStorage;
+
+        $target = $storage->write($workspace, 'note.md', "# Heading\n\nBody.\n");
+        $source = $storage->write($workspace, 'current.md', "[[note#Heading]]\n");
+
+        $link = $source->outgoingLinks()->where('type', 'wikilink')->sole();
+        $this->assertNull($link->target_block);
+        $this->assertSame($target->id, $link->target_note_id);
+    }
+
     private function makeWorkspace(): Workspace
     {
         $tenant = Tenant::query()->create([

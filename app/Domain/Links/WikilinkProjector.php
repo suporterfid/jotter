@@ -25,6 +25,7 @@ final class WikilinkProjector
             NoteLink::query()->create([
                 'source_note_id' => $sourceNote->id,
                 'target_ref' => $reference['target_ref'],
+                'target_block' => $reference['target_block'],
                 'target_note_id' => null,
                 'type' => self::TYPE,
             ]);

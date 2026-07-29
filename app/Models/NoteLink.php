@@ -10,6 +10,7 @@ class NoteLink extends Model
     protected $fillable = [
         'source_note_id',
         'target_ref',
+        'target_block',
         'target_note_id',
         'type',
     ];

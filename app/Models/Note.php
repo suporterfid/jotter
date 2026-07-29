@@ -40,6 +40,11 @@ class Note extends Model
         return $this->hasMany(NoteLink::class, 'target_note_id');
     }
 
+    public function incomingBlockReferences(string $blockId): HasMany
+    {
+        return $this->incomingLinks()->where('target_block', $blockId);
+    }
+
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'note_tags');
