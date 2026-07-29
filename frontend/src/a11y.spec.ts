@@ -75,7 +75,7 @@ describe('Accessibility Audit (axe-core)', () => {
   it('SearchResults has no serious or critical structural accessibility violations', async () => {
     const wrapper = mount(SearchResults, {
       attachTo: document.body,
-      props: { query: 'test', results: [] },
+      props: { query: 'test', results: [], filters: {}, availableTags: [] },
     })
     const results = await axe.run(wrapper.element, {
       rules: {
