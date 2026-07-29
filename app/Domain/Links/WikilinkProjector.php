@@ -41,7 +41,7 @@ final class WikilinkProjector
     {
         $notes = Note::query()
             ->where('workspace_id', $workspace->id)
-            ->get(['id', 'path', 'title']);
+            ->get(['id', 'path', 'title', 'frontmatter']);
 
         if ($notes->isEmpty()) {
             return;
@@ -49,6 +49,7 @@ final class WikilinkProjector
 
         $pathCandidates = [];
         $titleCandidates = [];
+        $aliasCandidates = [];
 
         foreach ($notes as $note) {
             foreach ($this->pathKeys((string) $note->path) as $key) {
@@ -61,15 +62,20 @@ final class WikilinkProjector
                 $lowerTitle = mb_strtolower($title, 'UTF-8');
                 $titleCandidates[$lowerTitle][] = $note->id;
             }
+
+            foreach ($this->extractAliases($note->frontmatter) as $alias) {
+                $lowerAlias = mb_strtolower($alias, 'UTF-8');
+                $aliasCandidates[$lowerAlias][] = $note->id;
+            }
         }
 
         NoteLink::query()
             ->where('type', self::TYPE)
             ->whereIn('source_note_id', $notes->pluck('id'))
             ->orderBy('id')
-            ->each(function (NoteLink $link) use ($pathCandidates, $titleCandidates): void {
+            ->each(function (NoteLink $link) use ($pathCandidates, $titleCandidates, $aliasCandidates): void {
                 $targetKey = mb_strtolower($this->extractor->targetKey($link->target_ref), 'UTF-8');
-                $candidates = $pathCandidates[$targetKey] ?? $titleCandidates[$targetKey] ?? [];
+                $candidates = $pathCandidates[$targetKey] ?? $titleCandidates[$targetKey] ?? $aliasCandidates[$targetKey] ?? [];
                 $candidateIds = array_values(array_unique($candidates));
                 $targetNoteId = count($candidateIds) === 1 ? $candidateIds[0] : null;
 
@@ -77,6 +83,43 @@ final class WikilinkProjector
                     $link->update(['target_note_id' => $targetNoteId]);
                 }
             });
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $frontmatter
+     * @return list<string>
+     */
+    private function extractAliases(?array $frontmatter): array
+    {
+        if ($frontmatter === null || ! array_key_exists('aliases', $frontmatter)) {
+            return [];
+        }
+
+        $raw = $frontmatter['aliases'];
+        $aliases = [];
+
+        if (is_string($raw)) {
+            foreach (preg_split('/\s*,\s*/', $raw) ?: [] as $part) {
+                $aliases[] = $part;
+            }
+        } elseif (is_array($raw)) {
+            foreach ($raw as $part) {
+                if (is_string($part) || is_numeric($part)) {
+                    $aliases[] = (string) $part;
+                }
+            }
+        }
+
+        $normalized = [];
+        foreach ($aliases as $alias) {
+            $alias = trim($alias);
+            if ($alias === '') {
+                continue;
+            }
+            $normalized[$alias] = $alias;
+        }
+
+        return array_values($normalized);
     }
 
     /**

@@ -80,6 +80,35 @@ class WikilinkProjectionTest extends TestCase
         $this->assertSame($target->id, $source->outgoingLinks()->sole()->fresh()->target_note_id);
     }
 
+    public function test_wikilink_resolves_via_frontmatter_alias(): void
+    {
+        $workspace = $this->makeWorkspace();
+        $storage = new VaultStorage;
+
+        $target = $storage->write($workspace, 'research.md', "---\naliases: [research, study]\n---\n# Research\n");
+        $source = $storage->write($workspace, 'current.md', "See [[research]] and [[study]].\n");
+
+        $links = $source->outgoingLinks()->where('type', 'wikilink')->get();
+        $this->assertCount(2, $links);
+        $this->assertSame([$target->id, $target->id], $links->pluck('target_note_id')->all());
+
+        $this->assertSame(
+            [$source->id],
+            $target->incomingLinks()->where('type', 'wikilink')->pluck('source_note_id')->unique()->all(),
+        );
+    }
+
+    public function test_alias_resolution_accepts_comma_separated_string_form(): void
+    {
+        $workspace = $this->makeWorkspace();
+        $storage = new VaultStorage;
+
+        $target = $storage->write($workspace, 'glossary.md', "---\naliases: \"Glossary, Terms\"\n---\n# Glossary\n");
+        $source = $storage->write($workspace, 'current.md', "[[Terms]]\n");
+
+        $this->assertSame($target->id, $source->outgoingLinks()->sole()->target_note_id);
+    }
+
     private function makeWorkspace(): Workspace
     {
         $tenant = Tenant::query()->create([
