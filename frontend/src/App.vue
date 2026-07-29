@@ -15,6 +15,7 @@
       @daily-note="handleDailyNote"
       @toggle-audit-log="handleToggleAuditLog"
       @import-workspace="handleImportWorkspace"
+      @export-workspace="handleExportWorkspace"
     />
 
     <!-- Main Content Area -->
@@ -316,6 +317,11 @@ async function handleImportWorkspace(archive: File, overwrite: boolean) {
     console.error('Failed to import workspace archive:', err)
     errorMessage.value = `Failed to import archive: ${err.response?.data?.message || err.message || 'Unknown error'}`
   }
+}
+
+function handleExportWorkspace() {
+  if (!activeWorkspaceId.value) return
+  window.location.href = `/api/workspaces/${activeWorkspaceId.value}/export`
 }
 
 async function refreshAuditLog() {
