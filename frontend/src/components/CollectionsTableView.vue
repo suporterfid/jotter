@@ -102,7 +102,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { CollectionPage, CollectionNote, RawNoteProperty } from '../services/types'
+import type { CollectionPage, CollectionNote } from '../services/types'
+import { rawValue, formatPropertyValue, propertyColumns as computePropertyColumns } from '../services/collectionUtils'
 
 const props = defineProps<{
   page: CollectionPage
@@ -127,34 +128,7 @@ function clearFilter() {
   emit('filter-change', '', '')
 }
 
-const propertyColumns = computed(() => {
-  const names = new Set<string>()
-  for (const note of props.page.data) {
-    for (const prop of note.properties) names.add(prop.name)
-  }
-  return Array.from(names).sort()
-})
-
-function rawValue(prop: RawNoteProperty): string | number | boolean | unknown | null {
-  switch (prop.type) {
-    case 'numeric': return prop.value_numeric
-    case 'boolean': return prop.value_boolean
-    case 'datetime': return prop.value_datetime
-    case 'list':
-    case 'json': return prop.value_json
-    default: return prop.value_string
-  }
-}
-
-function formatPropertyValue(note: CollectionNote, column: string): string {
-  const prop = note.properties.find(p => p.name === column)
-  if (!prop) return '—'
-  const value = rawValue(prop)
-  if (value === null || value === undefined) return '—'
-  if (Array.isArray(value)) return value.join(', ')
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}
+const propertyColumns = computed(() => computePropertyColumns(props.page))
 
 function sortableValue(note: CollectionNote, key: string): string | number | null {
   if (key === 'title') return (note.title || note.path).toLowerCase()

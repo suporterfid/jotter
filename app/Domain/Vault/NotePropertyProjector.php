@@ -65,7 +65,10 @@ final class NotePropertyProjector
             'value_json' => null,
         ];
 
-        if (is_bool($value)) {
+        if ($value instanceof \DateTimeInterface) {
+            $result['type'] = NotePropertyType::DATETIME;
+            $result['value_datetime'] = $value->format('Y-m-d H:i:s');
+        } elseif (is_bool($value)) {
             $result['type'] = NotePropertyType::BOOLEAN;
             $result['value_boolean'] = $value;
         } elseif (is_int($value) || is_float($value)) {
