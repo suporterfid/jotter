@@ -57,4 +57,44 @@ final class WorkspacePublishTest extends TestCase
 
         $this->assertFileExists(storage_path('app/public/sites/main/publish.css'));
     }
+
+    public function test_index_page_is_generated_even_when_no_note_is_at_that_path(): void
+    {
+        // Regression: the previous test's fixture happened to be named
+        // index.md, which made index.html exist as a side effect of the
+        // per-note loop — masking that the returned site_url (always
+        // pointing at index.html) had no guarantee of ever existing for any
+        // other vault layout. Here nothing is named "index".
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
+
+        $vaultDir = storage_path('app/vaults/publish_test_no_index');
+        if (! is_dir($vaultDir)) {
+            mkdir($vaultDir, 0755, true);
+        }
+        file_put_contents($vaultDir.'/hello.md', '# Hello World');
+        file_put_contents($vaultDir.'/goodbye.md', '# Goodbye World');
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'no-index',
+            'name' => 'No Index',
+            'vault_path' => $vaultDir,
+        ]);
+
+        $this->artisan('vault:reindex', ['--workspace' => $workspace->id]);
+
+        $response = $this->actingAs($admin)
+            ->postJson("/api/workspaces/{$workspace->id}/publish");
+
+        $response->assertOk()->assertJsonPath('notes_published', 2);
+
+        $indexFile = storage_path('app/public/sites/no-index/index.html');
+        $this->assertFileExists($indexFile);
+
+        $indexHtml = file_get_contents($indexFile);
+        $this->assertStringContainsString('hello.html', $indexHtml);
+        $this->assertStringContainsString('goodbye.html', $indexHtml);
+        $this->assertStringContainsString('Hello World', $indexHtml);
+    }
 }

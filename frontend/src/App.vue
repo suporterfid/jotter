@@ -17,6 +17,7 @@
       @import-workspace="handleImportWorkspace"
       @export-workspace="handleExportWorkspace"
       @toggle-link-report="handleToggleLinkReport"
+      @publish-workspace="handlePublishWorkspace"
     />
 
     <!-- Main Content Area -->
@@ -103,12 +104,20 @@
     <!-- Success Banner -->
     <div v-if="successMessage" class="success-banner" data-testid="success-banner" role="status">
       <span>{{ successMessage }}</span>
+      <a
+        v-if="successLink"
+        :href="successLink"
+        target="_blank"
+        rel="noopener"
+        class="success-banner-link"
+        data-testid="success-banner-link"
+      >Open</a>
       <button
         type="button"
         class="error-banner-dismiss"
         data-testid="success-banner-dismiss"
         aria-label="Dismiss message"
-        @click="successMessage = null"
+        @click="successMessage = null; successLink = null"
       >&times;</button>
     </div>
 
@@ -158,7 +167,8 @@ import {
   getOrCreateDailyNote,
   getAuditLogs,
   importWorkspaceArchive,
-  getLinkReport
+  getLinkReport,
+  publishWorkspace
 } from './services/api'
 import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport } from './services/types'
 
@@ -203,6 +213,7 @@ const availableTagsForSearch = computed(() => {
 
 const errorMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
+const successLink = ref<string | null>(null)
 
 async function handleSelectNoteFromGraph(noteId: number) {
   isGraphViewActive.value = false
@@ -362,6 +373,18 @@ async function handleImportWorkspace(archive: File, overwrite: boolean) {
 function handleExportWorkspace() {
   if (!activeWorkspaceId.value) return
   window.location.href = `/api/workspaces/${activeWorkspaceId.value}/export`
+}
+
+async function handlePublishWorkspace() {
+  if (!activeWorkspaceId.value) return
+  try {
+    const result = await publishWorkspace(activeWorkspaceId.value)
+    successMessage.value = `Published ${result.notes_published} note(s) to the static site.`
+    successLink.value = result.site_url
+  } catch (err: any) {
+    console.error('Failed to publish workspace:', err)
+    errorMessage.value = `Failed to publish workspace: ${err.response?.data?.message || err.message || 'Unknown error'}`
+  }
 }
 
 async function refreshAuditLog() {
@@ -601,6 +624,14 @@ body {
   border-radius: var(--radius-sm, 6px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   font-size: 0.9rem;
+}
+
+.success-banner-link {
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: underline;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .error-banner-dismiss {

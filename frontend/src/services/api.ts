@@ -223,6 +223,18 @@ export async function getAuditLogs(workspaceId: number): Promise<AuditLogEntry[]
   return response.data.audit_logs
 }
 
+export interface PublishResult {
+  message: string
+  workspace: string
+  notes_published: number
+  site_url: string
+}
+
+export async function publishWorkspace(workspaceId: number): Promise<PublishResult> {
+  const response = await api.post<PublishResult>(`/workspaces/${workspaceId}/publish`)
+  return response.data
+}
+
 export async function getLinkReport(workspaceId: number): Promise<LinkReport> {
   const response = await api.get<LinkReport>(`/workspaces/${workspaceId}/link-report`)
   return response.data

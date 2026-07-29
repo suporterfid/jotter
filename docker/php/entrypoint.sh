@@ -5,6 +5,7 @@ for directory in \
     storage/app/private \
     storage/app/vaults \
     storage/app/imports \
+    storage/app/public \
     storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \

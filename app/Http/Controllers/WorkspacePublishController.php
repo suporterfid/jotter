@@ -55,8 +55,9 @@ final class WorkspacePublishController extends Controller
             }
         }
 
-        $notes = Note::query()->where('workspace_id', $workspaceId)->get();
+        $notes = Note::query()->where('workspace_id', $workspaceId)->orderBy('path')->get();
         $publishedCount = 0;
+        $publishedPages = [];
 
         foreach ($notes as $note) {
             $fullPath = rtrim($workspace->vault_path, '/').'/'.$note->path;
@@ -82,8 +83,21 @@ final class WorkspacePublishController extends Controller
 
                 file_put_contents($outPath, $pageHtml);
                 $publishedCount++;
+                $publishedPages[] = ['title' => $note->title, 'href' => $relPath];
             }
         }
+
+        // The site needs a landing page: nothing above ever writes index.html,
+        // and there's no guarantee a note is published at that exact path.
+        $indexLinks = collect($publishedPages)
+            ->map(fn ($p) => '<li><a href="'.e($p['href']).'">'.e($p['title']).'</a></li>')
+            ->implode('');
+        $indexHtml = view('publish.page', [
+            'title' => $workspace->name,
+            'html' => '<ul class="publish-index">'.$indexLinks.'</ul>',
+            'assetPrefix' => '',
+        ])->render();
+        file_put_contents($siteDir.'/index.html', $indexHtml);
 
         $publishedUrl = url("storage/sites/{$workspace->slug}/index.html");
 

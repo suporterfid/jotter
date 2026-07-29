@@ -108,6 +108,19 @@
               </svg>
               <span>Broken Links &amp; Orphans</span>
             </button>
+            <button
+              class="more-menu-item"
+              data-testid="publish-workspace-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('publish-workspace'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              <span>Publish Static Site</span>
+            </button>
           </div>
         </div>
         <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
@@ -292,6 +305,7 @@ const emit = defineEmits<{
   (e: 'import-workspace', archive: File, overwrite: boolean): void
   (e: 'export-workspace'): void
   (e: 'toggle-link-report'): void
+  (e: 'publish-workspace'): void
 }>()
 
 const searchQuery = ref('')
