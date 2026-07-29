@@ -40,7 +40,8 @@ Every Milestone A–D item this file marks `[x]` is API-complete, but auditing t
 - ~~**#158 — comments missing from the SPA.**~~ **Closed**, merged via PR #182. Added `CommentsPanel.vue`, wired to the already-defined comment list/add/delete endpoints. This completes Tier 2 of the UI-audit queue.
 - ~~**#166 — audit log viewer missing, and the query silently excluded every workspace-scoped event.**~~ **Closed**, merged via PR #184. Added `AuditLogViewer.vue`; also fixed `AuditLogQueryController` requiring a `tenant_id` match that most recorder call sites never populate.
 - ~~**#164 — workspace import missing from the SPA, sidebar header overflow, storage/app/imports permissions.**~~ **Closed**, merged via PR #186. Added the import modal; also fixed the sidebar's 5-icon-button overflow (consolidated into a "More actions" menu) and `storage/app/imports` missing from `entrypoint.sh`'s ownership loop.
-- **#163, #165, #167** — export, publish, broken-link report (Tier 3, admin/ops UI). Open, being worked in priority order (#163 next).
+- ~~**#163 — workspace export missing from the SPA.**~~ **Closed**, merged via PR #188. Added an "Export Workspace" item to the sidebar's More-actions menu.
+- **#167, #165** — broken-link report, publish (Tier 3, admin/ops UI). Open, being worked in priority order (#167 next).
 - **#159, #161** — notifications, collections/table/board/calendar views (Milestone D) — Tier 4, new app-shell surfaces. Open.
 
 ---
