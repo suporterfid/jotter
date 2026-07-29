@@ -16,6 +16,53 @@
         <div class="more-menu-wrapper">
           <button
             class="btn-icon"
+            data-testid="notifications-btn"
+            title="Notifications"
+            :aria-expanded="showNotifications"
+            aria-haspopup="true"
+            @click="showNotifications = !showNotifications"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span v-if="unreadNotificationCount > 0" class="notification-badge" data-testid="notification-badge">
+              {{ unreadNotificationCount > 9 ? '9+' : unreadNotificationCount }}
+            </span>
+          </button>
+          <div v-if="showNotifications" class="more-menu-backdrop" @click="showNotifications = false"></div>
+          <div v-if="showNotifications" class="more-menu notifications-menu" role="region" aria-label="Notifications">
+            <p v-if="notifications.length === 0" class="notifications-empty">No notifications yet.</p>
+            <div
+              v-for="notification in notifications"
+              :key="notification.id"
+              class="notification-item"
+              :class="{ unread: !notification.read_at }"
+              data-testid="notification-item"
+            >
+              <div class="notification-body" @click="!notification.read_at && $emit('mark-notification-read', notification.id)">
+                <span class="notification-title">{{ notification.title }}</span>
+                <span v-if="notification.data?.comment_snippet" class="notification-snippet">{{ notification.data.comment_snippet }}</span>
+                <span class="notification-time">{{ formatNotificationTime(notification.created_at) }}</span>
+              </div>
+              <button
+                class="btn-delete-notification"
+                data-testid="notification-delete-btn"
+                :aria-label="`Dismiss notification: ${notification.title}`"
+                title="Dismiss"
+                @click="$emit('delete-notification', notification.id)"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="more-menu-wrapper">
+          <button
+            class="btn-icon"
             data-testid="more-actions-btn"
             title="More actions"
             :aria-expanded="showMoreMenu"
@@ -282,7 +329,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { NoteMeta, AuthUser } from '../services/types'
+import type { NoteMeta, AuthUser, NotificationItem } from '../services/types'
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 
@@ -290,6 +337,7 @@ const props = defineProps<{
   notes: NoteMeta[]
   selectedNoteId: number | null
   currentUser?: AuthUser | null
+  notifications?: NotificationItem[]
 }>()
 
 const emit = defineEmits<{
@@ -299,6 +347,8 @@ const emit = defineEmits<{
   (e: 'delete-note', noteId: number): void
   (e: 'search', query: string): void
   (e: 'logout'): void
+  (e: 'mark-notification-read', notificationId: number): void
+  (e: 'delete-notification', notificationId: number): void
   (e: 'toggle-attachments'): void
   (e: 'daily-note'): void
   (e: 'toggle-audit-log'): void
@@ -316,6 +366,19 @@ const newNotePath = ref('')
 const newNoteTemplatePath = ref('')
 const showImportModal = ref(false)
 const showMoreMenu = ref(false)
+const showNotifications = ref(false)
+const notifications = computed(() => props.notifications ?? [])
+const unreadNotificationCount = computed(() => notifications.value.filter(n => !n.read_at).length)
+
+function formatNotificationTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    })
+  } catch {
+    return iso
+  }
+}
 
 function closeMoreMenuAnd(action: () => void) {
   showMoreMenu.value = false
@@ -538,7 +601,106 @@ function handleImportSubmit() {
   background: var(--color-surface-emphasis);
 }
 
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--color-status-danger);
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  border-radius: var(--radius-pill);
+  min-width: 16px;
+  text-align: center;
+}
+
+.notifications-menu {
+  left: 0;
+  right: auto;
+  min-width: 280px;
+  max-width: 340px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+.notifications-empty {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-style: italic;
+  padding: var(--space-3);
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.notification-item.unread {
+  background: color-mix(in srgb, var(--color-action) 12%, transparent);
+}
+
+.notification-item:hover {
+  background: var(--color-surface-emphasis);
+}
+
+.notification-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.notification-snippet {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-time {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.btn-delete-notification {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-width: 24px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-delete-notification:hover {
+  color: var(--color-status-danger);
+  background: color-mix(in srgb, var(--color-status-danger) 12%, transparent);
+}
+
 .btn-icon {
+  position: relative;
   background: transparent;
   border: none;
   color: var(--color-text-muted);

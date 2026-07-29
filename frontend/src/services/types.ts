@@ -112,6 +112,17 @@ export interface LinkReport {
   orphans: OrphanNote[]
 }
 
+export interface NotificationItem {
+  id: number
+  workspace_id: number
+  user_id: number
+  type: string
+  title: string
+  data: { actor_id?: string; comment_snippet?: string; [key: string]: unknown } | null
+  read_at: string | null
+  created_at: string
+}
+
 export interface AttachmentItem {
   id: number
   workspace_id: number
