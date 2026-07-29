@@ -18,6 +18,14 @@
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
           </svg>
         </button>
+        <button class="btn-icon" data-testid="daily-note-btn" title="Today's Daily Note" @click="$emit('daily-note')">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </button>
         <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -104,7 +112,7 @@
       <form class="modal-card" @submit.prevent="handleCreateNote">
         <h3>Create New Note</h3>
         <p class="modal-desc">Enter the relative vault path (e.g. <code>inbox/my-note.md</code>):</p>
-        <input 
+        <input
           v-model="newNotePath"
           data-testid="create-note-input"
           type="text"
@@ -112,6 +120,20 @@
           class="modal-input"
           required
         />
+        <template v-if="availableTemplates.length > 0">
+          <label for="new-note-template-select" class="modal-label">Start from a template (optional):</label>
+          <select
+            id="new-note-template-select"
+            v-model="newNoteTemplatePath"
+            data-testid="create-note-template-select"
+            class="modal-input"
+          >
+            <option value="">Blank note</option>
+            <option v-for="tpl in availableTemplates" :key="tpl.id" :value="tpl.path">
+              {{ tpl.title || tpl.path }}
+            </option>
+          </select>
+        </template>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" @click="showNewNoteModal = false">Cancel</button>
           <button type="submit" class="btn-primary" data-testid="create-note-submit" :disabled="!newNotePath.trim()">Create</button>
@@ -151,10 +173,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select-note', noteId: number): void
   (e: 'create-note', path: string): void
+  (e: 'create-note-from-template', templatePath: string, targetPath: string): void
   (e: 'delete-note', noteId: number): void
   (e: 'search', query: string): void
   (e: 'logout'): void
   (e: 'toggle-attachments'): void
+  (e: 'daily-note'): void
 }>()
 
 const searchQuery = ref('')
@@ -162,6 +186,11 @@ const activeTag = ref<string | null>(null)
 const sortBy = ref<'recent' | 'name' | 'path'>('recent')
 const showNewNoteModal = ref(false)
 const newNotePath = ref('')
+const newNoteTemplatePath = ref('')
+
+const availableTemplates = computed(() =>
+  props.notes.filter(n => n.path.startsWith('_templates/'))
+)
 
 const availableTags = computed(() => {
   const tagSet = new Set<string>()
@@ -257,8 +286,16 @@ function clearSearch() {
 function handleCreateNote() {
   const path = newNotePath.value.trim()
   if (!path) return
-  emit('create-note', path.endsWith('.md') ? path : `${path}.md`)
+  const targetPath = path.endsWith('.md') ? path : `${path}.md`
+
+  if (newNoteTemplatePath.value) {
+    emit('create-note-from-template', newNoteTemplatePath.value, targetPath)
+  } else {
+    emit('create-note', targetPath)
+  }
+
   newNotePath.value = ''
+  newNoteTemplatePath.value = ''
   showNewNoteModal.value = false
 }
 </script>
@@ -593,6 +630,13 @@ function handleCreateNote() {
   font-size: 0.875rem;
   color: var(--color-text-muted);
   margin-bottom: var(--space-4);
+}
+
+.modal-label {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
 }
 
 .modal-input {
