@@ -33,7 +33,8 @@ Every Milestone A–D item this file marks `[x]` is API-complete, but auditing t
 
 - ~~**#156 — search filters (title/tags/modified-date) not exposed.**~~ **Closed**, merged via PR #170. `searchNotes()` only ever sent `?q=`; added a filter bar to `SearchResults.vue` wired to the existing `SearchCriteria` backend params.
 - ~~**#169 — nested folders rendered as a flat list, not a tree.**~~ **Closed**, merged via PR #172. Sidebar now groups notes into a recursive, collapsible folder tree (`NoteTreeNode.vue`).
-- **#157–#168** — version history, comments, notifications, typed properties, collections/table/board/calendar views (Milestone D), templates/daily notes, export, import, publish, audit log viewer, broken-link report, attachment browser. Open, being worked in priority order (#168 next).
+- ~~**#168 — attachment browser/management missing.**~~ **Closed**, merged via PR #174. Added `AttachmentsPanel.vue`, wired to the already-defined `getAttachments()`/`deleteAttachment()` API functions.
+- **#157–#167** — version history, comments, notifications, typed properties, collections/table/board/calendar views (Milestone D), templates/daily notes, export, import, publish, audit log viewer, broken-link report. Open, being worked in priority order (#157 next).
 
 ---
 
