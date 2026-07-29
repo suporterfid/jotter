@@ -37,6 +37,28 @@ describe('Markdown rendering & XSS security', () => {
     expect(html).not.toContain('href="javascript:')
   })
 
+  it('renders a dataview code block as readable code without crashing', () => {
+    const md = '# Notes\n\n```dataview\nLIST FROM #project WHERE status = "active"\n```\n\nAfter.'
+    const html = renderMarkdown(md)
+
+    expect(html).toContain('class="code-block-wrapper"')
+    expect(html).toContain('LIST FROM')
+    expect(html).toContain('#project')
+    expect(html).toContain('After.')
+  })
+
+  it('renders Tasks-plugin emoji syntax as readable checkbox text without crashing', () => {
+    const md = '- [ ] Do thing \u{1F4C5} 2026-08-01 \u{1F501} every week\n- [x] Done thing \u{2705} 2026-07-01'
+    const html = renderMarkdown(md)
+
+    expect(html).toContain('type="checkbox"')
+    expect(html).toContain('Do thing')
+    expect(html).toContain('\u{1F4C5}')
+    expect(html).toContain('2026-08-01')
+    expect(html).toContain('every week')
+    expect(html).toContain('\u{2705}')
+  })
+
   it('renders callouts, toggles, tables, and dividers', () => {
     const md = '> [!NOTE] Callout body\n\n<details><summary>Summary</summary>Body</details>\n\n| H1 | H2 |\n| --- | --- |\n| C1 | C2 |\n\n---'
     const html = renderMarkdown(md)
