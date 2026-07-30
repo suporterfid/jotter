@@ -170,7 +170,7 @@ function formatDate(iso: string): string {
 }
 
 .revision-item:hover {
-  background: var(--color-surface-emphasis);
+  background: var(--color-hover);
 }
 
 .revision-item.active {

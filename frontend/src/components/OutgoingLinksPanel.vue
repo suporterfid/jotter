@@ -1,15 +1,13 @@
 <template>
   <aside class="outgoing-links-panel" aria-label="Outgoing links">
-    <div class="outgoing-links-header">
-      <div class="header-title">
+    <PanelHeader title="Outgoing Links" :count="links.length">
+      <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <line x1="7" y1="17" x2="17" y2="7"></line>
           <polyline points="7 7 17 7 17 17"></polyline>
         </svg>
-        <span>Outgoing Links</span>
-      </div>
-      <span class="count-badge">{{ links.length }}</span>
-    </div>
+      </template>
+    </PanelHeader>
 
     <div v-if="links.length === 0" class="outgoing-links-empty">
       <p>This note doesn't link to any other notes yet.</p>
@@ -35,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import PanelHeader from './PanelHeader.vue'
 import type { OutgoingLink } from '../services/types'
 
 defineProps<{
@@ -53,32 +52,6 @@ defineEmits<{
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
-}
-
-.outgoing-links-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.count-badge {
-  background: var(--color-surface-emphasis);
-  color: var(--color-action);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
 }
 
 .outgoing-links-empty {

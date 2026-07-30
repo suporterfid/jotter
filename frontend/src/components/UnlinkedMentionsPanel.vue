@@ -1,16 +1,14 @@
 <template>
   <aside class="unlinked-mentions-panel" aria-label="Unlinked mentions">
-    <div class="unlinked-mentions-header">
-      <div class="header-title">
+    <PanelHeader title="Unlinked Mentions" :count="mentions.length">
+      <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
           <line x1="12" y1="16" x2="12.01" y2="16"></line>
         </svg>
-        <span>Unlinked Mentions</span>
-      </div>
-      <span class="count-badge">{{ mentions.length }}</span>
-    </div>
+      </template>
+    </PanelHeader>
 
     <div v-if="mentions.length === 0" class="unlinked-mentions-empty">
       <p>No unlinked mentions found.</p>
@@ -37,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import PanelHeader from './PanelHeader.vue'
 import type { UnlinkedMention } from '../services/types'
 
 defineProps<{
@@ -56,32 +55,6 @@ defineEmits<{
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
-}
-
-.unlinked-mentions-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.count-badge {
-  background: var(--color-surface-emphasis);
-  color: var(--color-action);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
 }
 
 .unlinked-mentions-empty {
