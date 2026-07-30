@@ -15,6 +15,13 @@
         <p class="login-subtitle">Enter your administrator credentials to access your notes vault.</p>
       </div>
 
+      <div v-if="ssoLoginUrl" class="sso-section">
+        <a :href="ssoLoginUrl" class="btn-sso" data-testid="sso-login-link">
+          Sign in with GrandpaSSOn
+        </a>
+        <div class="sso-divider"><span>or</span></div>
+      </div>
+
       <form @submit.prevent="handleLogin" class="login-form">
         <div v-if="errorMessage" class="login-error" data-testid="login-error">
           {{ errorMessage }}
@@ -61,11 +68,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { login } from '../services/api'
+import { ref, watch } from 'vue'
+import { login, getAuthConfig } from '../services/api'
 import type { AuthUser } from '../services/types'
 
-defineProps<{
+const props = defineProps<{
   show: boolean
 }>()
 
@@ -77,6 +84,21 @@ const email = ref('')
 const password = ref('')
 const isSubmitting = ref(false)
 const errorMessage = ref('')
+const ssoLoginUrl = ref<string | null>(null)
+
+watch(
+  () => props.show,
+  async (visible) => {
+    if (!visible) return
+    try {
+      const config = await getAuthConfig()
+      ssoLoginUrl.value = config.sso_login_url
+    } catch (err) {
+      console.error('Failed to load auth config:', err)
+    }
+  },
+  { immediate: true },
+)
 
 async function handleLogin() {
   if (!email.value.trim() || !password.value) return
@@ -152,6 +174,48 @@ async function handleLogin() {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.sso-section {
+  margin-bottom: var(--space-4);
+}
+
+.btn-sso {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-sso:hover {
+  border-color: var(--color-action);
+}
+
+.sso-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.sso-divider::before,
+.sso-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 }
 
 .login-error {

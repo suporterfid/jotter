@@ -38,6 +38,41 @@ final class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Unauthenticated: tells the SPA which auth mode is active and, for
+     * grandpasson, where to send the user to sign in. GrandpaSSOn's
+     * AUTHSESSID cookie is host-wide (path=/, no explicit domain), so once
+     * login completes there, GrandpaSSOnIdentityProvider recognizes the
+     * session on the next request here -- no callback/token exchange
+     * needed, so redirect_uri just points back at this app's own root and
+     * the code/state query params GrandpaSSOn appends go unused.
+     */
+    public function config(): JsonResponse
+    {
+        $provider = (string) config('jotter.auth_provider', 'local');
+
+        $ssoLoginUrl = null;
+        if ($provider === 'grandpasson') {
+            $brokerBaseUrl = config('jotter.sso.broker_base_url');
+            $clientId = config('jotter.sso.client_id');
+
+            if ($brokerBaseUrl && $clientId) {
+                $ssoLoginUrl = rtrim((string) $brokerBaseUrl, '/').'/login/email?'.http_build_query([
+                    'client_id' => $clientId,
+                    'redirect_uri' => config('app.url'),
+                    'state' => bin2hex(random_bytes(16)),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'data' => [
+                'provider' => $provider,
+                'sso_login_url' => $ssoLoginUrl,
+            ],
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $this->identityProvider->logout($request);

@@ -32,6 +32,14 @@ return [
     // must match GrandpaSSOn's own DB_PREFIX, not Jotter's (JOTTER_DB_PREFIX/DB_PREFIX).
     'sso' => [
         'db_prefix' => env('JOTTER_SSO_DB_PREFIX', 'sso_'),
+        // Used to build the "Sign in with GrandpaSSOn" redirect URL when
+        // auth_provider=grandpasson. broker_base_url is GrandpaSSOn's own
+        // mount point (e.g. https://hub.taskconnect.com.br/sso); client_id
+        // must match a client registered in GrandpaSSOn's oauth_clients
+        // table (via cron/seed_oauth_client.php) with a redirect_uri
+        // allowing this app's URL.
+        'broker_base_url' => env('JOTTER_SSO_BROKER_BASE_URL'),
+        'client_id' => env('JOTTER_SSO_CLIENT_ID'),
     ],
 
     'attachments' => [
