@@ -109,7 +109,7 @@ defineExpose({ handleKeyDown })
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   width: 260px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
   color: var(--color-text);
   overflow: hidden;
 }

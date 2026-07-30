@@ -94,7 +94,7 @@ function formatDate(iso: string): string {
   border-radius: var(--radius-lg);
   width: min(760px, 92vw);
   height: min(560px, 85vh);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
   display: flex;
   flex-direction: column;
   overflow: hidden;

@@ -142,7 +142,7 @@ async function handleLogin() {
   width: 100%;
   max-width: 400px;
   padding: var(--space-8);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
 }
 
 .login-header {

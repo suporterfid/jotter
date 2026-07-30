@@ -755,7 +755,7 @@ async function handleSave() {
   background: var(--color-surface);
   border: 1px solid var(--color-action);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
   z-index: 50;
   min-width: 240px;
   overflow: hidden;

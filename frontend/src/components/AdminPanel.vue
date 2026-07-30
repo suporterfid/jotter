@@ -301,7 +301,7 @@ watch(() => props.isOpen, (val) => {
   width: 600px;
   max-width: 90%;
   padding: var(--space-6);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
 }
 .admin-header {
   display: flex;
