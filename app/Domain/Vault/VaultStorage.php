@@ -3,6 +3,7 @@
 namespace App\Domain\Vault;
 
 use App\Models\Note;
+use App\Models\NoteLink;
 use App\Models\Workspace;
 
 /**
@@ -106,14 +107,22 @@ final class VaultStorage
 
         $this->ensureParentDirectory($workspace, $newAbsolute);
 
-        if (! rename($oldAbsolute, $newAbsolute)) {
-            throw new \RuntimeException("Unable to move vault note from [{$oldPath}] to [{$newPath}].");
-        }
-
         $note = Note::query()
             ->where('workspace_id', $workspace->id)
             ->where('path', $oldPath)
             ->first();
+
+        // Capture who links to this note, and what old keys their links use to
+        // reach it, before the rename changes path/title resolution.
+        $oldKeys = $note ? $this->wikilinkKeys($oldPath, (string) $note->title) : $this->wikilinkKeys($oldPath, null);
+        $referencingNoteIds = $note
+            ? NoteLink::query()->where('target_note_id', $note->id)->where('type', 'wikilink')
+                ->pluck('source_note_id')->unique()->all()
+            : [];
+
+        if (! rename($oldAbsolute, $newAbsolute)) {
+            throw new \RuntimeException("Unable to move vault note from [{$oldPath}] to [{$newPath}].");
+        }
 
         $contents = file_get_contents($newAbsolute) ?: '';
         $document = MarkdownDocument::parse($contents, $this->fallbackTitle($newRelative));
@@ -122,7 +131,83 @@ final class VaultStorage
             $note->delete();
         }
 
-        return $this->projector->project($workspace, $newRelative, $document);
+        $movedNote = $this->projector->project($workspace, $newRelative, $document);
+
+        if ($referencingNoteIds !== []) {
+            // Obsidian wikilinks address notes by filename, not by H1/front-matter
+            // title, so rewrite to the new file's basename -- consistent with
+            // resolveWorkspaceLinks() matching against note path first.
+            $newKey = $this->fallbackTitle($newRelative);
+            $this->rewriteInboundWikilinks($workspace, $referencingNoteIds, $oldKeys, $newKey, $movedNote->id);
+        }
+
+        return $movedNote;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function wikilinkKeys(string $relativePath, ?string $title): array
+    {
+        $path = trim(str_replace('\\', '/', $relativePath), '/');
+        $keys = [$path];
+        if (str_ends_with(strtolower($path), '.md')) {
+            $keys[] = substr($path, 0, -3);
+        }
+
+        $title = trim((string) $title);
+        if ($title !== '') {
+            $keys[] = $title;
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * Rewrites `[[oldKey]]` / `[[oldKey|label]]` / `[[oldKey#fragment]]` wikilinks
+     * to the moved note's new title, in every referencing note's on-disk content.
+     * Disk is the source of truth (spec §1); the note index is rebuilt as a
+     * side effect of the write, same as any other edit.
+     *
+     * @param  list<int>  $referencingNoteIds
+     * @param  list<string>  $oldKeys
+     */
+    private function rewriteInboundWikilinks(
+        Workspace $workspace,
+        array $referencingNoteIds,
+        array $oldKeys,
+        string $newTitle,
+        int $movedNoteId,
+    ): void {
+        if ($oldKeys === []) {
+            return;
+        }
+
+        $alternation = implode('|', array_map(
+            static fn (string $key): string => preg_quote($key, '/'),
+            $oldKeys,
+        ));
+        $pattern = '/\[\[('.$alternation.')((?:#[^\]|]*)?(?:\|[^\]]*)?)\]\]/iu';
+
+        $referencingNotes = Note::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('id', $referencingNoteIds)
+            ->where('id', '!=', $movedNoteId)
+            ->get(['id', 'path']);
+
+        foreach ($referencingNotes as $referencingNote) {
+            $contents = $this->readContents($workspace, (string) $referencingNote->path);
+
+            $rewritten = preg_replace_callback(
+                $pattern,
+                static fn (array $matches): string => sprintf('[[%s%s]]', $newTitle, $matches[2]),
+                $contents,
+            );
+
+            if ($rewritten !== null && $rewritten !== $contents) {
+                $this->write($workspace, (string) $referencingNote->path, $rewritten);
+            }
+        }
     }
 
     private function ensureParentDirectory(Workspace $workspace, string $absolute): void

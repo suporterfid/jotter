@@ -140,6 +140,46 @@ class WikilinkProjectionTest extends TestCase
         $this->assertSame($target->id, $link->target_note_id);
     }
 
+    public function test_rename_rewrites_inbound_wikilinks_on_disk(): void
+    {
+        $workspace = $this->makeWorkspace();
+        $storage = new VaultStorage;
+
+        $storage->write($workspace, 'note-b.md', "# Note B\n");
+        $storage->write($workspace, 'note-a.md', "See [[note-b]] and [[Note B|display label]] for details.\n");
+
+        $storage->move($workspace, 'note-b.md', 'note-c.md');
+
+        // Verify on disk, not the API/DB -- the index can be correct while disk is
+        // wrong, and disk is what Obsidian reads over WebDAV.
+        $onDisk = file_get_contents($this->vaultRoot.'/note-a.md');
+        $this->assertStringNotContainsString('[[note-b]]', $onDisk);
+        $this->assertStringContainsString('[[note-c]]', $onDisk);
+        $this->assertStringContainsString('[[note-c|display label]]', $onDisk);
+
+        $source = Note::query()->where('workspace_id', $workspace->id)->where('path', 'note-a.md')->sole();
+        $target = Note::query()->where('workspace_id', $workspace->id)->where('path', 'note-c.md')->sole();
+        $this->assertSame(
+            [$target->id, $target->id],
+            $source->outgoingLinks()->where('type', 'wikilink')->orderBy('id')->pluck('target_note_id')->all(),
+        );
+    }
+
+    public function test_rename_does_not_rewrite_links_to_unrelated_notes(): void
+    {
+        $workspace = $this->makeWorkspace();
+        $storage = new VaultStorage;
+
+        $storage->write($workspace, 'note-b.md', "# Note B\n");
+        $storage->write($workspace, 'note-d.md', "# Note D\n");
+        $storage->write($workspace, 'note-a.md', "[[note-b]] and [[note-d]]\n");
+
+        $storage->move($workspace, 'note-b.md', 'note-c.md');
+
+        $onDisk = file_get_contents($this->vaultRoot.'/note-a.md');
+        $this->assertStringContainsString('[[note-d]]', $onDisk);
+    }
+
     private function makeWorkspace(): Workspace
     {
         $tenant = Tenant::query()->create([
