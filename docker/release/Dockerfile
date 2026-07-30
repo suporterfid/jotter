@@ -61,6 +61,12 @@ RUN cd /release/app \
         STATUS.md \
         BACKLOG.md \
     && rm -f .env .env.backup .env.production auth.json \
+    # Defense in depth on top of .dockerignore: a stale bootstrap/cache/*.php
+    # from the build context (e.g. a local `artisan optimize` run with dev
+    # dependencies installed) would hardcode dev-only service providers
+    # (e.g. laravel/pail) into the release, fataling on the --no-dev vendor
+    # at runtime. Guarantee an empty cache regardless of build-context state.
+    && rm -f bootstrap/cache/*.php \
     && mkdir -p storage/app/private storage/framework/cache/data \
         storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && find storage bootstrap/cache -type d -exec chmod 775 {} \;
