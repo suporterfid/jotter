@@ -20,6 +20,15 @@ export interface Backlink {
   target_ref?: string
 }
 
+export interface OutgoingLink {
+  id: number | null
+  path: string | null
+  title: string | null
+  target_ref: string
+  target_block: string | null
+  resolved: boolean
+}
+
 export interface UnlinkedMention {
   id: number
   path: string

@@ -117,6 +117,28 @@ final class WorkspaceNoteController extends Controller
         ]);
     }
 
+    public function outgoingLinks(Workspace $workspace, int $note): JsonResponse
+    {
+        $note = $this->scopedNote($workspace, $note);
+
+        $links = $note->outgoingLinks()
+            ->where('type', 'wikilink')
+            ->with('targetNote')
+            ->get()
+            ->map(fn ($link) => [
+                'id' => $link->targetNote?->id,
+                'path' => $link->targetNote?->path,
+                'title' => $link->targetNote?->title,
+                'target_ref' => $link->target_ref,
+                'target_block' => $link->target_block,
+                'resolved' => $link->targetNote !== null,
+            ])
+            ->values()
+            ->all();
+
+        return response()->json(['data' => $links]);
+    }
+
     private function scopedNote(Workspace $workspace, int $noteId): Note
     {
         return $workspace->notes()->findOrFail($noteId);
