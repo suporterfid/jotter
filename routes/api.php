@@ -52,6 +52,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/sync', [WorkspaceSyncController::class, 'sync']);
     Route::get('/workspaces/{workspace}/search', WorkspaceSearchController::class);
     Route::get('/workspaces/{workspace}/link-report', [\App\Http\Controllers\WorkspaceLinkReportController::class, 'report']);
+    Route::get('/workspaces/{workspace}/notes/{note}/unlinked-mentions', [\App\Http\Controllers\WorkspaceUnlinkedMentionsController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'index']);
     Route::post('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'store']);

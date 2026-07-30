@@ -179,6 +179,13 @@
       @select-note="$emit('select-note', $event)"
     />
 
+    <!-- Unlinked Mentions Panel -->
+    <UnlinkedMentionsPanel
+      :mentions="unlinkedMentions"
+      @select-note="$emit('select-note', $event)"
+      @convert-to-link="handleConvertToLink"
+    />
+
     <!-- Version History Panel -->
     <HistoryPanel
       v-if="showHistory"
@@ -196,15 +203,17 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
-import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment } from '../services/types'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention } from '../services/types'
 import {
   uploadAttachment,
   getNoteRevisions, getNoteRevision, restoreNoteRevision,
   setNoteProperty, deleteNoteProperty,
-  getNoteComments, addNoteComment, deleteNoteComment
+  getNoteComments, addNoteComment, deleteNoteComment,
+  getUnlinkedMentions, getNote, updateNote
 } from '../services/api'
 import MarkdownPreview from './MarkdownPreview.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
+import UnlinkedMentionsPanel from './UnlinkedMentionsPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
@@ -239,6 +248,7 @@ const revisionPreviewLoading = ref(false)
 
 const comments = ref<NoteComment[]>([])
 const commentsError = ref<string | null>(null)
+const unlinkedMentions = ref<UnlinkedMention[]>([])
 
 // Live Statistics
 const charCount = computed(() => editableContent.value.length)
@@ -294,6 +304,7 @@ watch(() => props.note, (newNote) => {
   showAutocomplete.value = false
   showHistory.value = false
   loadComments(newNote.id)
+  loadUnlinkedMentions(newNote.id)
 }, { immediate: true })
 
 async function loadComments(noteId: number) {
@@ -303,6 +314,33 @@ async function loadComments(noteId: number) {
     comments.value = await getNoteComments(props.workspaceId, noteId)
   } catch (err) {
     console.error('Failed to load comments:', err)
+  }
+}
+
+async function loadUnlinkedMentions(noteId: number) {
+  if (!props.workspaceId) return
+  try {
+    unlinkedMentions.value = await getUnlinkedMentions(props.workspaceId, noteId)
+  } catch (err) {
+    console.error('Failed to load unlinked mentions:', err)
+  }
+}
+
+async function handleConvertToLink(mention: UnlinkedMention) {
+  if (!props.workspaceId) return
+  try {
+    const mentioningNote = await getNote(props.workspaceId, mention.id)
+    const escapedPhrase = mention.matched_phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(escapedPhrase, 'i')
+    const rewritten = mentioningNote.content.replace(pattern, `[[${props.note.title}]]`)
+
+    if (rewritten !== mentioningNote.content) {
+      await updateNote(props.workspaceId, mention.id, rewritten)
+    }
+
+    await loadUnlinkedMentions(props.note.id)
+  } catch (err) {
+    console.error('Failed to convert mention to link:', err)
   }
 }
 

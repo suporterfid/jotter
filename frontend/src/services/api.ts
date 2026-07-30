@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -85,6 +85,11 @@ export async function updateNote(workspaceId: number, noteId: number, content: s
 
 export async function deleteNote(workspaceId: number, noteId: number): Promise<void> {
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}`)
+}
+
+export async function getUnlinkedMentions(workspaceId: number, noteId: number): Promise<UnlinkedMention[]> {
+  const response = await api.get<{ data: UnlinkedMention[] }>(`/workspaces/${workspaceId}/notes/${noteId}/unlinked-mentions`)
+  return response.data.data
 }
 
 export async function searchNotes(
