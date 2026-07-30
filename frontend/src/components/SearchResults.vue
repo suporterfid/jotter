@@ -222,7 +222,7 @@ function clearFilters() {
 
 .tag-pill.active {
   background: var(--color-action);
-  color: var(--color-on-action, #fff);
+  color: var(--color-text-inverse);
   border-color: var(--color-action);
 }
 

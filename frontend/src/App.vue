@@ -792,9 +792,9 @@ body {
   max-width: min(90vw, 480px);
   padding: var(--space-sm, 8px) var(--space-md, 16px);
   background: var(--color-status-danger);
-  color: #ffffff;
+  color: var(--color-text-inverse);
   border-radius: var(--radius-sm, 6px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-float);
   font-size: 0.9rem;
 }
 
@@ -810,14 +810,14 @@ body {
   max-width: min(90vw, 480px);
   padding: var(--space-sm, 8px) var(--space-md, 16px);
   background: var(--color-status-success);
-  color: #ffffff;
+  color: var(--color-text-inverse);
   border-radius: var(--radius-sm, 6px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-float);
   font-size: 0.9rem;
 }
 
 .success-banner-link {
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-weight: 600;
   text-decoration: underline;
   white-space: nowrap;

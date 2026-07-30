@@ -648,7 +648,7 @@ function handleImportSubmit() {
   top: 2px;
   right: 2px;
   background: var(--color-status-danger);
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 0.625rem;
   font-weight: 700;
   line-height: 1;
