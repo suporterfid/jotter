@@ -108,7 +108,7 @@ defineExpose({ handleKeyDown })
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  width: 260px;
+  width: min(90vw, 260px);
   box-shadow: var(--shadow-float);
   color: var(--color-text);
   overflow: hidden;
