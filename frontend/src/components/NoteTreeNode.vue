@@ -122,7 +122,7 @@ const noteCount = computed(() => (props.node.type === 'folder' ? countNotes(prop
 }
 
 .folder-row:hover {
-  background: var(--color-surface-emphasis);
+  background: var(--color-hover);
   color: var(--color-text);
 }
 
@@ -171,7 +171,7 @@ const noteCount = computed(() => (props.node.type === 'folder' ? countNotes(prop
 }
 
 .note-item:hover {
-  background: var(--color-surface-emphasis);
+  background: var(--color-hover);
   color: var(--color-text);
 }
 
@@ -223,6 +223,17 @@ const noteCount = computed(() => (props.node.type === 'folder' ? countNotes(prop
 
 .note-item:hover .btn-delete {
   opacity: 1;
+}
+
+/* Touch devices have no hover state — the action must be visible and a
+   full 44x44 touch target, not a 28px icon hidden behind a hover it can
+   never receive. */
+@media (max-width: 768px) {
+  .btn-delete {
+    opacity: 1;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .btn-delete:hover {
