@@ -20,6 +20,14 @@ export interface Backlink {
   target_ref?: string
 }
 
+export interface UnlinkedMention {
+  id: number
+  path: string
+  title: string
+  matched_phrase: string
+  snippet: string
+}
+
 export type NotePropertyType = 'string' | 'numeric' | 'boolean' | 'datetime' | 'list' | 'json'
 
 export interface NoteProperty {
