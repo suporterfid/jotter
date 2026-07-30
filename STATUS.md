@@ -56,6 +56,7 @@
   - Visual Identity: Project mark, wordmark, favicon, and social card (#108 — `assets/brand/` directory structured with brand guidelines `assets/brand/README.md`, wordmark added to `README.md`)
   - Visual Identity: WCAG 2.2 AA audit and axe-core regression test (#109 — `frontend/src/a11y.spec.ts` automated axe-core Vitest spec covering all SPA views, documented contrast audit matrix and manual checklist in `docs/visual-identity.md`)
   - Visual Identity: CI guard against raw color literals and unapproved font sources (#110 — `./scripts/check-design-tokens.sh` executable guard script enforcing raw color literal ban, palette token ban, font CDN ban, and un-annotated outline:none ban)
+  - Visual Identity: Notion-inspired redesign — light/dark theming, neutral accent, Inter typeface, minimal elevation, mobile layout (2026-07-30 — `docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md`, `scripts/check-design-tokens.sh` extended with theme-parity check)
   - Milestone A: Filtered search by title, tags, and modified-date range (#52 — `SearchCriteria` value object, extended `GET /api/workspaces/{w}/search` params, index-backed multi-tag/title/date filtering)
   - CI stability: Playwright notes.spec.ts login wait & SPA error surfacing (#49 — aligned login wait to 10s, surfaced createNote errors in SPA)
   - Milestone A: Hardened archive extraction (#76 — `VaultExtractor` domain service with zip-slip, symlink, path-aliasing, type allowlist, and size/entry bounds)

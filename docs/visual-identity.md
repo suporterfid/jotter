@@ -540,6 +540,19 @@ Before this work, the product shipped four unrelated visual treatments (SPA glas
 - [x] Other surfaces — #105 theme reconciliation, #106 published static site, #107 app-shell metadata, #108 project mark.
 - [x] Verification — #109 WCAG 2.2 AA audit (acceptance gate), #110 CI token guard (lands last).
 
+### 2026-07-30 Notion-Inspired Redesign
+
+Full replan of the visual identity toward Notion's visual language: light+dark
+theming with user toggle, neutral-first accent (purple retained only on the
+project mark), Inter typeface, minimal elevation, and mobile-specific layout
+for the sidebar. Spec:
+`docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md`. Plan:
+`docs/superpowers/plans/2026-07-30-notion-visual-identity-implementation.md`.
+
+- [x] Foundation — palette/contrast table, token layer, `--shadow-float` rename, Inter font pipeline, theme toggle mechanism, CI guard update.
+- [x] Components — Sidebar mobile drawer, NoteTreeNode hover/touch targets, NoteEditor title scale, CommandPalette/SlashMenu responsive width, shared `PanelHeader` across the 5 icon+caption+count side panels (Backlinks, Comments, Properties, OutgoingLinks, UnlinkedMentions). `HistoryPanel` (modal dialog) and the three full main-content views (Attachments, AuditLog, LinkReport) keep their own page-title-style headers — a `PanelHeader`-style caption doesn't fit a modal title or a page `<h2>`, so forcing it in would have been a visual regression, not a consistency win.
+- [x] Verification — design-token guard passes, full frontend test suite passes.
+
 ### Theme Palette (2026-07-30 Notion-inspired redesign)
 
 Jotter is light+dark, user-toggleable (`data-theme="light"|"dark"` on `<html>`). Canvas/surface hex values:
