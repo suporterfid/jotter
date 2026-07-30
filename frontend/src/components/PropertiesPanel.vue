@@ -1,14 +1,12 @@
 <template>
   <aside class="properties-panel" aria-label="Properties">
-    <div class="properties-header">
-      <div class="header-title">
+    <PanelHeader title="Properties" :count="properties.length">
+      <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M3 6h18M7 12h10M11 18h2"></path>
         </svg>
-        <span>Properties</span>
-      </div>
-      <span class="count-badge">{{ properties.length }}</span>
-    </div>
+      </template>
+    </PanelHeader>
 
     <div v-if="properties.length === 0" class="properties-empty">
       <p>No typed properties on this note yet.</p>
@@ -92,6 +90,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import PanelHeader from './PanelHeader.vue'
 import type { NoteProperty, NotePropertyType } from '../services/types'
 
 defineProps<{
@@ -149,32 +148,6 @@ function handleSubmit() {
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
-}
-
-.properties-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.count-badge {
-  background: var(--color-surface-emphasis);
-  color: var(--color-action);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
 }
 
 .properties-empty {

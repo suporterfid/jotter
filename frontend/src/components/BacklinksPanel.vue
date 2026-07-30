@@ -1,15 +1,13 @@
 <template>
   <aside class="backlinks-panel" aria-label="Backlinks">
-    <div class="backlinks-header">
-      <div class="header-title">
+    <PanelHeader title="Backlinks" :count="backlinks.length">
+      <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
         </svg>
-        <span>Backlinks</span>
-      </div>
-      <span class="count-badge">{{ backlinks.length }}</span>
-    </div>
+      </template>
+    </PanelHeader>
 
     <div v-if="backlinks.length === 0" class="backlinks-empty">
       <p>No notes link to this document yet.</p>
@@ -30,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+import PanelHeader from './PanelHeader.vue'
 import type { Backlink } from '../services/types'
 
 defineProps<{
@@ -48,32 +47,6 @@ defineEmits<{
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
-}
-
-.backlinks-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.count-badge {
-  background: var(--color-surface-emphasis);
-  color: var(--color-action);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
 }
 
 .backlinks-empty {
@@ -103,6 +76,7 @@ defineEmits<{
 
 .backlink-item:hover {
   border-color: var(--color-action);
+  background: var(--color-hover);
 }
 
 .backlink-title {

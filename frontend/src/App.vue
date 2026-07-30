@@ -1,11 +1,29 @@
 <template>
   <div class="app-layout">
+    <button
+      type="button"
+      class="mobile-sidebar-toggle"
+      aria-label="Toggle sidebar"
+      @click="isMobileSidebarOpen = !isMobileSidebarOpen"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+    <div
+      v-if="isMobileSidebarOpen"
+      class="mobile-sidebar-backdrop"
+      @click="isMobileSidebarOpen = false"
+    ></div>
     <!-- Left Sidebar: Notes & Search -->
     <Sidebar
       :notes="notes"
       :selected-note-id="activeNoteId"
       :current-user="currentUser"
       :notifications="notifications"
+      :is-mobile-sidebar-open="isMobileSidebarOpen"
       @select-note="handleSelectNote"
       @create-note="handleCreateNote"
       @create-note-from-template="handleCreateNoteFromTemplate"
@@ -228,6 +246,7 @@ const activeNoteDetail = ref<NoteDetail | null>(null)
 
 const currentUser = ref<AuthUser | null>(null)
 const showLoginModal = ref(false)
+const isMobileSidebarOpen = ref(false)
 const isGraphViewActive = ref(false)
 
 const isSearchActive = ref(false)
@@ -397,6 +416,7 @@ async function loadActiveNote(noteId: number) {
 }
 
 async function handleSelectNote(noteId: number) {
+  isMobileSidebarOpen.value = false
   isSearchActive.value = false
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
@@ -770,6 +790,41 @@ body {
   overflow: hidden;
 }
 
+.mobile-sidebar-toggle {
+  display: none;
+}
+
+.mobile-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    z-index: 50;
+    min-width: 44px;
+    min-height: 44px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: var(--color-overlay);
+  }
+}
+
 .main-content {
   flex: 1;
   display: flex;
@@ -792,9 +847,9 @@ body {
   max-width: min(90vw, 480px);
   padding: var(--space-sm, 8px) var(--space-md, 16px);
   background: var(--color-status-danger);
-  color: #ffffff;
+  color: var(--color-text-inverse);
   border-radius: var(--radius-sm, 6px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-float);
   font-size: 0.9rem;
 }
 
@@ -810,14 +865,14 @@ body {
   max-width: min(90vw, 480px);
   padding: var(--space-sm, 8px) var(--space-md, 16px);
   background: var(--color-status-success);
-  color: #ffffff;
+  color: var(--color-text-inverse);
   border-radius: var(--radius-sm, 6px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-float);
   font-size: 0.9rem;
 }
 
 .success-banner-link {
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-weight: 600;
   text-decoration: underline;
   white-space: nowrap;
@@ -851,7 +906,6 @@ body {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
   transition: border-color var(--duration-standard) var(--ease-standard);
 }
 

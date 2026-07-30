@@ -1,14 +1,12 @@
 <template>
   <aside class="comments-panel" aria-label="Comments">
-    <div class="comments-header">
-      <div class="header-title">
+    <PanelHeader title="Comments" :count="comments.length">
+      <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-        <span>Comments</span>
-      </div>
-      <span class="count-badge">{{ comments.length }}</span>
-    </div>
+      </template>
+    </PanelHeader>
 
     <p v-if="errorMessage" class="comments-error" role="alert">{{ errorMessage }}</p>
 
@@ -57,6 +55,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import PanelHeader from './PanelHeader.vue'
 import type { NoteComment } from '../services/types'
 
 defineProps<{
@@ -96,32 +95,6 @@ function handleSubmit() {
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
-}
-
-.comments-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75rem;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.count-badge {
-  background: var(--color-surface-emphasis);
-  color: var(--color-action);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
 }
 
 .comments-error {

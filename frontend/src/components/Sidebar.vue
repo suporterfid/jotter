@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ 'mobile-open': isMobileSidebarOpen }">
     <!-- Header -->
     <div class="sidebar-header">
       <div class="brand">
@@ -355,13 +355,16 @@
         <span class="user-name">{{ currentUser.name }}</span>
         <span class="user-email">{{ currentUser.email }}</span>
       </div>
-      <button class="btn-logout" data-testid="logout-btn" title="Sign Out" @click="$emit('logout')">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-          <polyline points="16 17 21 12 16 7"></polyline>
-          <line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
-      </button>
+      <div class="sidebar-footer-actions">
+        <ThemeToggle />
+        <button class="btn-logout" data-testid="logout-btn" title="Sign Out" @click="$emit('logout')">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
@@ -371,12 +374,14 @@ import { ref, computed } from 'vue'
 import type { NoteMeta, AuthUser, NotificationItem } from '../services/types'
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
+import ThemeToggle from './ThemeToggle.vue'
 
 const props = defineProps<{
   notes: NoteMeta[]
   selectedNoteId: number | null
   currentUser?: AuthUser | null
   notifications?: NotificationItem[]
+  isMobileSidebarOpen?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -571,6 +576,22 @@ function handleImportSubmit() {
   height: 100%;
 }
 
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(85vw, 320px);
+    min-width: 0;
+    transform: translateX(-100%);
+    transition: transform var(--duration-standard) var(--ease-standard);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+}
+
 .sidebar-header {
   display: flex;
   align-items: center;
@@ -616,7 +637,7 @@ function handleImportSubmit() {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
   padding: var(--space-1);
   z-index: 91;
   display: flex;
@@ -648,7 +669,7 @@ function handleImportSubmit() {
   top: 2px;
   right: 2px;
   background: var(--color-status-danger);
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 0.625rem;
   font-weight: 700;
   line-height: 1;
@@ -1020,7 +1041,7 @@ function handleImportSubmit() {
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   width: 360px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
 }
 
 .modal-card h3 {
@@ -1122,6 +1143,12 @@ function handleImportSubmit() {
   align-items: center;
   justify-content: space-between;
   background: var(--color-surface-emphasis);
+}
+
+.sidebar-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .user-badge {

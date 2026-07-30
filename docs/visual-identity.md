@@ -521,7 +521,13 @@ Jotter adopts the shared visual identity specification verbatim. This section do
 
 ### Departures
 
-*None at present.* All components match the shared specification tokens.
+Recorded per §14.5 — see the "Deviation log" table below (2026-07-30 Notion-inspired redesign, tracked in `docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md`).
+
+| Deviation | Reason |
+|---|---|
+| `--color-action`/`--color-focus`/link color are neutral (near-black light / near-white dark) rather than the shared spec's purple baseline | Notion-parity redesign: color is reserved for the project mark only; functional UI uses a neutral-first palette. |
+| Typeface changed from Open Sans to Inter | Visual alignment with the Notion-inspired redesign; self-hosting/no-CDN/subsetting policy (VI4) is preserved unchanged, only the source font differs. |
+| `--shadow-float` (formerly `--shadow-lg`) is reserved exclusively for floating/overlay elements; all other surfaces use border + tint only | Notion's elevation language is almost entirely border/tint-based; this tightens Jotter's existing "layering over shadow" guidance from mostly-followed to strictly-enforced. |
 
 ### Implementation Tracking (#96–#110)
 
@@ -534,16 +540,66 @@ Before this work, the product shipped four unrelated visual treatments (SPA glas
 - [x] Other surfaces — #105 theme reconciliation, #106 published static site, #107 app-shell metadata, #108 project mark.
 - [x] Verification — #109 WCAG 2.2 AA audit (acceptance gate), #110 CI token guard (lands last).
 
+### 2026-07-30 Notion-Inspired Redesign
+
+Full replan of the visual identity toward Notion's visual language: light+dark
+theming with user toggle, neutral-first accent (purple retained only on the
+project mark), Inter typeface, minimal elevation, and mobile-specific layout
+for the sidebar. Spec:
+`docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md`. Plan:
+`docs/superpowers/plans/2026-07-30-notion-visual-identity-implementation.md`.
+
+- [x] Foundation — palette/contrast table, token layer, `--shadow-float` rename, Inter font pipeline, theme toggle mechanism, CI guard update.
+- [x] Components — Sidebar mobile drawer, NoteTreeNode hover/touch targets, NoteEditor title scale, CommandPalette/SlashMenu responsive width, shared `PanelHeader` across the 5 icon+caption+count side panels (Backlinks, Comments, Properties, OutgoingLinks, UnlinkedMentions). `HistoryPanel` (modal dialog) and the three full main-content views (Attachments, AuditLog, LinkReport) keep their own page-title-style headers — a `PanelHeader`-style caption doesn't fit a modal title or a page `<h2>`, so forcing it in would have been a visual regression, not a consistency win.
+- [x] Verification — design-token guard passes, full frontend test suite passes.
+
+### Theme Palette (2026-07-30 Notion-inspired redesign)
+
+Jotter is light+dark, user-toggleable (`data-theme="light"|"dark"` on `<html>`). Canvas/surface hex values:
+
+| Token | Light | Dark |
+|---|---|---|
+| `--color-canvas` | `#FFFFFF` | `#191919` |
+| `--color-surface` | `#F7F6F3` | `#202020` |
+| `--color-surface-emphasis` | `#EDECE9` | `#2F2F2F` |
+| `--color-text` | `#37352F` | `#D4D4D4` |
+| `--color-text-muted` | `#6B6963` | `#9B9B9B` |
+| `--color-text-inverse` | `#FFFFFF` | `#191919` |
+| `--color-action` / `--color-focus` | `#37352F` | `#D4D4D4` |
+| `--color-action-hover` | `#000000` | `#FFFFFF` |
+| `--color-hover` | `rgb(55 53 47 / 6%)` | `rgb(255 255 255 / 6%)` |
+
+Verified contrast pairs (WCAG 2.1 relative-luminance formula):
+
+| Foreground | Background | Ratio | Passes |
+|---|---|---:|---|
+| `--color-text` (light) | `--color-canvas` (light) | 12.26:1 | AAA |
+| `--color-text-muted` (light) | `--color-canvas` (light) | 5.49:1 | AA |
+| `--color-text` (light) | `--color-surface` (light) | 11.35:1 | AAA |
+| `--color-text-muted` (light) | `--color-surface` (light) | 5.08:1 | AA |
+| `--color-text` (light) | `--color-surface-emphasis` (light) | 10.38:1 | AAA |
+| `--color-text-muted` (light) | `--color-surface-emphasis` (light) | 4.65:1 | AA |
+| `--color-action-hover` `#000000` (light) | `--color-canvas` (light) | 21.0:1 | AAA |
+| `--color-text` (dark) | `--color-canvas` (dark) | 11.86:1 | AAA |
+| `--color-text-muted` (dark) | `--color-canvas` (dark) | 6.33:1 | AA |
+| `--color-text` (dark) | `--color-surface` (dark) | 10.99:1 | AAA |
+| `--color-text-muted` (dark) | `--color-surface` (dark) | 5.86:1 | AA |
+| `--color-text` (dark) | `--color-surface-emphasis` (dark) | 9.03:1 | AAA |
+| `--color-text-muted` (dark) | `--color-surface-emphasis` (dark) | 4.82:1 | AA |
+| `--color-action-hover` `#FFFFFF` (dark) | `--color-canvas` (dark) | 17.58:1 | AAA |
+
 ### Status Colors Extension & Contrast Ratios (#98)
 
-Jotter defines four semantic status tokens for alerts, save confirmations, and destructive actions. Each candidate color was selected and verified against both `--color-canvas` (`#000000`) and `--color-surface` (`#1A0A3E`):
+Jotter defines four semantic status tokens for alerts, save confirmations, and destructive actions, each independently verified against both canvas and surface **in both themes**:
 
-| Token | Color | Contrast vs Canvas (`#000000`) | Contrast vs Surface (`#1A0A3E`) | Usage |
-|---|---|---:|---:|---|
-| `--color-status-danger` | `#FF5252` | 5.86:1 | 5.07:1 | Destructive actions, delete confirmations |
-| `--color-status-warning` | `#FFB74D` | 10.73:1 | 9.27:1 | Warnings, dirty state indicators |
-| `--color-status-success` | `#66BB6A` | 8.01:1 | 6.92:1 | Save confirmation, success toasts |
-| `--color-status-info` | `#4FC3F7` | 11.75:1 | 10.15:1 | Informational badges, hints |
+| Token | Light hex | vs Canvas (`#FFFFFF`) | vs Surface (`#F7F6F3`) | Dark hex | vs Canvas (`#191919`) | vs Surface (`#202020`) |
+|---|---|---:|---:|---|---:|---:|
+| `--color-status-danger` | `#C0392B` | 5.44:1 | 5.03:1 | `#FF5252` | 5.51:1 | 5.11:1 |
+| `--color-status-warning` | `#8F640F` | 5.25:1 | 4.86:1 | `#FFB74D` | 10.16:1 | 9.41:1 |
+| `--color-status-success` | `#2E7D32` | 5.13:1 | 4.74:1 | `#66BB6A` | 7.44:1 | 6.89:1 |
+| `--color-status-info` | `#1B6FA8` | 5.40:1 | 5.00:1 | `#4FC3F7` | 8.78:1 | 8.13:1 |
+
+All values clear 4.5:1 in both themes. Dark values are unchanged from the pre-redesign table (re-verified against the new `#191919`/`#202020` dark backgrounds, still pass); light values are new.
 
 ### Token Rules & Constraints
 

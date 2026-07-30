@@ -600,7 +600,7 @@ async function handleSave() {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) var(--space-6);
-  background: var(--color-surface);
+  background: var(--color-canvas);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -611,8 +611,9 @@ async function handleSave() {
 
 .editor-title {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--text-h1);
   font-weight: 700;
+  line-height: 1.15;
   color: var(--color-text);
 }
 
@@ -755,7 +756,7 @@ async function handleSave() {
   background: var(--color-surface);
   border: 1px solid var(--color-action);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-float);
   z-index: 50;
   min-width: 240px;
   overflow: hidden;
