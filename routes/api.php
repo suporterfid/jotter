@@ -67,6 +67,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/workspaces/{workspace}/notes/from-template', [\App\Http\Controllers\WorkspaceTemplateController::class, 'createFromTemplate']);
     Route::match(['get', 'post'], '/workspaces/{workspace}/daily/{date?}', [\App\Http\Controllers\WorkspaceTemplateController::class, 'dailyNote']);
     Route::get('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'show']);
+    Route::get('/workspaces/{workspace}/notes/{note}/outgoing-links', [WorkspaceNoteController::class, 'outgoingLinks']);
     Route::put('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'update']);
     Route::post('/workspaces/{workspace}/notes/{note}/move', [WorkspaceNoteController::class, 'move']);
     Route::delete('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'destroy']);

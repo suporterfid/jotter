@@ -179,6 +179,12 @@
       @select-note="$emit('select-note', $event)"
     />
 
+    <!-- Outgoing Links Panel -->
+    <OutgoingLinksPanel
+      :links="outgoingLinks"
+      @select-note="$emit('select-note', $event)"
+    />
+
     <!-- Unlinked Mentions Panel -->
     <UnlinkedMentionsPanel
       :mentions="unlinkedMentions"
@@ -203,16 +209,18 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
-import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention } from '../services/types'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention, OutgoingLink } from '../services/types'
 import {
   uploadAttachment,
   getNoteRevisions, getNoteRevision, restoreNoteRevision,
   setNoteProperty, deleteNoteProperty,
   getNoteComments, addNoteComment, deleteNoteComment,
-  getUnlinkedMentions, getNote, updateNote
+  getUnlinkedMentions, getNote, updateNote,
+  getOutgoingLinks
 } from '../services/api'
 import MarkdownPreview from './MarkdownPreview.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
+import OutgoingLinksPanel from './OutgoingLinksPanel.vue'
 import UnlinkedMentionsPanel from './UnlinkedMentionsPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
@@ -249,6 +257,7 @@ const revisionPreviewLoading = ref(false)
 const comments = ref<NoteComment[]>([])
 const commentsError = ref<string | null>(null)
 const unlinkedMentions = ref<UnlinkedMention[]>([])
+const outgoingLinks = ref<OutgoingLink[]>([])
 
 // Live Statistics
 const charCount = computed(() => editableContent.value.length)
@@ -305,6 +314,7 @@ watch(() => props.note, (newNote) => {
   showHistory.value = false
   loadComments(newNote.id)
   loadUnlinkedMentions(newNote.id)
+  loadOutgoingLinks(newNote.id)
 }, { immediate: true })
 
 async function loadComments(noteId: number) {
@@ -314,6 +324,15 @@ async function loadComments(noteId: number) {
     comments.value = await getNoteComments(props.workspaceId, noteId)
   } catch (err) {
     console.error('Failed to load comments:', err)
+  }
+}
+
+async function loadOutgoingLinks(noteId: number) {
+  if (!props.workspaceId) return
+  try {
+    outgoingLinks.value = await getOutgoingLinks(props.workspaceId, noteId)
+  } catch (err) {
+    console.error('Failed to load outgoing links:', err)
   }
 }
 
