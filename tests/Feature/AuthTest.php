@@ -191,6 +191,104 @@ class AuthTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_grandpasson_auth_provider_still_accepts_real_local_login(): void
+    {
+        // #231: switching to the grandpasson provider must not lock out
+        // existing local accounts (e.g. the bootstrap admin). authenticate()
+        // delegates to LocalIdentityProvider and flags the session so
+        // resolveIdentity() recognizes it on subsequent requests -- verify
+        // that end-to-end through the real /api/auth/login endpoint, not
+        // just via actingAs() (which bypasses session state entirely and is
+        // why the fails-closed test above correctly 401s).
+        config(['jotter.auth_provider' => 'grandpasson']);
+
+        $user = User::factory()->create([
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password12345'),
+            'is_admin' => true,
+        ]);
+        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'main',
+            'name' => 'Main',
+            'vault_path' => storage_path('app/vaults/test'),
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'admin@example.com',
+            'password' => 'password12345',
+        ])->assertOk();
+
+        $this->getJson("/api/workspaces/{$workspace->id}/notes")->assertOk();
+        $this->getJson('/api/auth/me')->assertOk()->assertJsonPath('data.email', 'admin@example.com');
+    }
+
+    public function test_promote_admin_command_flips_is_admin_for_existing_user(): void
+    {
+        $user = User::factory()->create(['email' => 'sso-user@example.com', 'is_admin' => false]);
+
+        $exitCode = Artisan::call('platform:promote-admin', ['email' => 'sso-user@example.com']);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertTrue($user->fresh()->is_admin);
+    }
+
+    public function test_promote_admin_command_is_idempotent_for_an_existing_admin(): void
+    {
+        User::factory()->create(['email' => 'already-admin@example.com', 'is_admin' => true]);
+
+        $exitCode = Artisan::call('platform:promote-admin', ['email' => 'already-admin@example.com']);
+
+        $this->assertSame(0, $exitCode);
+    }
+
+    public function test_promote_admin_command_fails_for_unknown_email(): void
+    {
+        $exitCode = Artisan::call('platform:promote-admin', ['email' => 'nobody@example.com']);
+
+        $this->assertSame(1, $exitCode);
+    }
+
+    public function test_auth_config_endpoint_reports_local_provider_with_no_sso_url(): void
+    {
+        $this->getJson('/api/auth/config')
+            ->assertOk()
+            ->assertJson(['data' => ['provider' => 'local', 'sso_login_url' => null]]);
+    }
+
+    public function test_auth_config_endpoint_reports_grandpasson_provider_and_builds_sso_login_url(): void
+    {
+        config([
+            'jotter.auth_provider' => 'grandpasson',
+            'jotter.sso.broker_base_url' => 'https://hub.taskconnect.com.br/sso',
+            'jotter.sso.client_id' => 'jotter',
+            'app.url' => 'https://hub.taskconnect.com.br',
+        ]);
+
+        $response = $this->getJson('/api/auth/config')->assertOk();
+
+        $response->assertJsonPath('data.provider', 'grandpasson');
+        $url = $response->json('data.sso_login_url');
+        $this->assertStringStartsWith('https://hub.taskconnect.com.br/sso/login/email?', $url);
+        $this->assertStringContainsString('client_id=jotter', $url);
+        $this->assertStringContainsString('redirect_uri=https%3A%2F%2Fhub.taskconnect.com.br', $url);
+        $this->assertStringContainsString('state=', $url);
+    }
+
+    public function test_auth_config_endpoint_omits_sso_url_when_grandpasson_client_not_configured(): void
+    {
+        config([
+            'jotter.auth_provider' => 'grandpasson',
+            'jotter.sso.broker_base_url' => null,
+            'jotter.sso.client_id' => null,
+        ]);
+
+        $this->getJson('/api/auth/config')
+            ->assertOk()
+            ->assertJson(['data' => ['provider' => 'grandpasson', 'sso_login_url' => null]]);
+    }
+
     public function test_logout_endpoint_invalidates_session_and_writes_audit_log(): void
     {
         $user = User::factory()->create();

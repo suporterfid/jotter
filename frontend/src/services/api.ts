@@ -53,6 +53,16 @@ export async function getMe(): Promise<AuthUser | null> {
   }
 }
 
+export interface AuthConfig {
+  provider: 'local' | 'grandpasson'
+  sso_login_url: string | null
+}
+
+export async function getAuthConfig(): Promise<AuthConfig> {
+  const response = await api.get<{ data: AuthConfig }>('/auth/config')
+  return response.data.data
+}
+
 export async function getWorkspaces(): Promise<Workspace[]> {
   const response = await api.get<{ data: Workspace[] }>('/workspaces')
   return response.data.data
