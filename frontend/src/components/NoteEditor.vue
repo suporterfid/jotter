@@ -285,6 +285,14 @@ function cancelEditingIcon() {
 }
 
 async function confirmEditingIcon() {
+  // Unmounting the icon input (which happens at the end of this very
+  // function, via isEditingIcon.value = false) fires a native blur event
+  // in a real browser, re-invoking this handler through @blur. Guard
+  // against that re-entrant call — jsdom-based unit tests never trigger
+  // it, so this only surfaces in a real browser (found via manual/e2e
+  // verification, not the component test suite).
+  if (!isEditingIcon.value) return
+
   const trimmed = iconDraft.value.trim()
   if (!props.workspaceId) {
     cancelEditingIcon()
