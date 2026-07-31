@@ -48,6 +48,11 @@ export function createNoteTreeSortable(
     disabled: initiallyDisabled,
     animation: 150,
     ghostClass: 'note-tree-ghost',
+    // Native HTML5 drag-and-drop never fires from touch input, so the
+    // fallback (mouse/touch-event-based) simulation is required for the
+    // touch support this feature is spec'd to have — not just a testing
+    // convenience.
+    forceFallback: true,
     onMove(evt) {
       const draggedType = (evt.dragged as HTMLElement).dataset.itemType
       return !shouldRejectMove(draggedType, evt.from === evt.to)
