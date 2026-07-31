@@ -13,7 +13,7 @@ final class NotePropertyProjector
         $currentKeys = [];
 
         foreach ($frontmatter as $key => $value) {
-            if ($key === 'tags' || $value === null) {
+            if ($key === 'tags' || $key === 'icon' || $value === null) {
                 continue;
             }
 
