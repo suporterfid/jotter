@@ -385,4 +385,8 @@ onBeforeUnmount(() => {
   background: var(--color-hover);
   opacity: 0.6;
 }
+
+.folder-row-highlight .folder-row {
+  background: var(--color-hover);
+}
 </style>

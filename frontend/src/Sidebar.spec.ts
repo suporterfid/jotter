@@ -57,3 +57,28 @@ describe('Sidebar folder quick-create', () => {
     expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs']])
   })
 })
+
+describe('Sidebar reveal folder', () => {
+  it('expands a nested folder and its ancestor when revealFolderRequest is set', async () => {
+    const notes: NoteMeta[] = [
+      makeNote({ id: 1, path: 'docs/archived/inner.md' }),
+    ]
+    const wrapper = mount(Sidebar, {
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [] },
+    })
+
+    // Both start expanded by default (NoteTreeNode's `expanded` ref defaults
+    // to true) — collapse them first so the test proves reveal re-expands.
+    const folderRows = wrapper.findAll('.folder-row')
+    await folderRows[0].trigger('click')
+    await folderRows[1].trigger('click')
+
+    await wrapper.setProps({ revealFolderRequest: { path: 'docs/archived', nonce: 1 } })
+    await wrapper.vm.$nextTick()
+
+    const children = wrapper.findAll('.folder-children')
+    for (const child of children) {
+      expect((child.element as HTMLElement).style.display).not.toBe('none')
+    }
+  })
+})
