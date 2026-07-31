@@ -108,3 +108,56 @@ describe('NoteTreeNode folder quick-create', () => {
     expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs/archived']])
   })
 })
+
+describe('NoteTreeNode revealPath', () => {
+  function makeFolderNode(overrides: Partial<TreeNode> = {}): TreeNode {
+    return {
+      type: 'folder',
+      name: 'docs',
+      fullPath: 'docs',
+      children: [],
+      ...overrides,
+    } as TreeNode
+  }
+
+  it('expands when revealPath equals its own fullPath', async () => {
+    const wrapper = mount(NoteTreeNode, {
+      props: { node: makeFolderNode(), selectedNoteId: null, depth: 0 },
+    })
+    await wrapper.find('.folder-row').trigger('click')
+    expect((wrapper.find('.folder-children').element as HTMLElement).style.display).toBe('none')
+
+    await wrapper.setProps({ revealPath: 'docs' })
+    expect((wrapper.find('.folder-children').element as HTMLElement).style.display).not.toBe('none')
+  })
+
+  it('expands when revealPath is a nested descendant of its fullPath', async () => {
+    const wrapper = mount(NoteTreeNode, {
+      props: { node: makeFolderNode({ fullPath: 'docs' }), selectedNoteId: null, depth: 0 },
+    })
+    await wrapper.find('.folder-row').trigger('click')
+
+    await wrapper.setProps({ revealPath: 'docs/archived' })
+    expect((wrapper.find('.folder-children').element as HTMLElement).style.display).not.toBe('none')
+  })
+
+  it('does not expand for an unrelated folder path', async () => {
+    const wrapper = mount(NoteTreeNode, {
+      props: { node: makeFolderNode({ fullPath: 'other' }), selectedNoteId: null, depth: 0 },
+    })
+    await wrapper.find('.folder-row').trigger('click')
+
+    await wrapper.setProps({ revealPath: 'docs' })
+    expect((wrapper.find('.folder-children').element as HTMLElement).style.display).toBe('none')
+  })
+
+  it('does not falsely match a folder whose name is a string-prefix of another (docs vs docsx)', async () => {
+    const wrapper = mount(NoteTreeNode, {
+      props: { node: makeFolderNode({ fullPath: 'docsx' }), selectedNoteId: null, depth: 0 },
+    })
+    await wrapper.find('.folder-row').trigger('click')
+
+    await wrapper.setProps({ revealPath: 'docs' })
+    expect((wrapper.find('.folder-children').element as HTMLElement).style.display).toBe('none')
+  })
+})
