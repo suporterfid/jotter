@@ -128,4 +128,48 @@ MARKDOWN);
             'value_datetime' => '2026-12-31 00:00:00',
         ]);
     }
+
+    public function test_icon_frontmatter_key_is_excluded_from_property_projection(): void
+    {
+        $tenant = Tenant::create(['slug' => 'icon-test', 'name' => 'Icon Test']);
+        $vaultPath = storage_path('app/vaults/prop_icon_'.uniqid());
+        @mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'icon-test',
+            'name' => 'Icon Test Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+
+        $storage = new VaultStorage();
+        $note = $storage->write($workspace, 'iconed.md', <<<'MARKDOWN'
+---
+title: Iconed Note
+icon: "📄"
+status: "active"
+---
+# Iconed Note Body
+MARKDOWN);
+
+        // icon must not be projected as a queryable NoteProperty row...
+        $this->assertDatabaseMissing('note_properties', [
+            'note_id' => $note->id,
+            'name' => 'icon',
+        ]);
+
+        // ...but a sibling ordinary key on the same note still is, proving
+        // the exclusion is scoped to `icon` specifically, not a projection
+        // regression.
+        $this->assertDatabaseHas('note_properties', [
+            'note_id' => $note->id,
+            'name' => 'status',
+            'type' => 'string',
+            'value_string' => 'active',
+        ]);
+
+        // ...and the frontmatter column itself still carries the raw value,
+        // since that's what the frontend reads to render the icon.
+        $this->assertSame('📄', $note->fresh()->frontmatter['icon']);
+    }
 }

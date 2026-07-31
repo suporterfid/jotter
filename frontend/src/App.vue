@@ -410,6 +410,22 @@ async function loadActiveNote(noteId: number) {
     const detail = await getNote(activeWorkspaceId.value, noteId)
     activeNoteId.value = noteId
     activeNoteDetail.value = detail
+
+    // Keep the sidebar tree's copy of this note (frontmatter, title, path)
+    // in sync — loadActiveNote only refetches the single note detail, and
+    // the tree renders from the separate `notes` list, which would
+    // otherwise go stale after any frontmatter-driven change (e.g. the
+    // page icon) until the next full notes-list refetch.
+    const index = notes.value.findIndex(n => n.id === noteId)
+    if (index !== -1) {
+      notes.value[index] = {
+        id: detail.id,
+        path: detail.path,
+        title: detail.title,
+        frontmatter: detail.frontmatter,
+        updated_at: detail.updated_at,
+      }
+    }
   } catch (err) {
     console.error('Failed to load note detail:', err)
   }

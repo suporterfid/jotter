@@ -3,7 +3,35 @@
     <!-- Top Action Bar -->
     <header class="editor-bar">
       <div class="note-meta-info">
-        <h2 class="editor-title" data-testid="editor-title">{{ note.title || note.path }}</h2>
+        <div class="editor-title-row">
+          <button
+            v-if="!isEditingIcon"
+            type="button"
+            class="editor-icon-btn"
+            :aria-label="noteIcon ? 'Change page icon' : 'Set page icon'"
+            data-testid="editor-icon-btn"
+            @click="startEditingIcon"
+          >
+            <span v-if="noteIcon" data-testid="editor-icon-emoji">{{ noteIcon }}</span>
+            <svg v-else data-testid="editor-icon-fallback" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span v-if="noteIcon" class="editor-icon-clear" data-testid="editor-icon-clear" @click.stop="clearIcon">&times;</span>
+          </button>
+          <input
+            v-else
+            v-model="iconDraft"
+            type="text"
+            class="editor-icon-input"
+            data-testid="editor-icon-input"
+            autofocus
+            @keydown.enter="confirmEditingIcon"
+            @keydown.escape="cancelEditingIcon"
+            @blur="confirmEditingIcon"
+          />
+          <h2 class="editor-title" data-testid="editor-title">{{ note.title || note.path }}</h2>
+        </div>
         <span class="editor-path" data-testid="editor-path">{{ note.path }}</span>
       </div>
 
@@ -237,6 +265,62 @@ const emit = defineEmits<{
   (e: 'select-note', noteId: number): void
   (e: 'navigate-wikilink', target: string): void
 }>()
+
+const isEditingIcon = ref(false)
+const iconDraft = ref('')
+
+const noteIcon = computed(() => {
+  const icon = props.note.frontmatter?.icon
+  return typeof icon === 'string' && icon.trim() !== '' ? icon : null
+})
+
+function startEditingIcon() {
+  iconDraft.value = noteIcon.value ?? ''
+  isEditingIcon.value = true
+}
+
+function cancelEditingIcon() {
+  isEditingIcon.value = false
+  iconDraft.value = ''
+}
+
+async function confirmEditingIcon() {
+  // Unmounting the icon input (which happens at the end of this very
+  // function, via isEditingIcon.value = false) fires a native blur event
+  // in a real browser, re-invoking this handler through @blur. Guard
+  // against that re-entrant call — jsdom-based unit tests never trigger
+  // it, so this only surfaces in a real browser (found via manual/e2e
+  // verification, not the component test suite).
+  if (!isEditingIcon.value) return
+
+  const trimmed = iconDraft.value.trim()
+  if (!props.workspaceId) {
+    cancelEditingIcon()
+    return
+  }
+  try {
+    if (trimmed === '') {
+      await deleteNoteProperty(props.workspaceId, props.note.id, 'icon')
+    } else {
+      await setNoteProperty(props.workspaceId, props.note.id, 'icon', trimmed)
+    }
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to update page icon:', err)
+  }
+  isEditingIcon.value = false
+  iconDraft.value = ''
+}
+
+async function clearIcon() {
+  if (!props.workspaceId) return
+  try {
+    await deleteNoteProperty(props.workspaceId, props.note.id, 'icon')
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to clear page icon:', err)
+  }
+}
 
 const viewMode = ref<'edit' | 'split' | 'preview'>('split')
 const editableContent = ref(props.note.content)
@@ -607,6 +691,66 @@ async function handleSave() {
 .note-meta-info {
   display: flex;
   flex-direction: column;
+}
+
+.editor-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.editor-icon-btn {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.editor-icon-btn:hover {
+  background: var(--color-hover);
+}
+
+.editor-icon-clear {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-emphasis);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.editor-icon-btn:hover .editor-icon-clear {
+  opacity: 1;
+}
+
+.editor-icon-input {
+  width: 44px;
+  min-height: 44px;
+  text-align: center;
+  font-size: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
 }
 
 .editor-title {
