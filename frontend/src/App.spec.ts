@@ -9,6 +9,7 @@ vi.mock('./services/api', () => ({
   getNotes: vi.fn().mockResolvedValue([
     { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' }
   ]),
+  getFolderPositions: vi.fn().mockResolvedValue([]),
   getNote: vi.fn().mockResolvedValue({
     id: 10,
     path: 'welcome.md',
