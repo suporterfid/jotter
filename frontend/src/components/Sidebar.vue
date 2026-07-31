@@ -262,6 +262,7 @@
         <option value="recent">Recently Modified</option>
         <option value="name">Alphabetical</option>
         <option value="path">Vault Path</option>
+        <option value="manual">Manual</option>
       </select>
     </div>
 
@@ -277,7 +278,7 @@
         <button class="btn-create-inline" @click="showNewNoteModal = true">Create a note</button>
       </div>
 
-      <div v-else class="notes-list">
+      <div v-else class="notes-list" ref="rootList" data-folder-path="">
         <NoteTreeNode
           v-for="node in noteTree"
           :key="node.type === 'folder' ? `f:${node.fullPath}` : `n:${node.note.id}`"
@@ -370,11 +371,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { NoteMeta, AuthUser, NotificationItem } from '../services/types'
+import { ref, computed, provide, onMounted, onBeforeUnmount, watch, useTemplateRef } from 'vue'
+import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem } from '../services/types'
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import { moveNote, reorderNoteTree } from '../services/api'
+import { createNoteTreeSortable, type NoteTreeSortableHandle } from '../composables/useNoteTreeSortable'
 
 const props = defineProps<{
   notes: NoteMeta[]
@@ -382,6 +385,8 @@ const props = defineProps<{
   currentUser?: AuthUser | null
   notifications?: NotificationItem[]
   isMobileSidebarOpen?: boolean
+  workspaceId?: number | null
+  folderPositions?: FolderPosition[]
 }>()
 
 const emit = defineEmits<{
@@ -403,11 +408,12 @@ const emit = defineEmits<{
   (e: 'toggle-table-view'): void
   (e: 'toggle-board-view'): void
   (e: 'toggle-calendar-view'): void
+  (e: 'notes-reordered'): void
 }>()
 
 const searchQuery = ref('')
 const activeTag = ref<string | null>(null)
-const sortBy = ref<'recent' | 'name' | 'path'>('recent')
+const sortBy = ref<'recent' | 'name' | 'path' | 'manual'>('recent')
 const showNewNoteModal = ref(false)
 const newNotePath = ref('')
 const newNoteTemplatePath = ref('')
@@ -480,11 +486,14 @@ const filteredAndSortedNotes = computed(() => {
     if (sortBy.value === 'name') {
       return (a.title || a.path).localeCompare(b.title || b.path)
     }
+    if (sortBy.value === 'manual') {
+      return 0
+    }
     return a.path.localeCompare(b.path)
   })
 })
 
-function buildTree(notes: NoteMeta[]): TreeNode[] {
+function buildTree(notes: NoteMeta[], manual: boolean, folderPositionMap: Map<string, number>): TreeNode[] {
   const root: TreeFolder = { type: 'folder', name: '', fullPath: '', children: [] }
   const folders = new Map<string, TreeFolder>([['', root]])
 
@@ -507,19 +516,94 @@ function buildTree(notes: NoteMeta[]): TreeNode[] {
     getFolder(folderPath).children.push({ type: 'file', note })
   }
 
-  function sortChildren(folder: TreeFolder) {
+  function positionOf(node: TreeNode): number | null {
+    if (node.type === 'folder') return folderPositionMap.get(node.fullPath) ?? null
+    return node.note.sort_position ?? null
+  }
+
+  function displayName(node: TreeNode): string {
+    return node.type === 'folder' ? node.name : (node.note.title || node.note.path)
+  }
+
+  function sortChildrenAlphabetical(folder: TreeFolder) {
     const subfolders = folder.children.filter((c): c is TreeFolder => c.type === 'folder')
     const files = folder.children.filter((c) => c.type === 'file')
     subfolders.sort((a, b) => a.name.localeCompare(b.name))
-    subfolders.forEach(sortChildren)
+    subfolders.forEach(sortChildrenAlphabetical)
     folder.children = [...subfolders, ...files]
   }
-  sortChildren(root)
+
+  function sortChildrenManual(folder: TreeFolder) {
+    const positioned = folder.children.filter((c) => positionOf(c) !== null)
+    const unpositioned = folder.children.filter((c) => positionOf(c) === null)
+
+    positioned.sort((a, b) => positionOf(a)! - positionOf(b)!)
+    unpositioned.sort((a, b) => displayName(a).localeCompare(displayName(b)))
+
+    folder.children = [...positioned, ...unpositioned]
+    folder.children.forEach((c) => { if (c.type === 'folder') sortChildrenManual(c) })
+  }
+
+  if (manual) {
+    sortChildrenManual(root)
+  } else {
+    sortChildrenAlphabetical(root)
+  }
 
   return root.children
 }
 
-const noteTree = computed(() => buildTree(filteredAndSortedNotes.value))
+const folderPositionMap = computed(
+  () => new Map((props.folderPositions ?? []).map((fp) => [fp.folder_path, fp.sort_position]))
+)
+
+const noteTree = computed(() =>
+  buildTree(filteredAndSortedNotes.value, sortBy.value === 'manual', folderPositionMap.value)
+)
+
+async function handleReorder(folderPath: string, items: SortItem[]) {
+  if (!props.workspaceId) return
+  try {
+    await reorderNoteTree(props.workspaceId, folderPath, items)
+    emit('notes-reordered')
+  } catch (err) {
+    console.error('Failed to reorder note tree:', err)
+  }
+}
+
+async function handleReparentNote(noteId: number, newPath: string, destFolderPath: string, items: SortItem[]) {
+  if (!props.workspaceId) return
+  try {
+    await moveNote(props.workspaceId, noteId, newPath)
+    await reorderNoteTree(props.workspaceId, destFolderPath, items)
+    emit('notes-reordered')
+  } catch (err) {
+    console.error('Failed to move note:', err)
+  }
+}
+
+const isManualMode = computed(() => sortBy.value === 'manual')
+provide('noteTreeDragCallbacks', { onReorder: handleReorder, onReparentNote: handleReparentNote })
+provide('noteTreeManualMode', isManualMode)
+
+const rootListRef = useTemplateRef<HTMLElement>('rootList')
+let rootSortable: NoteTreeSortableHandle | null = null
+
+onMounted(() => {
+  if (!rootListRef.value) return
+  rootSortable = createNoteTreeSortable(rootListRef.value, !isManualMode.value, {
+    onReorder: handleReorder,
+    onReparentNote: handleReparentNote,
+  })
+})
+
+watch(isManualMode, (manual) => {
+  rootSortable?.setDisabled(!manual)
+})
+
+onBeforeUnmount(() => {
+  rootSortable?.destroy()
+})
 
 function onSearchInput() {
   emit('search', searchQuery.value)

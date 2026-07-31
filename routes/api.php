@@ -7,6 +7,7 @@ use App\Http\Controllers\LlmsTxtController;
 use App\Http\Controllers\WebDavController;
 use App\Http\Controllers\WorkspaceExportController;
 use App\Http\Controllers\WorkspaceNoteController;
+use App\Http\Controllers\WorkspaceNoteTreeController;
 use App\Http\Controllers\WorkspacePublishController;
 use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceSyncController;
@@ -71,6 +72,8 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/notes/{note}/outgoing-links', [WorkspaceNoteController::class, 'outgoingLinks']);
     Route::put('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'update']);
     Route::post('/workspaces/{workspace}/notes/{note}/move', [WorkspaceNoteController::class, 'move']);
+    Route::get('/workspaces/{workspace}/note-tree/order', [WorkspaceNoteTreeController::class, 'index']);
+    Route::put('/workspaces/{workspace}/note-tree/order', [WorkspaceNoteTreeController::class, 'update']);
     Route::delete('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'destroy']);
 
     Route::get('/workspaces/{workspace}/notes/{note}/revisions', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'index']);

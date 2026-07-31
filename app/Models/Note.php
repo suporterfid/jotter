@@ -16,6 +16,7 @@ class Note extends Model
         'frontmatter',
         'content_hash',
         'search_content',
+        'sort_position',
     ];
 
     protected function casts(): array

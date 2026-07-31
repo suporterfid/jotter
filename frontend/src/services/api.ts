@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink } from './types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -95,6 +95,22 @@ export async function updateNote(workspaceId: number, noteId: number, content: s
 
 export async function deleteNote(workspaceId: number, noteId: number): Promise<void> {
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}`)
+}
+
+export async function moveNote(workspaceId: number, noteId: number, newPath: string): Promise<NoteMeta> {
+  const response = await api.post<{ data: NoteMeta }>(`/workspaces/${workspaceId}/notes/${noteId}/move`, {
+    new_path: newPath
+  })
+  return response.data.data
+}
+
+export async function reorderNoteTree(workspaceId: number, folderPath: string, items: SortItem[]): Promise<void> {
+  await api.put(`/workspaces/${workspaceId}/note-tree/order`, { folder_path: folderPath, items })
+}
+
+export async function getFolderPositions(workspaceId: number): Promise<FolderPosition[]> {
+  const response = await api.get<{ data: FolderPosition[] }>(`/workspaces/${workspaceId}/note-tree/order`)
+  return response.data.data
 }
 
 export async function getUnlinkedMentions(workspaceId: number, noteId: number): Promise<UnlinkedMention[]> {

@@ -24,6 +24,9 @@
       :current-user="currentUser"
       :notifications="notifications"
       :is-mobile-sidebar-open="isMobileSidebarOpen"
+      :workspace-id="activeWorkspaceId"
+      :folder-positions="folderPositions"
+      @notes-reordered="refreshNotesList"
       @select-note="handleSelectNote"
       @create-note="handleCreateNote"
       @create-note-from-template="handleCreateNoteFromTemplate"
@@ -215,6 +218,7 @@ import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import {
   getWorkspaces,
   getNotes,
+  getFolderPositions,
   getNote,
   createNote,
   updateNote,
@@ -236,11 +240,12 @@ import {
   markNotificationRead,
   deleteNotification
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage } from './services/types'
+import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition } from './services/types'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
 const notes = ref<NoteMeta[]>([])
+const folderPositions = ref<FolderPosition[]>([])
 const activeNoteId = ref<number | null>(null)
 const activeNoteDetail = ref<NoteDetail | null>(null)
 
@@ -383,8 +388,12 @@ async function handleLogout() {
 async function refreshNotesList() {
   if (!activeWorkspaceId.value) return
   try {
-    const list = await getNotes(activeWorkspaceId.value)
+    const [list, positions] = await Promise.all([
+      getNotes(activeWorkspaceId.value),
+      getFolderPositions(activeWorkspaceId.value),
+    ])
     notes.value = list
+    folderPositions.value = positions
 
     if (activeNoteId.value) {
       const exists = list.some(n => n.id === activeNoteId.value)
@@ -423,6 +432,7 @@ async function loadActiveNote(noteId: number) {
         path: detail.path,
         title: detail.title,
         frontmatter: detail.frontmatter,
+        sort_position: detail.sort_position,
         updated_at: detail.updated_at,
       }
     }

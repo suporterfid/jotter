@@ -1,5 +1,10 @@
 <template>
-  <div v-if="node.type === 'folder'" class="tree-folder">
+  <div
+    v-if="node.type === 'folder'"
+    class="tree-folder"
+    data-item-type="folder"
+    :data-item-path="node.fullPath"
+  >
     <button
       type="button"
       class="folder-row"
@@ -25,7 +30,7 @@
       <span class="folder-name">{{ node.name }}</span>
       <span class="folder-count">{{ noteCount }}</span>
     </button>
-    <div v-if="expanded" class="folder-children">
+    <div v-show="expanded" class="folder-children" ref="childrenListRef" :data-folder-path="node.fullPath">
       <NoteTreeNode
         v-for="child in node.children"
         :key="child.type === 'folder' ? `f:${child.fullPath}` : `n:${child.note.id}`"
@@ -43,6 +48,9 @@
     class="note-item"
     :class="{ active: selectedNoteId === node.note.id }"
     :style="{ paddingLeft: `${depth * 14 + 8}px` }"
+    data-item-type="note"
+    :data-item-id="node.note.id"
+    :data-item-note-path="node.note.path"
     @click="$emit('select-note', node.note.id)"
   >
     <span v-if="noteIcon" class="note-icon" data-testid="note-icon-emoji">{{ noteIcon }}</span>
@@ -68,8 +76,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, inject, onMounted, onBeforeUnmount, watch, useTemplateRef, type Ref } from 'vue'
 import type { NoteMeta } from '../services/types'
+import {
+  createNoteTreeSortable,
+  type NoteTreeSortableCallbacks,
+  type NoteTreeSortableHandle,
+} from '../composables/useNoteTreeSortable'
 
 export interface TreeFolder {
   type: 'folder'
@@ -109,6 +122,25 @@ const noteIcon = computed(() => {
   if (props.node.type !== 'file') return null
   const icon = props.node.note.frontmatter?.icon
   return typeof icon === 'string' && icon.trim() !== '' ? icon : null
+})
+
+const dragCallbacks = inject<NoteTreeSortableCallbacks>('noteTreeDragCallbacks')
+const isManualMode = inject<Ref<boolean>>('noteTreeManualMode')
+
+const childrenListRef = useTemplateRef<HTMLElement>('childrenListRef')
+let childrenSortable: NoteTreeSortableHandle | null = null
+
+onMounted(() => {
+  if (!childrenListRef.value || !dragCallbacks || !isManualMode) return
+  childrenSortable = createNoteTreeSortable(childrenListRef.value, !isManualMode.value, dragCallbacks)
+})
+
+watch(isManualMode ?? ref(false), (manual) => {
+  childrenSortable?.setDisabled(!manual)
+})
+
+onBeforeUnmount(() => {
+  childrenSortable?.destroy()
 })
 </script>
 
@@ -265,5 +297,10 @@ const noteIcon = computed(() => {
 .btn-delete:hover {
   color: var(--color-status-danger);
   background: color-mix(in srgb, var(--color-status-danger) 12%, transparent);
+}
+
+.note-tree-ghost {
+  background: var(--color-hover);
+  opacity: 0.6;
 }
 </style>
