@@ -107,3 +107,33 @@ describe('NoteEditor page icon', () => {
     expect(wrapper.find('[data-testid="editor-icon-input"]').exists()).toBe(false)
   })
 })
+
+describe('NoteEditor breadcrumb', () => {
+  it('renders a clickable segment per folder and a plain-text file name', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ path: 'docs/archived/note.md' }), allNotes: [], workspaceId: 1 },
+    })
+    const segments = wrapper.findAll('[data-testid="editor-path-segment"]')
+    expect(segments).toHaveLength(2)
+    expect(segments[0].text()).toBe('docs')
+    expect(segments[1].text()).toBe('archived')
+    expect(wrapper.find('[data-testid="editor-path-filename"]').text()).toBe('note.md')
+  })
+
+  it('renders no folder segments for a root-level note', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ path: 'note.md' }), allNotes: [], workspaceId: 1 },
+    })
+    expect(wrapper.findAll('[data-testid="editor-path-segment"]')).toHaveLength(0)
+    expect(wrapper.find('[data-testid="editor-path-filename"]').text()).toBe('note.md')
+  })
+
+  it('emits reveal-folder with the cumulative path when a segment is clicked', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ path: 'docs/archived/note.md' }), allNotes: [], workspaceId: 1 },
+    })
+    const segments = wrapper.findAll('[data-testid="editor-path-segment"]')
+    await segments[1].trigger('click')
+    expect(wrapper.emitted('reveal-folder')).toEqual([['docs/archived']])
+  })
+})
