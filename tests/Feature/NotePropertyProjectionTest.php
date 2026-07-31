@@ -172,4 +172,47 @@ MARKDOWN);
         // since that's what the frontend reads to render the icon.
         $this->assertSame('📄', $note->fresh()->frontmatter['icon']);
     }
+
+    public function test_cover_frontmatter_key_is_excluded_from_property_projection(): void
+    {
+        $tenant = Tenant::create(['slug' => 'cover-test', 'name' => 'Cover Test']);
+        $vaultPath = storage_path('app/vaults/prop_cover_'.uniqid());
+        @mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'cover-test',
+            'name' => 'Cover Test Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+
+        $storage = new VaultStorage();
+        $note = $storage->write($workspace, 'covered.md', <<<'MARKDOWN'
+---
+title: Covered Note
+cover: "https://example.com/banner.jpg"
+status: "active"
+---
+# Covered Note Body
+MARKDOWN);
+
+        // cover must not be projected as a queryable NoteProperty row...
+        $this->assertDatabaseMissing('note_properties', [
+            'note_id' => $note->id,
+            'name' => 'cover',
+        ]);
+
+        // ...but a sibling ordinary key on the same note still is, proving
+        // the exclusion is scoped to `cover` specifically.
+        $this->assertDatabaseHas('note_properties', [
+            'note_id' => $note->id,
+            'name' => 'status',
+            'type' => 'string',
+            'value_string' => 'active',
+        ]);
+
+        // ...and the frontmatter column itself still carries the raw value,
+        // since that's what the frontend reads to render the cover.
+        $this->assertSame('https://example.com/banner.jpg', $note->fresh()->frontmatter['cover']);
+    }
 }

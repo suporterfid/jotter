@@ -1,5 +1,27 @@
 <template>
   <div class="editor-container">
+    <div v-if="coverUrl" class="editor-cover-wrapper">
+      <img class="editor-cover-image" data-testid="editor-cover-image" :src="coverUrl" alt="" />
+      <div class="editor-cover-actions">
+        <button type="button" class="btn-cover-action" data-testid="change-cover-btn" @click="isEditingCover = true">Change</button>
+        <button type="button" class="btn-cover-action" data-testid="remove-cover-btn" @click="clearCover">Remove</button>
+      </div>
+    </div>
+    <button
+      v-else
+      type="button"
+      class="add-cover-btn"
+      data-testid="add-cover-btn"
+      @click="isEditingCover = true"
+    >Add cover</button>
+
+    <CoverImageModal
+      v-if="isEditingCover && workspaceId"
+      :workspace-id="workspaceId"
+      @set-cover="setCover"
+      @close="isEditingCover = false"
+    />
+
     <!-- Top Action Bar -->
     <header class="editor-bar">
       <div class="note-meta-info">
@@ -264,6 +286,7 @@ import UnlinkedMentionsPanel from './UnlinkedMentionsPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
+import CoverImageModal from './CoverImageModal.vue'
 
 const props = defineProps<{
   note: NoteDetail
@@ -285,6 +308,34 @@ const noteIcon = computed(() => {
   const icon = props.note.frontmatter?.icon
   return typeof icon === 'string' && icon.trim() !== '' ? icon : null
 })
+
+const coverUrl = computed(() => {
+  const cover = props.note.frontmatter?.cover
+  return typeof cover === 'string' && cover.trim() !== '' ? cover : null
+})
+
+const isEditingCover = ref(false)
+
+async function setCover(url: string) {
+  isEditingCover.value = false
+  if (!props.workspaceId) return
+  try {
+    await setNoteProperty(props.workspaceId, props.note.id, 'cover', url)
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to set cover image:', err)
+  }
+}
+
+async function clearCover() {
+  if (!props.workspaceId) return
+  try {
+    await deleteNoteProperty(props.workspaceId, props.note.id, 'cover')
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to clear cover image:', err)
+  }
+}
 
 const breadcrumbSegments = computed(() => {
   const parts = props.note.path.split('/')
@@ -784,6 +835,68 @@ async function handleSave() {
   font-weight: 700;
   line-height: 1.15;
   color: var(--color-text);
+}
+
+.add-cover-btn {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  padding: var(--space-2);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  text-align: center;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.add-cover-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-action);
+}
+
+.editor-cover-wrapper {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.editor-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.editor-cover-actions {
+  position: absolute;
+  bottom: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.editor-cover-wrapper:hover .editor-cover-actions {
+  opacity: 1;
+}
+
+.btn-cover-action {
+  background: var(--color-overlay);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-cover-action:hover {
+  background: color-mix(in srgb, var(--color-overlay) 80%, black);
 }
 
 .editor-path {

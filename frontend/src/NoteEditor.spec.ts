@@ -137,3 +137,56 @@ describe('NoteEditor breadcrumb', () => {
     expect(wrapper.emitted('reveal-folder')).toEqual([['docs/archived']])
   })
 })
+
+describe('NoteEditor cover image', () => {
+  it('renders the Add cover button when no cover is set', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    expect(wrapper.find('[data-testid="add-cover-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="editor-cover-image"]').exists()).toBe(false)
+  })
+
+  it('renders the cover image when frontmatter.cover is set', () => {
+    const wrapper = mount(NoteEditor, {
+      props: {
+        note: makeNote({ frontmatter: { cover: 'https://example.com/banner.jpg' } }),
+        allNotes: [],
+        workspaceId: 1,
+      },
+    })
+    const img = wrapper.find('[data-testid="editor-cover-image"]')
+    expect(img.exists()).toBe(true)
+    expect(img.attributes('src')).toBe('https://example.com/banner.jpg')
+    expect(wrapper.find('[data-testid="add-cover-btn"]').exists()).toBe(false)
+  })
+
+  it('opens the cover modal when Add cover is clicked', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await wrapper.find('[data-testid="add-cover-btn"]').trigger('click')
+    expect(wrapper.findComponent({ name: 'CoverImageModal' }).exists()).toBe(true)
+  })
+
+  it('sets the cover property when the modal emits set-cover', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await wrapper.find('[data-testid="add-cover-btn"]').trigger('click')
+    await wrapper.findComponent({ name: 'CoverImageModal' }).vm.$emit('set-cover', 'https://example.com/banner.jpg')
+    expect(setNoteProperty).toHaveBeenCalledWith(1, 1, 'cover', 'https://example.com/banner.jpg')
+  })
+
+  it('clears the cover property when Remove is clicked', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: {
+        note: makeNote({ frontmatter: { cover: 'https://example.com/banner.jpg' } }),
+        allNotes: [],
+        workspaceId: 1,
+      },
+    })
+    await wrapper.find('[data-testid="remove-cover-btn"]').trigger('click')
+    expect(deleteNoteProperty).toHaveBeenCalledWith(1, 1, 'cover')
+  })
+})
