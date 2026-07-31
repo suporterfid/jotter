@@ -32,7 +32,18 @@
           />
           <h2 class="editor-title" data-testid="editor-title">{{ note.title || note.path }}</h2>
         </div>
-        <span class="editor-path" data-testid="editor-path">{{ note.path }}</span>
+        <span class="editor-path" data-testid="editor-path">
+          <template v-for="folder in breadcrumbSegments.folders" :key="folder.path">
+            <button
+              type="button"
+              class="editor-path-segment"
+              data-testid="editor-path-segment"
+              @click="emit('reveal-folder', folder.path)"
+            >{{ folder.name }}</button>
+            <span class="editor-path-separator">/</span>
+          </template>
+          <span data-testid="editor-path-filename">{{ breadcrumbSegments.fileName }}</span>
+        </span>
       </div>
 
       <div class="editor-controls">
@@ -264,6 +275,7 @@ const emit = defineEmits<{
   (e: 'update-note', noteId: number, content: string): void
   (e: 'select-note', noteId: number): void
   (e: 'navigate-wikilink', target: string): void
+  (e: 'reveal-folder', folderPath: string): void
 }>()
 
 const isEditingIcon = ref(false)
@@ -272,6 +284,19 @@ const iconDraft = ref('')
 const noteIcon = computed(() => {
   const icon = props.note.frontmatter?.icon
   return typeof icon === 'string' && icon.trim() !== '' ? icon : null
+})
+
+const breadcrumbSegments = computed(() => {
+  const parts = props.note.path.split('/')
+  const fileName = parts[parts.length - 1]
+  const folders = parts.slice(0, -1)
+  return {
+    folders: folders.map((name, index) => ({
+      name,
+      path: folders.slice(0, index + 1).join('/'),
+    })),
+    fileName,
+  }
 })
 
 function startEditingIcon() {
@@ -763,6 +788,29 @@ async function handleSave() {
 
 .editor-path {
   font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.editor-path-segment {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color var(--duration-fast) var(--ease-standard),
+              text-decoration-color var(--duration-fast) var(--ease-standard);
+}
+
+.editor-path-segment:hover {
+  color: var(--color-action);
+  text-decoration-color: var(--color-action);
+}
+
+.editor-path-separator {
+  margin: 0 0.2em;
   color: var(--color-text-muted);
 }
 

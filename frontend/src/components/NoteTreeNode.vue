@@ -52,6 +52,7 @@
         :node="child"
         :selected-note-id="selectedNoteId"
         :depth="depth + 1"
+        :reveal-path="revealPath"
         @select-note="$emit('select-note', $event)"
         @delete-note="$emit('delete-note', $event)"
         @create-note-in-folder="$emit('create-note-in-folder', $event)"
@@ -118,6 +119,7 @@ const props = defineProps<{
   node: TreeNode
   selectedNoteId: number | null
   depth: number
+  revealPath?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -127,6 +129,19 @@ const emit = defineEmits<{
 }>()
 
 const expanded = ref(true)
+
+function isRevealTarget(revealPath: string, fullPath: string): boolean {
+  return revealPath === fullPath || revealPath.startsWith(`${fullPath}/`)
+}
+
+watch(
+  () => props.revealPath,
+  (revealPath) => {
+    if (props.node.type === 'folder' && revealPath && isRevealTarget(revealPath, props.node.fullPath)) {
+      expanded.value = true
+    }
+  },
+)
 
 function countNotes(node: TreeNode): number {
   if (node.type === 'file') return 1
@@ -369,5 +384,9 @@ onBeforeUnmount(() => {
 .note-tree-ghost {
   background: var(--color-hover);
   opacity: 0.6;
+}
+
+.folder-row-highlight .folder-row {
+  background: var(--color-hover);
 }
 </style>

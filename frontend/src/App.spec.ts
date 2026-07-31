@@ -69,3 +69,14 @@ describe('App folder quick-create', () => {
     )
   })
 })
+
+describe('App reveal folder', () => {
+  it('opens the mobile sidebar when a folder is revealed', async () => {
+    const wrapper = mount(App)
+    await wrapper.vm.$nextTick()
+    const vm = wrapper.vm as any
+    vm.handleRevealFolder('docs')
+    await wrapper.vm.$nextTick()
+    expect(vm.isMobileSidebarOpen).toBe(true)
+  })
+})

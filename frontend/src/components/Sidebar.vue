@@ -285,6 +285,7 @@
           :node="node"
           :selected-note-id="selectedNoteId"
           :depth="0"
+          :reveal-path="props.revealFolderRequest?.path ?? null"
           @select-note="$emit('select-note', $event)"
           @delete-note="$emit('delete-note', $event)"
           @create-note-in-folder="$emit('create-note-in-folder', $event)"
@@ -372,7 +373,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, onMounted, onBeforeUnmount, watch, useTemplateRef } from 'vue'
+import { ref, computed, provide, onMounted, onBeforeUnmount, watch, useTemplateRef, nextTick } from 'vue'
 import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem } from '../services/types'
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
@@ -388,6 +389,7 @@ const props = defineProps<{
   isMobileSidebarOpen?: boolean
   workspaceId?: number | null
   folderPositions?: FolderPosition[]
+  revealFolderRequest?: { path: string; nonce: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -606,6 +608,21 @@ watch(isManualMode, (manual) => {
 onBeforeUnmount(() => {
   rootSortable?.destroy()
 })
+
+watch(
+  () => props.revealFolderRequest,
+  async (request) => {
+    if (!request) return
+    await nextTick()
+    const el = rootListRef.value?.querySelector<HTMLElement>(
+      `[data-item-type="folder"][data-item-path="${request.path}"]`,
+    )
+    if (!el) return
+    el.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    el.classList.add('folder-row-highlight')
+    setTimeout(() => el.classList.remove('folder-row-highlight'), 1500)
+  },
+)
 
 function onSearchInput() {
   emit('search', searchQuery.value)
