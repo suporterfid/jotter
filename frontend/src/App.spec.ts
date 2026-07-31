@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
+import { createNote } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -20,7 +21,7 @@ vi.mock('./services/api', () => ({
     content: '# Welcome to Jotter\n\n[[Other Note]]',
     backlinks: []
   }),
-  createNote: vi.fn(),
+  createNote: vi.fn().mockResolvedValue({ id: 99, path: 'docs/untitled-x.md', title: '', frontmatter: null, sort_position: null, updated_at: '2026-07-31T00:00:00Z' }),
   updateNote: vi.fn(),
   deleteNote: vi.fn(),
   searchNotes: vi.fn().mockResolvedValue([]),
@@ -40,5 +41,31 @@ describe('App Component', () => {
   it('renders the Jotter sidebar brand title', () => {
     const wrapper = mount(App)
     expect(wrapper.find('.brand-title').text()).toBe('Jotter')
+  })
+})
+
+describe('App folder quick-create', () => {
+  it('prefixes the auto-generated filename with the folder path', async () => {
+    const wrapper = mount(App)
+    await wrapper.vm.$nextTick()
+    const vm = wrapper.vm as any
+    await vm.handleCreateNoteInFolder('docs')
+    expect(createNote).toHaveBeenCalledWith(
+      1,
+      expect.stringMatching(/^docs\/untitled-[a-z0-9]+\.md$/),
+      expect.any(String),
+    )
+  })
+
+  it('creates at the vault root when folderPath is empty', async () => {
+    const wrapper = mount(App)
+    await wrapper.vm.$nextTick()
+    const vm = wrapper.vm as any
+    await vm.handleCreateNoteInFolder('')
+    expect(createNote).toHaveBeenCalledWith(
+      1,
+      expect.stringMatching(/^untitled-[a-z0-9]+\.md$/),
+      expect.any(String),
+    )
   })
 })
