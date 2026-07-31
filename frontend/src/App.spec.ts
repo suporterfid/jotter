@@ -7,13 +7,14 @@ vi.mock('./services/api', () => ({
     { id: 1, tenant_id: 1, slug: 'default', name: 'Default Workspace' }
   ]),
   getNotes: vi.fn().mockResolvedValue([
-    { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, updated_at: '2026-07-27T00:00:00Z' }
+    { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' }
   ]),
   getNote: vi.fn().mockResolvedValue({
     id: 10,
     path: 'welcome.md',
     title: 'Welcome Note',
     frontmatter: null,
+    sort_position: null,
     updated_at: '2026-07-27T00:00:00Z',
     content: '# Welcome to Jotter\n\n[[Other Note]]',
     backlinks: []

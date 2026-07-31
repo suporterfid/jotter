@@ -10,8 +10,16 @@ export interface NoteMeta {
   path: string
   title: string
   frontmatter: Record<string, unknown> | null
+  sort_position: number | null
   updated_at: string
 }
+
+export interface FolderPosition {
+  folder_path: string
+  sort_position: number
+}
+
+export type SortItem = { type: 'note'; id: number } | { type: 'folder'; path: string }
 
 export interface Backlink {
   id: number

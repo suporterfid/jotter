@@ -5,7 +5,7 @@ import CommandPalette from './components/CommandPalette.vue'
 describe('CommandPalette Component', () => {
   it('renders command palette items when opened', async () => {
     const notes = [
-      { id: 1, path: 'project.md', title: 'Project Plan', frontmatter: null, updated_at: '2026-07-27' }
+      { id: 1, path: 'project.md', title: 'Project Plan', frontmatter: null, sort_position: null, updated_at: '2026-07-27' }
     ]
     const wrapper = mount(CommandPalette, {
       props: { notes },

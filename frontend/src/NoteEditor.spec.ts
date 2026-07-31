@@ -19,6 +19,7 @@ function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
     path: 'test-note.md',
     title: 'Test Note',
     frontmatter: null,
+    sort_position: null,
     updated_at: '2026-07-31T00:00:00Z',
     content: '# Test Note',
     backlinks: [],

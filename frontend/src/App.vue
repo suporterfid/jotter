@@ -423,6 +423,7 @@ async function loadActiveNote(noteId: number) {
         path: detail.path,
         title: detail.title,
         frontmatter: detail.frontmatter,
+        sort_position: detail.sort_position,
         updated_at: detail.updated_at,
       }
     }
