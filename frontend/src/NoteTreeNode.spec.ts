@@ -36,3 +36,75 @@ describe('NoteTreeNode drag attributes', () => {
     expect((children.element as HTMLElement).style.display).toBe('none')
   })
 })
+
+describe('NoteTreeNode folder quick-create', () => {
+  function makeFolderNode(overrides: Partial<TreeNode> = {}): TreeNode {
+    return {
+      type: 'folder',
+      name: 'docs',
+      fullPath: 'docs',
+      children: [],
+      ...overrides,
+    } as TreeNode
+  }
+
+  it('emits create-note-in-folder with the folder\'s fullPath when + is clicked', async () => {
+    const wrapper = mount(NoteTreeNode, {
+      props: { node: makeFolderNode(), selectedNoteId: null, depth: 0 },
+    })
+    await wrapper.find('[data-testid="folder-create-note-btn"]').trigger('click')
+    expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs']])
+  })
+
+  it('does not toggle collapse when + is clicked on an expanded folder', async () => {
+    const wrapper = mount(NoteTreeNode, {
+      props: {
+        node: makeFolderNode({
+          children: [
+            { type: 'file', note: { id: 1, path: 'docs/a.md', title: 'A', frontmatter: null, sort_position: null, updated_at: '2026-07-31T00:00:00Z' } },
+          ],
+        }),
+        selectedNoteId: null,
+        depth: 0,
+      },
+    })
+    await wrapper.find('[data-testid="folder-create-note-btn"]').trigger('click')
+    const children = wrapper.find('.folder-children')
+    expect((children.element as HTMLElement).style.display).not.toBe('none')
+  })
+
+  it('expands a collapsed folder when + is clicked', async () => {
+    const wrapper = mount(NoteTreeNode, {
+      props: {
+        node: makeFolderNode({
+          children: [
+            { type: 'file', note: { id: 1, path: 'docs/a.md', title: 'A', frontmatter: null, sort_position: null, updated_at: '2026-07-31T00:00:00Z' } },
+          ],
+        }),
+        selectedNoteId: null,
+        depth: 0,
+      },
+    })
+    // Collapse it first (starts expanded by default)
+    await wrapper.find('.folder-row').trigger('click')
+    expect((wrapper.find('.folder-children').element as HTMLElement).style.display).toBe('none')
+
+    await wrapper.find('[data-testid="folder-create-note-btn"]').trigger('click')
+    expect((wrapper.find('.folder-children').element as HTMLElement).style.display).not.toBe('none')
+    expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs']])
+  })
+
+  it('bubbles a nested folder\'s + click up through the parent NoteTreeNode unchanged', async () => {
+    const nested: TreeNode = makeFolderNode({
+      name: 'archived',
+      fullPath: 'docs/archived',
+      children: [],
+    })
+    const wrapper = mount(NoteTreeNode, {
+      props: { node: makeFolderNode({ children: [nested] }), selectedNoteId: null, depth: 0 },
+    })
+    const nestedBtn = wrapper.findAll('[data-testid="folder-create-note-btn"]')[1]
+    await nestedBtn.trigger('click')
+    expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs/archived']])
+  })
+})

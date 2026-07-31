@@ -5,31 +5,46 @@
     data-item-type="folder"
     :data-item-path="node.fullPath"
   >
-    <button
-      type="button"
-      class="folder-row"
-      :style="{ paddingLeft: `${depth * 14 + 8}px` }"
-      :aria-expanded="expanded"
-      @click="expanded = !expanded"
-    >
-      <svg
-        class="chevron"
-        :class="{ collapsed: !expanded }"
-        viewBox="0 0 24 24"
-        width="12"
-        height="12"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
+    <div class="folder-row-wrapper">
+      <button
+        type="button"
+        class="folder-row"
+        :style="{ paddingLeft: `${depth * 14 + 8}px` }"
+        :aria-expanded="expanded"
+        @click="expanded = !expanded"
       >
-        <polyline points="9 6 15 12 9 18"></polyline>
-      </svg>
-      <svg class="folder-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path>
-      </svg>
-      <span class="folder-name">{{ node.name }}</span>
-      <span class="folder-count">{{ noteCount }}</span>
-    </button>
+        <svg
+          class="chevron"
+          :class="{ collapsed: !expanded }"
+          viewBox="0 0 24 24"
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <polyline points="9 6 15 12 9 18"></polyline>
+        </svg>
+        <svg class="folder-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path>
+        </svg>
+        <span class="folder-name">{{ node.name }}</span>
+        <span class="folder-count">{{ noteCount }}</span>
+      </button>
+      <button
+        type="button"
+        class="btn-create-in-folder"
+        data-testid="folder-create-note-btn"
+        title="Create note in this folder"
+        aria-label="Create note in this folder"
+        @click.stop="createNoteInFolder"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+    </div>
     <div v-show="expanded" class="folder-children" ref="childrenListRef" :data-folder-path="node.fullPath">
       <NoteTreeNode
         v-for="child in node.children"
@@ -39,6 +54,7 @@
         :depth="depth + 1"
         @select-note="$emit('select-note', $event)"
         @delete-note="$emit('delete-note', $event)"
+        @create-note-in-folder="$emit('create-note-in-folder', $event)"
       />
     </div>
   </div>
@@ -104,9 +120,10 @@ const props = defineProps<{
   depth: number
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'select-note', noteId: number): void
   (e: 'delete-note', noteId: number): void
+  (e: 'create-note-in-folder', folderPath: string): void
 }>()
 
 const expanded = ref(true)
@@ -123,6 +140,13 @@ const noteIcon = computed(() => {
   const icon = props.node.note.frontmatter?.icon
   return typeof icon === 'string' && icon.trim() !== '' ? icon : null
 })
+
+function createNoteInFolder() {
+  expanded.value = true
+  if (props.node.type === 'folder') {
+    emit('create-note-in-folder', props.node.fullPath)
+  }
+}
 
 const dragCallbacks = inject<NoteTreeSortableCallbacks>('noteTreeDragCallbacks')
 const isManualMode = inject<Ref<boolean>>('noteTreeManualMode')
@@ -145,8 +169,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.folder-row-wrapper {
+  display: flex;
+  align-items: center;
+}
+
 .folder-row {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -197,6 +227,43 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-sm);
   font-size: 0.6875rem;
   font-weight: 500;
+}
+
+.btn-create-in-folder {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+  margin-right: var(--space-1);
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard),
+              opacity var(--duration-fast) var(--ease-standard);
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.folder-row-wrapper:hover .btn-create-in-folder {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .btn-create-in-folder {
+    opacity: 1;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+.btn-create-in-folder:hover {
+  color: var(--color-action);
+  background: var(--color-hover);
 }
 
 .note-item {
