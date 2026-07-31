@@ -26,6 +26,7 @@
       :is-mobile-sidebar-open="isMobileSidebarOpen"
       :workspace-id="activeWorkspaceId"
       :folder-positions="folderPositions"
+      :reveal-folder-request="revealFolderRequest"
       @notes-reordered="refreshNotesList"
       @create-note-in-folder="handleCreateNoteInFolder"
       @select-note="handleSelectNote"
@@ -137,6 +138,7 @@
         @update-note="handleUpdateNote"
         @select-note="handleSelectNote"
         @navigate-wikilink="handleWikilinkNavigation"
+        @reveal-folder="handleRevealFolder"
       />
 
       <!-- Empty State -->
@@ -254,6 +256,7 @@ const currentUser = ref<AuthUser | null>(null)
 const showLoginModal = ref(false)
 const isMobileSidebarOpen = ref(false)
 const isGraphViewActive = ref(false)
+const revealFolderRequest = ref<{ path: string; nonce: number } | null>(null)
 
 const isSearchActive = ref(false)
 const searchQuery = ref('')
@@ -661,6 +664,11 @@ function handleCreateNoteInFolder(folderPath: string) {
   const fileName = `untitled-${Date.now().toString(36)}.md`
   const path = folderPath === '' ? fileName : `${folderPath}/${fileName}`
   return handleCreateNote(path)
+}
+
+function handleRevealFolder(folderPath: string) {
+  revealFolderRequest.value = { path: folderPath, nonce: Date.now() }
+  isMobileSidebarOpen.value = true
 }
 
 async function handleCreateNote(path: string) {
