@@ -94,7 +94,7 @@ function formatDate(iso: string | null): string {
 }
 
 .panel-header h2 {
-  font-family: var(--font-heading);
+  font-family: var(--font-sans);
   font-size: 1.25rem;
   color: var(--color-text);
 }

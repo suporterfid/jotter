@@ -766,7 +766,7 @@ async function handleWikilinkNavigation(target: string) {
 }
 
 body {
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   background-color: var(--color-canvas);
   color: var(--color-text);
   height: 100vh;
@@ -919,7 +919,7 @@ body {
 }
 
 .empty-card h2 {
-  font-family: var(--font-heading);
+  font-family: var(--font-sans);
   color: var(--color-text);
   font-size: 1.5rem;
   font-weight: 600;
