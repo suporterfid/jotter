@@ -287,6 +287,7 @@
           :depth="0"
           @select-note="$emit('select-note', $event)"
           @delete-note="$emit('delete-note', $event)"
+          @create-note-in-folder="$emit('create-note-in-folder', $event)"
         />
       </div>
     </div>
@@ -409,6 +410,7 @@ const emit = defineEmits<{
   (e: 'toggle-board-view'): void
   (e: 'toggle-calendar-view'): void
   (e: 'notes-reordered'): void
+  (e: 'create-note-in-folder', folderPath: string): void
 }>()
 
 const searchQuery = ref('')
