@@ -45,6 +45,11 @@
     :style="{ paddingLeft: `${depth * 14 + 8}px` }"
     @click="$emit('select-note', node.note.id)"
   >
+    <span v-if="noteIcon" class="note-icon" data-testid="note-icon-emoji">{{ noteIcon }}</span>
+    <svg v-else class="note-icon note-icon-fallback" data-testid="note-icon-fallback" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+    </svg>
     <div class="note-info">
       <span class="note-title">{{ node.note.title || node.note.path }}</span>
       <span class="note-path">{{ node.note.path }}</span>
@@ -99,6 +104,12 @@ function countNotes(node: TreeNode): number {
 }
 
 const noteCount = computed(() => (props.node.type === 'folder' ? countNotes(props.node) : 0))
+
+const noteIcon = computed(() => {
+  if (props.node.type !== 'file') return null
+  const icon = props.node.note.frontmatter?.icon
+  return typeof icon === 'string' && icon.trim() !== '' ? icon : null
+})
 </script>
 
 <style scoped>
@@ -179,6 +190,21 @@ const noteCount = computed(() => (props.node.type === 'folder' ? countNotes(prop
   background: color-mix(in srgb, var(--color-action) 20%, transparent);
   color: var(--color-action);
   font-weight: 600;
+}
+
+.note-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.note-icon-fallback {
+  color: var(--color-text-muted);
 }
 
 .note-info {
