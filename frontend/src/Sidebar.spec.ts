@@ -44,3 +44,16 @@ describe('Sidebar manual sort mode', () => {
     expect(titles).toEqual(['docs', 'A', 'archived', 'Inner', 'Z'])
   })
 })
+
+describe('Sidebar folder quick-create', () => {
+  it('bubbles create-note-in-folder from a root-level folder up to its own emit', async () => {
+    const notes: NoteMeta[] = [
+      makeNote({ id: 1, path: 'docs/a.md', title: 'A' }),
+    ]
+    const wrapper = mount(Sidebar, {
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [] },
+    })
+    await wrapper.find('[data-testid="folder-create-note-btn"]').trigger('click')
+    expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs']])
+  })
+})

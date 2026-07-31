@@ -27,6 +27,7 @@
       :workspace-id="activeWorkspaceId"
       :folder-positions="folderPositions"
       @notes-reordered="refreshNotesList"
+      @create-note-in-folder="handleCreateNoteInFolder"
       @select-note="handleSelectNote"
       @create-note="handleCreateNote"
       @create-note-from-template="handleCreateNoteFromTemplate"
@@ -654,6 +655,12 @@ async function handleDeleteAttachment(attachment: AttachmentItem) {
     console.error('Failed to delete attachment:', err)
     errorMessage.value = 'Failed to delete attachment.'
   }
+}
+
+function handleCreateNoteInFolder(folderPath: string) {
+  const fileName = `untitled-${Date.now().toString(36)}.md`
+  const path = folderPath === '' ? fileName : `${folderPath}/${fileName}`
+  return handleCreateNote(path)
 }
 
 async function handleCreateNote(path: string) {
