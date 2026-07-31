@@ -201,6 +201,19 @@ class WorkspaceNotesApiTest extends TestCase
         $this->assertFileDoesNotExist($this->vaultRoot.'/move_test/original.md');
     }
 
+    public function test_note_list_includes_sort_position(): void
+    {
+        $workspace = $this->makeWorkspace('sort-position');
+        $storage = app(\App\Domain\Vault\VaultStorage::class);
+        $storage->write($workspace, 'a.md', "# A\n");
+
+        $response = $this->getJson("/api/workspaces/{$workspace->id}/notes");
+
+        $response->assertOk()
+            ->assertJsonStructure(['data' => [['sort_position']]])
+            ->assertJsonPath('data.0.sort_position', null);
+    }
+
     private function makeWorkspace(string $suffix): Workspace
     {
         $tenant = Tenant::query()->create([

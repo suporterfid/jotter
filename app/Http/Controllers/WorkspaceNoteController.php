@@ -168,6 +168,7 @@ final class WorkspaceNoteController extends Controller
             'title' => $note->title,
             'frontmatter' => $note->frontmatter,
             'properties' => $properties,
+            'sort_position' => $note->sort_position,
             'updated_at' => $note->updated_at->toISOString(),
         ];
     }
