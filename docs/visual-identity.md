@@ -1,121 +1,147 @@
-# Visual Identity Specification
+# Jotter Visual Identity
 
-This document has two parts:
+This document describes the visual identity actually implemented in Jotter's
+SPA (`frontend/src/`): the design tokens, typography, component patterns,
+accessibility rules, and enforcement mechanism. It replaces the earlier
+project-neutral "shared spec + Jotter appendix" structure — Jotter's design
+has diverged enough from that original baseline (light+dark theming,
+neutral accent, Inter) that describing it as an extension of a shared
+generic spec no longer reflected reality. This is now Jotter's own
+authoritative reference.
 
-1. **Sections 1–14** — the shared Generic Visual Identity Specification. It is
-   project-neutral: it does not mention GrandpaSSOn and should read the same
-   in any project that adopts it.
-2. **GrandpaSSOn appendix** — the decisions the shared spec explicitly leaves
-   to each project (status colors, verified contrast pairs) and this
-   project's deviation log.
+History: adopted a shared dark/purple design system (#96, #97–#110,
+2026-07-xx), then replanned toward a Notion-inspired light+dark identity
+(#233, #234, #235, 2026-07-30/31). See `CHANGELOG.md` and
+`docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md` for
+the design rationale behind the second pass.
 
-Tracked as `VI1` under [#87](https://github.com/suporterfid/grandpasson/issues/87).
+## 1. Principles
 
----
+- **Clarity first.** Legibility and comprehension outrank decoration.
+- **Neutral-first.** Color is not the primary carrier of Jotter's identity —
+  layout, spacing, and typography are. The one saturated color in the
+  product (`#814DDE` purple) lives on the project mark only, never in
+  functional UI.
+- **Minimal elevation.** Surfaces are distinguished by border and background
+  tint, not drop shadow. Shadow is reserved for genuinely floating content
+  (menus, modals, dropdowns) — the one place depth actually communicates
+  something (this content is not part of the page flow).
+- **Light and dark, both first-class.** Jotter is not a dark-only product
+  with a light mode bolted on. Both themes are verified independently
+  against the same contrast floor.
+- **Accessible by default.** Contrast, focus visibility, semantic HTML,
+  and touch targets are load-bearing requirements, checked before every
+  merge (§10), not a final QA pass.
 
-## 1. Purpose and principles
+## 2. Theme mechanism
 
-This system exists so that every surface a project renders — login screens,
-admin tools, error pages, marketing pages — reads as one coherent product,
-without requiring a design tool or a component library.
+Jotter is light+dark, user-toggleable, with OS-preference as the default:
 
-- **Clarity first.** Legibility and comprehension outrank decoration. When a
-  choice trades clarity for visual flourish, choose clarity.
-- **Consistency across projects.** Two projects that both adopt this spec
-  should feel like siblings, not lookalikes copied by hand. That only holds
-  if components consume the semantic tokens (§11) instead of hardcoded
-  values.
-- **Accessible by default, not by retrofit.** Contrast, focus visibility, and
-  semantic HTML are load-bearing requirements, not a final QA pass.
-- **Minimal dependencies.** The spec is deliverable as plain CSS custom
-  properties and a small number of static assets. It does not assume a
-  build pipeline, a framework, or a CDN.
-
-## 2. Consistency across projects
-
-Components should consume semantic tokens such as `--color-action`, rather
-than raw palette values. A raw hex value hardcoded into a component is a
-regression against this spec even if it happens to match a token's current
-value — the point is that a future palette revision only has to touch the
-token definitions, not every call site.
-
-Two projects adopting this spec will not have visually identical UIs (their
-copy, layout, and information architecture differ), but their buttons,
-links, focus rings, and error states should behave identically and use the
-same relationships between color, weight, and spacing.
+- `data-theme="light"` or `data-theme="dark"` is set on `<html>`.
+- **Resolution order:** `localStorage['jotter-theme']` (an explicit user
+  choice) → `prefers-color-scheme` → `light`.
+- **Before first paint:** an inline blocking script in both HTML shells
+  (`frontend/index.html` for dev, `resources/views/app.blade.php` for
+  production — the two are kept in sync, per the header comment in each)
+  reads `localStorage` and `matchMedia`, then sets the attribute, avoiding
+  a flash of the wrong theme.
+- **At runtime:** `frontend/src/composables/useTheme.ts` wraps
+  `@vueuse/core`'s `useColorMode()` with the same storage key and
+  attribute strategy. `ThemeToggle.vue` (in the Sidebar footer) is the one
+  UI control that changes it — clicking it writes an explicit `'light'`
+  or `'dark'` choice to `localStorage`, which then wins over OS preference
+  on every future visit.
 
 ## 3. Color
 
-### 3.1 Palette
+### 3.1 Semantic tokens
 
-The system is dark, high-contrast, and purple-accented:
+Every token below is defined identically in both
+`:root[data-theme="light"]` and `:root[data-theme="dark"]` blocks in
+`frontend/src/styles/tokens.css` — components reference these tokens only,
+never the raw hex values, and never the two palette-construction-only
+tokens (`--color-neutral-0`, used solely for text on a filled purple mark
+element; anything else is a components-must-not-reference-this token).
 
-| Token | Role |
-|---|---|
-| `--color-canvas` | Page background |
-| `--color-surface` | Raised panels, cards |
-| `--color-surface-emphasis` | Panels that need to stand out from `surface` (callouts, active state) |
-| `--color-text` | Primary body text |
-| `--color-text-muted` | Secondary / supporting text |
-| `--color-text-inverse` | Text placed on a filled `--color-action` background |
-| `--color-border` | Default dividers and input borders |
-| `--color-border-strong` | Emphasized borders (focus-adjacent, active cards) |
-| `--color-action` | Primary interactive color: links, primary buttons, focus rings |
-| `--color-action-hover` | Hover/active state for interactive elements |
-| `--color-focus` | Focus ring color (may equal `--color-action`) |
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `--color-canvas` | `#FFFFFF` | `#191919` | Page background |
+| `--color-surface` | `#F7F6F3` | `#202020` | Raised panels, cards, sidebar |
+| `--color-surface-emphasis` | `#EDECE9` | `#2F2F2F` | Panels that need to stand out (callouts, active state) |
+| `--color-text` | `#37352F` | `#D4D4D4` | Primary body text |
+| `--color-text-muted` | `#6B6963` | `#9B9B9B` | Secondary / supporting text, metadata |
+| `--color-text-inverse` | `#FFFFFF` | `#191919` | Text on a filled `--color-action`/status background |
+| `--color-border` | `rgb(55 53 47 / 9%)` | `rgb(255 255 255 / 9%)` | Default dividers and input borders |
+| `--color-border-strong` | `rgb(55 53 47 / 16%)` | `rgb(255 255 255 / 16%)` | Emphasized borders (focus-adjacent, active cards) |
+| `--color-action` | `#37352F` | `#D4D4D4` | Primary interactive color: links, buttons, focus rings |
+| `--color-action-hover` | `#000000` | `#FFFFFF` | Hover/active state for interactive elements |
+| `--color-focus` | `#37352F` | `#D4D4D4` | Focus ring color |
+| `--color-hover` | `rgb(55 53 47 / 6%)` | `rgb(255 255 255 / 6%)` | Transient row/item hover background (trees, menus, lists) |
+| `--color-overlay` | `rgb(55 53 47 / 45%)` | `rgb(0 0 0 / 72%)` | Modal backdrop |
+| `--color-overlay-dark` | `rgb(55 53 47 / 60%)` | `rgb(0 0 0 / 85%)` | Heavier backdrop variant |
+
+`--color-action`/`--color-focus`/link color are **neutral** (near-black on
+light, near-white on dark) — not purple. This is a deliberate departure
+from Jotter's earlier purple-accented identity: color is reserved for the
+project mark; functional UI uses a neutral-first palette. `#814DDE`
+appears nowhere in `tokens.css` or any component — it survives only in
+`assets/brand/mark.svg`, `wordmark.svg`, `favicon.svg` (§8).
+
+`--color-surface-emphasis` and `--color-hover` are similar but distinct:
+`surface-emphasis` is for panels/callouts that need to stand out
+persistently; `hover` is for a row or item's transient hover/active
+background in trees, menus, and lists. Using the wrong one is a common
+mistake worth checking for in review.
 
 ### 3.2 Status colors
 
-Status colors (`danger`, `warning`, `success`, and any project-specific
-states) are **deliberately not fixed here**. Every project has different
-failure modes and a different number of states to represent. Each adopting
-project must:
+| Token | Light hex | Dark hex | Usage |
+|---|---|---|---|
+| `--color-status-danger` | `#C0392B` | `#FF5252` | Destructive actions, delete confirmations |
+| `--color-status-warning` | `#8F640F` | `#FFB74D` | Warnings, dirty-state indicators |
+| `--color-status-success` | `#2E7D32` | `#66BB6A` | Save confirmation, success toasts |
+| `--color-status-info` | `#1B6FA8` | `#4FC3F7` | Informational badges, hints |
 
-1. Define its own status tokens.
-2. Verify each against **both** `--color-canvas` and `--color-surface` — a
-   status color is very often rendered on a surface panel, not directly on
-   canvas, and the two backgrounds have different luminance.
-3. Record the measured contrast ratios next to the token definition.
+Never encode information using only color — every status also gets a text
+label, icon, or position/shape change. Status text must remain legible in
+grayscale.
 
-### 3.3 Color is reinforcement, not the message
+### 3.3 Verified contrast pairs
 
-Never encode information using only color, position, sound, or motion. A
-status must remain fully understandable if viewed in grayscale — pair a
-status color with a text label, an icon with an accessible name, or a
-position/shape change. This applies to hover states too: a hover affordance
-should change more than hue (an underline, a border, a shadow) since color
-transitions are invisible to some users.
-
-Any token used for small body text must clear 4.5:1 against the background
-it is composed on. A token that clears only 3:1–4.4:1 is usable for large
-text (≥ 1.5rem or ≥ 1.2rem bold), iconography, and non-text UI boundaries,
-but must not be the color of a paragraph of running copy.
-
-### 3.4 Baseline verified pairs
-
-The shared spec ships these pairs pre-verified so every adopting project
-starts from a known-good baseline. Projects extend this table (they do not
-replace it) with their own status-color and surface-emphasis pairs — see
-the appendix for GrandpaSSOn's extension.
+All ratios computed with the WCAG 2.1 relative-luminance formula.
 
 | Foreground | Background | Ratio | Passes |
-|---|---|---|---|
-| `--color-text` | `--color-canvas` | 17.62:1 | AAA |
-| `--color-text-muted` | `--color-canvas` | 9.68:1 | AAA |
-| `--color-text` | `--color-surface` | 15.23:1 | AAA |
-| `--color-text-muted` | `--color-surface` | 8.37:1 | AAA |
-| `--color-text-inverse` | `--color-action` | 5.19:1 | AA |
-| `--color-action` | `--color-canvas` | 4.05:1 | Non-text / large-text only |
+|---|---|---:|---|
+| `--color-text` (light) | `--color-canvas` | 12.26:1 | AAA |
+| `--color-text-muted` (light) | `--color-canvas` | 5.49:1 | AA |
+| `--color-text` (light) | `--color-surface` | 11.35:1 | AAA |
+| `--color-text-muted` (light) | `--color-surface` | 5.08:1 | AA |
+| `--color-text` (light) | `--color-surface-emphasis` | 10.38:1 | AAA |
+| `--color-text-muted` (light) | `--color-surface-emphasis` | 4.65:1 | AA |
+| `--color-action-hover` `#000000` (light) | `--color-canvas` | 21.0:1 | AAA |
+| `--color-status-danger` (light) `#C0392B` | vs canvas / surface | 5.44:1 / 5.03:1 | AA |
+| `--color-status-warning` (light) `#8F640F` | vs canvas / surface | 5.25:1 / 4.86:1 | AA |
+| `--color-status-success` (light) `#2E7D32` | vs canvas / surface | 5.13:1 / 4.74:1 | AA |
+| `--color-status-info` (light) `#1B6FA8` | vs canvas / surface | 5.40:1 / 5.00:1 | AA |
+| `--color-text` (dark) | `--color-canvas` | 11.86:1 | AAA |
+| `--color-text-muted` (dark) | `--color-canvas` | 6.33:1 | AA |
+| `--color-text` (dark) | `--color-surface` | 10.99:1 | AAA |
+| `--color-text-muted` (dark) | `--color-surface` | 5.86:1 | AA |
+| `--color-text` (dark) | `--color-surface-emphasis` | 9.03:1 | AAA |
+| `--color-text-muted` (dark) | `--color-surface-emphasis` | 4.82:1 | AA |
+| `--color-action-hover` `#FFFFFF` (dark) | `--color-canvas` | 17.58:1 | AAA |
+| `--color-status-danger` (dark) `#FF5252` | vs canvas / surface | 5.51:1 / 5.11:1 | AA |
+| `--color-status-warning` (dark) `#FFB74D` | vs canvas / surface | 10.16:1 / 9.41:1 | AAA |
+| `--color-status-success` (dark) `#66BB6A` | vs canvas / surface | 7.44:1 / 6.89:1 | AA |
+| `--color-status-info` (dark) `#4FC3F7` | vs canvas / surface | 8.78:1 / 8.13:1 | AAA |
+
+All pairs clear 4.5:1 in both themes. Adding a new token: verify it
+against both `canvas` and `surface`, in both themes, and record the ratios
+here before merge.
 
 ## 4. Typography
 
-### 4.1 Typeface
-
-Primary typeface: **Open Sans**. Use real font files for each required
-weight. Do not synthesize bold or italic styles when the selected font
-source does not provide them — a browser-synthesized "fake bold" is visibly
-different across platforms and is not an acceptable substitute for shipping
-the weight.
+Primary typeface: **Inter**, self-hosted, no CDN.
 
 | Weight | Name | Typical use |
 |---|---|---|
@@ -124,32 +150,78 @@ the weight.
 | 600 | Semibold | Subheadings, button labels |
 | 700 | Bold | Headings |
 
+Token: `--font-sans: "Inter", -apple-system, BlinkMacSystemFont,
+"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial,
+sans-serif`. `--font-mono: ui-monospace, "SFMono-Regular", Consolas,
+"Liberation Mono", monospace` for code and hashes.
+
+**Both `body` (`App.vue`) and every page-title `<h2>` (Attachments,
+AuditLog, LinkReport, and the three Collections views) must reference
+`var(--font-sans)` directly.** Two now-removed tokens, `--font-body` and
+`--font-heading`, were referenced by these rules for over a day (since
+2026-07-27) without ever being defined in `tokens.css` — an undefined
+custom property makes a `font-family` declaration invalid at
+computed-value time, so the (inherited) property silently fell back to
+whatever `:root` set, which for a long stretch was the landing
+stylesheet's Georgia serif (§4.1 note below). Fixed in #235. If a future
+component wants a distinct heading treatment, give it its own verified
+token — don't reintroduce a name that isn't defined anywhere.
+
+### 4.1 The pre-auth landing page is a deliberate exception
+
+`frontend/src/style.css` ("Jotter landing / static-site styles") is its
+own, separate visual treatment — Georgia serif, a cream/tan palette
+(`#f3efe5` background, `#24211d` text), none of it built from the tokens
+above. Its header comment says "The SPA shell (App.vue) overrides
+body/html for the application. This file applies only to the pre-auth
+landing surface" — but nothing in the authenticated SPA currently renders
+that landing markup path (`.landing`, `.card`, `.eyebrow`, etc. don't
+appear in any mounted component today), so in practice this file only
+matters if that landing surface is reintroduced. It is explicitly **out
+of scope** for this identity: it predates the Notion redesign, was never
+migrated to it, and no task in the redesign touched it. If the pre-auth
+landing page comes back into active use, it should either adopt the
+tokens in §3–§6 or have its divergence recorded here as a real, current
+deviation rather than dead code.
+
 ### 4.2 Type scale
 
 | Style | Size | Notes |
 |---|---|---|
-| Display / H1 | `clamp(2rem, 1.6rem + 2vw, 3.2rem)` | Weight 700 |
-| H2 | `clamp(1.5rem, 1.3rem + 1vw, 2rem)` | Weight 700 |
-| H3 | `1.25rem` | Weight 600 |
-| Lead body | `1.2rem` | Weight 400, `--color-text-muted` — used for introductory copy under a heading |
-| Body | `1rem` | Weight 400 |
-| Small / caption | `0.85rem` | Weight 400, `--color-text-muted` |
+| Display / H1 | `clamp(2.25rem, 1.7rem + 2.4vw, 3.2rem)` | Weight 700, responsive (`--text-h1`) |
+| H2 | `clamp(1.75rem, 1.35rem + 1.75vw, 2.5rem)` | Weight 700, responsive (`--text-h2`) |
+| Section | `2.5rem` | Static (`--text-section`), weight 700 |
+| Subsection | `1.5rem` | Static (`--text-subsection`), weight 700 |
+| Lead body | `1.2rem` | `--text-lead`, weight 400, `--color-text-muted` — landing/marketing only |
+| Body | `1rem` | `--text-body`, weight 400 — minimum for running prose |
+| Small / caption | `0.875rem` | `--text-small`, weight 400, `--color-text-muted` |
 
-### 4.3 Line length and rhythm
+`NoteEditor.vue`'s title uses `--text-h1` at the top of the editor toolbar
+(the toolbar background matches `--color-canvas`, blending it into the
+page rather than framing it as a separate card) — the one place in the
+product that reads as a page title the way a Notion page does.
 
-Body copy targets 60–75 characters per line at the body size, which in
-practice means a reading column of roughly 640–760px (see §5).
+### 4.3 Weight discipline
 
-### 4.4 Weight discipline
+No more than three font weights in a single view.
 
-No more than three font weights in a single view. A page that mixes 400,
-500, 600, and 700 in one screen has stopped using weight as a signal and
-started using it as noise.
+### 4.4 Font asset pipeline
 
-## 5. Spacing and layout
+`frontend/src/assets/fonts/inter-{400,500,600,700}.woff2` — static,
+weight-pinned instances produced with `fonttools varLib.instancer` from
+Inter's variable font, then subsetted with `fonttools subset` (Unicode
+ranges: Latin-1, Latin Extended-A/B, plus the punctuation/currency/symbol
+code points the product's copy uses; layout features kept: `kern`, `liga`,
+`calt`, `ccmp`, `mark`, `mkmk`). No CDN, no variable-font `wght` range —
+each weight is declared discretely in `frontend/src/styles/fonts.css`.
+License: SIL OFL 1.1, copied verbatim to
+`frontend/src/assets/fonts/LICENSE.txt` (Inter's own copyright line, "The
+Inter Project Authors" — not Open Sans's, which this replaced in #233).
 
-An 8px-based spacing scale, exposed as tokens so components stay in
-rhythm:
+## 5. Spacing
+
+An 8px-based scale, unchanged since the original adoption — it already
+fit the Notion-style rhythm, so the redesign didn't touch it:
 
 | Token | Value |
 |---|---|
@@ -157,139 +229,165 @@ rhythm:
 | `--space-2` | 8px |
 | `--space-3` | 12px |
 | `--space-4` | 16px |
-| `--space-5` | 24px |
-| `--space-6` | 32px |
-| `--space-7` | 48px |
-| `--space-8` | 64px |
-
-A `.prose` reading column is 640–760px wide, centered, with responsive
-horizontal padding so it never touches the viewport edge on narrow screens.
+| `--space-6` | 24px |
+| `--space-8` | 32px |
+| `--space-12` | 48px |
+| `--space-16` | 64px |
+| `--space-24` | 96px |
 
 ## 6. Radius and elevation
 
 | Token | Value |
 |---|---|
-| `--radius-sm` | 4px |
-| `--radius-md` | 8px |
-| `--radius-lg` | 16px |
+| `--radius-sm` | 3px |
+| `--radius-md` | 6px |
+| `--radius-lg` | 8px |
+| `--radius-pill` | 9999px |
 
-Elevation is communicated with `--color-surface` / `--color-surface-emphasis`
-layering and border color, not with drop shadows — shadows read poorly on a
-near-black canvas and are the first thing lost when a user forces high
-contrast mode.
+`--shadow-float: 0 4px 16px rgb(0 0 0 / 16%), 0 1px 2px rgb(0 0 0 / 8%)` is
+the **only** shadow token, and it is reserved exclusively for
+floating/overlay elements: modals (`LoginModal`, `AdminPanel`,
+`HistoryPanel`'s `.history-card`, `Sidebar`'s `.modal-card`), popovers
+(`CommandPalette`, `SlashMenu`), and context menus/dropdowns
+(`Sidebar`'s `.more-menu`, `NoteEditor`'s `.autocomplete-dropdown`).
+Everything else — cards, panels, static empty states — uses
+`--color-border` plus `--color-surface-emphasis`/`--color-hover`, never a
+shadow. (This was formerly `--shadow-lg` and was used more broadly before
+#233 tightened it — grep for `--shadow-float` before adding a shadow
+anywhere; if the thing isn't genuinely floating above the page, it
+shouldn't have one.)
 
 ## 7. Components
 
 **Buttons.** Primary buttons use `--color-action` fill and
 `--color-text-inverse` label text; secondary buttons use a
-`--color-border`/`--color-border-strong` outline with `--color-text` label
-text on a transparent background. Minimum touch target 44×44px for primary
-interactions. Hover moves to `--color-action-hover` and must be paired with
-a non-color cue (secondary buttons pair it with a border-color change).
-Label copy should begin with an action verb where practical ("Continue with
-Google", not "Google").
+`--color-border`/`--color-border-strong` outline with `--color-text`
+label text on a transparent background. Minimum touch target 44×44px.
+Hover moves to `--color-action-hover`, paired with a non-color cue.
 
-**Links.** Inline links use `--color-text` with an underline by default
-(underline is the non-color cue), switching to `--color-action` on
-hover/focus. A standalone link with no surrounding body copy may use
-`--color-action` directly only if it is large enough to satisfy the
-non-text contrast floor.
+**Links.** Inline links use `--color-text` with an underline by default,
+switching to `--color-action` on hover/focus.
 
-**Code.** Inline and block code use a monospace stack on a
-`--color-surface` background with `--radius-sm` corners and a subtle
-`--color-border`.
+**Code.** Monospace stack (`--font-mono`) on `--color-surface` with
+`--radius-sm` and a subtle `--color-border`.
 
-**Cards and panels.** Use a card only when grouping content genuinely aids
-comprehension, not decoratively. `--color-surface` for a standard panel,
-`--color-surface-emphasis` for one that needs to stand out (e.g., a
-security-relevant disclosure).
+**Cards and panels.** `--color-surface` for a standard panel,
+`--color-surface-emphasis` for one that needs to stand out.
 
-**Forms.** Inputs share the button's border tokens and radius. Labels sit
-above their control, not inline, so they survive translation into longer
-strings.
+**Sidebar / tree rows (`NoteTreeNode.vue`).** Action icons (add, delete,
+"…" menu) are hidden (`opacity: 0`) until the row is hovered or
+focus-within, revealing at `opacity: 1` — this is the one interaction
+pattern most directly borrowed from Notion's page tree. **Below 768px**
+this inverts: touch has no hover state, so action icons render
+always-visible at a full 44×44px target instead of hiding behind a hover
+that can never fire.
 
-## 8. Icons, project marks, and images
+**Panel headers (`PanelHeader.vue`).** A shared component — icon slot,
+title, optional count badge — used by the five panels mounted inside
+`NoteEditor.vue` that share that visual shape: `BacklinksPanel`,
+`CommentsPanel`, `PropertiesPanel`, `OutgoingLinksPanel`,
+`UnlinkedMentionsPanel`. **Not** used by `HistoryPanel` (a modal dialog
+with a title + close button, not an icon+caption+count row) or by the
+three full main-content views — `AttachmentsPanel`, `AuditLogViewer`,
+`LinkReportViewer` — which render a page-level `<h2>` title, the same
+tier as `NoteEditor`/`GraphView` in `App.vue`'s view-mode switch, not a
+docked side panel. Forcing `PanelHeader`'s small uppercase caption style
+onto either of those would have been a regression, not a consistency win
+— found and deliberately scoped out during #233's implementation.
 
-Use exactly one icon family throughout a project — mixing icon sets is a
-consistency failure even if each icon is individually fine. Prefer inline
-SVG over icon fonts: an icon font is a single point of failure for
-rendering and does not respect the "no font synthesis" rule in §4.1.
-Decorative icons get `aria-hidden="true"`; icons that convey meaning on
-their own need an accessible name. Meaningful interface graphics need at
-least 3:1 contrast against their background.
+## 8. Icons, project mark, and images
 
-A project's own wordmark or symbol (its "project mark") is **visually
-separate from this shared system** — the identity spec supplies the
-environment (color, type, spacing, components); the project supplies the
-mark. Provide horizontal, compact, monochrome, and transparent-background
-variants, and define a clear-space rule based on a stable feature of the
-mark. Do not stretch, recolor (outside the monochrome variant), rotate,
-outline, or apply effects to a project mark. Verify the mark stays
-identifiable at favicon size (16px) and at the size platforms render
-repository/profile avatars.
+One icon family throughout (inline SVG, not an icon font). Decorative
+icons get `aria-hidden="true"`.
 
-For photography and illustration: high-contrast, uncluttered focal point;
-avoid placing important text over visually complex imagery.
+The project mark is **visually separate from the rest of this system** —
+`assets/brand/mark.svg`, `mark-monochrome.svg`, `wordmark.svg`,
+`favicon.svg`, `social-card.png`. It keeps the original purple
+(`#814DDE`) fill unchanged; this is the one place that color still
+appears anywhere in the product, deliberately. See
+`assets/brand/README.md` for clear-space, minimum-size, and
+do-not-recolor rules.
+
+⚠️ `assets/brand/README.md` currently describes the mark's *approved
+backgrounds* using the pre-redesign canvas/surface hex values
+(`--color-canvas: #000000`, `--color-surface: #1a0a3e`) — those are stale
+now that `--color-canvas`/`--color-surface` mean `#FFFFFF`/`#F7F6F3`
+(light) or `#191919`/`#202020` (dark). The mark itself is untouched and
+correct; only that README's background-hex references need a follow-up
+edit — out of scope for this pass, since it wasn't part of any of #233,
+#234, or #235's file lists, but worth fixing next time that file is
+touched.
 
 ## 9. Motion
 
-Motion should clarify, not decorate: a transition should communicate a
-state change (hover, focus, expand/collapse), not simply exist. Respect
-`prefers-reduced-motion: reduce` — every stylesheet built against this spec
-must include a block that removes non-essential transitions and animations
-for users who have that preference set.
-
-Server-driven navigation changes (redirects made for a user rather than
-requested by them — e.g., redirecting an anonymous browser session to a
-login chooser) are a protocol/UX decision outside this spec's scope, but
-where a project makes that choice, it should be visually unsurprising: the
-destination should look like part of the same flow the user was already in.
+`--duration-fast: 120ms`, `--duration-standard: 180ms`,
+`--duration-slow: 240ms`, `--ease-standard: cubic-bezier(0.2, 0, 0, 1)`.
+Motion clarifies a state change; it never exists just to decorate.
+`tokens.css` includes a global block that removes non-essential
+transitions/animations for `prefers-reduced-motion: reduce` — any new
+transition should use the tokens above so it's automatically covered.
 
 ## 10. Accessibility
 
-- Use semantic HTML before adding ARIA. A `<button>` is a button before it
-  is `role="button"`.
-- Every page declares `lang` and a `viewport` meta tag.
-- Support browser zoom to at least 200% without loss of content or
-  function.
-- Pages must remain usable and legible at a 320px viewport width without
-  horizontal scrolling.
-- Never encode information using only color, position, sound, or motion
-  (restated from §3.3 because it is the single most common regression).
-- Every interactive element must be reachable by keyboard in a logical
-  order and show a visible focus indicator — `:focus-visible`, not
-  `:focus`, so mouse users are not shown a ring they didn't ask for.
-- Test layouts with longer strings than the design used — a longer
-  translated label, a long identifier, a long name — before assuming a
-  layout holds.
+- Semantic HTML before ARIA.
+- `lang` and `viewport` on every page (both `frontend/index.html` and
+  `resources/views/app.blade.php`).
+- Support browser zoom to 200% without loss of content/function.
+- Usable at 320px width without horizontal scrolling.
+- Never encode information using only color, position, sound, or motion.
+- Every interactive element reachable by keyboard, with a visible
+  `:focus-visible` ring.
+- 44×44px minimum touch target — including hover-reveal icons once they
+  render always-visible on touch (§7).
 
-## 11. Token reference
+**Automated:** `frontend/src/a11y.spec.ts` runs `axe-core` against 16
+mounted structural checks across the SPA's views (Sidebar, LoginModal,
+CommandPalette, SearchResults, BacklinksPanel, MarkdownPreview,
+AttachmentsPanel, HistoryPanel, PropertiesPanel, CommentsPanel,
+AuditLogViewer, LinkReportViewer, and the three Collections views) —
+catches invalid ARIA, missing labels, duplicate IDs, malformed headings.
+It does **not** catch color-contrast regressions: jsdom doesn't compute
+layout/styles, so axe's `color-contrast` rule is skipped in that
+environment. Real contrast verification is the manual table in §3.3,
+re-derived by hand whenever a token's hex value changes — there is no
+automated contrast check in CI today.
 
-The canonical token names a stylesheet built against this spec should
-define:
+## 11. Responsive layout
 
-```
---color-canvas
---color-surface
---color-surface-emphasis
---color-text
---color-text-muted
---color-text-inverse
---color-border
---color-border-strong
---color-action
---color-action-hover
---color-focus
---font-sans: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif
-```
+**Breakpoint: 768px**, used consistently in every `@media (max-width: ...)`
+rule in the codebase (`App.vue`, `Sidebar.vue`, `NoteTreeNode.vue`).
+There was no pre-existing breakpoint convention when this was introduced
+in #233 — this is the first one, so any new responsive rule should reuse
+this exact value rather than introducing a second breakpoint.
 
-The `--font-sans` fallback chain is intentionally long: it is what renders
-if the self-hosted font files fail to deploy, so it must not be shortened
-to save bytes.
+- **Sidebar**: fixed 280px column on desktop; below 768px becomes an
+  off-canvas drawer (`position: fixed`, `translateX(-100%)` at rest,
+  `.mobile-open` slides it in), opened by a hamburger button
+  (`.mobile-sidebar-toggle` in `App.vue`, hidden above 768px) with a
+  full-screen backdrop (`.mobile-sidebar-backdrop`, `--color-overlay`).
+  Selecting a note closes the drawer (`handleSelectNote` in `App.vue`).
+- **CommandPalette**: `width: min(90vw, 640px)` — already responsive
+  before the redesign touched it.
+- **SlashMenu**: `width: min(90vw, 260px)` (fixed 260px before #233).
+- **NoteTreeNode action icons**: always-visible + 44×44px below 768px
+  (§7), instead of hover-reveal.
+- **Theme toggle**: lives in the Sidebar footer, which is inside the
+  mobile drawer — there is no separate persistent control for small
+  viewports.
+- **NoteEditor / side panels**: no dedicated mobile treatment beyond what
+  they inherit for free. The five `PanelHeader`-using panels (§7) are
+  full-width stacked sections below the editor body, not narrow
+  right-docked panels, so they already fill the viewport at any width.
+  `HistoryPanel`'s modal already sizes itself with
+  `width: min(760px, 92vw)` / `height: min(560px, 85vh)`. There is
+  currently **no** `.prose`/reading-column max-width applied anywhere in
+  `NoteEditor.vue` — the editor's textarea/preview panes are full width
+  at any viewport size. A constrained reading column (the classic
+  "Notion page" 640–760px centered column) was part of the original
+  design intent for a Notion-like feel but was never actually
+  implemented; treat this as an open item, not a shipped feature.
 
 ## 12. Assets and packaging
-
-Suggested repository layout:
 
 ```text
 assets/
@@ -297,329 +395,84 @@ assets/
     mark.svg
     mark-monochrome.svg
     wordmark.svg
-    social-card.png
     favicon.svg
+    social-card.png
+    README.md
+frontend/
+  src/
+    assets/fonts/
+      inter-{400,500,600,700}.woff2
+      LICENSE.txt
+    styles/
+      tokens.css      (theme tokens — §3, §5, §6, §9)
+      fonts.css       (@font-face declarations — §4.4)
+    style.css          (pre-auth landing surface — §4.1, out of scope)
 docs/
-  visual-identity.md
+  visual-identity.md   (this file)
 ```
 
-- SVG for scalable marks and icons; optimized PNG/WebP/AVIF for raster
-  images.
-- Fonts and stylesheets are self-hostable by default — a project may choose
-  a CDN, but that is a deviation to record (§14), not the baseline.
-- Do not commit editable source files (`.ai`, `.sketch`, `.fig`, …) unless
-  their license and contribution workflow are documented alongside them.
-- Keep identity documentation at a predictable path — `docs/visual-identity.md`
-  — so contributors and tooling can find it without a search.
-
-## 13. Adoption checklist
-
-- [ ] Every semantic token in §11 is defined and consumed — no raw palette
-      values in component code
-- [ ] Status colors defined per project, verified against both `canvas`
-      and `surface`, ratios recorded
-- [ ] Font files shipped for every declared weight; no synthesized
-      bold/italic
-- [ ] No more than three font weights in any single view
-- [ ] `lang` and viewport present on every page
-- [ ] Keyboard navigation and visible focus verified by tabbing, not just
-      by inspection
-- [ ] 200% zoom and 320px width verified
-- [ ] Grayscale render carries no information loss
-- [ ] `prefers-reduced-motion: reduce` removes non-essential motion
-- [ ] Project-specific marks documented separately from this spec, with
-      clear-space and do-not rules
-- [ ] Any intentional departure from this spec is recorded in a deviation
-      log (§14)
-
-## 14. Extension and deviation policy
-
-This spec is a floor, not a ceiling. A project may add tokens, components,
-or rules it needs, subject to:
-
-1. New tokens follow the existing naming pattern (`--color-*`, `--space-*`,
-   `--radius-*`, …) rather than inventing a parallel system.
-2. A new color token ships with light/dark, hover, focus, and disabled
-   variants where the underlying element has those states, and an error
-   variant where the element can be invalid.
-3. A new component reuses existing tokens before introducing new ones.
-4. Extensions are additive — they must not redefine what an existing token
-   means.
-5. Any intentional departure from this spec — not an extension, but a
-   deliberate choice to do something the spec would otherwise forbid or a
-   default it does not provide — is recorded in the adopting project's
-   identity doc, next to the project's theme, so future contributors
-   understand the reason instead of rediscovering it by git-blame.
-
----
-
-## GrandpaSSOn appendix
-
-### Status color tokens (§3.2)
-
-GrandpaSSOn needs, at minimum, `danger` (login failure, forbidden, invalid
-state), `warning` (admin token entry, "secrets shown once"), and `success`
-(reader session established). Each is verified against both
-`--color-canvas` (`#000000`) and `--color-surface` (`#1A0A3E`):
-
-| Token | Hex | On `canvas` | On `surface` |
-|---|---|---|---|
-| `--color-danger` | `#FF6B6B` | 7.57:1 | 6.54:1 |
-| `--color-warning` | `#F5A623` | 10.36:1 | 8.96:1 |
-| `--color-success` | `#3DDC97` | 11.88:1 | 10.27:1 |
-
-All three clear 4.5:1 on both backgrounds, so they are safe for status text
-as well as icons/borders — but per §3.3 they still ship paired with a text
-label wherever they appear, never as the sole signal.
-
-### Verified contrast table (GrandpaSSOn-specific pairs)
-
-Extends §3.4 with the pairs this project actually renders — `surface-emphasis`
-and purple-on-surface, which the shared spec's §3.4 baseline omits:
-
-| Foreground | Background | Hex / Hex | Ratio | Passes |
-|---|---|---|---|---|
-| `--color-text` | `--color-surface-emphasis` | `#EBEBEB` / `#1B0F46` | 14.64:1 | AAA |
-| `--color-text-muted` | `--color-surface-emphasis` | `#B0B0B0` / `#1B0F46` | 8.05:1 | AAA |
-| `--color-focus` | `--color-canvas` | `#814DDE` / `#000000` | 4.05:1 | Non-text (3:1 floor) — this is the focus-ring pair, not a text pair |
-
-The `action`/`focus` pair (`#814DDE`) intentionally sits at 4.05:1 on canvas
-— below the 4.5:1 normal-text threshold. This is not a bug: it encodes
-§3.3's rule that this purple must not be used for small body text or
-standalone links on canvas. If a future palette change pushes this above
-4.5:1, update it deliberately (and note why in this table), not by
-accident.
-
-### Self-hosted fonts (§4.1, §13 — VI4)
-
-`public_html/assets/fonts/` ships four static WOFF2 instances of Open Sans:
-
-| File | Weight |
-|---|---|
-| `open-sans-400.woff2` | Regular |
-| `open-sans-500.woff2` | Medium |
-| `open-sans-600.woff2` | Semibold |
-| `open-sans-700.woff2` | Bold |
-
-- **Source**: [google/fonts](https://github.com/google/fonts), `ofl/opensans/`,
-  upstream repository `googlefonts/opensans` at commit
-  `bd7e37632246368c60fdcbd374dbf9bad11969b6` (per that directory's
-  `METADATA.pb`). The upstream ships a single variable font
-  (`OpenSans[wdth,wght].ttf`, weight axis 300–800, width axis 75–100); each
-  static file here is a `wght`-pinned instance at `wdth=100` produced with
-  `fonttools varLib.instancer`.
-- **Subsetting**: `fonttools subset`, Unicode ranges `U+0000-00FF` (Latin-1),
-  `U+0100-017F` (Latin Extended-A), `U+0180-024F` (Latin Extended-B), plus
-  the punctuation/currency/symbol code points GrandpaSSOn's copy actually
-  uses (curly quotes, em/en dash, ellipsis, €, ™, arrows, minus sign,
-  U+FFFD). Layout features kept: `kern`, `liga`, `calt`, `ccmp`, `mark`,
-  `mkmk` — enough for correct Latin shaping without the full OpenType
-  feature set. Result: ~20KB per weight, ~80KB total.
-- **License**: SIL OFL 1.1, copied verbatim to
-  `public_html/assets/fonts/LICENSE.txt` from the same upstream directory.
-  The repository itself is MIT (`LICENSE`); this is a separately-licensed
-  bundled asset, called out per spec §12.
-- **No CDN, no variable-font range**: `@font-face` in `theme.css` declares
-  each weight discretely (`font-weight: 400` / `500` / `600` / `700`), not
-  a `100 900` range — the shipped files are static instances, and
-  declaring a range they can't satisfy would be exactly the font
-  synthesis spec §4.1 forbids.
-
-### Content-Security-Policy (VI10, #97)
-
-`Html::pageStart()` (VI3) emits one `Content-Security-Policy` header on
-every browser-facing HTML response:
-
-```
-default-src 'self'; style-src 'self'; script-src 'self'; font-src 'self';
-img-src 'self'; connect-src 'self'; form-action 'self';
-frame-ancestors 'none'; base-uri 'none'; object-src 'none'
-```
-
-No `'unsafe-inline'` or `'unsafe-eval'` anywhere — every stylesheet, script,
-and font this project ships is self-hosted and same-origin (VI2, VI4, VI8),
-and no controller emits inline `<style>`/`<script>` or inline event
-handlers. `connect-src 'self'` covers `admin.js`'s `fetch()` call to
-`/admin/api`. `frame-ancestors 'none'` and `base-uri 'none'` are
-defense-in-depth for an auth broker: nothing here needs to be framed, and
-nothing uses a `<base>` tag. JSON API responses (`Http::json()`) are
-unaffected — the header is only set from `Html::pageStart()`, which only
-the five HTML-rendering controllers call.
-
-### Deviation log (§14)
-
-| Deviation | Reason |
-|---|---|
-| Fonts are self-hosted rather than CDN-loaded | Deploy target is shared/cPanel hosting with no assumed outbound CDN access, and the login/admin surfaces should not add a third-party request on credential-handling pages (VI4, #91). |
-| Asset URLs are base-path-prefixed rather than root-absolute | `public_html/index.php` strips a configurable `BROKER_BASE_URL` path prefix on the way in (subpath installs, e.g. `/sso`); asset and link URLs must add the same prefix on the way out or they 404 under a subpath deploy (VI3, #90). |
-| Terminal/console output in the admin UI keeps a monospace stack per §7 "Code" but uses `--color-surface` rather than the near-black it uses today | Keeps the console readout inside the same token system as the rest of the page instead of a one-off dark panel (VI8, #95). |
-| `public_html/assets/favicon.svg` duplicates `assets/brand/favicon.svg` byte-for-byte instead of a single source | `docker/build/build.sh` copies `public_html/` wholesale and never touches a root-level `assets/` directory (it actively fails the build if `docs/` or `docker/` leak into the zip), so the deployed favicon has to live under `public_html/assets/`. `assets/brand/favicon.svg` stays the canonical source for contributors/design tooling; the two are kept in sync by hand today — see the sync check note below (VI9, #96). |
-
-### Extension policy application (§14 items 1–5)
-
-- GrandpaSSOn's only token additions beyond §11 are the three status colors
-  above (item 1: `--color-*` naming preserved).
-- Status tokens do not currently need hover/disabled variants — they are
-  applied to static text/panels, not interactive controls (item 2: N/A,
-  revisit if a status token is ever applied to a button or link).
-- No new components were introduced outside §7's button/link/code/card set
-  (item 3).
-- Nothing in this appendix redefines an existing token's meaning (item 4).
-- The three deviations above are recorded per item 5.
-
-### Project marks (§8, §13 — VI9)
-
-GrandpaSSOn's mark is a rounded-square badge with a keyhole cut out of it,
-built from plain SVG primitives (`<rect>`, `<circle>`, `<path>` inside a
-`<mask>` — no filters, no embedded raster, no script). It lives under
-`assets/brand/`:
-
-| File | Purpose |
-|---|---|
-| `assets/brand/mark.svg` | Symbol only, `--color-action` (`#814DDE`) fill, transparent background |
-| `assets/brand/mark-monochrome.svg` | Same geometry, `fill="currentColor"` — the caller sets one ink color; this is the file's proof that the mark does not depend on the palette |
-| `assets/brand/wordmark.svg` | Horizontal lockup: the mark plus "GrandpaSSOn" set in the `--font-sans` fallback stack |
-| `assets/brand/favicon.svg` | Canonical favicon source — identical to `mark.svg` today; the keyhole cutout was chosen specifically because it stays legible at 16px, unlike finer detail would |
-| `assets/brand/social-card.png` | 1200×630 GitHub social-preview image (repo-only; nothing serves this over HTTP) |
-
-**Clear space.** Keep clear space around the mark of at least half the
-badge's corner radius (the mark's one stable feature across every variant)
-measured from the badge's outer edge — in the 64×64 source, that's ≥7px on
-every side before other content starts.
-
-**Do not:**
-
-- stretch or skew the mark to a non-square aspect ratio,
-- recolor `mark.svg`'s fixed `#814DDE` fill (use `mark-monochrome.svg` with
-  a single `currentColor` instead of tinting the color variant),
-- rotate the badge,
-- outline it or add drop shadows / glows / gradients,
-- place the wordmark's text at a size where it renders under 4.5:1 contrast
-  as running text — the wordmark's `#EBEBEB` on transparent is fine over
-  `--color-canvas`/`--color-surface`, but verify contrast again if it is
-  ever placed over a lighter background.
-
-**Favicon sync.** `public_html/assets/favicon.svg` is a byte-for-byte copy
-of `assets/brand/favicon.svg`, duplicated because `assets/` is outside the
-release zip's copied paths (see the deviation log above). If one changes,
-copy it to the other in the same commit; `tests/Unit/ThemeCssTest.php`-style
-coverage for this equality is the natural home for an automated check
-(tracked for VI11, #98).
-
-**Legibility check.** Both the color and monochrome variants stay
-identifiable as a keyhole shape at 16×16 (favicon size) and at typical
-repository-avatar sizes — verified by eye against the rendered SVG; there
-is no automated visual-regression check for this in CI.
-
----
-
-## Jotter Extensions
-
-### Preamble
-
-Jotter adopts the shared visual identity specification verbatim. This section documents project-specific extensions and an explicit list of departures per §14.
-
-### Departures
-
-Recorded per §14.5 — see the "Deviation log" table below (2026-07-30 Notion-inspired redesign, tracked in `docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md`).
-
-| Deviation | Reason |
-|---|---|
-| `--color-action`/`--color-focus`/link color are neutral (near-black light / near-white dark) rather than the shared spec's purple baseline | Notion-parity redesign: color is reserved for the project mark only; functional UI uses a neutral-first palette. |
-| Typeface changed from Open Sans to Inter | Visual alignment with the Notion-inspired redesign; self-hosting/no-CDN/subsetting policy (VI4) is preserved unchanged, only the source font differs. |
-| `--shadow-float` (formerly `--shadow-lg`) is reserved exclusively for floating/overlay elements; all other surfaces use border + tint only | Notion's elevation language is almost entirely border/tint-based; this tightens Jotter's existing "layering over shadow" guidance from mostly-followed to strictly-enforced. |
-
-### Implementation Tracking (#96–#110)
-
-Tracked under epic **#96**. Not a roadmap item and not blocked on any §14.5 decision — presentation layer only: no API contract, no change to the Markdown-on-disk invariant (spec §1), no change to §8 security requirements. Migrated from `BACKLOG.md` (#208) to keep design-system tracking next to the spec it tracks.
-
-Before this work, the product shipped four unrelated visual treatments (SPA glassmorphism, a light-serif landing stylesheet, the stock Laravel welcome page, and an unstyled published site), three sub-AA color pairs, six `outline: none` sites with no replacement focus indicator, and no `prefers-reduced-motion` handling. All items below are complete.
-
-- [x] Foundation — #97 spec + asset structure, #98 token layer, #99 self-hosted Open Sans.
-- [x] Application — #100 component migration, #101 typography, #102 spacing/shape/elevation, #103 controls and focus, #104 motion.
-- [x] Other surfaces — #105 theme reconciliation, #106 published static site, #107 app-shell metadata, #108 project mark.
-- [x] Verification — #109 WCAG 2.2 AA audit (acceptance gate), #110 CI token guard (lands last).
-
-### 2026-07-30 Notion-Inspired Redesign
-
-Full replan of the visual identity toward Notion's visual language: light+dark
-theming with user toggle, neutral-first accent (purple retained only on the
-project mark), Inter typeface, minimal elevation, and mobile-specific layout
-for the sidebar. Spec:
-`docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md`. Plan:
-`docs/superpowers/plans/2026-07-30-notion-visual-identity-implementation.md`.
-
-- [x] Foundation — palette/contrast table, token layer, `--shadow-float` rename, Inter font pipeline, theme toggle mechanism, CI guard update.
-- [x] Components — Sidebar mobile drawer, NoteTreeNode hover/touch targets, NoteEditor title scale, CommandPalette/SlashMenu responsive width, shared `PanelHeader` across the 5 icon+caption+count side panels (Backlinks, Comments, Properties, OutgoingLinks, UnlinkedMentions). `HistoryPanel` (modal dialog) and the three full main-content views (Attachments, AuditLog, LinkReport) keep their own page-title-style headers — a `PanelHeader`-style caption doesn't fit a modal title or a page `<h2>`, so forcing it in would have been a visual regression, not a consistency win.
-- [x] Verification — design-token guard passes, full frontend test suite passes.
-
-### Theme Palette (2026-07-30 Notion-inspired redesign)
-
-Jotter is light+dark, user-toggleable (`data-theme="light"|"dark"` on `<html>`). Canvas/surface hex values:
-
-| Token | Light | Dark |
-|---|---|---|
-| `--color-canvas` | `#FFFFFF` | `#191919` |
-| `--color-surface` | `#F7F6F3` | `#202020` |
-| `--color-surface-emphasis` | `#EDECE9` | `#2F2F2F` |
-| `--color-text` | `#37352F` | `#D4D4D4` |
-| `--color-text-muted` | `#6B6963` | `#9B9B9B` |
-| `--color-text-inverse` | `#FFFFFF` | `#191919` |
-| `--color-action` / `--color-focus` | `#37352F` | `#D4D4D4` |
-| `--color-action-hover` | `#000000` | `#FFFFFF` |
-| `--color-hover` | `rgb(55 53 47 / 6%)` | `rgb(255 255 255 / 6%)` |
-
-Verified contrast pairs (WCAG 2.1 relative-luminance formula):
-
-| Foreground | Background | Ratio | Passes |
-|---|---|---:|---|
-| `--color-text` (light) | `--color-canvas` (light) | 12.26:1 | AAA |
-| `--color-text-muted` (light) | `--color-canvas` (light) | 5.49:1 | AA |
-| `--color-text` (light) | `--color-surface` (light) | 11.35:1 | AAA |
-| `--color-text-muted` (light) | `--color-surface` (light) | 5.08:1 | AA |
-| `--color-text` (light) | `--color-surface-emphasis` (light) | 10.38:1 | AAA |
-| `--color-text-muted` (light) | `--color-surface-emphasis` (light) | 4.65:1 | AA |
-| `--color-action-hover` `#000000` (light) | `--color-canvas` (light) | 21.0:1 | AAA |
-| `--color-text` (dark) | `--color-canvas` (dark) | 11.86:1 | AAA |
-| `--color-text-muted` (dark) | `--color-canvas` (dark) | 6.33:1 | AA |
-| `--color-text` (dark) | `--color-surface` (dark) | 10.99:1 | AAA |
-| `--color-text-muted` (dark) | `--color-surface` (dark) | 5.86:1 | AA |
-| `--color-text` (dark) | `--color-surface-emphasis` (dark) | 9.03:1 | AAA |
-| `--color-text-muted` (dark) | `--color-surface-emphasis` (dark) | 4.82:1 | AA |
-| `--color-action-hover` `#FFFFFF` (dark) | `--color-canvas` (dark) | 17.58:1 | AAA |
-
-### Status Colors Extension & Contrast Ratios (#98)
-
-Jotter defines four semantic status tokens for alerts, save confirmations, and destructive actions, each independently verified against both canvas and surface **in both themes**:
-
-| Token | Light hex | vs Canvas (`#FFFFFF`) | vs Surface (`#F7F6F3`) | Dark hex | vs Canvas (`#191919`) | vs Surface (`#202020`) |
-|---|---|---:|---:|---|---:|---:|
-| `--color-status-danger` | `#C0392B` | 5.44:1 | 5.03:1 | `#FF5252` | 5.51:1 | 5.11:1 |
-| `--color-status-warning` | `#8F640F` | 5.25:1 | 4.86:1 | `#FFB74D` | 10.16:1 | 9.41:1 |
-| `--color-status-success` | `#2E7D32` | 5.13:1 | 4.74:1 | `#66BB6A` | 7.44:1 | 6.89:1 |
-| `--color-status-info` | `#1B6FA8` | 5.40:1 | 5.00:1 | `#4FC3F7` | 8.78:1 | 8.13:1 |
-
-All values clear 4.5:1 in both themes. Dark values are unchanged from the pre-redesign table (re-verified against the new `#191919`/`#202020` dark backgrounds, still pass); light values are new.
-
-### Token Rules & Constraints
-
-1. **Semantic-Tokens-Only Rule**: Components reference semantic tokens ONLY (`var(--color-canvas)`, `var(--color-action)`). Palette tokens (`--color-purple-500`) are for theme construction only.
-2. **`#814DDE` as Text on Canvas (`#000000`) is 4.05:1**: Below AA for normal text. Purple text is permitted only at large sizes (≥24px, or ≥18.66px bold), for icons, for focus outlines, or on filled controls.
-3. **`#814DDE` as Text on Surface (`#1A0A3E`) is 3.50:1**: Links inside cards and code blocks must use `--color-text` with an underline, taking `--color-action` only on hover/focus.
-
-### Accessibility & axe-core Audit (#109)
-
-Jotter automates structural accessibility checks via `axe-core` across all nine SPA views (`Sidebar.vue`, `LoginModal.vue`, `CommandPalette.vue`, `SearchResults.vue`, `BacklinksPanel.vue`, `MarkdownPreview.vue`, `NoteEditor.vue`, `GraphView.vue`, `App.vue`):
-- Mounted Vitest specs (`frontend/src/a11y.spec.ts`) run `axe.run()` against rendered DOM structures to guard against invalid ARIA, missing labels, duplicate IDs, and malformed headings.
-- Real color-contrast verification is performed via browser E2E and verified against the contrast matrix above.
-
-### Visual Identity CI Guard (#110)
-
-Jotter enforces design token compliance via `./scripts/check-design-tokens.sh`:
-1. **Raw Color Literal Guard**: Rejects raw `#hex`, `rgb()`, `rgba()`, `hsl()`, `oklch()` colors in Vue components (`frontend/src/App.vue` and `frontend/src/components/*.vue`). Exceptions: `transparent`, `currentColor`, or lines annotated with `/* token-ok: reason */`.
-2. **Palette Token Guard**: Rejects direct palette token usage (`--color-purple-*`) in components. Only `--color-neutral-0` is permitted for text on filled purple elements.
-3. **External Font Source Guard**: Rejects external font CDN domains (`fonts.googleapis.com`, `fonts.gstatic.com`, `fonts.bunny.net`).
-4. **Focus Ring Guard**: Rejects `outline: none` or `outline: 0` without a replacement focus indicator or `/* a11y-ok: reason */` comment.
-
-
-
+SVG for scalable marks/icons; self-hosted WOFF2 for fonts, no CDN.
+
+## 13. CI enforcement
+
+`./scripts/check-design-tokens.sh` is a standalone, manually-run guard
+script (it is **not** currently wired into `.github/workflows/ci.yml` —
+running it is a manual step, not an automatic CI gate). It checks:
+
+1. No raw `#hex`/`rgb()`/`rgba()`/`hsl()`/`oklch()` literals in
+   `frontend/src/App.vue` or `frontend/src/components/*.vue` (exceptions:
+   `transparent`, `currentColor`, or a line annotated
+   `/* token-ok: reason */`).
+2. No direct palette-token references in components — only
+   `--color-neutral-0` is permitted (used for text on filled purple mark
+   elements); everything else must go through a semantic token.
+3. No third-party font CDN domains (`fonts.googleapis.com`,
+   `fonts.gstatic.com`, `fonts.bunny.net`) anywhere under `frontend/`,
+   `resources/`, or `public/`.
+4. No un-annotated `outline: none`/`outline: 0` (must have a replacement
+   focus indicator or an `/* a11y-ok: reason */` comment).
+5. Both `:root[data-theme="light"]` and `:root[data-theme="dark"]` blocks
+   in `tokens.css` define the exact same set of `--color-*` tokens — a
+   token present in one and missing in the other silently falls back to
+   an inherited/initial value rather than failing loudly, so this is
+   checked explicitly (added in #233, alongside the light/dark rewrite).
+
+## 14. Adoption checklist
+
+- [x] Every semantic token in §3/§5/§6/§9 is defined and consumed in both
+      themes — no raw palette values in component code (enforced by §13
+      checks 1–2, 5)
+- [x] Status colors defined, verified against both `canvas` and
+      `surface`, in both themes, ratios recorded (§3.2–3.3)
+- [x] Font files shipped for every declared weight; no synthesized
+      bold/italic (§4.4)
+- [x] No more than three font weights in any single view (§4.3)
+- [x] `lang` and viewport present on every page (§10)
+- [x] `prefers-reduced-motion: reduce` removes non-essential motion (§9)
+- [x] Project mark documented separately with clear-space/do-not rules,
+      purple retained deliberately (§8) — *mark README's background-hex
+      references are stale, tracked as a follow-up (§8)*
+- [ ] Keyboard navigation and visible focus verified by tabbing (not just
+      inspection) — not re-verified as part of this rewrite
+- [ ] 200% zoom and 320px width verified — not re-verified as part of
+      this rewrite
+- [ ] Grayscale render carries no information loss — not re-verified as
+      part of this rewrite
+- [ ] `check-design-tokens.sh` wired into CI (currently manual-only, §13)
+- [ ] `.prose` reading-column constraint on `NoteEditor` (§11 — never
+      implemented, open item)
+
+## 15. Change history
+
+- **2026-07-27 and earlier** — original dark-only, purple-accented,
+  Open-Sans identity adopted (epic #96, issues #97–#110).
+- **2026-07-30/31** — Notion-inspired redesign: light+dark theming with
+  user toggle, neutral-first accent, self-hosted Inter, minimal
+  elevation, mobile layout, shared `PanelHeader`. PRs #233 (implementation),
+  #234 (design spec doc, merged after — see
+  `docs/superpowers/specs/2026-07-30-notion-visual-identity-design.md`),
+  #235 (fixed the pre-existing undefined `--font-body`/`--font-heading`
+  tokens that had been silently rendering the whole app in serif since
+  2026-07-27, found by comparing production's computed `font-family`
+  against source after the redesign shipped and still didn't look right).
+  Deployed to `https://hub.taskconnect.com.br/`.
