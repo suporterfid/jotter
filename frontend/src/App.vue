@@ -352,10 +352,11 @@ async function initWorkspace() {
   }
 }
 
-function handleSwitchWorkspace(workspaceId: number) {
+async function handleSwitchWorkspace(workspaceId: number) {
   activeWorkspaceId.value = workspaceId
   localStorage.setItem(WORKSPACE_STORAGE_KEY, String(workspaceId))
-  refreshNotesList()
+  await refreshNotesList()
+  await refreshNotifications()
 }
 
 async function refreshNotifications() {
