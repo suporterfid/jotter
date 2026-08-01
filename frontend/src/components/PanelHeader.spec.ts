@@ -25,4 +25,20 @@ describe('PanelHeader', () => {
     })
     expect(wrapper.find('.my-icon').exists()).toBe(true)
   })
+
+  it('emits toggle when the chevron button is clicked', async () => {
+    const wrapper = mount(PanelHeader, { props: { title: 'Backlinks', collapsed: false } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect(wrapper.emitted('toggle')).toBeTruthy()
+  })
+
+  it('applies the collapsed class to the chevron when collapsed is true', () => {
+    const wrapper = mount(PanelHeader, { props: { title: 'Backlinks', collapsed: true } })
+    expect(wrapper.find('[data-testid="panel-collapse-toggle"] .chevron').classes()).toContain('collapsed')
+  })
+
+  it('does not apply the collapsed class when collapsed is false', () => {
+    const wrapper = mount(PanelHeader, { props: { title: 'Backlinks', collapsed: false } })
+    expect(wrapper.find('[data-testid="panel-collapse-toggle"] .chevron').classes()).not.toContain('collapsed')
+  })
 })
