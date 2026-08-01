@@ -29,4 +29,11 @@ interface IdentityProvider
      * Determine whether the given subject is authorized to access a specific workspace.
      */
     public function isAuthorizedForWorkspace(AuthenticatedSubject $subject, int $workspaceId): bool;
+
+    /**
+     * Return the workspace ids the subject may access, or null if unrestricted (e.g. an admin).
+     *
+     * @return array<int>|null
+     */
+    public function accessibleWorkspaceIds(AuthenticatedSubject $subject): ?array;
 }

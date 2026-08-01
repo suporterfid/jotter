@@ -178,4 +178,35 @@ final class LocalIdentityProvider implements IdentityProvider
             })
             ->exists();
     }
+
+    public function accessibleWorkspaceIds(AuthenticatedSubject $subject): ?array
+    {
+        if ($subject->isAdmin) {
+            return null;
+        }
+
+        $subjectIds = array_filter([
+            $subject->subjectId,
+            (string) $subject->user?->id,
+            $subject->email,
+        ]);
+
+        if ($subject->user) {
+            $identitySubjectIds = $subject->user->identities()->pluck('subject_id')->all();
+            $subjectIds = array_unique(array_merge($subjectIds, $identitySubjectIds));
+        }
+
+        $memberships = Membership::query()
+            ->whereIn('subject_id', $subjectIds)
+            ->get(['tenant_id', 'workspace_id']);
+
+        $directWorkspaceIds = $memberships->whereNotNull('workspace_id')->pluck('workspace_id')->all();
+        $tenantWideTenantIds = $memberships->whereNull('workspace_id')->pluck('tenant_id')->all();
+
+        $tenantWideWorkspaceIds = $tenantWideTenantIds !== []
+            ? Workspace::query()->whereIn('tenant_id', $tenantWideTenantIds)->pluck('id')->all()
+            : [];
+
+        return array_values(array_unique(array_merge($directWorkspaceIds, $tenantWideWorkspaceIds)));
+    }
 }

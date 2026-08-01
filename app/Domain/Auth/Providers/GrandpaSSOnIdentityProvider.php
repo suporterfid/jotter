@@ -130,4 +130,13 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
 
         return $this->localProvider->isAuthorizedForWorkspace($subject, $workspaceId);
     }
+
+    public function accessibleWorkspaceIds(AuthenticatedSubject $subject): ?array
+    {
+        if ($subject->isAdmin) {
+            return null;
+        }
+
+        return $this->localProvider->accessibleWorkspaceIds($subject);
+    }
 }
