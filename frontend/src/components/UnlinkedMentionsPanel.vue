@@ -1,6 +1,6 @@
 <template>
   <aside class="unlinked-mentions-panel" aria-label="Unlinked mentions">
-    <PanelHeader title="Unlinked Mentions" :count="mentions.length">
+    <PanelHeader title="Unlinked Mentions" :count="mentions.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <circle cx="12" cy="12" r="10"></circle>
@@ -10,6 +10,7 @@
       </template>
     </PanelHeader>
 
+    <div v-show="!collapsed" class="unlinked-mentions-body">
     <div v-if="mentions.length === 0" class="unlinked-mentions-empty">
       <p>No unlinked mentions found.</p>
     </div>
@@ -31,11 +32,13 @@
         </button>
       </li>
     </ul>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import PanelHeader from './PanelHeader.vue'
+import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { UnlinkedMention } from '../services/types'
 
 defineProps<{
@@ -46,6 +49,8 @@ defineEmits<{
   (e: 'select-note', noteId: number): void
   (e: 'convert-to-link', mention: UnlinkedMention): void
 }>()
+
+const { collapsed, toggle } = useCollapsiblePanel('unlinked-mentions', false)
 </script>
 
 <style scoped>

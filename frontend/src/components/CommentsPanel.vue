@@ -1,6 +1,6 @@
 <template>
   <aside class="comments-panel" aria-label="Comments">
-    <PanelHeader title="Comments" :count="comments.length">
+    <PanelHeader title="Comments" :count="comments.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -8,6 +8,7 @@
       </template>
     </PanelHeader>
 
+    <div v-show="!collapsed" class="comments-body">
     <p v-if="errorMessage" class="comments-error" role="alert">{{ errorMessage }}</p>
 
     <div v-if="comments.length === 0" class="comments-empty">
@@ -50,12 +51,14 @@
         Comment
       </button>
     </form>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import PanelHeader from './PanelHeader.vue'
+import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { NoteComment } from '../services/types'
 
 defineProps<{
@@ -67,6 +70,8 @@ const emit = defineEmits<{
   (e: 'add-comment', content: string): void
   (e: 'delete-comment', commentId: number): void
 }>()
+
+const { collapsed, toggle } = useCollapsiblePanel('comments', false)
 
 const newContent = ref('')
 

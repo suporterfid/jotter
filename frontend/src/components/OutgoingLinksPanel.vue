@@ -1,6 +1,6 @@
 <template>
   <aside class="outgoing-links-panel" aria-label="Outgoing links">
-    <PanelHeader title="Outgoing Links" :count="links.length">
+    <PanelHeader title="Outgoing Links" :count="links.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <line x1="7" y1="17" x2="17" y2="7"></line>
@@ -9,6 +9,7 @@
       </template>
     </PanelHeader>
 
+    <div v-show="!collapsed" class="outgoing-links-body">
     <div v-if="links.length === 0" class="outgoing-links-empty">
       <p>This note doesn't link to any other notes yet.</p>
     </div>
@@ -29,11 +30,13 @@
         </div>
       </li>
     </ul>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import PanelHeader from './PanelHeader.vue'
+import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { OutgoingLink } from '../services/types'
 
 defineProps<{
@@ -43,6 +46,8 @@ defineProps<{
 defineEmits<{
   (e: 'select-note', noteId: number): void
 }>()
+
+const { collapsed, toggle } = useCollapsiblePanel('outgoing-links', false)
 </script>
 
 <style scoped>

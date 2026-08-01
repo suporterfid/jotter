@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach } from 'vitest'
 import CommentsPanel from './components/CommentsPanel.vue'
 
 const comment = {
@@ -14,6 +14,10 @@ const comment = {
 }
 
 describe('CommentsPanel', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('shows the empty state when there are no comments', () => {
     const wrapper = mount(CommentsPanel, { props: { comments: [] } })
     expect(wrapper.text()).toContain('No comments on this note yet.')
@@ -59,5 +63,19 @@ describe('CommentsPanel', () => {
       props: { comments: [], errorMessage: 'You can only delete your own comments.' }
     })
     expect(wrapper.text()).toContain('You can only delete your own comments.')
+  })
+
+  it('hides the body when collapsed', async () => {
+    const wrapper = mount(CommentsPanel, { props: { comments: [] } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect((wrapper.find('.comments-body').element as HTMLElement).style.display).toBe('none')
+  })
+
+  it('shows the body by default and re-shows it after toggling twice', async () => {
+    const wrapper = mount(CommentsPanel, { props: { comments: [] } })
+    expect((wrapper.find('.comments-body').element as HTMLElement).style.display).not.toBe('none')
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect((wrapper.find('.comments-body').element as HTMLElement).style.display).not.toBe('none')
   })
 })
