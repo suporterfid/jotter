@@ -25,6 +25,7 @@
       :notifications="notifications"
       :is-mobile-sidebar-open="isMobileSidebarOpen"
       :workspace-id="activeWorkspaceId"
+      :workspaces="workspaces"
       :folder-positions="folderPositions"
       :reveal-folder-request="revealFolderRequest"
       @notes-reordered="refreshNotesList"
@@ -47,6 +48,7 @@
       @toggle-table-view="handleToggleTableView"
       @toggle-board-view="handleToggleBoardView"
       @toggle-calendar-view="handleToggleCalendarView"
+      @switch-workspace="handleSwitchWorkspace"
     />
 
     <!-- Main Content Area -->
@@ -325,18 +327,35 @@ onMounted(async () => {
   await initWorkspace()
 })
 
+const WORKSPACE_STORAGE_KEY = 'jotter-active-workspace-id'
+
 async function initWorkspace() {
   try {
     const list = await getWorkspaces()
     workspaces.value = list
-    if (list.length > 0) {
+
+    const stored = localStorage.getItem(WORKSPACE_STORAGE_KEY)
+    const storedId = stored !== null ? Number(stored) : null
+    const storedIsValid = storedId !== null && list.some((ws) => ws.id === storedId)
+
+    if (storedIsValid) {
+      activeWorkspaceId.value = storedId as number
+    } else if (list.length > 0) {
       activeWorkspaceId.value = list[0].id
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, String(list[0].id))
     }
+
     await refreshNotesList()
     await refreshNotifications()
   } catch (err) {
     console.error('Failed to initialize workspace:', err)
   }
+}
+
+function handleSwitchWorkspace(workspaceId: number) {
+  activeWorkspaceId.value = workspaceId
+  localStorage.setItem(WORKSPACE_STORAGE_KEY, String(workspaceId))
+  refreshNotesList()
 }
 
 async function refreshNotifications() {
