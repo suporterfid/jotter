@@ -14,7 +14,7 @@ describe('LoginModal', () => {
   })
 
   it('does not show the SSO link when the provider is local', async () => {
-    vi.mocked(getAuthConfig).mockResolvedValue({ provider: 'local', sso_login_url: null })
+    vi.mocked(getAuthConfig).mockResolvedValue({ provider: 'local', sso_login_url: null, version: null })
 
     const wrapper = mount(LoginModal, { props: { show: true } })
     await flushPromises()
@@ -27,6 +27,7 @@ describe('LoginModal', () => {
     vi.mocked(getAuthConfig).mockResolvedValue({
       provider: 'grandpasson',
       sso_login_url: 'https://hub.taskconnect.com.br/sso/login/email?client_id=jotter&redirect_uri=x&state=y',
+      version: null,
     })
 
     const wrapper = mount(LoginModal, { props: { show: true } })

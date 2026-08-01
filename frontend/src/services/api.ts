@@ -56,6 +56,7 @@ export async function getMe(): Promise<AuthUser | null> {
 export interface AuthConfig {
   provider: 'local' | 'grandpasson'
   sso_login_url: string | null
+  version: string | null
 }
 
 export async function getAuthConfig(): Promise<AuthConfig> {

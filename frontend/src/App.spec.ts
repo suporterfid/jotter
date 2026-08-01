@@ -1,7 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces } from './services/api'
+import { createNote, getWorkspaces, getAuthConfig } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -34,7 +34,8 @@ vi.mock('./services/api', () => ({
   login: vi.fn(),
   logout: vi.fn(),
   getCsrfCookie: vi.fn().mockResolvedValue(undefined),
-  setUnauthenticatedHandler: vi.fn()
+  setUnauthenticatedHandler: vi.fn(),
+  getAuthConfig: vi.fn().mockResolvedValue({ provider: 'local', sso_login_url: null, version: null })
 }))
 
 beforeEach(() => {
@@ -125,5 +126,19 @@ describe('App workspace switching and persistence', () => {
 
     expect(localStorage.getItem('jotter-active-workspace-id')).toBe('2')
     expect(wrapper.findComponent({ name: 'Sidebar' }).props('workspaceId')).toBe(2)
+  })
+
+  it('passes the frontend version and fetched backend version down to Sidebar', async () => {
+    vi.mocked(getAuthConfig).mockResolvedValueOnce({
+      provider: 'local',
+      sso_login_url: null,
+      version: 'abc1234 · 2026-08-01 16:30',
+    })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('backendVersion')).toBe('abc1234 · 2026-08-01 16:30')
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('frontendVersion')).toBe('dev')
   })
 })

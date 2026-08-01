@@ -65,10 +65,14 @@ final class AuthController extends Controller
             }
         }
 
+        $versionFile = base_path('VERSION');
+        $version = file_exists($versionFile) ? trim(file_get_contents($versionFile)) : null;
+
         return response()->json([
             'data' => [
                 'provider' => $provider,
                 'sso_login_url' => $ssoLoginUrl,
+                'version' => $version,
             ],
         ]);
     }

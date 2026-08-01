@@ -289,6 +289,32 @@ class AuthTest extends TestCase
             ->assertJson(['data' => ['provider' => 'grandpasson', 'sso_login_url' => null]]);
     }
 
+    public function test_auth_config_endpoint_reports_version_from_version_file(): void
+    {
+        $versionFile = base_path('VERSION');
+        file_put_contents($versionFile, "abc1234 · 2026-08-01 16:30\n");
+
+        try {
+            $this->getJson('/api/auth/config')
+                ->assertOk()
+                ->assertJsonPath('data.version', 'abc1234 · 2026-08-01 16:30');
+        } finally {
+            unlink($versionFile);
+        }
+    }
+
+    public function test_auth_config_endpoint_reports_null_version_when_version_file_absent(): void
+    {
+        $versionFile = base_path('VERSION');
+        if (file_exists($versionFile)) {
+            unlink($versionFile);
+        }
+
+        $this->getJson('/api/auth/config')
+            ->assertOk()
+            ->assertJsonPath('data.version', null);
+    }
+
     public function test_logout_endpoint_invalidates_session_and_writes_audit_log(): void
     {
         $user = User::factory()->create();

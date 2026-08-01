@@ -26,6 +26,8 @@
       :is-mobile-sidebar-open="isMobileSidebarOpen"
       :workspace-id="activeWorkspaceId"
       :workspaces="workspaces"
+      :frontend-version="APP_VERSION"
+      :backend-version="backendVersion"
       :folder-positions="folderPositions"
       :reveal-folder-request="revealFolderRequest"
       @notes-reordered="refreshNotesList"
@@ -243,9 +245,11 @@ import {
   getCollection,
   getNotifications,
   markNotificationRead,
-  deleteNotification
+  deleteNotification,
+  getAuthConfig
 } from './services/api'
 import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition } from './services/types'
+import { APP_VERSION } from './version'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -255,6 +259,7 @@ const activeNoteId = ref<number | null>(null)
 const activeNoteDetail = ref<NoteDetail | null>(null)
 
 const currentUser = ref<AuthUser | null>(null)
+const backendVersion = ref<string | null>(null)
 const showLoginModal = ref(false)
 const isMobileSidebarOpen = ref(false)
 const isGraphViewActive = ref(false)
@@ -323,6 +328,10 @@ onMounted(async () => {
   } catch {
     showLoginModal.value = true
   }
+
+  getAuthConfig()
+    .then((config) => { backendVersion.value = config.version })
+    .catch(() => {})
 
   await initWorkspace()
 })
