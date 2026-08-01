@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach } from 'vitest'
 import OutgoingLinksPanel from './components/OutgoingLinksPanel.vue'
 
 const resolvedLink = {
@@ -30,6 +30,10 @@ const unresolvedLink = {
 }
 
 describe('OutgoingLinksPanel', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('shows the empty state when there are no outgoing links', () => {
     const wrapper = mount(OutgoingLinksPanel, { props: { links: [] } })
     expect(wrapper.text()).toContain("doesn't link to any other notes yet")
@@ -62,5 +66,16 @@ describe('OutgoingLinksPanel', () => {
     const wrapper = mount(OutgoingLinksPanel, { props: { links: [unresolvedLink] } })
     await wrapper.get('.outgoing-link-item').trigger('click')
     expect(wrapper.emitted('select-note')).toBeFalsy()
+  })
+
+  it('shows the body by default', () => {
+    const wrapper = mount(OutgoingLinksPanel, { props: { links: [] } })
+    expect((wrapper.find('.outgoing-links-body').element as HTMLElement).style.display).not.toBe('none')
+  })
+
+  it('hides the body when collapsed via the header chevron', async () => {
+    const wrapper = mount(OutgoingLinksPanel, { props: { links: [] } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect((wrapper.find('.outgoing-links-body').element as HTMLElement).style.display).toBe('none')
   })
 })

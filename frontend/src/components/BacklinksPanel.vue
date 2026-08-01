@@ -1,6 +1,6 @@
 <template>
   <aside class="backlinks-panel" aria-label="Backlinks">
-    <PanelHeader title="Backlinks" :count="backlinks.length">
+    <PanelHeader title="Backlinks" :count="backlinks.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
@@ -9,14 +9,15 @@
       </template>
     </PanelHeader>
 
+    <div v-show="!collapsed" class="backlinks-body">
     <div v-if="backlinks.length === 0" class="backlinks-empty">
       <p>No notes link to this document yet.</p>
     </div>
 
     <ul v-else class="backlinks-list">
-      <li 
-        v-for="link in backlinks" 
-        :key="link.id" 
+      <li
+        v-for="link in backlinks"
+        :key="link.id"
         class="backlink-item"
         @click="$emit('select-note', link.id)"
       >
@@ -24,11 +25,13 @@
         <div class="backlink-path">{{ link.path }}</div>
       </li>
     </ul>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import PanelHeader from './PanelHeader.vue'
+import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { Backlink } from '../services/types'
 
 defineProps<{
@@ -38,6 +41,8 @@ defineProps<{
 defineEmits<{
   (e: 'select-note', noteId: number): void
 }>()
+
+const { collapsed, toggle } = useCollapsiblePanel('backlinks', false)
 </script>
 
 <style scoped>

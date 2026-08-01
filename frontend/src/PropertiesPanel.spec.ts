@@ -1,8 +1,12 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach } from 'vitest'
 import PropertiesPanel from './components/PropertiesPanel.vue'
 
 describe('PropertiesPanel', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('shows the empty state when there are no properties', () => {
     const wrapper = mount(PropertiesPanel, { props: { properties: [] } })
     expect(wrapper.text()).toContain('No typed properties on this note yet.')
@@ -53,5 +57,16 @@ describe('PropertiesPanel', () => {
     await wrapper.get('.property-form').trigger('submit')
 
     expect(wrapper.emitted('add-property')![0]).toEqual(['tags', ['a', 'b', 'c']])
+  })
+
+  it('hides the body when collapsed', () => {
+    const wrapper = mount(PropertiesPanel, { props: { properties: [] } })
+    expect((wrapper.find('.properties-body').element as HTMLElement).style.display).toBe('none')
+  })
+
+  it('shows the body and toggles collapse when the header chevron is clicked', async () => {
+    const wrapper = mount(PropertiesPanel, { props: { properties: [] } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect((wrapper.find('.properties-body').element as HTMLElement).style.display).not.toBe('none')
   })
 })

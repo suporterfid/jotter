@@ -1,6 +1,6 @@
 <template>
   <aside class="properties-panel" aria-label="Properties">
-    <PanelHeader title="Properties" :count="properties.length">
+    <PanelHeader title="Properties" :count="properties.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M3 6h18M7 12h10M11 18h2"></path>
@@ -8,6 +8,7 @@
       </template>
     </PanelHeader>
 
+    <div v-show="!collapsed" class="properties-body">
     <div v-if="properties.length === 0" class="properties-empty">
       <p>No typed properties on this note yet.</p>
     </div>
@@ -85,12 +86,14 @@
 
       <button type="submit" class="btn-add-property" data-testid="property-add-btn">Add</button>
     </form>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import PanelHeader from './PanelHeader.vue'
+import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { NoteProperty, NotePropertyType } from '../services/types'
 
 defineProps<{
@@ -101,6 +104,8 @@ const emit = defineEmits<{
   (e: 'add-property', name: string, value: unknown): void
   (e: 'delete-property', name: string): void
 }>()
+
+const { collapsed, toggle } = useCollapsiblePanel('properties', true)
 
 const newName = ref('')
 const newType = ref<NotePropertyType>('string')
