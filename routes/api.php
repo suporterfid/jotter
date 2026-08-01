@@ -31,14 +31,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::match(['PROPFIND', 'GET', 'PUT', 'MKCOL', 'DELETE', 'OPTIONS'], '/webdav/{workspace}/{path?}', [WebDavController::class, 'handle'])->where('path', '.*');
     Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish']);
     Route::post('/workspaces/{workspace}/import', [\App\Http\Controllers\WorkspaceImportController::class, 'import']);
-    Route::get('/workspaces', function () {
-        return response()->json([
-            'data' => Workspace::query()
-                ->select(['id', 'tenant_id', 'slug', 'name'])
-                ->orderBy('id')
-                ->get(),
-        ]);
-    });
+    Route::get('/workspaces', [\App\Http\Controllers\WorkspaceController::class, 'index']);
 
     Route::post('/admin/workspaces', [\App\Http\Controllers\AdminWorkspaceController::class, 'store']);
     Route::put('/admin/workspaces/{workspace}', [\App\Http\Controllers\AdminWorkspaceController::class, 'update']);
