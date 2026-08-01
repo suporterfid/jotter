@@ -12,6 +12,11 @@
         </svg>
         <span class="brand-title">Jotter</span>
       </div>
+      <WorkspaceSwitcher
+        :workspaces="props.workspaces"
+        :active-workspace-id="props.workspaceId ?? null"
+        @switch="(id) => emit('switch-workspace', id)"
+      />
       <div class="header-actions">
         <div class="more-menu-wrapper">
           <button
@@ -374,10 +379,11 @@
 
 <script setup lang="ts">
 import { ref, computed, provide, onMounted, onBeforeUnmount, watch, useTemplateRef, nextTick } from 'vue'
-import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem } from '../services/types'
+import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem, Workspace } from '../services/types'
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import WorkspaceSwitcher from './WorkspaceSwitcher.vue'
 import { moveNote, reorderNoteTree } from '../services/api'
 import { createNoteTreeSortable, type NoteTreeSortableHandle } from '../composables/useNoteTreeSortable'
 
@@ -388,6 +394,7 @@ const props = defineProps<{
   notifications?: NotificationItem[]
   isMobileSidebarOpen?: boolean
   workspaceId?: number | null
+  workspaces: Workspace[]
   folderPositions?: FolderPosition[]
   revealFolderRequest?: { path: string; nonce: number } | null
 }>()
@@ -413,6 +420,7 @@ const emit = defineEmits<{
   (e: 'toggle-calendar-view'): void
   (e: 'notes-reordered'): void
   (e: 'create-note-in-folder', folderPath: string): void
+  (e: 'switch-workspace', workspaceId: number): void
 }>()
 
 const searchQuery = ref('')

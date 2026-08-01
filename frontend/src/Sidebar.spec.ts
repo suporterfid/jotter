@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import Sidebar from './components/Sidebar.vue'
-import type { NoteMeta, FolderPosition } from './services/types'
+import type { NoteMeta, FolderPosition, Workspace } from './services/types'
 
 vi.mock('./services/api', () => ({
   moveNote: vi.fn(),
@@ -22,7 +22,7 @@ function makeNote(overrides: Partial<NoteMeta>): NoteMeta {
 
 describe('Sidebar manual sort mode', () => {
   it('offers a Manual option in the sort dropdown', () => {
-    const wrapper = mount(Sidebar, { props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [] } })
+    const wrapper = mount(Sidebar, { props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [] } })
     const options = wrapper.findAll('#sidebar-sort-select option').map(o => o.attributes('value'))
     expect(options).toContain('manual')
   })
@@ -36,7 +36,7 @@ describe('Sidebar manual sort mode', () => {
     const folderPositions: FolderPosition[] = [{ folder_path: 'docs/archived', sort_position: 10 }]
 
     const wrapper = mount(Sidebar, {
-      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions },
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions, workspaces: [] },
     })
     await wrapper.find('#sidebar-sort-select').setValue('manual')
 
@@ -51,7 +51,7 @@ describe('Sidebar folder quick-create', () => {
       makeNote({ id: 1, path: 'docs/a.md', title: 'A' }),
     ]
     const wrapper = mount(Sidebar, {
-      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [] },
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [] },
     })
     await wrapper.find('[data-testid="folder-create-note-btn"]').trigger('click')
     expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs']])
@@ -64,7 +64,7 @@ describe('Sidebar reveal folder', () => {
       makeNote({ id: 1, path: 'docs/archived/inner.md' }),
     ]
     const wrapper = mount(Sidebar, {
-      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [] },
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [] },
     })
 
     // Both start expanded by default (NoteTreeNode's `expanded` ref defaults
@@ -80,5 +80,42 @@ describe('Sidebar reveal folder', () => {
     for (const child of children) {
       expect((child.element as HTMLElement).style.display).not.toBe('none')
     }
+  })
+})
+
+describe('Sidebar workspace switcher', () => {
+  it('renders the workspace switcher with the provided workspaces', () => {
+    const workspaces: Workspace[] = [
+      { id: 1, tenant_id: 1, slug: 'main', name: 'Main Workspace' },
+      { id: 2, tenant_id: 1, slug: 'side', name: 'Side Project' },
+    ]
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [],
+        selectedNoteId: null,
+        workspaceId: 1,
+        folderPositions: [],
+        workspaces,
+      },
+    })
+    expect(wrapper.findAll('[data-testid="workspace-switcher-select"] option')).toHaveLength(2)
+  })
+
+  it('emits switch-workspace when the switcher changes selection', async () => {
+    const workspaces: Workspace[] = [
+      { id: 1, tenant_id: 1, slug: 'main', name: 'Main Workspace' },
+      { id: 2, tenant_id: 1, slug: 'side', name: 'Side Project' },
+    ]
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [],
+        selectedNoteId: null,
+        workspaceId: 1,
+        folderPositions: [],
+        workspaces,
+      },
+    })
+    await wrapper.find('[data-testid="workspace-switcher-select"]').setValue('2')
+    expect(wrapper.emitted('switch-workspace')![0]).toEqual([2])
   })
 })
