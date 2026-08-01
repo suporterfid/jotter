@@ -374,6 +374,17 @@
         </button>
       </div>
     </div>
+
+    <div class="sidebar-version" data-testid="app-version">
+      v {{ props.frontendVersion }}
+      <span
+        v-if="props.backendVersion && props.backendVersion !== props.frontendVersion"
+        class="sidebar-version-mismatch"
+        data-testid="app-version-mismatch"
+      >
+        (backend: {{ props.backendVersion }})
+      </span>
+    </div>
   </aside>
 </template>
 
@@ -397,6 +408,8 @@ const props = defineProps<{
   workspaces: Workspace[]
   folderPositions?: FolderPosition[]
   revealFolderRequest?: { path: string; nonce: number } | null
+  frontendVersion: string
+  backendVersion?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -1260,6 +1273,17 @@ function handleImportSubmit() {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.sidebar-version {
+  padding: var(--space-1) var(--space-4) var(--space-2);
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.sidebar-version-mismatch {
+  color: var(--color-status-warning);
 }
 
 .user-badge {

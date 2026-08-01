@@ -22,7 +22,7 @@ function makeNote(overrides: Partial<NoteMeta>): NoteMeta {
 
 describe('Sidebar manual sort mode', () => {
   it('offers a Manual option in the sort dropdown', () => {
-    const wrapper = mount(Sidebar, { props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [] } })
+    const wrapper = mount(Sidebar, { props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' } })
     const options = wrapper.findAll('#sidebar-sort-select option').map(o => o.attributes('value'))
     expect(options).toContain('manual')
   })
@@ -36,7 +36,7 @@ describe('Sidebar manual sort mode', () => {
     const folderPositions: FolderPosition[] = [{ folder_path: 'docs/archived', sort_position: 10 }]
 
     const wrapper = mount(Sidebar, {
-      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions, workspaces: [] },
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions, workspaces: [], frontendVersion: 'dev' },
     })
     await wrapper.find('#sidebar-sort-select').setValue('manual')
 
@@ -51,7 +51,7 @@ describe('Sidebar folder quick-create', () => {
       makeNote({ id: 1, path: 'docs/a.md', title: 'A' }),
     ]
     const wrapper = mount(Sidebar, {
-      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [] },
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
     })
     await wrapper.find('[data-testid="folder-create-note-btn"]').trigger('click')
     expect(wrapper.emitted('create-note-in-folder')).toEqual([['docs']])
@@ -64,7 +64,7 @@ describe('Sidebar reveal folder', () => {
       makeNote({ id: 1, path: 'docs/archived/inner.md' }),
     ]
     const wrapper = mount(Sidebar, {
-      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [] },
+      props: { notes, selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
     })
 
     // Both start expanded by default (NoteTreeNode's `expanded` ref defaults
@@ -96,6 +96,7 @@ describe('Sidebar workspace switcher', () => {
         workspaceId: 1,
         folderPositions: [],
         workspaces,
+        frontendVersion: 'dev',
       },
     })
     expect(wrapper.findAll('[data-testid="workspace-switcher-select"] option')).toHaveLength(2)
@@ -113,9 +114,48 @@ describe('Sidebar workspace switcher', () => {
         workspaceId: 1,
         folderPositions: [],
         workspaces,
+        frontendVersion: 'dev',
       },
     })
     await wrapper.find('[data-testid="workspace-switcher-select"]').setValue('2')
     expect(wrapper.emitted('switch-workspace')![0]).toEqual([2])
+  })
+})
+
+describe('Sidebar version footer', () => {
+  it('renders the frontend version', () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'abc1234 · 2026-08-01 16:30' },
+    })
+    expect(wrapper.find('[data-testid="app-version"]').text()).toContain('abc1234 · 2026-08-01 16:30')
+  })
+
+  it('shows the backend version alongside when it differs from the frontend version', () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [],
+        frontendVersion: 'abc1234 · 2026-08-01 16:30',
+        backendVersion: 'def5678 · 2026-08-01 16:31',
+      },
+    })
+    expect(wrapper.find('[data-testid="app-version-mismatch"]').text()).toContain('def5678 · 2026-08-01 16:31')
+  })
+
+  it('does not show a mismatch segment when backend version matches frontend version', () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [],
+        frontendVersion: 'abc1234 · 2026-08-01 16:30',
+        backendVersion: 'abc1234 · 2026-08-01 16:30',
+      },
+    })
+    expect(wrapper.find('[data-testid="app-version-mismatch"]').exists()).toBe(false)
+  })
+
+  it('does not show a mismatch segment when backend version is absent', () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'abc1234 · 2026-08-01 16:30' },
+    })
+    expect(wrapper.find('[data-testid="app-version-mismatch"]').exists()).toBe(false)
   })
 })
