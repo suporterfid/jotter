@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import Sidebar from './components/Sidebar.vue'
 
-const baseProps = { notes: [], selectedNoteId: null, currentUser: null }
+const baseProps = { notes: [], selectedNoteId: null, currentUser: null, workspaces: [] }
 
 const notifications = [
   { id: 1, workspace_id: 1, user_id: 1, type: 'mention', title: 'You were mentioned', data: { comment_snippet: 'hey check this' }, read_at: null, created_at: '2026-07-01T00:00:00Z' },

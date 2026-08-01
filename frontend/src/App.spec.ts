@@ -1,7 +1,7 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote } from './services/api'
+import { createNote, getWorkspaces } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -36,6 +36,10 @@ vi.mock('./services/api', () => ({
   getCsrfCookie: vi.fn().mockResolvedValue(undefined),
   setUnauthenticatedHandler: vi.fn()
 }))
+
+beforeEach(() => {
+  localStorage.clear()
+})
 
 describe('App Component', () => {
   it('renders the Jotter sidebar brand title', () => {
@@ -78,5 +82,48 @@ describe('App reveal folder', () => {
     vm.handleRevealFolder('docs')
     await wrapper.vm.$nextTick()
     expect(vm.isMobileSidebarOpen).toBe(true)
+  })
+})
+
+describe('App workspace switching and persistence', () => {
+  it('uses the workspace id from localStorage when it is in the fetched list', async () => {
+    vi.mocked(getWorkspaces).mockResolvedValueOnce([
+      { id: 1, tenant_id: 1, slug: 'main', name: 'Main' },
+      { id: 2, tenant_id: 1, slug: 'side', name: 'Side' },
+    ])
+    localStorage.setItem('jotter-active-workspace-id', '2')
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('workspaceId')).toBe(2)
+  })
+
+  it('falls back to the first workspace when the stored id is not in the list', async () => {
+    vi.mocked(getWorkspaces).mockResolvedValueOnce([
+      { id: 1, tenant_id: 1, slug: 'main', name: 'Main' },
+    ])
+    localStorage.setItem('jotter-active-workspace-id', '999')
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('workspaceId')).toBe(1)
+    expect(localStorage.getItem('jotter-active-workspace-id')).toBe('1')
+  })
+
+  it('persists the new workspace id when Sidebar emits switch-workspace', async () => {
+    vi.mocked(getWorkspaces).mockResolvedValueOnce([
+      { id: 1, tenant_id: 1, slug: 'main', name: 'Main' },
+      { id: 2, tenant_id: 1, slug: 'side', name: 'Side' },
+    ])
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('switch-workspace', 2)
+
+    expect(localStorage.getItem('jotter-active-workspace-id')).toBe('2')
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('workspaceId')).toBe(2)
   })
 })
