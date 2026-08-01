@@ -101,11 +101,13 @@ cmd_e2e() {
 cmd_release() {
   ensure_env
   mkdir -p dist
+  export GIT_SHA="$(git rev-parse --short HEAD)"
+  export BUILD_TIME="$(date -u +'%Y-%m-%d %H:%M')"
   compose --profile tools run --rm --build release
   test -s dist/jotter-release.zip
   test -s dist/jotter-release.zip.sha256
   (cd dist && sha256sum -c jotter-release.zip.sha256)
-  echo "Release written to dist/jotter-release.zip"
+  echo "Release written to dist/jotter-release.zip (version: ${GIT_SHA} · ${BUILD_TIME})"
 }
 
 main() {

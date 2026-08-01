@@ -18,15 +18,22 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts
 
 FROM node:22-bookworm-slim AS frontend
 
+ARG GIT_SHA=dev
+ARG BUILD_TIME=unknown
+
 WORKDIR /app/frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 COPY frontend/ ./
+ENV VITE_APP_VERSION="${GIT_SHA} · ${BUILD_TIME}"
 RUN npm run build
 
 FROM alpine:3.21 AS release
+
+ARG GIT_SHA=dev
+ARG BUILD_TIME=unknown
 
 RUN apk add --no-cache zip
 
@@ -34,6 +41,8 @@ WORKDIR /release
 
 COPY --from=vendor /app /release/app
 COPY --from=frontend /app/public/build /release/app/public/build
+
+RUN echo "${GIT_SHA} · ${BUILD_TIME}" > /release/app/VERSION
 
 RUN cd /release/app \
     && rm -rf \

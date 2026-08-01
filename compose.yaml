@@ -75,6 +75,9 @@ services:
       context: .
       dockerfile: docker/release/Dockerfile
       target: release
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
     volumes:
       - ./dist:/dist
     command:
