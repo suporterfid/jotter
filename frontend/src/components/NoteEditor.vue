@@ -1081,7 +1081,12 @@ async function handleSave() {
 }
 
 .markdown-textarea {
+  /* Centered reading column (Notion-style ~640-760px page), not full pane
+     width — see docs/visual-identity.md §11, previously an open item. */
+  display: block;
   width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
   height: 100%;
   background: var(--color-canvas);
   color: var(--color-text);
