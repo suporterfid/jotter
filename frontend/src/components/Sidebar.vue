@@ -40,18 +40,6 @@
         @switch="(id) => emit('switch-workspace', id)"
       />
       <div class="header-actions">
-        <button
-          type="button"
-          class="btn-icon sidebar-collapse-btn"
-          data-testid="sidebar-collapse-btn"
-          aria-label="Collapse sidebar"
-          title="Collapse sidebar"
-          @click="toggleSidebarCollapsed"
-        >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
         <div class="more-menu-wrapper">
           <button
             class="btn-icon"
@@ -245,6 +233,17 @@
                 <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
               <span>Calendar View</span>
+            </button>
+            <button
+              class="more-menu-item"
+              data-testid="sidebar-collapse-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(toggleSidebarCollapsed)"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              <span>Collapse Sidebar</span>
             </button>
           </div>
         </div>

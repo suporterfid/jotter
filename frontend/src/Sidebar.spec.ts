@@ -220,10 +220,11 @@ describe('Sidebar desktop collapse', () => {
     expect(wrapper.find('[data-testid="sidebar-expand-btn"]').exists()).toBe(false)
   })
 
-  it('collapses when the collapse button is clicked, and shows the expand button instead', async () => {
+  it('collapses via the More actions menu, and shows the expand button instead', async () => {
     const wrapper = mount(Sidebar, {
       props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
     })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
     await wrapper.find('[data-testid="sidebar-collapse-btn"]').trigger('click')
 
     expect(wrapper.find('.sidebar').classes()).toContain('sidebar-collapsed')
@@ -234,6 +235,7 @@ describe('Sidebar desktop collapse', () => {
     const wrapper = mount(Sidebar, {
       props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
     })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
     await wrapper.find('[data-testid="sidebar-collapse-btn"]').trigger('click')
     await wrapper.find('[data-testid="sidebar-expand-btn"]').trigger('click')
 
@@ -245,6 +247,7 @@ describe('Sidebar desktop collapse', () => {
     const wrapperA = mount(Sidebar, {
       props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
     })
+    await wrapperA.find('[data-testid="more-actions-btn"]').trigger('click')
     await wrapperA.find('[data-testid="sidebar-collapse-btn"]').trigger('click')
     wrapperA.unmount()
 
