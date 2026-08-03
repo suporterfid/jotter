@@ -1,5 +1,5 @@
 <template>
-  <aside class="comments-panel" aria-label="Comments">
+  <aside class="comments-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Comments">
     <PanelHeader title="Comments" :count="comments.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
@@ -100,6 +100,10 @@ function handleSubmit() {
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
+}
+
+.comments-panel.panel-collapsed {
+  padding-bottom: 0;
 }
 
 .comments-error {

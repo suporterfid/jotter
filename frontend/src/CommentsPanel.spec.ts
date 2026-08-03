@@ -78,4 +78,15 @@ describe('CommentsPanel', () => {
     await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
     expect((wrapper.find('.comments-body').element as HTMLElement).style.display).not.toBe('none')
   })
+
+  it('does not apply panel-collapsed to the root by default (expanded)', () => {
+    const wrapper = mount(CommentsPanel, { props: { comments: [] } })
+    expect(wrapper.find('.comments-panel').classes()).not.toContain('panel-collapsed')
+  })
+
+  it('applies panel-collapsed to the root once collapsed', async () => {
+    const wrapper = mount(CommentsPanel, { props: { comments: [] } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect(wrapper.find('.comments-panel').classes()).toContain('panel-collapsed')
+  })
 })

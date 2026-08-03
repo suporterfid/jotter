@@ -1,5 +1,5 @@
 <template>
-  <aside class="outgoing-links-panel" aria-label="Outgoing links">
+  <aside class="outgoing-links-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Outgoing links">
     <PanelHeader title="Outgoing Links" :count="links.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
@@ -57,6 +57,10 @@ const { collapsed, toggle } = useCollapsiblePanel('outgoing-links', false)
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
+}
+
+.outgoing-links-panel.panel-collapsed {
+  padding-bottom: 0;
 }
 
 .outgoing-links-empty {

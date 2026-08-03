@@ -69,4 +69,15 @@ describe('PropertiesPanel', () => {
     await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
     expect((wrapper.find('.properties-body').element as HTMLElement).style.display).not.toBe('none')
   })
+
+  it('applies panel-collapsed to the root when collapsed (default)', () => {
+    const wrapper = mount(PropertiesPanel, { props: { properties: [] } })
+    expect(wrapper.find('.properties-panel').classes()).toContain('panel-collapsed')
+  })
+
+  it('does not apply panel-collapsed to the root once expanded', async () => {
+    const wrapper = mount(PropertiesPanel, { props: { properties: [] } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect(wrapper.find('.properties-panel').classes()).not.toContain('panel-collapsed')
+  })
 })
