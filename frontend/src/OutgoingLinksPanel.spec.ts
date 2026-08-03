@@ -78,4 +78,15 @@ describe('OutgoingLinksPanel', () => {
     await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
     expect((wrapper.find('.outgoing-links-body').element as HTMLElement).style.display).toBe('none')
   })
+
+  it('does not apply panel-collapsed to the root by default (expanded)', () => {
+    const wrapper = mount(OutgoingLinksPanel, { props: { links: [] } })
+    expect(wrapper.find('.outgoing-links-panel').classes()).not.toContain('panel-collapsed')
+  })
+
+  it('applies panel-collapsed to the root once collapsed', async () => {
+    const wrapper = mount(OutgoingLinksPanel, { props: { links: [] } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect(wrapper.find('.outgoing-links-panel').classes()).toContain('panel-collapsed')
+  })
 })

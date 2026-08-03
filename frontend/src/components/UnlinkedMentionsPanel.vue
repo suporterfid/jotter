@@ -1,5 +1,5 @@
 <template>
-  <aside class="unlinked-mentions-panel" aria-label="Unlinked mentions">
+  <aside class="unlinked-mentions-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Unlinked mentions">
     <PanelHeader title="Unlinked Mentions" :count="mentions.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
@@ -60,6 +60,10 @@ const { collapsed, toggle } = useCollapsiblePanel('unlinked-mentions', false)
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
+}
+
+.unlinked-mentions-panel.panel-collapsed {
+  padding-bottom: 0;
 }
 
 .unlinked-mentions-empty {

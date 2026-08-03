@@ -22,4 +22,15 @@ describe('BacklinksPanel', () => {
     await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
     expect((wrapper.find('.backlinks-body').element as HTMLElement).style.display).toBe('none')
   })
+
+  it('does not apply panel-collapsed to the root by default (expanded)', () => {
+    const wrapper = mount(BacklinksPanel, { props: { backlinks: [] } })
+    expect(wrapper.find('.backlinks-panel').classes()).not.toContain('panel-collapsed')
+  })
+
+  it('applies panel-collapsed to the root once collapsed', async () => {
+    const wrapper = mount(BacklinksPanel, { props: { backlinks: [] } })
+    await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
+    expect(wrapper.find('.backlinks-panel').classes()).toContain('panel-collapsed')
+  })
 })

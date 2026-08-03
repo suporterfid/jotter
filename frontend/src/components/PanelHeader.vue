@@ -1,5 +1,5 @@
 <template>
-  <div class="panel-header">
+  <div class="panel-header" :class="{ 'panel-header-collapsed': collapsed }">
     <div class="panel-header-title">
       <slot name="icon" />
       <span>{{ title }}</span>
@@ -54,6 +54,10 @@ defineEmits<{
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.75rem;
+}
+
+.panel-header-collapsed {
+  margin-bottom: 0;
 }
 
 .panel-header-title {

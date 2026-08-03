@@ -1,5 +1,5 @@
 <template>
-  <aside class="properties-panel" aria-label="Properties">
+  <aside class="properties-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Properties">
     <PanelHeader title="Properties" :count="properties.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
@@ -153,6 +153,10 @@ function handleSubmit() {
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
+}
+
+.properties-panel.panel-collapsed {
+  padding-bottom: 0;
 }
 
 .properties-empty {
