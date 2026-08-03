@@ -54,7 +54,10 @@
       @toggle-calendar-view="handleToggleCalendarView"
       @switch-workspace="handleSwitchWorkspace"
       @switch-tenant="handleSwitchTenant"
+      @toggle-admin-panel="isAdminPanelOpen = true"
     />
+
+    <AdminPanel :is-open="isAdminPanelOpen" @close="handleCloseAdminPanel" />
 
     <!-- Main Content Area -->
     <main class="main-content">
@@ -230,6 +233,7 @@ import LinkReportViewer from './components/LinkReportViewer.vue'
 import CollectionsTableView from './components/CollectionsTableView.vue'
 import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
+import AdminPanel from './components/AdminPanel.vue'
 import {
   getWorkspaces,
   getTenants,
@@ -291,6 +295,8 @@ const auditLogLoading = ref(false)
 
 const isLinkReportActive = ref(false)
 const linkReport = ref<LinkReport>({ broken_links: [], orphans: [] })
+
+const isAdminPanelOpen = ref(false)
 const linkReportLoading = ref(false)
 
 const notifications = ref<NotificationItem[]>([])
@@ -417,6 +423,18 @@ async function handleSwitchTenant(tenantId: number) {
     await refreshNotifications()
   } catch (err) {
     console.error('Failed to switch tenant:', err)
+  }
+}
+
+async function handleCloseAdminPanel() {
+  isAdminPanelOpen.value = false
+  // A workspace may have just been created/archived in the panel; refresh
+  // so the switcher reflects it without requiring a full page reload.
+  try {
+    const list = await getWorkspaces(activeTenantId.value ?? undefined)
+    workspaces.value = list
+  } catch (err) {
+    console.error('Failed to refresh workspaces:', err)
   }
 }
 

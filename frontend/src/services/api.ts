@@ -3,7 +3,7 @@ import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, A
 
 axios.defaults.withCredentials = true
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: '/api',
   headers: {
     'Accept': 'application/json',

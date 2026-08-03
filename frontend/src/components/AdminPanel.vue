@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isOpen" class="admin-modal-overlay" @click.self="close">
+  <div v-if="isOpen" class="admin-modal-overlay" data-testid="admin-panel" @click.self="close">
     <div class="admin-modal-container">
       <div class="admin-header">
         <h2>Administration</h2>
@@ -35,10 +35,14 @@
       <div v-if="activeTab === 'workspaces'" class="tab-content">
         <h3>Create Workspace</h3>
         <form @submit.prevent="createWorkspace" class="admin-form">
-          <input v-model="newWs.name" placeholder="Workspace Name" required />
-          <input v-model="newWs.slug" placeholder="Slug (e.g. dev)" required />
-          <input v-model="newWs.vault_path" placeholder="Vault Path" required />
-          <button type="submit" :disabled="loading">Create Workspace</button>
+          <select v-model.number="newWs.tenant_id" data-testid="admin-new-workspace-tenant" required>
+            <option :value="null" disabled>Select a tenant…</option>
+            <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">{{ tenant.name }}</option>
+          </select>
+          <input v-model="newWs.name" placeholder="Workspace Name" data-testid="admin-new-workspace-name" required />
+          <input v-model="newWs.slug" placeholder="Slug (e.g. dev)" data-testid="admin-new-workspace-slug" required />
+          <input v-model="newWs.vault_path" placeholder="Vault Path" data-testid="admin-new-workspace-vault-path" required />
+          <button type="submit" data-testid="admin-new-workspace-submit" :disabled="loading">Create Workspace</button>
         </form>
 
         <h3>Workspaces List</h3>
@@ -109,6 +113,8 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { api, getTenants } from '../services/api'
+import type { Tenant } from '../services/types'
 
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits(['close'])
@@ -117,12 +123,15 @@ const activeTab = ref<'workspaces' | 'members' | 'users'>('workspaces')
 const error = ref('')
 const loading = ref(false)
 
+const tenants = ref<Tenant[]>([])
 const workspaces = ref<any[]>([])
 const selectedWsId = ref<number | null>(null)
 const members = ref<any[]>([])
 const users = ref<any[]>([])
 
-const newWs = ref({ name: '', slug: '', vault_path: '' })
+const newWs = ref<{ tenant_id: number | null; name: string; slug: string; vault_path: string }>({
+  tenant_id: null, name: '', slug: '', vault_path: '',
+})
 const newMember = ref({ subject_id: '', role: 'editor' })
 const newUser = ref({ name: '', email: '', password: '', is_admin: false })
 
@@ -130,65 +139,67 @@ function close() {
   emit('close')
 }
 
+function extractErrorMessage(e: unknown, fallback: string): string {
+  const axiosError = e as { response?: { data?: { message?: string } } }
+  return axiosError.response?.data?.message || fallback
+}
+
+async function fetchTenants() {
+  try {
+    tenants.value = await getTenants()
+    if (tenants.value.length === 1) {
+      newWs.value.tenant_id = tenants.value[0].id
+    }
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to load tenants.')
+  }
+}
+
 async function fetchWorkspaces() {
   try {
-    const res = await fetch('/api/workspaces')
-    if (res.ok) {
-      const json = await res.json()
-      workspaces.value = json.data || []
-      if (workspaces.value.length && !selectedWsId.value) {
-        selectedWsId.value = workspaces.value[0].id
-        fetchMembers()
-      }
+    const response = await api.get<{ data: any[] }>('/workspaces')
+    workspaces.value = response.data.data || []
+    if (workspaces.value.length && !selectedWsId.value) {
+      selectedWsId.value = workspaces.value[0].id
+      fetchMembers()
     }
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to load workspaces.')
   }
 }
 
 async function fetchMembers() {
   if (!selectedWsId.value) return
   try {
-    const res = await fetch(`/api/admin/workspaces/${selectedWsId.value}/members`)
-    if (res.ok) {
-      const json = await res.json()
-      members.value = json.data || []
-    }
-  } catch (e: any) {
-    error.value = e.message
+    const response = await api.get<{ data: any[] }>(`/admin/workspaces/${selectedWsId.value}/members`)
+    members.value = response.data.data || []
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to load members.')
   }
 }
 
 async function fetchUsers() {
   try {
-    const res = await fetch('/api/admin/users')
-    if (res.ok) {
-      const json = await res.json()
-      users.value = json.data || []
-    }
-  } catch (e: any) {
-    error.value = e.message
+    const response = await api.get<{ data: any[] }>('/admin/users')
+    users.value = response.data.data || []
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to load users.')
   }
 }
 
 async function createWorkspace() {
   error.value = ''
+  if (!newWs.value.tenant_id) {
+    error.value = 'Select a tenant.'
+    return
+  }
   loading.value = true
   try {
-    const res = await fetch('/api/admin/workspaces', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newWs.value),
-    })
-    const json = await res.json()
-    if (!res.ok) {
-      error.value = json.message || 'Workspace creation failed.'
-    } else {
-      newWs.value = { name: '', slug: '', vault_path: '' }
-      fetchWorkspaces()
-    }
-  } catch (e: any) {
-    error.value = e.message
+    await api.post('/admin/workspaces', newWs.value)
+    newWs.value = { tenant_id: newWs.value.tenant_id, name: '', slug: '', vault_path: '' }
+    await fetchWorkspaces()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Workspace creation failed.')
   } finally {
     loading.value = false
   }
@@ -198,10 +209,10 @@ async function archiveWorkspace(id: number) {
   if (!confirm('Are you sure you want to archive this workspace? Files will be preserved.')) return
   loading.value = true
   try {
-    await fetch(`/api/admin/workspaces/${id}/archive`, { method: 'POST' })
-    fetchWorkspaces()
-  } catch (e: any) {
-    error.value = e.message
+    await api.post(`/admin/workspaces/${id}/archive`)
+    await fetchWorkspaces()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to archive workspace.')
   } finally {
     loading.value = false
   }
@@ -211,17 +222,11 @@ async function grantMember() {
   if (!selectedWsId.value) return
   loading.value = true
   try {
-    const res = await fetch(`/api/admin/workspaces/${selectedWsId.value}/members`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newMember.value),
-    })
-    if (res.ok) {
-      newMember.value = { subject_id: '', role: 'editor' }
-      fetchMembers()
-    }
-  } catch (e: any) {
-    error.value = e.message
+    await api.post(`/admin/workspaces/${selectedWsId.value}/members`, newMember.value)
+    newMember.value = { subject_id: '', role: 'editor' }
+    await fetchMembers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to grant access.')
   } finally {
     loading.value = false
   }
@@ -231,10 +236,10 @@ async function revokeMember(id: number) {
   if (!selectedWsId.value) return
   loading.value = true
   try {
-    await fetch(`/api/admin/workspaces/${selectedWsId.value}/members/${id}`, { method: 'DELETE' })
-    fetchMembers()
-  } catch (e: any) {
-    error.value = e.message
+    await api.delete(`/admin/workspaces/${selectedWsId.value}/members/${id}`)
+    await fetchMembers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to revoke access.')
   } finally {
     loading.value = false
   }
@@ -243,17 +248,11 @@ async function revokeMember(id: number) {
 async function createUser() {
   loading.value = true
   try {
-    const res = await fetch('/api/admin/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newUser.value),
-    })
-    if (res.ok) {
-      newUser.value = { name: '', email: '', password: '', is_admin: false }
-      fetchUsers()
-    }
-  } catch (e: any) {
-    error.value = e.message
+    await api.post('/admin/users', newUser.value)
+    newUser.value = { name: '', email: '', password: '', is_admin: false }
+    await fetchUsers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to create user.')
   } finally {
     loading.value = false
   }
@@ -262,11 +261,11 @@ async function createUser() {
 async function toggleDeactivate(u: any, deactivate: boolean) {
   loading.value = true
   try {
-    const endpoint = deactivate ? `/api/admin/users/${u.id}/deactivate` : `/api/admin/users/${u.id}/reactivate`
-    await fetch(endpoint, { method: 'POST' })
-    fetchUsers()
-  } catch (e: any) {
-    error.value = e.message
+    const endpoint = deactivate ? `/admin/users/${u.id}/deactivate` : `/admin/users/${u.id}/reactivate`
+    await api.post(endpoint)
+    await fetchUsers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to update user.')
   } finally {
     loading.value = false
   }
@@ -274,6 +273,7 @@ async function toggleDeactivate(u: any, deactivate: boolean) {
 
 watch(() => props.isOpen, (val) => {
   if (val) {
+    fetchTenants()
     fetchWorkspaces()
     fetchUsers()
   }
