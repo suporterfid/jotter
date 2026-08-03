@@ -1266,6 +1266,17 @@ function handleImportSubmit() {
   opacity: 1;
 }
 
+/* Touch devices have no hover state — the action must be visible and a
+   full 44x44 touch target, not a 28px icon hidden behind a hover it can
+   never receive. */
+@media (max-width: 768px) {
+  .btn-delete {
+    opacity: 1;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 .btn-delete:hover {
   color: var(--color-status-danger);
   background: color-mix(in srgb, var(--color-status-danger) 12%, transparent);
@@ -1288,6 +1299,7 @@ function handleImportSubmit() {
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   width: 360px;
+  max-width: 90vw;
   box-shadow: var(--shadow-float);
 }
 
@@ -1400,7 +1412,7 @@ function handleImportSubmit() {
 
 .sidebar-version {
   padding: var(--space-1) var(--space-4) var(--space-2);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
   text-align: center;
 }
