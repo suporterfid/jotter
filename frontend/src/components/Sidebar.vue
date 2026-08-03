@@ -748,6 +748,14 @@ function handleImportSubmit() {
               min-width var(--duration-standard) var(--ease-standard);
 }
 
+/* `.sidebar-expand-btn` below is `position: fixed` specifically so it
+   still works once `.sidebar` clips to zero width here. That only holds
+   because nothing in this ancestor chain sets `transform`/`filter`/
+   `perspective`/`will-change` at this breakpoint (mobile's own
+   `transform: translateX(...)` below is gated to max-width: 768px) —
+   any of those would create a new containing block and trap the fixed
+   button inside the zero-width box. Don't add one here without also
+   reworking the expand button's positioning. */
 @media (min-width: 769px) {
   .sidebar.sidebar-collapsed {
     width: 0;
