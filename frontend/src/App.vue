@@ -161,6 +161,11 @@
       </div>
     </main>
 
+    <!-- Right-drawer mount point (B.10): secondary surfaces (Comments
+         first, more later) teleport their markup here so they slide over
+         the note as an overlay instead of unmounting or pushing it. -->
+    <div id="app-right-drawer"></div>
+
     <!-- Error Banner -->
     <div v-if="errorMessage" class="error-banner" data-testid="error-banner" role="alert">
       <span>{{ errorMessage }}</span>

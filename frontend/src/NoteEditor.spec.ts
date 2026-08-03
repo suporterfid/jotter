@@ -14,7 +14,7 @@ vi.mock('./services/api', () => ({
   }),
 }))
 
-import { setNoteProperty, deleteNoteProperty, addNoteComment } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -210,14 +210,22 @@ describe('NoteEditor empty metadata panels', () => {
     expect(wrapper.find('[aria-label="Unlinked mentions"]').exists()).toBe(false)
   })
 
-  it('still renders Properties and Comments panels when empty, since they have their own creation forms', async () => {
+  it('still renders the Properties panel when empty, since it has its own creation form', async () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote(), allNotes: [], workspaceId: 1 },
     })
     await flushPromises()
 
     expect(wrapper.find('[aria-label="Properties"]').exists()).toBe(true)
-    expect(wrapper.find('[aria-label="Comments"]').exists()).toBe(true)
+  })
+
+  it('does not mount the Comments panel until the comments drawer is opened (#262)', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[aria-label="Comments"]').exists()).toBe(false)
   })
 
   it('renders the Backlinks panel when the note has at least one backlink', async () => {
@@ -716,5 +724,76 @@ describe('NoteEditor selection-triggered comments', () => {
 
     expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+  })
+})
+
+describe('NoteEditor comments drawer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(getNoteComments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([])
+    document.body.insertAdjacentHTML('beforeend', '<div id="app-right-drawer"></div>')
+  })
+
+  afterEach(() => {
+    document.getElementById('app-right-drawer')?.remove()
+  })
+
+  it('does not render the drawer until toggled open', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="comments-drawer"]')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('opens the drawer via the comments toggle button and closes it via the close button', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="comments-drawer-btn"]').trigger('click')
+    expect(document.querySelector('[data-testid="comments-drawer"]')).not.toBeNull()
+
+    ;(document.querySelector('[data-testid="comments-drawer-close-btn"]') as HTMLElement).click()
+    await wrapper.vm.$nextTick()
+    expect(document.querySelector('[data-testid="comments-drawer"]')).toBeNull()
+
+    wrapper.unmount()
+  })
+
+  it('shows a badge with the comment count once comments load', async () => {
+    ;(getNoteComments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 1, actor_name: 'Admin', content: 'hi', anchor_line: null, created_at: '2026-08-03T00:00:00Z' },
+      { id: 2, actor_name: 'Admin', content: 'again', anchor_line: null, created_at: '2026-08-03T00:00:00Z' },
+    ])
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="comments-drawer-btn"]').text()).toContain('2')
+    wrapper.unmount()
+  })
+
+  it('keeps the drawer open when switching to a different note', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="comments-drawer-btn"]').trigger('click')
+    expect(document.querySelector('[data-testid="comments-drawer"]')).not.toBeNull()
+
+    await wrapper.setProps({ note: makeNote({ id: 2, path: 'other.md', content: '# Other' }) })
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="comments-drawer"]')).not.toBeNull()
+    wrapper.unmount()
   })
 })
