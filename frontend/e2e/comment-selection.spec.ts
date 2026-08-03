@@ -48,6 +48,11 @@ test.describe('Selection-triggered comments (#261)', () => {
     await page.click('[data-testid="comment-composer-submit"]')
 
     await expect(page.locator('[data-testid="comment-composer"]')).toBeHidden()
+
+    // The comment list itself now lives in the right-hand comments drawer
+    // (#262), not stacked inline below the editor — open it to verify the
+    // submitted comment landed with its anchor.
+    await page.click('[data-testid="comments-drawer-btn"]')
     const commentItem = page.locator('[data-testid="comment-item"]').first()
     await expect(commentItem).toContainText('Great point here!', { timeout: 10000 })
     await expect(commentItem.locator('.comment-anchor')).toBeVisible()

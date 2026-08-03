@@ -104,6 +104,17 @@
 
         <button
           class="btn-attach"
+          data-testid="comments-drawer-btn"
+          title="Comments"
+          :aria-expanded="isCommentsDrawerOpen"
+          @click="isCommentsDrawerOpen = !isCommentsDrawerOpen"
+        >
+          <span>💬</span>
+          <span v-if="comments.length">{{ comments.length }}</span>
+        </button>
+
+        <button
+          class="btn-attach"
           data-testid="attach-file-btn"
           :disabled="isUploading"
           @click="triggerFileInput"
@@ -313,13 +324,36 @@
       @delete-property="handleDeleteProperty"
     />
 
-    <!-- Comments Panel -->
-    <CommentsPanel
-      :comments="comments"
-      :error-message="commentsError"
-      @add-comment="handleAddComment"
-      @delete-comment="handleDeleteComment"
-    />
+    <!-- Comments Drawer: teleported to the app shell's right-drawer mount
+         point (App.vue) rather than stacked inline below the editor, so
+         it slides over the note as an overlay instead of unmounting or
+         pushing it — the structural mechanism B.10 asks for, with
+         Comments as its first occupant. State/data stay owned here since
+         they're note-scoped; only the DOM location moves. -->
+    <Teleport to="#app-right-drawer">
+      <aside
+        v-if="isCommentsDrawerOpen"
+        class="comments-drawer"
+        data-testid="comments-drawer"
+      >
+        <div class="comments-drawer-header">
+          <h3>Comments</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            data-testid="comments-drawer-close-btn"
+            aria-label="Close comments"
+            @click="isCommentsDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <CommentsPanel
+          :comments="comments"
+          :error-message="commentsError"
+          @add-comment="handleAddComment"
+          @delete-comment="handleDeleteComment"
+        />
+      </aside>
+    </Teleport>
 
     <!-- Backlinks Panel: purely derived/read-only (no creation affordance), so it's safe to
          omit entirely when empty, unlike Properties/Comments above which always need to stay
@@ -569,6 +603,10 @@ const revisionPreviewLoading = ref(false)
 
 const comments = ref<NoteComment[]>([])
 const commentsError = ref<string | null>(null)
+// Deliberately NOT reset on note switch (see the watcher below) — like a
+// sidebar, staying open while browsing between notes is the expected
+// drawer behavior, not per-note ephemeral UI state.
+const isCommentsDrawerOpen = ref(false)
 const unlinkedMentions = ref<UnlinkedMention[]>([])
 const outgoingLinks = ref<OutgoingLink[]>([])
 
@@ -1615,5 +1653,59 @@ onUnmounted(() => {
 
 .stat-item strong {
   color: var(--color-text);
+}
+
+.comments-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(360px, 100vw);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-float);
+  /* Above App.vue's mobile sidebar backdrop (z-index: 30) so the drawer
+     stays reachable if it's opened while the mobile sidebar is up. */
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .comments-drawer {
+    width: 100vw;
+  }
+}
+
+.comments-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.comments-drawer-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.drawer-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.drawer-close-btn:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
 }
 </style>
