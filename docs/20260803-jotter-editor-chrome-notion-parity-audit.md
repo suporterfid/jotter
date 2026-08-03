@@ -160,7 +160,7 @@ there is no `max-width` in `NoteEditor.vue` or `MarkdownPreview.vue`. On a
 
 ### B.4 The title is chrome, and it is read-only
 
-`NoteEditor.vue:55` renders `<h2 class="editor-title">{{ note.title }}</h2>`
+`NoteEditor.vue:55` renders `<h2 class="editor-title">{{ note.title || note.path }}</h2>`
 inside `<header class="editor-bar">`, which carries
 `border-bottom: 1px solid var(--color-border)` (`:764`) and shares its row
 with six controls. A repo-wide grep finds **no rename affordance anywhere
