@@ -176,7 +176,7 @@
           v-model="editableContent"
           data-testid="markdown-textarea"
           class="markdown-textarea"
-          placeholder="Write Markdown here... Type [[ to reference another note."
+          placeholder="Write Markdown here... Type [[ to reference another note, or / to insert a block."
           @input="handleInput"
           @keydown="handleKeyDown"
         ></textarea>
@@ -199,6 +199,16 @@
             <span class="suggestion-path">{{ suggestion.path }}</span>
           </div>
         </div>
+
+        <!-- Slash-command Menu -->
+        <SlashMenu
+          ref="slashMenuRef"
+          :is-open="showSlashMenu"
+          :filter-query="slashMenuQuery"
+          :style="slashMenuStyle"
+          @select="selectSlashBlock"
+          @close="closeSlashMenu"
+        />
       </div>
 
       <!-- Preview Area -->
@@ -301,6 +311,8 @@ import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
 import CoverImageModal from './CoverImageModal.vue'
+import SlashMenu from './SlashMenu.vue'
+import type { BlockDefinition } from '../services/blockRegistry'
 
 const props = defineProps<{
   note: NoteDetail
@@ -487,6 +499,13 @@ const autocompleteStartIndex = ref(-1)
 const selectedSuggestionIndex = ref(0)
 const autocompleteStyle = ref({ top: '40px', left: '20px' })
 
+// Slash-command menu state, mirroring the wikilink autocomplete above.
+const showSlashMenu = ref(false)
+const slashMenuQuery = ref('')
+const slashMenuStartIndex = ref(-1)
+const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null)
+const slashMenuStyle = ref({ top: '40px', left: '20px' })
+
 // `note` is replaced with a new object reference not just when the user
 // switches notes, but also every time our own autosave round-trips
 // (handleUpdateNote -> refreshNotesList reloads the same note). Comparing
@@ -657,6 +676,7 @@ function handleInput() {
     const textAfterBracket = textBeforeCursor.substring(lastDoubleBracket + 2)
     // Check if there is a closing bracket or newline in between
     if (!textAfterBracket.includes(']]') && !textAfterBracket.includes('\n')) {
+      showSlashMenu.value = false
       showAutocomplete.value = true
       autocompleteQuery.value = textAfterBracket
       autocompleteStartIndex.value = lastDoubleBracket
@@ -666,9 +686,35 @@ function handleInput() {
   }
 
   showAutocomplete.value = false
+
+  // Look backwards for a slash-command trigger: "/" at the start of the
+  // line or right after a space, mirroring the [[ wikilink trigger above.
+  const lastSlash = textBeforeCursor.lastIndexOf('/')
+  if (lastSlash !== -1) {
+    const charBeforeSlash = textBeforeCursor[lastSlash - 1]
+    const isTriggerPosition = lastSlash === 0 || charBeforeSlash === '\n' || charBeforeSlash === ' '
+    if (isTriggerPosition) {
+      const textAfterSlash = textBeforeCursor.substring(lastSlash + 1)
+      // Check the query so far doesn't contain a space or newline (menu
+      // would no longer make sense as a live filter at that point)
+      if (!textAfterSlash.includes(' ') && !textAfterSlash.includes('\n')) {
+        showSlashMenu.value = true
+        slashMenuQuery.value = textAfterSlash
+        slashMenuStartIndex.value = lastSlash
+        return
+      }
+    }
+  }
+
+  showSlashMenu.value = false
 }
 
 function handleKeyDown(event: KeyboardEvent) {
+  if (showSlashMenu.value) {
+    slashMenuRef.value?.handleKeyDown(event)
+    return
+  }
+
   if (!showAutocomplete.value || autocompleteSuggestions.value.length === 0) {
     // Ctrl+S / Cmd+S save shortcut
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
@@ -712,6 +758,29 @@ function selectSuggestion(suggestion: NoteMeta) {
     const newCursorPos = start + insertText.length
     el.setSelectionRange(newCursorPos, newCursorPos)
   })
+}
+
+function selectSlashBlock(block: BlockDefinition) {
+  const el = textareaRef.value
+  if (!el) return
+
+  const text = editableContent.value
+  const start = slashMenuStartIndex.value
+  const cursorPos = el.selectionStart
+
+  const insertText = block.syntax
+  editableContent.value = text.substring(0, start) + insertText + text.substring(cursorPos)
+  showSlashMenu.value = false
+
+  nextTick(() => {
+    el.focus()
+    const newCursorPos = start + insertText.length
+    el.setSelectionRange(newCursorPos, newCursorPos)
+  })
+}
+
+function closeSlashMenu() {
+  showSlashMenu.value = false
 }
 
 async function openHistory() {

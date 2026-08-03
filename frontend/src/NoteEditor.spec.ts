@@ -388,3 +388,78 @@ describe('NoteEditor stats popover', () => {
     expect(wrapper.find('[data-testid="save-note-btn"]').exists()).toBe(false)
   })
 })
+
+describe('NoteEditor slash-command menu', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function typeAndPosition(el: HTMLTextAreaElement, value: string, cursorPos: number) {
+    el.value = value
+    el.selectionStart = cursorPos
+    el.selectionEnd = cursorPos
+  }
+
+  it('opens the slash menu when typing "/" at the start of a line', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, '/', 1)
+    await textarea.trigger('input')
+
+    expect(wrapper.text()).toContain('Insert Block')
+    expect(wrapper.text()).toContain('To-do List')
+  })
+
+  it('does not open the slash menu for a "/" in the middle of a word', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, 'a/b', 3)
+    await textarea.trigger('input')
+
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('inserts the selected block\'s syntax at the trigger position and closes the menu', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    typeAndPosition(el, '/', 1)
+    await textarea.trigger('input')
+
+    await wrapper.find('.slash-menu-item').trigger('click')
+
+    expect(el.value).toBe('- [ ] Task item')
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('closes the slash menu on Escape', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, '/', 1)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Insert Block')
+
+    await textarea.trigger('keydown', { key: 'Escape' })
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('filters blocks by query typed after the "/"', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, '/code', 5)
+    await textarea.trigger('input')
+
+    expect(wrapper.text()).toContain('Code Block')
+    expect(wrapper.text()).not.toContain('To-do List')
+  })
+})
