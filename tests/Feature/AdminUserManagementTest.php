@@ -125,5 +125,11 @@ class AdminUserManagementTest extends TestCase
             'password' => 'Password123!',
         ]);
         $res->assertStatus(400);
+
+        $changeRes = $this->actingAs($admin)->postJson('/api/auth/change-password', [
+            'current_password' => 'whatever',
+            'new_password' => 'Password123!',
+        ]);
+        $changeRes->assertStatus(400);
     }
 }

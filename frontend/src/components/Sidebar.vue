@@ -1,5 +1,21 @@
 <template>
-  <aside class="sidebar" :class="{ 'mobile-open': isMobileSidebarOpen }">
+  <aside class="sidebar" :class="{ 'mobile-open': isMobileSidebarOpen, 'sidebar-collapsed': sidebarCollapsed }">
+    <!-- Floating expand affordance: only reachable/visible once the
+         sidebar itself has collapsed to zero width, and only above the
+         mobile breakpoint (mobile has its own hamburger toggle). -->
+    <button
+      v-if="sidebarCollapsed"
+      type="button"
+      class="sidebar-expand-btn"
+      aria-label="Expand sidebar"
+      data-testid="sidebar-expand-btn"
+      @click="toggleSidebarCollapsed"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
+
     <!-- Header -->
     <div class="sidebar-header">
       <div class="brand">
@@ -218,6 +234,30 @@
               </svg>
               <span>Calendar View</span>
             </button>
+            <button
+              class="more-menu-item"
+              data-testid="sidebar-collapse-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(toggleSidebarCollapsed)"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              <span>Collapse Sidebar</span>
+            </button>
+            <button
+              v-if="currentUser?.is_admin"
+              class="more-menu-item"
+              data-testid="admin-panel-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-admin-panel'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <span>Admin Panel</span>
+            </button>
           </div>
         </div>
         <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
@@ -371,6 +411,18 @@
       </div>
       <div class="sidebar-footer-actions">
         <ThemeToggle />
+        <button
+          v-if="authProvider === 'local'"
+          class="btn-icon"
+          data-testid="change-password-btn"
+          title="Change Password"
+          @click="$emit('open-change-password')"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </button>
         <button class="btn-logout" data-testid="logout-btn" title="Sign Out" @click="$emit('logout')">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -404,6 +456,7 @@ import WorkspaceSwitcher from './WorkspaceSwitcher.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
 import { moveNote, reorderNoteTree } from '../services/api'
 import { createNoteTreeSortable, type NoteTreeSortableHandle } from '../composables/useNoteTreeSortable'
+import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 
 const props = defineProps<{
   notes: NoteMeta[]
@@ -419,6 +472,7 @@ const props = defineProps<{
   backendVersion?: string | null
   tenants?: Tenant[]
   activeTenantId?: number | null
+  authProvider?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -444,7 +498,17 @@ const emit = defineEmits<{
   (e: 'create-note-in-folder', folderPath: string): void
   (e: 'switch-workspace', workspaceId: number): void
   (e: 'switch-tenant', tenantId: number): void
+  (e: 'toggle-admin-panel'): void
+  (e: 'open-change-password'): void
 }>()
+
+// Desktop sidebar collapse (#259): hands the full window to the page,
+// matching Notion's `«` collapse. Self-contained in this component — the
+// expand button below is `position: fixed`, so it stays reachable even
+// when the sidebar's own width collapses to 0. Mobile's existing
+// transform-based drawer (`.mobile-open`) is untouched; this is scoped to
+// desktop widths only.
+const { collapsed: sidebarCollapsed, toggle: toggleSidebarCollapsed } = useCollapsiblePanel('sidebar-desktop', false)
 
 const searchQuery = ref('')
 const activeTag = ref<string | null>(null)
@@ -708,6 +772,55 @@ function handleImportSubmit() {
   display: flex;
   flex-direction: column;
   height: 100%;
+  transition: width var(--duration-standard) var(--ease-standard),
+              min-width var(--duration-standard) var(--ease-standard);
+}
+
+/* `.sidebar-expand-btn` below is `position: fixed` specifically so it
+   still works once `.sidebar` clips to zero width here. That only holds
+   because nothing in this ancestor chain sets `transform`/`filter`/
+   `perspective`/`will-change` at this breakpoint (mobile's own
+   `transform: translateX(...)` below is gated to max-width: 768px) —
+   any of those would create a new containing block and trap the fixed
+   button inside the zero-width box. Don't add one here without also
+   reworking the expand button's positioning. */
+@media (min-width: 769px) {
+  .sidebar.sidebar-collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+    overflow: hidden;
+  }
+}
+
+.sidebar-expand-btn {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
+}
+
+.sidebar-expand-btn:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+@media (max-width: 768px) {
+  .sidebar-expand-btn {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {

@@ -9,9 +9,12 @@ vi.mock('./services/api', () => ({
   getOutgoingLinks: vi.fn().mockResolvedValue([]),
   setNoteProperty: vi.fn().mockResolvedValue({}),
   deleteNoteProperty: vi.fn().mockResolvedValue({}),
+  addNoteComment: vi.fn().mockResolvedValue({
+    id: 1, actor_name: 'Admin', content: 'placeholder', anchor_line: null, created_at: '2026-08-03T00:00:00Z',
+  }),
 }))
 
-import { setNoteProperty, deleteNoteProperty } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -207,14 +210,22 @@ describe('NoteEditor empty metadata panels', () => {
     expect(wrapper.find('[aria-label="Unlinked mentions"]').exists()).toBe(false)
   })
 
-  it('still renders Properties and Comments panels when empty, since they have their own creation forms', async () => {
+  it('still renders the Properties panel when empty, since it has its own creation form', async () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote(), allNotes: [], workspaceId: 1 },
     })
     await flushPromises()
 
     expect(wrapper.find('[aria-label="Properties"]').exists()).toBe(true)
-    expect(wrapper.find('[aria-label="Comments"]').exists()).toBe(true)
+  })
+
+  it('does not mount the Comments panel until the comments drawer is opened (#262)', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[aria-label="Comments"]').exists()).toBe(false)
   })
 
   it('renders the Backlinks panel when the note has at least one backlink', async () => {
@@ -386,5 +397,403 @@ describe('NoteEditor stats popover', () => {
 
     expect(wrapper.find('.editor-status-bar').exists()).toBe(false)
     expect(wrapper.find('[data-testid="save-note-btn"]').exists()).toBe(false)
+  })
+})
+
+describe('NoteEditor slash-command menu', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function typeAndPosition(el: HTMLTextAreaElement, value: string, cursorPos: number) {
+    el.value = value
+    el.selectionStart = cursorPos
+    el.selectionEnd = cursorPos
+  }
+
+  it('opens the slash menu when typing "/" at the start of a line', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, '/', 1)
+    await textarea.trigger('input')
+
+    expect(wrapper.text()).toContain('Insert Block')
+    expect(wrapper.text()).toContain('To-do List')
+  })
+
+  it('does not open the slash menu for a "/" in the middle of a word', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, 'a/b', 3)
+    await textarea.trigger('input')
+
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('inserts the selected block\'s syntax at the trigger position and closes the menu', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    typeAndPosition(el, '/', 1)
+    await textarea.trigger('input')
+
+    await wrapper.find('.slash-menu-item').trigger('click')
+
+    expect(el.value).toBe('- [ ] Task item')
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('closes the slash menu on Escape', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, '/', 1)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Insert Block')
+
+    await textarea.trigger('keydown', { key: 'Escape' })
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('filters blocks by query typed after the "/"', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    typeAndPosition(textarea.element as HTMLTextAreaElement, '/code', 5)
+    await textarea.trigger('input')
+
+    expect(wrapper.text()).toContain('Code Block')
+    expect(wrapper.text()).not.toContain('To-do List')
+  })
+
+  it('opens the slash menu for "/" right after a space or a newline', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+
+    typeAndPosition(el, 'hello /code', 11)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Code Block')
+
+    typeAndPosition(el, 'hello\n/code', 11)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Code Block')
+  })
+
+  it('closes the slash menu once a wikilink trigger takes over', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+
+    typeAndPosition(el, '/', 1)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Insert Block')
+
+    typeAndPosition(el, '[[', 2)
+    await textarea.trigger('input')
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('inserts a multi-line block syntax verbatim and places the cursor at its end', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    typeAndPosition(el, '/code', 5)
+    await textarea.trigger('input')
+
+    await wrapper.find('.slash-menu-item').trigger('click')
+    await flushPromises()
+
+    const expectedSyntax = '```js\ncode\n```'
+    expect(el.value).toBe(expectedSyntax)
+    expect(el.selectionStart).toBe(expectedSyntax.length)
+    expect(el.selectionEnd).toBe(expectedSyntax.length)
+  })
+})
+
+describe('NoteEditor editable page title', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('renders the title as an editable field pre-filled with note.title', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    expect(titleField.element.tagName).toBe('TEXTAREA')
+    expect((titleField.element as HTMLTextAreaElement).value).toBe('Test Note')
+  })
+
+  it('persists a typed title to frontmatter.title after the debounce, without touching body content', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    await titleField.setValue('Renamed Title')
+
+    expect(setNoteProperty).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+
+    expect(setNoteProperty).toHaveBeenCalledWith(1, 1, 'title', 'Renamed Title')
+    expect((wrapper.find('[data-testid="markdown-textarea"]').element as HTMLTextAreaElement).value).toBe('# Test Note')
+  })
+
+  it('deletes the title property when cleared to empty', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    await titleField.setValue('')
+
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+
+    expect(deleteNoteProperty).toHaveBeenCalledWith(1, 1, 'title')
+  })
+
+  it('moves focus to the content editor on Enter instead of inserting a newline', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    await titleField.trigger('keydown', { key: 'Enter' })
+
+    expect(document.activeElement).toBe(wrapper.find('[data-testid="markdown-textarea"]').element)
+    wrapper.unmount()
+  })
+
+  it('resets the title field when switching to a different note', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await wrapper.find('[data-testid="editor-title"]').setValue('Mid-edit draft')
+
+    await wrapper.setProps({
+      note: makeNote({ id: 2, path: 'other.md', title: 'Other Note', content: '# Other' }),
+    })
+
+    expect((wrapper.find('[data-testid="editor-title"]').element as HTMLTextAreaElement).value).toBe('Other Note')
+  })
+})
+
+describe('NoteEditor selection-triggered comments', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function selectRange(el: HTMLTextAreaElement, start: number, end: number) {
+    el.selectionStart = start
+    el.selectionEnd = end
+  }
+
+  it('shows the comment trigger button after selecting text', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two\nline three' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    selectRange(textarea.element as HTMLTextAreaElement, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(true)
+  })
+
+  it('does not show the trigger button when the mouseup leaves no selection', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    selectRange(textarea.element as HTMLTextAreaElement, 3, 3)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+  })
+
+  it('opens the composer when the trigger is clicked, and hides the trigger', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    selectRange(textarea.element as HTMLTextAreaElement, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+  })
+
+  it('closes the composer on Escape without submitting', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    selectRange(textarea.element as HTMLTextAreaElement, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+    await wrapper.find('[data-testid="comment-composer-textarea"]').setValue('a draft')
+    await wrapper.find('[data-testid="comment-composer-textarea"]').trigger('keydown.escape')
+
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(false)
+    expect(addNoteComment).not.toHaveBeenCalled()
+  })
+
+  it('submits the selection comment anchored to the line the selection starts on', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two\nline three' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    // Selection starts at index 9, which is the first character of "line two"
+    // (line one\n = 9 chars) -> anchor line 2.
+    selectRange(textarea.element as HTMLTextAreaElement, 9, 13)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+    await wrapper.find('[data-testid="comment-composer-textarea"]').setValue('Nice line')
+    await wrapper.find('[data-testid="comment-composer-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(addNoteComment).toHaveBeenCalledWith(1, 1, 'Nice line', 2)
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(false)
+  })
+
+  it('hides the trigger button once the user resumes typing', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    selectRange(el, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(true)
+
+    el.value = 'changed\nline two'
+    await textarea.trigger('input')
+
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+  })
+
+  it('closes an open composer once the user resumes typing', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    selectRange(el, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(true)
+
+    el.value = 'changed\nline two'
+    await textarea.trigger('input')
+
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(false)
+  })
+
+  it('clears the trigger and composer when switching to a different note', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    selectRange(textarea.element as HTMLTextAreaElement, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(true)
+
+    await wrapper.setProps({ note: makeNote({ id: 2, path: 'other.md', content: '# Other' }) })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+  })
+})
+
+describe('NoteEditor comments drawer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(getNoteComments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([])
+    document.body.insertAdjacentHTML('beforeend', '<div id="app-right-drawer"></div>')
+  })
+
+  afterEach(() => {
+    document.getElementById('app-right-drawer')?.remove()
+  })
+
+  it('does not render the drawer until toggled open', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="comments-drawer"]')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('opens the drawer via the comments toggle button and closes it via the close button', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="comments-drawer-btn"]').trigger('click')
+    expect(document.querySelector('[data-testid="comments-drawer"]')).not.toBeNull()
+
+    ;(document.querySelector('[data-testid="comments-drawer-close-btn"]') as HTMLElement).click()
+    await wrapper.vm.$nextTick()
+    expect(document.querySelector('[data-testid="comments-drawer"]')).toBeNull()
+
+    wrapper.unmount()
+  })
+
+  it('shows a badge with the comment count once comments load', async () => {
+    ;(getNoteComments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 1, actor_name: 'Admin', content: 'hi', anchor_line: null, created_at: '2026-08-03T00:00:00Z' },
+      { id: 2, actor_name: 'Admin', content: 'again', anchor_line: null, created_at: '2026-08-03T00:00:00Z' },
+    ])
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="comments-drawer-btn"]').text()).toContain('2')
+    wrapper.unmount()
+  })
+
+  it('keeps the drawer open when switching to a different note', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="comments-drawer-btn"]').trigger('click')
+    expect(document.querySelector('[data-testid="comments-drawer"]')).not.toBeNull()
+
+    await wrapper.setProps({ note: makeNote({ id: 2, path: 'other.md', content: '# Other' }) })
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="comments-drawer"]')).not.toBeNull()
+    wrapper.unmount()
   })
 })

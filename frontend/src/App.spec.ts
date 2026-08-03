@@ -144,6 +144,18 @@ describe('App workspace switching and persistence', () => {
     expect(wrapper.findComponent({ name: 'Sidebar' }).props('backendVersion')).toBe('abc1234 · 2026-08-01 16:30')
     expect(wrapper.findComponent({ name: 'Sidebar' }).props('frontendVersion')).toBe('dev')
   })
+
+  it('passes the auth provider down to Sidebar and opens the Change Password modal on request', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('authProvider')).toBe('local')
+    expect(wrapper.findComponent({ name: 'ChangePasswordModal' }).exists()).toBe(false)
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('open-change-password')
+
+    expect(wrapper.findComponent({ name: 'ChangePasswordModal' }).exists()).toBe(true)
+  })
 })
 
 describe('App tenant switching and persistence', () => {

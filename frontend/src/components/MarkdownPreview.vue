@@ -63,6 +63,10 @@ function handleCheckboxChange(event: Event) {
 
 <style scoped>
 .markdown-preview {
+  /* Centered reading column (Notion-style ~640-760px page), not full pane
+     width — see docs/visual-identity.md §11, previously an open item. */
+  max-width: 760px;
+  margin: 0 auto;
   padding: 1.5rem;
   overflow-y: auto;
   color: var(--color-text);

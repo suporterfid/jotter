@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import Sidebar from './components/Sidebar.vue'
 import type { NoteMeta, FolderPosition, Workspace } from './services/types'
 
@@ -204,5 +204,106 @@ describe('Sidebar version footer', () => {
       props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'abc1234 · 2026-08-01 16:30' },
     })
     expect(wrapper.find('[data-testid="app-version-mismatch"]').exists()).toBe(false)
+  })
+})
+
+describe('Sidebar desktop collapse', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('is expanded by default (not collapsed) on first mount', () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+    expect(wrapper.find('.sidebar').classes()).not.toContain('sidebar-collapsed')
+    expect(wrapper.find('[data-testid="sidebar-expand-btn"]').exists()).toBe(false)
+  })
+
+  it('collapses via the More actions menu, and shows the expand button instead', async () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
+    await wrapper.find('[data-testid="sidebar-collapse-btn"]').trigger('click')
+
+    expect(wrapper.find('.sidebar').classes()).toContain('sidebar-collapsed')
+    expect(wrapper.find('[data-testid="sidebar-expand-btn"]').exists()).toBe(true)
+  })
+
+  it('re-expands when the expand button is clicked', async () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
+    await wrapper.find('[data-testid="sidebar-collapse-btn"]').trigger('click')
+    await wrapper.find('[data-testid="sidebar-expand-btn"]').trigger('click')
+
+    expect(wrapper.find('.sidebar').classes()).not.toContain('sidebar-collapsed')
+    expect(wrapper.find('[data-testid="sidebar-expand-btn"]').exists()).toBe(false)
+  })
+
+  it('persists the collapsed state across remounts via localStorage', async () => {
+    const wrapperA = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+    await wrapperA.find('[data-testid="more-actions-btn"]').trigger('click')
+    await wrapperA.find('[data-testid="sidebar-collapse-btn"]').trigger('click')
+    wrapperA.unmount()
+
+    const wrapperB = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+    expect(wrapperB.find('.sidebar').classes()).toContain('sidebar-collapsed')
+  })
+})
+
+describe('Sidebar admin panel entry', () => {
+  it('does not show the Admin Panel menu item for a non-admin user', async () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+      },
+    })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="admin-panel-btn"]').exists()).toBe(false)
+  })
+
+  it('shows the Admin Panel menu item and emits toggle-admin-panel for an admin user', async () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: true },
+      },
+    })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-panel-btn"]').trigger('click')
+    expect(wrapper.emitted('toggle-admin-panel')).toBeTruthy()
+  })
+})
+
+describe('Sidebar change password entry', () => {
+  it('hides the Change Password button for a non-local auth provider', () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+        authProvider: 'grandpasson',
+      },
+    })
+    expect(wrapper.find('[data-testid="change-password-btn"]').exists()).toBe(false)
+  })
+
+  it('shows the Change Password button and emits open-change-password for the local provider', async () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+        authProvider: 'local',
+      },
+    })
+    await wrapper.find('[data-testid="change-password-btn"]').trigger('click')
+    expect(wrapper.emitted('open-change-password')).toBeTruthy()
   })
 })

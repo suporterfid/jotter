@@ -3,7 +3,7 @@ import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, A
 
 axios.defaults.withCredentials = true
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: '/api',
   headers: {
     'Accept': 'application/json',
@@ -42,6 +42,17 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 
 export async function logout(): Promise<void> {
   await api.post('/auth/logout')
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await api.post('/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  })
+}
+
+export async function adminResetPassword(userId: number, newPassword: string): Promise<void> {
+  await api.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
 }
 
 export async function getMe(): Promise<AuthUser | null> {

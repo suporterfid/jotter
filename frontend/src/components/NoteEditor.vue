@@ -26,51 +26,24 @@
         @click="isEditingCover = true"
       >Add cover</button>
 
-      <!-- Top Action Bar -->
+      <!-- Thin utility bar: breadcrumb + quiet actions only. The page
+           title used to live here sharing a row with these controls and
+           carrying a border-bottom — chrome treatment for what is really
+           page content (#257). It now lives in its own block below,
+           inside the scrolling canvas. -->
       <header class="editor-bar">
-      <div class="note-meta-info">
-        <div class="editor-title-row">
+      <span class="editor-path" data-testid="editor-path">
+        <template v-for="folder in breadcrumbSegments.folders" :key="folder.path">
           <button
-            v-if="!isEditingIcon"
             type="button"
-            class="editor-icon-btn"
-            :aria-label="noteIcon ? 'Change page icon' : 'Set page icon'"
-            data-testid="editor-icon-btn"
-            @click="startEditingIcon"
-          >
-            <span v-if="noteIcon" data-testid="editor-icon-emoji">{{ noteIcon }}</span>
-            <svg v-else data-testid="editor-icon-fallback" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            <span v-if="noteIcon" class="editor-icon-clear" data-testid="editor-icon-clear" @click.stop="clearIcon">&times;</span>
-          </button>
-          <input
-            v-else
-            v-model="iconDraft"
-            type="text"
-            class="editor-icon-input"
-            data-testid="editor-icon-input"
-            autofocus
-            @keydown.enter="confirmEditingIcon"
-            @keydown.escape="cancelEditingIcon"
-            @blur="confirmEditingIcon"
-          />
-          <h2 class="editor-title" data-testid="editor-title">{{ note.title || note.path }}</h2>
-        </div>
-        <span class="editor-path" data-testid="editor-path">
-          <template v-for="folder in breadcrumbSegments.folders" :key="folder.path">
-            <button
-              type="button"
-              class="editor-path-segment"
-              data-testid="editor-path-segment"
-              @click="emit('reveal-folder', folder.path)"
-            >{{ folder.name }}</button>
-            <span class="editor-path-separator">/</span>
-          </template>
-          <span data-testid="editor-path-filename">{{ breadcrumbSegments.fileName }}</span>
-        </span>
-      </div>
+            class="editor-path-segment"
+            data-testid="editor-path-segment"
+            @click="emit('reveal-folder', folder.path)"
+          >{{ folder.name }}</button>
+          <span class="editor-path-separator">/</span>
+        </template>
+        <span data-testid="editor-path-filename">{{ breadcrumbSegments.fileName }}</span>
+      </span>
 
       <div class="editor-controls">
         <!-- View Mode Switcher -->
@@ -131,6 +104,17 @@
 
         <button
           class="btn-attach"
+          data-testid="comments-drawer-btn"
+          title="Comments"
+          :aria-expanded="isCommentsDrawerOpen"
+          @click="isCommentsDrawerOpen = !isCommentsDrawerOpen"
+        >
+          <span>💬</span>
+          <span v-if="comments.length">{{ comments.length }}</span>
+        </button>
+
+        <button
+          class="btn-attach"
           data-testid="attach-file-btn"
           :disabled="isUploading"
           @click="triggerFileInput"
@@ -162,9 +146,55 @@
     </header>
     </div>
 
+    <!-- Page Title: real content, not chrome (#257) — icon + editable
+         title sit directly in the scrolling canvas, below the cover and
+         thin utility bar, matching how a Notion page title behaves.
+         Persists to frontmatter.title (excluded from the generic
+         Properties list, same as icon/cover) on a short debounce, same
+         pattern as the body's own autosave. -->
+    <div class="editor-page-title">
+      <button
+        v-if="!isEditingIcon"
+        type="button"
+        class="editor-icon-btn"
+        :aria-label="noteIcon ? 'Change page icon' : 'Set page icon'"
+        data-testid="editor-icon-btn"
+        @click="startEditingIcon"
+      >
+        <span v-if="noteIcon" data-testid="editor-icon-emoji">{{ noteIcon }}</span>
+        <svg v-else data-testid="editor-icon-fallback" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <span v-if="noteIcon" class="editor-icon-clear" data-testid="editor-icon-clear" @click.stop="clearIcon">&times;</span>
+      </button>
+      <input
+        v-else
+        v-model="iconDraft"
+        type="text"
+        class="editor-icon-input"
+        data-testid="editor-icon-input"
+        autofocus
+        @keydown.enter="confirmEditingIcon"
+        @keydown.escape="cancelEditingIcon"
+        @blur="confirmEditingIcon"
+      />
+      <textarea
+        ref="titleTextareaRef"
+        v-model="titleDraft"
+        class="editor-title-input"
+        data-testid="editor-title"
+        rows="1"
+        placeholder="Untitled"
+        @input="handleTitleInput"
+        @blur="saveTitle"
+        @keydown.enter.prevent="focusContentFromTitle"
+      ></textarea>
+    </div>
+
     <!-- Main Editor Content Area -->
-    <div 
-      class="editor-body" 
+    <div
+      class="editor-body"
       :class="`view-${viewMode}`"
       @dragover.prevent="handleDragOver"
       @dragenter.prevent="handleDragOver"
@@ -176,10 +206,59 @@
           v-model="editableContent"
           data-testid="markdown-textarea"
           class="markdown-textarea"
-          placeholder="Write Markdown here... Type [[ to reference another note."
+          placeholder="Write Markdown here... Type [[ to reference another note, or / to insert a block."
           @input="handleInput"
           @keydown="handleKeyDown"
+          @mouseup="handleTextSelection"
         ></textarea>
+
+        <!-- Selection-triggered Comment affordance: a small floating
+             button appears near where the mouse was released after
+             selecting text, matching how Notion/Google Docs anchor
+             commenting to a selection instead of only offering a
+             global comment form at the bottom of the page. Positioned
+             from the mouseup event's own coordinates (a plain textarea
+             has no per-character DOM Range API to measure exact caret
+             position from, unlike a contenteditable surface) — so this
+             is mouse-selection-driven only, not keyboard (shift+arrow)
+             selection. -->
+        <button
+          v-if="showCommentTrigger"
+          type="button"
+          class="comment-trigger-btn"
+          data-testid="comment-trigger-btn"
+          :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
+          @mousedown.prevent="openCommentComposer"
+        >
+          💬 Comment
+        </button>
+
+        <div
+          v-if="showCommentComposer"
+          class="comment-composer"
+          data-testid="comment-composer"
+          :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
+        >
+          <textarea
+            v-model="commentComposerDraft"
+            class="comment-composer-textarea"
+            placeholder="Comment on selection..."
+            data-testid="comment-composer-textarea"
+            rows="2"
+            autofocus
+            @keydown.escape="closeCommentComposer"
+          ></textarea>
+          <div class="comment-composer-actions">
+            <button type="button" class="btn-comment-cancel" data-testid="comment-composer-cancel" @click="closeCommentComposer">Cancel</button>
+            <button
+              type="button"
+              class="btn-comment-submit"
+              data-testid="comment-composer-submit"
+              :disabled="!commentComposerDraft.trim()"
+              @click="submitSelectionComment"
+            >Comment</button>
+          </div>
+        </div>
 
         <!-- Wikilink Autocomplete Dropdown -->
         <div 
@@ -199,6 +278,16 @@
             <span class="suggestion-path">{{ suggestion.path }}</span>
           </div>
         </div>
+
+        <!-- Slash-command Menu -->
+        <SlashMenu
+          ref="slashMenuRef"
+          :is-open="showSlashMenu"
+          :filter-query="slashMenuQuery"
+          :style="slashMenuStyle"
+          @select="selectSlashBlock"
+          @close="closeSlashMenu"
+        />
       </div>
 
       <!-- Preview Area -->
@@ -231,17 +320,41 @@
     <!-- Properties Panel -->
     <PropertiesPanel
       :properties="note.properties || []"
+      :workspace-id="workspaceId"
       @add-property="handleAddProperty"
       @delete-property="handleDeleteProperty"
     />
 
-    <!-- Comments Panel -->
-    <CommentsPanel
-      :comments="comments"
-      :error-message="commentsError"
-      @add-comment="handleAddComment"
-      @delete-comment="handleDeleteComment"
-    />
+    <!-- Comments Drawer: teleported to the app shell's right-drawer mount
+         point (App.vue) rather than stacked inline below the editor, so
+         it slides over the note as an overlay instead of unmounting or
+         pushing it — the structural mechanism B.10 asks for, with
+         Comments as its first occupant. State/data stay owned here since
+         they're note-scoped; only the DOM location moves. -->
+    <Teleport to="#app-right-drawer">
+      <aside
+        v-if="isCommentsDrawerOpen"
+        class="comments-drawer"
+        data-testid="comments-drawer"
+      >
+        <div class="comments-drawer-header">
+          <h3>Comments</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            data-testid="comments-drawer-close-btn"
+            aria-label="Close comments"
+            @click="isCommentsDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <CommentsPanel
+          :comments="comments"
+          :error-message="commentsError"
+          @add-comment="handleAddComment"
+          @delete-comment="handleDeleteComment"
+        />
+      </aside>
+    </Teleport>
 
     <!-- Backlinks Panel: purely derived/read-only (no creation affordance), so it's safe to
          omit entirely when empty, unlike Properties/Comments above which always need to stay
@@ -283,7 +396,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
+import { ref, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention, OutgoingLink } from '../services/types'
 import {
   uploadAttachment,
@@ -301,6 +414,8 @@ import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
 import CoverImageModal from './CoverImageModal.vue'
+import SlashMenu from './SlashMenu.vue'
+import type { BlockDefinition } from '../services/blockRegistry'
 
 const props = defineProps<{
   note: NoteDetail
@@ -350,6 +465,59 @@ async function clearCover() {
     console.error('Failed to clear cover image:', err)
   }
 }
+
+// Title is real page content (#257), not read-only chrome: `titleDraft` is
+// bound live to an editable field and persisted to frontmatter.title (same
+// channel as icon/cover above — excluded from the generic Properties list
+// server-side) on a short debounce, mirroring the body's own autosave.
+// `note.title` already encodes the server's frontmatter > first-heading >
+// filename precedence (MarkdownDocument::resolveTitle), so it's the correct
+// initial/reset value without reimplementing that precedence here.
+const titleDraft = ref(props.note.title)
+const titleTextareaRef = ref<HTMLTextAreaElement | null>(null)
+const TITLE_SAVE_DEBOUNCE_MS = 1000
+let titleSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+function autosizeTitle() {
+  nextTick(() => {
+    const el = titleTextareaRef.value
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  })
+}
+
+function handleTitleInput() {
+  if (titleSaveTimer) clearTimeout(titleSaveTimer)
+  titleSaveTimer = setTimeout(saveTitle, TITLE_SAVE_DEBOUNCE_MS)
+  autosizeTitle()
+}
+
+async function saveTitle() {
+  if (titleSaveTimer) {
+    clearTimeout(titleSaveTimer)
+    titleSaveTimer = null
+  }
+  if (!props.workspaceId) return
+  const trimmed = titleDraft.value.trim()
+  if (trimmed === props.note.title) return
+  try {
+    if (trimmed === '') {
+      await deleteNoteProperty(props.workspaceId, props.note.id, 'title')
+    } else {
+      await setNoteProperty(props.workspaceId, props.note.id, 'title', trimmed)
+    }
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to update note title:', err)
+  }
+}
+
+function focusContentFromTitle() {
+  textareaRef.value?.focus()
+}
+
+onMounted(autosizeTitle)
 
 const breadcrumbSegments = computed(() => {
   const parts = props.note.path.split('/')
@@ -436,8 +604,19 @@ const revisionPreviewLoading = ref(false)
 
 const comments = ref<NoteComment[]>([])
 const commentsError = ref<string | null>(null)
+// Deliberately NOT reset on note switch (see the watcher below) — like a
+// sidebar, staying open while browsing between notes is the expected
+// drawer behavior, not per-note ephemeral UI state.
+const isCommentsDrawerOpen = ref(false)
 const unlinkedMentions = ref<UnlinkedMention[]>([])
 const outgoingLinks = ref<OutgoingLink[]>([])
+
+// Selection-triggered comment popover (#261)
+const showCommentTrigger = ref(false)
+const showCommentComposer = ref(false)
+const commentComposerDraft = ref('')
+const commentTriggerPos = ref({ top: 0, left: 0 })
+const pendingCommentAnchorLine = ref<number | null>(null)
 
 // Live Statistics
 const charCount = computed(() => editableContent.value.length)
@@ -487,6 +666,13 @@ const autocompleteStartIndex = ref(-1)
 const selectedSuggestionIndex = ref(0)
 const autocompleteStyle = ref({ top: '40px', left: '20px' })
 
+// Slash-command menu state, mirroring the wikilink autocomplete above.
+const showSlashMenu = ref(false)
+const slashMenuQuery = ref('')
+const slashMenuStartIndex = ref(-1)
+const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null)
+const slashMenuStyle = ref({ top: '40px', left: '20px' })
+
 // `note` is replaced with a new object reference not just when the user
 // switches notes, but also every time our own autosave round-trips
 // (handleUpdateNote -> refreshNotesList reloads the same note). Comparing
@@ -509,7 +695,15 @@ watch(() => props.note, (newNote) => {
   showSavedIndicator.value = false
   editableContent.value = newNote.content
   isDirty.value = false
+  if (titleSaveTimer) {
+    clearTimeout(titleSaveTimer)
+    titleSaveTimer = null
+  }
+  titleDraft.value = newNote.title
+  autosizeTitle()
   showAutocomplete.value = false
+  showCommentTrigger.value = false
+  showCommentComposer.value = false
   showHistory.value = false
   loadComments(newNote.id)
   loadUnlinkedMentions(newNote.id)
@@ -562,16 +756,56 @@ async function handleConvertToLink(mention: UnlinkedMention) {
   }
 }
 
-async function handleAddComment(content: string) {
+async function handleAddComment(content: string, anchorLine?: number) {
   if (!props.workspaceId) return
   commentsError.value = null
   try {
-    const comment = await addNoteComment(props.workspaceId, props.note.id, content)
+    const comment = await addNoteComment(props.workspaceId, props.note.id, content, anchorLine)
     comments.value.push(comment)
   } catch (err: any) {
     console.error('Failed to add comment:', err)
     commentsError.value = err.response?.data?.message || 'Failed to add comment.'
   }
+}
+
+function handleTextSelection(event: MouseEvent) {
+  const el = textareaRef.value
+  if (!el) return
+  const { selectionStart, selectionEnd } = el
+  if (selectionStart === selectionEnd) {
+    showCommentTrigger.value = false
+    return
+  }
+
+  const wrapperEl = el.parentElement
+  if (!wrapperEl) return
+  const wrapperRect = wrapperEl.getBoundingClientRect()
+  pendingCommentAnchorLine.value = editableContent.value.slice(0, selectionStart).split('\n').length
+  commentTriggerPos.value = {
+    top: event.clientY - wrapperRect.top + 12,
+    left: event.clientX - wrapperRect.left,
+  }
+  showCommentTrigger.value = true
+  showCommentComposer.value = false
+}
+
+function openCommentComposer() {
+  showCommentTrigger.value = false
+  showCommentComposer.value = true
+  commentComposerDraft.value = ''
+}
+
+function closeCommentComposer() {
+  showCommentComposer.value = false
+  commentComposerDraft.value = ''
+  pendingCommentAnchorLine.value = null
+}
+
+async function submitSelectionComment() {
+  const content = commentComposerDraft.value.trim()
+  if (!content) return
+  await handleAddComment(content, pendingCommentAnchorLine.value ?? undefined)
+  closeCommentComposer()
 }
 
 async function handleDeleteComment(commentId: number) {
@@ -646,6 +880,9 @@ function handleInput() {
   const el = textareaRef.value
   if (!el) return
 
+  showCommentTrigger.value = false
+  if (showCommentComposer.value) closeCommentComposer()
+
   const text = editableContent.value
   const cursorPos = el.selectionStart
 
@@ -657,6 +894,7 @@ function handleInput() {
     const textAfterBracket = textBeforeCursor.substring(lastDoubleBracket + 2)
     // Check if there is a closing bracket or newline in between
     if (!textAfterBracket.includes(']]') && !textAfterBracket.includes('\n')) {
+      showSlashMenu.value = false
       showAutocomplete.value = true
       autocompleteQuery.value = textAfterBracket
       autocompleteStartIndex.value = lastDoubleBracket
@@ -666,9 +904,39 @@ function handleInput() {
   }
 
   showAutocomplete.value = false
+
+  // Look backwards for a slash-command trigger: "/" at the start of the
+  // line or right after a space, mirroring the [[ wikilink trigger above.
+  const lastSlash = textBeforeCursor.lastIndexOf('/')
+  if (lastSlash !== -1) {
+    const charBeforeSlash = textBeforeCursor[lastSlash - 1]
+    const isTriggerPosition = lastSlash === 0 || charBeforeSlash === '\n' || charBeforeSlash === ' '
+    if (isTriggerPosition) {
+      const textAfterSlash = textBeforeCursor.substring(lastSlash + 1)
+      // Check the query so far doesn't contain a space or newline (menu
+      // would no longer make sense as a live filter at that point)
+      if (!textAfterSlash.includes(' ') && !textAfterSlash.includes('\n')) {
+        showSlashMenu.value = true
+        slashMenuQuery.value = textAfterSlash
+        slashMenuStartIndex.value = lastSlash
+        return
+      }
+    }
+  }
+
+  showSlashMenu.value = false
 }
 
 function handleKeyDown(event: KeyboardEvent) {
+  // Ctrl+S is intentionally not reachable while this menu owns keydown
+  // handling, consistent with the pre-existing wikilink-autocomplete
+  // branch below (which does the same while its own suggestions are
+  // shown) — both menus fully consume arrow/Enter/Escape.
+  if (showSlashMenu.value) {
+    slashMenuRef.value?.handleKeyDown(event)
+    return
+  }
+
   if (!showAutocomplete.value || autocompleteSuggestions.value.length === 0) {
     // Ctrl+S / Cmd+S save shortcut
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
@@ -712,6 +980,29 @@ function selectSuggestion(suggestion: NoteMeta) {
     const newCursorPos = start + insertText.length
     el.setSelectionRange(newCursorPos, newCursorPos)
   })
+}
+
+function selectSlashBlock(block: BlockDefinition) {
+  const el = textareaRef.value
+  if (!el) return
+
+  const text = editableContent.value
+  const start = slashMenuStartIndex.value
+  const cursorPos = el.selectionStart
+
+  const insertText = block.syntax
+  editableContent.value = text.substring(0, start) + insertText + text.substring(cursorPos)
+  showSlashMenu.value = false
+
+  nextTick(() => {
+    el.focus()
+    const newCursorPos = start + insertText.length
+    el.setSelectionRange(newCursorPos, newCursorPos)
+  })
+}
+
+function closeSlashMenu() {
+  showSlashMenu.value = false
 }
 
 async function openHistory() {
@@ -799,6 +1090,7 @@ async function handleSave() {
 onUnmounted(() => {
   if (autosaveTimer) clearTimeout(autosaveTimer)
   if (savedIndicatorTimer) clearTimeout(savedIndicatorTimer)
+  if (titleSaveTimer) clearTimeout(titleSaveTimer)
 })
 </script>
 
@@ -823,20 +1115,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-2) var(--space-6);
   background: var(--color-canvas);
   border-bottom: 1px solid var(--color-border);
-}
-
-.note-meta-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.editor-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .editor-icon-btn {
@@ -893,12 +1174,34 @@ onUnmounted(() => {
   color: var(--color-text);
 }
 
-.editor-title {
+.editor-page-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-6) 0;
+  background: var(--color-canvas);
+}
+
+.editor-title-input {
+  display: block;
+  width: 100%;
   margin: 0;
+  padding: var(--space-1) 0;
+  border: none;
+  /* outline:none omitted — global :focus-visible handles the ring, same
+     as .markdown-textarea below. */
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  font-family: inherit;
   font-size: var(--text-h1);
   font-weight: 700;
   line-height: 1.15;
   color: var(--color-text);
+}
+
+.editor-title-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .editor-title-zone {
@@ -1105,7 +1408,11 @@ onUnmounted(() => {
 }
 
 .markdown-textarea {
+  /* Centered reading column (Notion-style ~640-760px page), not full pane
+     width — see docs/visual-identity.md §11, previously an open item. */
   width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
   height: 100%;
   background: var(--color-canvas);
   color: var(--color-text);
@@ -1127,7 +1434,11 @@ onUnmounted(() => {
 .autocomplete-dropdown {
   position: absolute;
   top: 3.5rem;
-  left: 2rem;
+  /* Stays near the left edge of the centered 760px reading column
+     (#255) instead of the wrapper's full-width edge; falls back to the
+     pre-#255 fixed 2rem once the column stops being centered (viewport
+     narrower than the column + its margins). */
+  left: max(2rem, calc(50% - 348px));
   background: var(--color-surface);
   border: 1px solid var(--color-action);
   border-radius: var(--radius-md);
@@ -1145,6 +1456,91 @@ onUnmounted(() => {
   background: var(--color-surface-emphasis);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.comment-trigger-btn {
+  position: absolute;
+  transform: translate(-50%, 0);
+  z-index: 50;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  box-shadow: var(--shadow-float);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.comment-trigger-btn:hover {
+  background: var(--color-hover);
+}
+
+.comment-composer {
+  position: absolute;
+  transform: translate(-50%, 0);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(280px, 90vw);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  box-shadow: var(--shadow-float);
+}
+
+.comment-composer-textarea {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.comment-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.btn-comment-cancel {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.btn-comment-cancel:hover {
+  background: var(--color-hover);
+}
+
+.btn-comment-submit {
+  background: var(--color-action);
+  color: var(--color-neutral-0);
+  border: none;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-comment-submit:hover:not(:disabled) {
+  background: var(--color-action-hover);
+}
+
+.btn-comment-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .autocomplete-item {
@@ -1258,5 +1654,59 @@ onUnmounted(() => {
 
 .stat-item strong {
   color: var(--color-text);
+}
+
+.comments-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(360px, 100vw);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-float);
+  /* Above App.vue's mobile sidebar backdrop (z-index: 30) so the drawer
+     stays reachable if it's opened while the mobile sidebar is up. */
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .comments-drawer {
+    width: 100vw;
+  }
+}
+
+.comments-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.comments-drawer-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.drawer-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.drawer-close-btn:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
 }
 </style>

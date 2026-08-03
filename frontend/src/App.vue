@@ -30,6 +30,7 @@
       :active-tenant-id="activeTenantId"
       :frontend-version="APP_VERSION"
       :backend-version="backendVersion"
+      :auth-provider="authProvider"
       :folder-positions="folderPositions"
       :reveal-folder-request="revealFolderRequest"
       @notes-reordered="refreshNotesList"
@@ -54,7 +55,13 @@
       @toggle-calendar-view="handleToggleCalendarView"
       @switch-workspace="handleSwitchWorkspace"
       @switch-tenant="handleSwitchTenant"
+      @toggle-admin-panel="isAdminPanelOpen = true"
+      @open-change-password="isChangePasswordOpen = true"
     />
+
+    <AdminPanel :is-open="isAdminPanelOpen" @close="handleCloseAdminPanel" />
+
+    <ChangePasswordModal v-if="isChangePasswordOpen" @close="isChangePasswordOpen = false" />
 
     <!-- Main Content Area -->
     <main class="main-content">
@@ -161,6 +168,11 @@
       </div>
     </main>
 
+    <!-- Right-drawer mount point (B.10): secondary surfaces (Comments
+         first, more later) teleport their markup here so they slide over
+         the note as an overlay instead of unmounting or pushing it. -->
+    <div id="app-right-drawer"></div>
+
     <!-- Error Banner -->
     <div v-if="errorMessage" class="error-banner" data-testid="error-banner" role="alert">
       <span>{{ errorMessage }}</span>
@@ -225,6 +237,8 @@ import LinkReportViewer from './components/LinkReportViewer.vue'
 import CollectionsTableView from './components/CollectionsTableView.vue'
 import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
+import AdminPanel from './components/AdminPanel.vue'
+import ChangePasswordModal from './components/ChangePasswordModal.vue'
 import {
   getWorkspaces,
   getTenants,
@@ -266,6 +280,8 @@ const activeNoteDetail = ref<NoteDetail | null>(null)
 
 const currentUser = ref<AuthUser | null>(null)
 const backendVersion = ref<string | null>(null)
+const authProvider = ref<string | null>(null)
+const isChangePasswordOpen = ref(false)
 const showLoginModal = ref(false)
 const isMobileSidebarOpen = ref(false)
 const isGraphViewActive = ref(false)
@@ -286,6 +302,8 @@ const auditLogLoading = ref(false)
 
 const isLinkReportActive = ref(false)
 const linkReport = ref<LinkReport>({ broken_links: [], orphans: [] })
+
+const isAdminPanelOpen = ref(false)
 const linkReportLoading = ref(false)
 
 const notifications = ref<NotificationItem[]>([])
@@ -336,7 +354,10 @@ onMounted(async () => {
   }
 
   getAuthConfig()
-    .then((config) => { backendVersion.value = config.version })
+    .then((config) => {
+      backendVersion.value = config.version
+      authProvider.value = config.provider
+    })
     .catch(() => {})
 
   await initWorkspace()
@@ -412,6 +433,18 @@ async function handleSwitchTenant(tenantId: number) {
     await refreshNotifications()
   } catch (err) {
     console.error('Failed to switch tenant:', err)
+  }
+}
+
+async function handleCloseAdminPanel() {
+  isAdminPanelOpen.value = false
+  // A workspace may have just been created/archived in the panel; refresh
+  // so the switcher reflects it without requiring a full page reload.
+  try {
+    const list = await getWorkspaces(activeTenantId.value ?? undefined)
+    workspaces.value = list
+  } catch (err) {
+    console.error('Failed to refresh workspaces:', err)
   }
 }
 

@@ -379,13 +379,12 @@ this exact value rather than introducing a second breakpoint.
   full-width stacked sections below the editor body, not narrow
   right-docked panels, so they already fill the viewport at any width.
   `HistoryPanel`'s modal already sizes itself with
-  `width: min(760px, 92vw)` / `height: min(560px, 85vh)`. There is
-  currently **no** `.prose`/reading-column max-width applied anywhere in
-  `NoteEditor.vue` — the editor's textarea/preview panes are full width
-  at any viewport size. A constrained reading column (the classic
-  "Notion page" 640–760px centered column) was part of the original
-  design intent for a Notion-like feel but was never actually
-  implemented; treat this as an open item, not a shipped feature.
+  `width: min(760px, 92vw)` / `height: min(560px, 85vh)`. The editor's
+  `.markdown-textarea` and `MarkdownPreview.vue`'s `.markdown-preview`
+  both carry `max-width: 760px; margin: 0 auto` (#255), giving the
+  classic "Notion page" centered reading column — a `max-width` caps
+  rather than forces, so it degrades to full-width automatically below
+  760px without a separate media query.
 
 ## 12. Assets and packaging
 

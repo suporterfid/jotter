@@ -139,6 +139,7 @@ final class AdminUserController extends Controller
         if (! $user) {
             abort(401, 'Unauthenticated.');
         }
+        $this->ensureLocalProvider();
 
         $validated = $request->validate([
             'current_password' => ['required', 'string'],

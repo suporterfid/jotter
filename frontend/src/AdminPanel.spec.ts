@@ -1,8 +1,36 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import AdminPanel from './components/AdminPanel.vue'
 
+const apiGet = vi.fn().mockResolvedValue({ data: { data: [] } })
+const apiPost = vi.fn().mockResolvedValue({ data: { data: {} } })
+const apiPut = vi.fn().mockResolvedValue({ data: { data: {} } })
+const apiDelete = vi.fn().mockResolvedValue({ data: {} })
+const adminResetPassword = vi.fn().mockResolvedValue(undefined)
+
+vi.mock('./services/api', () => ({
+  api: {
+    get: (...args: unknown[]) => apiGet(...args),
+    post: (...args: unknown[]) => apiPost(...args),
+    put: (...args: unknown[]) => apiPut(...args),
+    delete: (...args: unknown[]) => apiDelete(...args),
+  },
+  getTenants: vi.fn().mockResolvedValue([
+    { id: 1, slug: 'acme', name: 'Acme' },
+    { id: 2, slug: 'other', name: 'Other Co' },
+  ]),
+  adminResetPassword: (...args: unknown[]) => adminResetPassword(...args),
+}))
+
 describe('AdminPanel Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    apiGet.mockResolvedValue({ data: { data: [] } })
+    apiPost.mockResolvedValue({ data: { data: {} } })
+    apiPut.mockResolvedValue({ data: { data: {} } })
+    adminResetPassword.mockResolvedValue(undefined)
+  })
+
   it('renders tabs and closes on overlay click', async () => {
     const wrapper = mount(AdminPanel, {
       props: { isOpen: true }
@@ -15,5 +43,179 @@ describe('AdminPanel Component', () => {
 
     await wrapper.find('.admin-modal-overlay').trigger('click.self')
     expect(wrapper.emitted('close')).toBeTruthy()
+  })
+
+  it('auto-selects the tenant when only one exists', async () => {
+    const { getTenants } = await import('./services/api')
+    ;(getTenants as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { id: 5, slug: 'solo', name: 'Solo Tenant' },
+    ])
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-new-workspace-name"]').setValue('Test WS')
+    await wrapper.find('[data-testid="admin-new-workspace-slug"]').setValue('test-ws')
+    await wrapper.find('[data-testid="admin-new-workspace-vault-path"]').setValue('/vaults/test')
+    await wrapper.find('.admin-form').trigger('submit')
+    await flushPromises()
+
+    expect(apiPost).toHaveBeenCalledWith('/admin/workspaces', {
+      tenant_id: 5, name: 'Test WS', slug: 'test-ws', vault_path: '/vaults/test',
+    })
+  })
+
+  it('loads tenants into the create-workspace tenant select when opened', async () => {
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    const options = wrapper.find('[data-testid="admin-new-workspace-tenant"]').findAll('option')
+    expect(options.map(o => o.text())).toContain('Acme')
+    expect(options.map(o => o.text())).toContain('Other Co')
+  })
+
+  it('blocks workspace creation without a selected tenant and does not call the API', async () => {
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-new-workspace-name"]').setValue('Test WS')
+    await wrapper.find('[data-testid="admin-new-workspace-slug"]').setValue('test-ws')
+    await wrapper.find('[data-testid="admin-new-workspace-vault-path"]').setValue('/vaults/test')
+    await wrapper.find('.admin-form').trigger('submit')
+    await flushPromises()
+
+    expect(apiPost).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Select a tenant')
+  })
+
+  it('submits the new workspace via the authenticated axios instance, including tenant_id', async () => {
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-new-workspace-tenant"]').setValue('1')
+    await wrapper.find('[data-testid="admin-new-workspace-name"]').setValue('Test WS')
+    await wrapper.find('[data-testid="admin-new-workspace-slug"]').setValue('test-ws')
+    await wrapper.find('[data-testid="admin-new-workspace-vault-path"]').setValue('/vaults/test')
+    await wrapper.find('.admin-form').trigger('submit')
+    await flushPromises()
+
+    expect(apiPost).toHaveBeenCalledWith('/admin/workspaces', {
+      tenant_id: 1, name: 'Test WS', slug: 'test-ws', vault_path: '/vaults/test',
+    })
+  })
+
+  it('resets a user password via the prompt-entered value', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/admin/users') {
+        return Promise.resolve({ data: { data: [{ id: 7, name: 'Bob', email: 'bob@example.com', is_active: true }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('a-new-password')
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    await wrapper.find('.tab-btn:nth-child(3)').trigger('click')
+
+    await wrapper.find('[data-testid="admin-reset-password-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(promptSpy).toHaveBeenCalled()
+    expect(adminResetPassword).toHaveBeenCalledWith(7, 'a-new-password')
+    promptSpy.mockRestore()
+  })
+
+  it('does not reset a password when the prompt is cancelled', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/admin/users') {
+        return Promise.resolve({ data: { data: [{ id: 7, name: 'Bob', email: 'bob@example.com', is_active: true }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null)
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    await wrapper.find('.tab-btn:nth-child(3)').trigger('click')
+
+    await wrapper.find('[data-testid="admin-reset-password-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(adminResetPassword).not.toHaveBeenCalled()
+    promptSpy.mockRestore()
+  })
+
+  it('edits a workspace name and slug via the authenticated axios instance, without vault_path', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [{ id: 3, tenant_id: 1, slug: 'old-slug', name: 'Old Name' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    expect((wrapper.find('[data-testid="admin-edit-workspace-name"]').element as HTMLInputElement).value).toBe('Old Name')
+    expect((wrapper.find('[data-testid="admin-edit-workspace-slug"]').element as HTMLInputElement).value).toBe('old-slug')
+
+    await wrapper.find('[data-testid="admin-edit-workspace-name"]').setValue('New Name')
+    await wrapper.find('[data-testid="admin-edit-workspace-slug"]').setValue('new-slug')
+    await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
+    await flushPromises()
+
+    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'New Name', slug: 'new-slug' })
+    expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(false)
+  })
+
+  it('discards edits and closes the edit form on Cancel', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [{ id: 3, tenant_id: 1, slug: 'old-slug', name: 'Old Name' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-edit-workspace-name"]').setValue('Discarded Name')
+    await wrapper.find('[data-testid="admin-edit-workspace-cancel"]').trigger('click')
+
+    expect(apiPut).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Old Name')
+  })
+
+  it('shows the backend validation error and keeps the edit form open when saving fails', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [{ id: 3, tenant_id: 1, slug: 'old-slug', name: 'Old Name' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    apiPut.mockRejectedValue({ response: { data: { message: 'That slug is already taken.' } } })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-edit-workspace-slug"]').setValue('taken-slug')
+    await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('That slug is already taken.')
+    expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(true)
   })
 })
