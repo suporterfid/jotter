@@ -487,7 +487,17 @@ const autocompleteStartIndex = ref(-1)
 const selectedSuggestionIndex = ref(0)
 const autocompleteStyle = ref({ top: '40px', left: '20px' })
 
+// `note` is replaced with a new object reference not just when the user
+// switches notes, but also every time our own autosave round-trips
+// (handleUpdateNote -> refreshNotesList reloads the same note). Comparing
+// ids lets us skip the reset below on that routine same-note reload —
+// otherwise it stomps the in-flight "Saved" indicator almost immediately
+// after every autosave, and could clobber newer unsaved edits typed
+// during the round-trip.
+let currentNoteId: number | null = null
 watch(() => props.note, (newNote) => {
+  if (newNote.id === currentNoteId) return
+  currentNoteId = newNote.id
   if (autosaveTimer) {
     clearTimeout(autosaveTimer)
     autosaveTimer = null
