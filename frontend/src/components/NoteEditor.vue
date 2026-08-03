@@ -1022,9 +1022,13 @@ async function handleSave() {
 
 .editor-body {
   flex: 1;
-  /* Reserve a substantial minimum so the canvas is never squeezed down to
-     near-nothing by the metadata panels below it now that .editor-container
-     scrolls instead of clipping (see comment there). */
+  /* Safety floor, not the primary sizing mechanism: .editor-container's own
+     ancestor chain (.main-content -> .app-layout) is height:100% all the
+     way up to a 100vh root, so flex:1 already resolves to a real pixel
+     budget on its own. This just stops the panels below from squeezing
+     that budget under a usable minimum on tall panel stacks. Revisit this
+     constant if/when the full properties/drawer rework (#256/#258/#262)
+     changes how much space the panels need below the fold. */
   min-height: 50vh;
   display: flex;
   overflow: hidden;
