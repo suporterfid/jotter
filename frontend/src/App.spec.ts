@@ -1,11 +1,14 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces, getAuthConfig } from './services/api'
+import { createNote, getWorkspaces, getAuthConfig, getTenants } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
     { id: 1, tenant_id: 1, slug: 'default', name: 'Default Workspace' }
+  ]),
+  getTenants: vi.fn().mockResolvedValue([
+    { id: 1, slug: 'default', name: 'Default Tenant' }
   ]),
   getNotes: vi.fn().mockResolvedValue([
     { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' }
@@ -140,5 +143,76 @@ describe('App workspace switching and persistence', () => {
 
     expect(wrapper.findComponent({ name: 'Sidebar' }).props('backendVersion')).toBe('abc1234 · 2026-08-01 16:30')
     expect(wrapper.findComponent({ name: 'Sidebar' }).props('frontendVersion')).toBe('dev')
+  })
+})
+
+describe('App tenant switching and persistence', () => {
+  it('does not fetch a tenant-scoped workspace list when there is only one tenant', async () => {
+    vi.mocked(getTenants).mockResolvedValueOnce([
+      { id: 1, slug: 'default', name: 'Default Tenant' },
+    ])
+    vi.mocked(getWorkspaces).mockResolvedValueOnce([
+      { id: 1, tenant_id: 1, slug: 'main', name: 'Main' },
+    ])
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(getWorkspaces).toHaveBeenCalledWith(undefined)
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('tenants')).toEqual([
+      { id: 1, slug: 'default', name: 'Default Tenant' },
+    ])
+  })
+
+  it('resolves the active tenant from localStorage when there are 2+ tenants', async () => {
+    vi.mocked(getTenants).mockResolvedValueOnce([
+      { id: 1, slug: 'acme', name: 'Acme Corp' },
+      { id: 2, slug: 'globex', name: 'Globex Inc' },
+    ])
+    vi.mocked(getWorkspaces).mockResolvedValueOnce([
+      { id: 5, tenant_id: 2, slug: 'side', name: 'Side' },
+    ])
+    localStorage.setItem('jotter-active-tenant-id', '2')
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(getWorkspaces).toHaveBeenCalledWith(2)
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('activeTenantId')).toBe(2)
+  })
+
+  it('falls back to the first tenant when the stored id is not in the list', async () => {
+    vi.mocked(getTenants).mockResolvedValueOnce([
+      { id: 1, slug: 'acme', name: 'Acme Corp' },
+      { id: 2, slug: 'globex', name: 'Globex Inc' },
+    ])
+    vi.mocked(getWorkspaces).mockResolvedValueOnce([])
+    localStorage.setItem('jotter-active-tenant-id', '999')
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('activeTenantId')).toBe(1)
+    expect(localStorage.getItem('jotter-active-tenant-id')).toBe('1')
+  })
+
+  it('persists the new tenant id and refetches workspaces when Sidebar emits switch-tenant', async () => {
+    vi.mocked(getTenants).mockResolvedValueOnce([
+      { id: 1, slug: 'acme', name: 'Acme Corp' },
+      { id: 2, slug: 'globex', name: 'Globex Inc' },
+    ])
+    vi.mocked(getWorkspaces)
+      .mockResolvedValueOnce([{ id: 5, tenant_id: 1, slug: 'main', name: 'Main' }])
+      .mockResolvedValueOnce([{ id: 9, tenant_id: 2, slug: 'side', name: 'Side' }])
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('switch-tenant', 2)
+    await flushPromises()
+
+    expect(localStorage.getItem('jotter-active-tenant-id')).toBe('2')
+    expect(getWorkspaces).toHaveBeenLastCalledWith(2)
+    expect(wrapper.findComponent({ name: 'Sidebar' }).props('workspaceId')).toBe(9)
   })
 })

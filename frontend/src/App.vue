@@ -26,6 +26,8 @@
       :is-mobile-sidebar-open="isMobileSidebarOpen"
       :workspace-id="activeWorkspaceId"
       :workspaces="workspaces"
+      :tenants="tenants"
+      :active-tenant-id="activeTenantId"
       :frontend-version="APP_VERSION"
       :backend-version="backendVersion"
       :folder-positions="folderPositions"
@@ -51,6 +53,7 @@
       @toggle-board-view="handleToggleBoardView"
       @toggle-calendar-view="handleToggleCalendarView"
       @switch-workspace="handleSwitchWorkspace"
+      @switch-tenant="handleSwitchTenant"
     />
 
     <!-- Main Content Area -->
@@ -224,6 +227,7 @@ import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import {
   getWorkspaces,
+  getTenants,
   getNotes,
   getFolderPositions,
   getNote,
@@ -248,11 +252,13 @@ import {
   deleteNotification,
   getAuthConfig
 } from './services/api'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition } from './services/types'
+import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition } from './services/types'
 import { APP_VERSION } from './version'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
+const tenants = ref<Tenant[]>([])
+const activeTenantId = ref<number | null>(null)
 const notes = ref<NoteMeta[]>([])
 const folderPositions = ref<FolderPosition[]>([])
 const activeNoteId = ref<number | null>(null)
@@ -337,10 +343,31 @@ onMounted(async () => {
 })
 
 const WORKSPACE_STORAGE_KEY = 'jotter-active-workspace-id'
+const TENANT_STORAGE_KEY = 'jotter-active-tenant-id'
 
 async function initWorkspace() {
   try {
-    const list = await getWorkspaces()
+    const tenantList = await getTenants()
+    tenants.value = tenantList
+
+    let scopeTenantId: number | undefined
+
+    if (tenantList.length > 1) {
+      const storedTenant = localStorage.getItem(TENANT_STORAGE_KEY)
+      const storedTenantId = storedTenant !== null ? Number(storedTenant) : null
+      const storedTenantIsValid = storedTenantId !== null && tenantList.some((t) => t.id === storedTenantId)
+
+      if (storedTenantIsValid) {
+        activeTenantId.value = storedTenantId as number
+      } else {
+        activeTenantId.value = tenantList[0].id
+        localStorage.setItem(TENANT_STORAGE_KEY, String(tenantList[0].id))
+      }
+
+      scopeTenantId = activeTenantId.value
+    }
+
+    const list = await getWorkspaces(scopeTenantId)
     workspaces.value = list
 
     const stored = localStorage.getItem(WORKSPACE_STORAGE_KEY)
@@ -364,6 +391,22 @@ async function initWorkspace() {
 async function handleSwitchWorkspace(workspaceId: number) {
   activeWorkspaceId.value = workspaceId
   localStorage.setItem(WORKSPACE_STORAGE_KEY, String(workspaceId))
+  await refreshNotesList()
+  await refreshNotifications()
+}
+
+async function handleSwitchTenant(tenantId: number) {
+  activeTenantId.value = tenantId
+  localStorage.setItem(TENANT_STORAGE_KEY, String(tenantId))
+
+  const list = await getWorkspaces(tenantId)
+  workspaces.value = list
+
+  if (list.length > 0) {
+    activeWorkspaceId.value = list[0].id
+    localStorage.setItem(WORKSPACE_STORAGE_KEY, String(list[0].id))
+  }
+
   await refreshNotesList()
   await refreshNotifications()
 }
