@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import NoteEditor from './components/NoteEditor.vue'
 import type { NoteDetail } from './services/types'
@@ -188,5 +188,45 @@ describe('NoteEditor cover image', () => {
     })
     await wrapper.find('[data-testid="remove-cover-btn"]').trigger('click')
     expect(deleteNoteProperty).toHaveBeenCalledWith(1, 1, 'cover')
+  })
+})
+
+describe('NoteEditor empty metadata panels', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('does not render Backlinks, Outgoing Links, or Unlinked Mentions panels when all are empty', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[aria-label="Backlinks"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Outgoing links"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Unlinked mentions"]').exists()).toBe(false)
+  })
+
+  it('still renders Properties and Comments panels when empty, since they have their own creation forms', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[aria-label="Properties"]').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="Comments"]').exists()).toBe(true)
+  })
+
+  it('renders the Backlinks panel when the note has at least one backlink', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: {
+        note: makeNote({ backlinks: [{ id: 2, path: 'other.md', title: 'Other' }] }),
+        allNotes: [],
+        workspaceId: 1,
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[aria-label="Backlinks"]').exists()).toBe(true)
   })
 })
