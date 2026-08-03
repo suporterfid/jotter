@@ -51,7 +51,7 @@ defineEmits<{
   margin-bottom: var(--space-3);
   font-weight: 600;
   color: var(--color-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .panel-header-collapsed {
