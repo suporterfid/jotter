@@ -396,19 +396,23 @@ async function handleSwitchWorkspace(workspaceId: number) {
 }
 
 async function handleSwitchTenant(tenantId: number) {
-  activeTenantId.value = tenantId
-  localStorage.setItem(TENANT_STORAGE_KEY, String(tenantId))
+  try {
+    activeTenantId.value = tenantId
+    localStorage.setItem(TENANT_STORAGE_KEY, String(tenantId))
 
-  const list = await getWorkspaces(tenantId)
-  workspaces.value = list
+    const list = await getWorkspaces(tenantId)
+    workspaces.value = list
 
-  if (list.length > 0) {
-    activeWorkspaceId.value = list[0].id
-    localStorage.setItem(WORKSPACE_STORAGE_KEY, String(list[0].id))
+    if (list.length > 0) {
+      activeWorkspaceId.value = list[0].id
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, String(list[0].id))
+    }
+
+    await refreshNotesList()
+    await refreshNotifications()
+  } catch (err) {
+    console.error('Failed to switch tenant:', err)
   }
-
-  await refreshNotesList()
-  await refreshNotifications()
 }
 
 async function refreshNotifications() {
