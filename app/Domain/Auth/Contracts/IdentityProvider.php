@@ -36,4 +36,11 @@ interface IdentityProvider
      * @return array<int>|null
      */
     public function accessibleWorkspaceIds(AuthenticatedSubject $subject): ?array;
+
+    /**
+     * Return the tenant ids the subject has any membership in, or null if unrestricted (e.g. an admin).
+     *
+     * @return array<int>|null
+     */
+    public function accessibleTenantIds(AuthenticatedSubject $subject): ?array;
 }
