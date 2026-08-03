@@ -842,6 +842,7 @@ function handleInput() {
   if (!el) return
 
   showCommentTrigger.value = false
+  if (showCommentComposer.value) closeCommentComposer()
 
   const text = editableContent.value
   const cursorPos = el.selectionStart

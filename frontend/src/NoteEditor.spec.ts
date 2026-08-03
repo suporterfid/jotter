@@ -683,4 +683,38 @@ describe('NoteEditor selection-triggered comments', () => {
 
     expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
   })
+
+  it('closes an open composer once the user resumes typing', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    selectRange(el, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(true)
+
+    el.value = 'changed\nline two'
+    await textarea.trigger('input')
+
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(false)
+  })
+
+  it('clears the trigger and composer when switching to a different note', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'line one\nline two' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    selectRange(textarea.element as HTMLTextAreaElement, 0, 4)
+    await textarea.trigger('mouseup', { clientX: 50, clientY: 30 })
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(true)
+
+    await wrapper.setProps({ note: makeNote({ id: 2, path: 'other.md', content: '# Other' }) })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="comment-composer"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+  })
 })
