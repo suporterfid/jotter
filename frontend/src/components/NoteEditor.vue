@@ -863,7 +863,7 @@ async function handleSave() {
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1px solid transparent;
+  border-bottom: 0 solid transparent;
   color: var(--color-text-muted);
   padding: 0 var(--space-2);
   max-height: 0;
@@ -876,6 +876,7 @@ async function handleSave() {
               padding var(--duration-fast) var(--ease-standard),
               opacity var(--duration-fast) var(--ease-standard),
               border-color var(--duration-fast) var(--ease-standard),
+              border-width var(--duration-fast) var(--ease-standard),
               background-color var(--duration-fast) var(--ease-standard),
               color var(--duration-fast) var(--ease-standard);
 }
@@ -885,7 +886,7 @@ async function handleSave() {
   max-height: 40px;
   padding: var(--space-2);
   opacity: 1;
-  border-bottom-color: var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .add-cover-btn:hover {
