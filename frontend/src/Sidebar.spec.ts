@@ -257,3 +257,28 @@ describe('Sidebar desktop collapse', () => {
     expect(wrapperB.find('.sidebar').classes()).toContain('sidebar-collapsed')
   })
 })
+
+describe('Sidebar admin panel entry', () => {
+  it('does not show the Admin Panel menu item for a non-admin user', async () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+      },
+    })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="admin-panel-btn"]').exists()).toBe(false)
+  })
+
+  it('shows the Admin Panel menu item and emits toggle-admin-panel for an admin user', async () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: true },
+      },
+    })
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-panel-btn"]').trigger('click')
+    expect(wrapper.emitted('toggle-admin-panel')).toBeTruthy()
+  })
+})
