@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogQueryController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LlmsTxtController;
+use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebDavController;
 use App\Http\Controllers\WorkspaceExportController;
 use App\Http\Controllers\WorkspaceNoteController;
@@ -32,6 +33,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish']);
     Route::post('/workspaces/{workspace}/import', [\App\Http\Controllers\WorkspaceImportController::class, 'import']);
     Route::get('/workspaces', [\App\Http\Controllers\WorkspaceController::class, 'index']);
+    Route::get('/tenants', [TenantController::class, 'index']);
 
     Route::post('/admin/workspaces', [\App\Http\Controllers\AdminWorkspaceController::class, 'store']);
     Route::put('/admin/workspaces/{workspace}', [\App\Http\Controllers\AdminWorkspaceController::class, 'update']);

@@ -122,6 +122,53 @@ describe('Sidebar workspace switcher', () => {
   })
 })
 
+describe('Sidebar tenant switcher', () => {
+  it('does not render the tenant switcher when given 0 tenants', () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+    expect(wrapper.find('[data-testid="tenant-switcher-select"]').exists()).toBe(false)
+  })
+
+  it('does not render the tenant switcher when given exactly 1 tenant', () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        tenants: [{ id: 1, slug: 'acme', name: 'Acme Corp' }],
+      },
+    })
+    expect(wrapper.find('[data-testid="tenant-switcher-select"]').exists()).toBe(false)
+  })
+
+  it('renders the tenant switcher when given 2+ tenants', () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        tenants: [
+          { id: 1, slug: 'acme', name: 'Acme Corp' },
+          { id: 2, slug: 'globex', name: 'Globex Inc' },
+        ],
+      },
+    })
+    expect(wrapper.findAll('[data-testid="tenant-switcher-select"] option')).toHaveLength(2)
+  })
+
+  it('emits switch-tenant when the switcher changes selection', async () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        tenants: [
+          { id: 1, slug: 'acme', name: 'Acme Corp' },
+          { id: 2, slug: 'globex', name: 'Globex Inc' },
+        ],
+        activeTenantId: 1,
+      },
+    })
+    await wrapper.find('[data-testid="tenant-switcher-select"]').setValue('2')
+    expect(wrapper.emitted('switch-tenant')![0]).toEqual([2])
+  })
+})
+
 describe('Sidebar version footer', () => {
   it('renders the frontend version', () => {
     const wrapper = mount(Sidebar, {

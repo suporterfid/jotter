@@ -12,6 +12,12 @@
         </svg>
         <span class="brand-title">Jotter</span>
       </div>
+      <TenantSwitcher
+        v-if="(props.tenants ?? []).length > 1"
+        :tenants="props.tenants ?? []"
+        :active-tenant-id="props.activeTenantId ?? null"
+        @switch="(id) => emit('switch-tenant', id)"
+      />
       <WorkspaceSwitcher
         :workspaces="props.workspaces"
         :active-workspace-id="props.workspaceId ?? null"
@@ -390,11 +396,12 @@
 
 <script setup lang="ts">
 import { ref, computed, provide, onMounted, onBeforeUnmount, watch, useTemplateRef, nextTick } from 'vue'
-import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem, Workspace } from '../services/types'
+import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem, Workspace, Tenant } from '../services/types'
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import WorkspaceSwitcher from './WorkspaceSwitcher.vue'
+import TenantSwitcher from './TenantSwitcher.vue'
 import { moveNote, reorderNoteTree } from '../services/api'
 import { createNoteTreeSortable, type NoteTreeSortableHandle } from '../composables/useNoteTreeSortable'
 
@@ -410,6 +417,8 @@ const props = defineProps<{
   revealFolderRequest?: { path: string; nonce: number } | null
   frontendVersion: string
   backendVersion?: string | null
+  tenants?: Tenant[]
+  activeTenantId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -434,6 +443,7 @@ const emit = defineEmits<{
   (e: 'notes-reordered'): void
   (e: 'create-note-in-folder', folderPath: string): void
   (e: 'switch-workspace', workspaceId: number): void
+  (e: 'switch-tenant', tenantId: number): void
 }>()
 
 const searchQuery = ref('')

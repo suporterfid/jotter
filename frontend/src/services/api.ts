@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem } from './types'
+import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -64,8 +64,15 @@ export async function getAuthConfig(): Promise<AuthConfig> {
   return response.data.data
 }
 
-export async function getWorkspaces(): Promise<Workspace[]> {
-  const response = await api.get<{ data: Workspace[] }>('/workspaces')
+export async function getWorkspaces(tenantId?: number): Promise<Workspace[]> {
+  const response = await api.get<{ data: Workspace[] }>('/workspaces', {
+    params: tenantId !== undefined ? { tenant_id: tenantId } : undefined,
+  })
+  return response.data.data
+}
+
+export async function getTenants(): Promise<Tenant[]> {
+  const response = await api.get<{ data: Tenant[] }>('/tenants')
   return response.data.data
 }
 

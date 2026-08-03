@@ -58,4 +58,37 @@ class WorkspaceIndexTest extends TestCase
         $res->assertOk();
         $this->assertSame([], $res->json('data'));
     }
+
+    public function test_tenant_id_param_scopes_workspaces_to_that_tenant(): void
+    {
+        $user = User::factory()->create(['is_admin' => false]);
+        $tenantA = Tenant::create(['slug' => 'acme', 'name' => 'Acme']);
+        $tenantB = Tenant::create(['slug' => 'globex', 'name' => 'Globex']);
+        $wsA = Workspace::create(['tenant_id' => $tenantA->id, 'slug' => 'a', 'name' => 'A', 'vault_path' => storage_path('app/vaults/idx_tenant_a')]);
+        $wsB = Workspace::create(['tenant_id' => $tenantB->id, 'slug' => 'b', 'name' => 'B', 'vault_path' => storage_path('app/vaults/idx_tenant_b')]);
+
+        Membership::create(['subject_id' => (string) $user->id, 'tenant_id' => $tenantA->id, 'workspace_id' => null, 'role' => 'viewer']);
+        Membership::create(['subject_id' => (string) $user->id, 'tenant_id' => $tenantB->id, 'workspace_id' => null, 'role' => 'viewer']);
+
+        $res = $this->actingAs($user)->getJson('/api/workspaces?tenant_id='.$tenantA->id);
+
+        $res->assertOk();
+        $ids = collect($res->json('data'))->pluck('id')->all();
+        $this->assertEqualsCanonicalizing([$wsA->id], $ids);
+    }
+
+    public function test_tenant_id_param_for_inaccessible_tenant_yields_empty_list(): void
+    {
+        $user = User::factory()->create(['is_admin' => false]);
+        $tenantA = Tenant::create(['slug' => 'acme', 'name' => 'Acme']);
+        $tenantB = Tenant::create(['slug' => 'globex', 'name' => 'Globex']);
+        Workspace::create(['tenant_id' => $tenantB->id, 'slug' => 'b', 'name' => 'B', 'vault_path' => storage_path('app/vaults/idx_tenant_inaccessible')]);
+
+        Membership::create(['subject_id' => (string) $user->id, 'tenant_id' => $tenantA->id, 'workspace_id' => null, 'role' => 'viewer']);
+
+        $res = $this->actingAs($user)->getJson('/api/workspaces?tenant_id='.$tenantB->id);
+
+        $res->assertOk();
+        $this->assertSame([], $res->json('data'));
+    }
 }

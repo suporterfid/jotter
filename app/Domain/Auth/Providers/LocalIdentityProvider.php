@@ -58,6 +58,25 @@ final class LocalIdentityProvider implements IdentityProvider
         );
     }
 
+    /**
+     * @return array<string>
+     */
+    private function resolveSubjectIds(AuthenticatedSubject $subject): array
+    {
+        $subjectIds = array_filter([
+            $subject->subjectId,
+            (string) $subject->user?->id,
+            $subject->email,
+        ]);
+
+        if ($subject->user) {
+            $identitySubjectIds = $subject->user->identities()->pluck('subject_id')->all();
+            $subjectIds = array_unique(array_merge($subjectIds, $identitySubjectIds));
+        }
+
+        return $subjectIds;
+    }
+
     public function authenticate(array $credentials, Request $request): ?AuthenticatedSubject
     {
         $email = Str::lower(trim((string) ($credentials['email'] ?? '')));
@@ -158,16 +177,7 @@ final class LocalIdentityProvider implements IdentityProvider
             return false;
         }
 
-        $subjectIds = array_filter([
-            $subject->subjectId,
-            (string) $subject->user?->id,
-            $subject->email,
-        ]);
-
-        if ($subject->user) {
-            $identitySubjectIds = $subject->user->identities()->pluck('subject_id')->all();
-            $subjectIds = array_unique(array_merge($subjectIds, $identitySubjectIds));
-        }
+        $subjectIds = $this->resolveSubjectIds($subject);
 
         return Membership::query()
             ->where('tenant_id', $workspace->tenant_id)
@@ -185,16 +195,7 @@ final class LocalIdentityProvider implements IdentityProvider
             return null;
         }
 
-        $subjectIds = array_filter([
-            $subject->subjectId,
-            (string) $subject->user?->id,
-            $subject->email,
-        ]);
-
-        if ($subject->user) {
-            $identitySubjectIds = $subject->user->identities()->pluck('subject_id')->all();
-            $subjectIds = array_unique(array_merge($subjectIds, $identitySubjectIds));
-        }
+        $subjectIds = $this->resolveSubjectIds($subject);
 
         $memberships = Membership::query()
             ->whereIn('subject_id', $subjectIds)
@@ -208,5 +209,20 @@ final class LocalIdentityProvider implements IdentityProvider
             : [];
 
         return array_values(array_unique(array_merge($directWorkspaceIds, $tenantWideWorkspaceIds)));
+    }
+
+    public function accessibleTenantIds(AuthenticatedSubject $subject): ?array
+    {
+        if ($subject->isAdmin) {
+            return null;
+        }
+
+        $subjectIds = $this->resolveSubjectIds($subject);
+
+        return Membership::query()
+            ->whereIn('subject_id', $subjectIds)
+            ->distinct()
+            ->pluck('tenant_id')
+            ->all();
     }
 }

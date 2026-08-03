@@ -5,6 +5,12 @@ export interface Workspace {
   name: string
 }
 
+export interface Tenant {
+  id: number
+  slug: string
+  name: string
+}
+
 export interface NoteMeta {
   id: number
   path: string
