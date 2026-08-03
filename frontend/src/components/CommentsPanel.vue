@@ -128,11 +128,14 @@ function handleSubmit() {
 
 .comment-item {
   position: relative;
-  background: var(--color-surface-emphasis);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   padding-right: var(--space-8);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.comment-item:hover {
+  background: var(--color-hover);
 }
 
 .comment-meta {

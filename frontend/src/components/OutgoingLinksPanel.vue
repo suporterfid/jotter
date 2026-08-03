@@ -79,13 +79,10 @@ const { collapsed, toggle } = useCollapsiblePanel('outgoing-links', false)
 }
 
 .outgoing-link-item {
-  background: var(--color-surface-emphasis);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-standard),
-              border-color var(--duration-fast) var(--ease-standard);
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .outgoing-link-item.is-unresolved {
@@ -94,7 +91,7 @@ const { collapsed, toggle } = useCollapsiblePanel('outgoing-links', false)
 }
 
 .outgoing-link-item:not(.is-unresolved):hover {
-  border-color: var(--color-action);
+  background: var(--color-hover);
 }
 
 .outgoing-link-title {
