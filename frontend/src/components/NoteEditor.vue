@@ -234,20 +234,25 @@
       @delete-comment="handleDeleteComment"
     />
 
-    <!-- Backlinks Panel -->
+    <!-- Backlinks Panel: purely derived/read-only (no creation affordance), so it's safe to
+         omit entirely when empty, unlike Properties/Comments above which always need to stay
+         mounted for their "add" forms. -->
     <BacklinksPanel
+      v-if="(note.backlinks || []).length > 0"
       :backlinks="note.backlinks || []"
       @select-note="$emit('select-note', $event)"
     />
 
-    <!-- Outgoing Links Panel -->
+    <!-- Outgoing Links Panel: same rationale — derived from note content, no add affordance. -->
     <OutgoingLinksPanel
+      v-if="outgoingLinks.length > 0"
       :links="outgoingLinks"
       @select-note="$emit('select-note', $event)"
     />
 
-    <!-- Unlinked Mentions Panel -->
+    <!-- Unlinked Mentions Panel: same rationale — derived from other notes' content. -->
     <UnlinkedMentionsPanel
+      v-if="unlinkedMentions.length > 0"
       :mentions="unlinkedMentions"
       @select-note="$emit('select-note', $event)"
       @convert-to-link="handleConvertToLink"
