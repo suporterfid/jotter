@@ -41,9 +41,9 @@ test.describe('Jotter Notes E2E Journey', () => {
     const editorTextarea = page.locator('[data-testid="markdown-textarea"]')
     await editorTextarea.fill('# Demo Note\n\nLinking to [[welcome.md|Welcome]] note.\n\n<script>window.XSS_EXECUTED=true;</script>')
 
-    // Save note
-    await page.click('[data-testid="save-note-btn"]')
-    await expect(page.locator('[data-testid="save-note-btn"]')).toContainText('Saved')
+    // Content autosaves ~1s after typing stops; wait for the transient
+    // status pill to confirm the save completed.
+    await expect(page.locator('[data-testid="save-status-indicator"]')).toContainText('Saved', { timeout: 10000 })
 
     // Check preview rendering for heading and wikilink
     const preview = page.locator('.markdown-preview')
