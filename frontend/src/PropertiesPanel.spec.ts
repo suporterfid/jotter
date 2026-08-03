@@ -115,6 +115,38 @@ describe('PropertiesPanel', () => {
     expect(wrapper.emitted('add-property')![0]).toEqual(['priority', 7])
   })
 
+  it('opening a second row\'s editor discards the first row\'s in-progress edit without emitting', async () => {
+    const wrapper = mount(PropertiesPanel, {
+      props: {
+        properties: [
+          { name: 'status', type: 'string', value: 'draft' },
+          { name: 'priority', type: 'numeric', value: 1 },
+        ],
+      },
+    })
+    const buttons = wrapper.findAll('[data-testid="property-value-btn"]')
+    await buttons[0].trigger('click')
+    await wrapper.get('[data-testid="property-value-edit-input"]').setValue('unsaved draft edit')
+
+    await buttons[1].trigger('click')
+
+    expect(wrapper.emitted('add-property')).toBeFalsy()
+    expect((wrapper.get('[data-testid="property-value-edit-input"]').element as HTMLInputElement).value).toBe('1')
+    expect(wrapper.text()).toContain('draft')
+    expect(wrapper.text()).not.toContain('unsaved draft edit')
+  })
+
+  it('commits a numeric edit cleared to empty as 0, mirroring the Add form\'s own Number() coercion', async () => {
+    const wrapper = mount(PropertiesPanel, {
+      props: { properties: [{ name: 'priority', type: 'numeric', value: 3 }] }
+    })
+    await wrapper.get('[data-testid="property-value-btn"]').trigger('click')
+    await wrapper.get('[data-testid="property-value-edit-input"]').setValue('')
+    await wrapper.get('[data-testid="property-value-edit-input"]').trigger('keydown.enter')
+
+    expect(wrapper.emitted('add-property')![0]).toEqual(['priority', 0])
+  })
+
   it('commits a list edit split back into an array of trimmed strings', async () => {
     const wrapper = mount(PropertiesPanel, {
       props: { properties: [{ name: 'tags', type: 'list', value: ['a', 'b'] }] }
