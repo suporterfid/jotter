@@ -710,6 +710,10 @@ function handleInput() {
 }
 
 function handleKeyDown(event: KeyboardEvent) {
+  // Ctrl+S is intentionally not reachable while this menu owns keydown
+  // handling, consistent with the pre-existing wikilink-autocomplete
+  // branch below (which does the same while its own suggestions are
+  // shown) — both menus fully consume arrow/Enter/Escape.
   if (showSlashMenu.value) {
     slashMenuRef.value?.handleKeyDown(event)
     return

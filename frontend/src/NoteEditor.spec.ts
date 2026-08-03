@@ -462,4 +462,54 @@ describe('NoteEditor slash-command menu', () => {
     expect(wrapper.text()).toContain('Code Block')
     expect(wrapper.text()).not.toContain('To-do List')
   })
+
+  it('opens the slash menu for "/" right after a space or a newline', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+
+    typeAndPosition(el, 'hello /code', 11)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Code Block')
+
+    typeAndPosition(el, 'hello\n/code', 11)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Code Block')
+  })
+
+  it('closes the slash menu once a wikilink trigger takes over', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+
+    typeAndPosition(el, '/', 1)
+    await textarea.trigger('input')
+    expect(wrapper.text()).toContain('Insert Block')
+
+    typeAndPosition(el, '[[', 2)
+    await textarea.trigger('input')
+    expect(wrapper.text()).not.toContain('Insert Block')
+  })
+
+  it('inserts a multi-line block syntax verbatim and places the cursor at its end', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    typeAndPosition(el, '/code', 5)
+    await textarea.trigger('input')
+
+    await wrapper.find('.slash-menu-item').trigger('click')
+    await flushPromises()
+
+    const expectedSyntax = '```js\ncode\n```'
+    expect(el.value).toBe(expectedSyntax)
+    expect(el.selectionStart).toBe(expectedSyntax.length)
+    expect(el.selectionEnd).toBe(expectedSyntax.length)
+  })
 })
