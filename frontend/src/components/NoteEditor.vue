@@ -492,6 +492,11 @@ watch(() => props.note, (newNote) => {
     clearTimeout(autosaveTimer)
     autosaveTimer = null
   }
+  if (savedIndicatorTimer) {
+    clearTimeout(savedIndicatorTimer)
+    savedIndicatorTimer = null
+  }
+  showSavedIndicator.value = false
   editableContent.value = newNote.content
   isDirty.value = false
   showAutocomplete.value = false

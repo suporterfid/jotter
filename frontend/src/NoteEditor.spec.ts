@@ -336,6 +336,28 @@ describe('NoteEditor autosave', () => {
 
     expect(wrapper.emitted('update-note')).toBeFalsy()
   })
+
+  it('clears a pending "Saved" auto-dismiss timer when switching to a different note', async () => {
+    const note = makeNote()
+    const wrapper = mount(NoteEditor, {
+      props: { note, allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\nchanged')
+    vi.advanceTimersByTime(1000)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="save-status-indicator"]').text()).toBe('Saved')
+
+    await wrapper.setProps({ note: makeNote({ id: 2, path: 'other.md', content: '# Other' }) })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="save-status-indicator"]').exists()).toBe(false)
+
+    vi.advanceTimersByTime(2000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="save-status-indicator"]').exists()).toBe(false)
+  })
 })
 
 describe('NoteEditor stats popover', () => {
