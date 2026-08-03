@@ -26,51 +26,24 @@
         @click="isEditingCover = true"
       >Add cover</button>
 
-      <!-- Top Action Bar -->
+      <!-- Thin utility bar: breadcrumb + quiet actions only. The page
+           title used to live here sharing a row with these controls and
+           carrying a border-bottom — chrome treatment for what is really
+           page content (#257). It now lives in its own block below,
+           inside the scrolling canvas. -->
       <header class="editor-bar">
-      <div class="note-meta-info">
-        <div class="editor-title-row">
+      <span class="editor-path" data-testid="editor-path">
+        <template v-for="folder in breadcrumbSegments.folders" :key="folder.path">
           <button
-            v-if="!isEditingIcon"
             type="button"
-            class="editor-icon-btn"
-            :aria-label="noteIcon ? 'Change page icon' : 'Set page icon'"
-            data-testid="editor-icon-btn"
-            @click="startEditingIcon"
-          >
-            <span v-if="noteIcon" data-testid="editor-icon-emoji">{{ noteIcon }}</span>
-            <svg v-else data-testid="editor-icon-fallback" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            <span v-if="noteIcon" class="editor-icon-clear" data-testid="editor-icon-clear" @click.stop="clearIcon">&times;</span>
-          </button>
-          <input
-            v-else
-            v-model="iconDraft"
-            type="text"
-            class="editor-icon-input"
-            data-testid="editor-icon-input"
-            autofocus
-            @keydown.enter="confirmEditingIcon"
-            @keydown.escape="cancelEditingIcon"
-            @blur="confirmEditingIcon"
-          />
-          <h2 class="editor-title" data-testid="editor-title">{{ note.title || note.path }}</h2>
-        </div>
-        <span class="editor-path" data-testid="editor-path">
-          <template v-for="folder in breadcrumbSegments.folders" :key="folder.path">
-            <button
-              type="button"
-              class="editor-path-segment"
-              data-testid="editor-path-segment"
-              @click="emit('reveal-folder', folder.path)"
-            >{{ folder.name }}</button>
-            <span class="editor-path-separator">/</span>
-          </template>
-          <span data-testid="editor-path-filename">{{ breadcrumbSegments.fileName }}</span>
-        </span>
-      </div>
+            class="editor-path-segment"
+            data-testid="editor-path-segment"
+            @click="emit('reveal-folder', folder.path)"
+          >{{ folder.name }}</button>
+          <span class="editor-path-separator">/</span>
+        </template>
+        <span data-testid="editor-path-filename">{{ breadcrumbSegments.fileName }}</span>
+      </span>
 
       <div class="editor-controls">
         <!-- View Mode Switcher -->
@@ -162,9 +135,55 @@
     </header>
     </div>
 
+    <!-- Page Title: real content, not chrome (#257) — icon + editable
+         title sit directly in the scrolling canvas, below the cover and
+         thin utility bar, matching how a Notion page title behaves.
+         Persists to frontmatter.title (excluded from the generic
+         Properties list, same as icon/cover) on a short debounce, same
+         pattern as the body's own autosave. -->
+    <div class="editor-page-title">
+      <button
+        v-if="!isEditingIcon"
+        type="button"
+        class="editor-icon-btn"
+        :aria-label="noteIcon ? 'Change page icon' : 'Set page icon'"
+        data-testid="editor-icon-btn"
+        @click="startEditingIcon"
+      >
+        <span v-if="noteIcon" data-testid="editor-icon-emoji">{{ noteIcon }}</span>
+        <svg v-else data-testid="editor-icon-fallback" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <span v-if="noteIcon" class="editor-icon-clear" data-testid="editor-icon-clear" @click.stop="clearIcon">&times;</span>
+      </button>
+      <input
+        v-else
+        v-model="iconDraft"
+        type="text"
+        class="editor-icon-input"
+        data-testid="editor-icon-input"
+        autofocus
+        @keydown.enter="confirmEditingIcon"
+        @keydown.escape="cancelEditingIcon"
+        @blur="confirmEditingIcon"
+      />
+      <textarea
+        ref="titleTextareaRef"
+        v-model="titleDraft"
+        class="editor-title-input"
+        data-testid="editor-title"
+        rows="1"
+        placeholder="Untitled"
+        @input="handleTitleInput"
+        @blur="saveTitle"
+        @keydown.enter.prevent="focusContentFromTitle"
+      ></textarea>
+    </div>
+
     <!-- Main Editor Content Area -->
-    <div 
-      class="editor-body" 
+    <div
+      class="editor-body"
       :class="`view-${viewMode}`"
       @dragover.prevent="handleDragOver"
       @dragenter.prevent="handleDragOver"
@@ -293,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
+import { ref, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention, OutgoingLink } from '../services/types'
 import {
   uploadAttachment,
@@ -362,6 +381,59 @@ async function clearCover() {
     console.error('Failed to clear cover image:', err)
   }
 }
+
+// Title is real page content (#257), not read-only chrome: `titleDraft` is
+// bound live to an editable field and persisted to frontmatter.title (same
+// channel as icon/cover above — excluded from the generic Properties list
+// server-side) on a short debounce, mirroring the body's own autosave.
+// `note.title` already encodes the server's frontmatter > first-heading >
+// filename precedence (MarkdownDocument::resolveTitle), so it's the correct
+// initial/reset value without reimplementing that precedence here.
+const titleDraft = ref(props.note.title)
+const titleTextareaRef = ref<HTMLTextAreaElement | null>(null)
+const TITLE_SAVE_DEBOUNCE_MS = 1000
+let titleSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+function autosizeTitle() {
+  nextTick(() => {
+    const el = titleTextareaRef.value
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  })
+}
+
+function handleTitleInput() {
+  if (titleSaveTimer) clearTimeout(titleSaveTimer)
+  titleSaveTimer = setTimeout(saveTitle, TITLE_SAVE_DEBOUNCE_MS)
+  autosizeTitle()
+}
+
+async function saveTitle() {
+  if (titleSaveTimer) {
+    clearTimeout(titleSaveTimer)
+    titleSaveTimer = null
+  }
+  if (!props.workspaceId) return
+  const trimmed = titleDraft.value.trim()
+  if (trimmed === props.note.title) return
+  try {
+    if (trimmed === '') {
+      await deleteNoteProperty(props.workspaceId, props.note.id, 'title')
+    } else {
+      await setNoteProperty(props.workspaceId, props.note.id, 'title', trimmed)
+    }
+    emit('select-note', props.note.id)
+  } catch (err) {
+    console.error('Failed to update note title:', err)
+  }
+}
+
+function focusContentFromTitle() {
+  textareaRef.value?.focus()
+}
+
+onMounted(autosizeTitle)
 
 const breadcrumbSegments = computed(() => {
   const parts = props.note.path.split('/')
@@ -528,6 +600,12 @@ watch(() => props.note, (newNote) => {
   showSavedIndicator.value = false
   editableContent.value = newNote.content
   isDirty.value = false
+  if (titleSaveTimer) {
+    clearTimeout(titleSaveTimer)
+    titleSaveTimer = null
+  }
+  titleDraft.value = newNote.title
+  autosizeTitle()
   showAutocomplete.value = false
   showHistory.value = false
   loadComments(newNote.id)
@@ -872,6 +950,7 @@ async function handleSave() {
 onUnmounted(() => {
   if (autosaveTimer) clearTimeout(autosaveTimer)
   if (savedIndicatorTimer) clearTimeout(savedIndicatorTimer)
+  if (titleSaveTimer) clearTimeout(titleSaveTimer)
 })
 </script>
 
@@ -896,20 +975,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-2) var(--space-6);
   background: var(--color-canvas);
   border-bottom: 1px solid var(--color-border);
-}
-
-.note-meta-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.editor-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .editor-icon-btn {
@@ -966,12 +1034,34 @@ onUnmounted(() => {
   color: var(--color-text);
 }
 
-.editor-title {
+.editor-page-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-6) 0;
+  background: var(--color-canvas);
+}
+
+.editor-title-input {
+  display: block;
+  width: 100%;
   margin: 0;
+  padding: var(--space-1) 0;
+  border: none;
+  /* outline:none omitted — global :focus-visible handles the ring, same
+     as .markdown-textarea below. */
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  font-family: inherit;
   font-size: var(--text-h1);
   font-weight: 700;
   line-height: 1.15;
   color: var(--color-text);
+}
+
+.editor-title-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .editor-title-zone {

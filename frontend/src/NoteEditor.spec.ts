@@ -513,3 +513,76 @@ describe('NoteEditor slash-command menu', () => {
     expect(el.selectionEnd).toBe(expectedSyntax.length)
   })
 })
+
+describe('NoteEditor editable page title', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('renders the title as an editable field pre-filled with note.title', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    expect(titleField.element.tagName).toBe('TEXTAREA')
+    expect((titleField.element as HTMLTextAreaElement).value).toBe('Test Note')
+  })
+
+  it('persists a typed title to frontmatter.title after the debounce, without touching body content', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    await titleField.setValue('Renamed Title')
+
+    expect(setNoteProperty).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+
+    expect(setNoteProperty).toHaveBeenCalledWith(1, 1, 'title', 'Renamed Title')
+    expect((wrapper.find('[data-testid="markdown-textarea"]').element as HTMLTextAreaElement).value).toBe('# Test Note')
+  })
+
+  it('deletes the title property when cleared to empty', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    await titleField.setValue('')
+
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+
+    expect(deleteNoteProperty).toHaveBeenCalledWith(1, 1, 'title')
+  })
+
+  it('moves focus to the content editor on Enter instead of inserting a newline', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    const titleField = wrapper.find('[data-testid="editor-title"]')
+    await titleField.trigger('keydown', { key: 'Enter' })
+
+    expect(document.activeElement).toBe(wrapper.find('[data-testid="markdown-textarea"]').element)
+    wrapper.unmount()
+  })
+
+  it('resets the title field when switching to a different note', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await wrapper.find('[data-testid="editor-title"]').setValue('Mid-edit draft')
+
+    await wrapper.setProps({
+      note: makeNote({ id: 2, path: 'other.md', title: 'Other Note', content: '# Other' }),
+    })
+
+    expect((wrapper.find('[data-testid="editor-title"]').element as HTMLTextAreaElement).value).toBe('Other Note')
+  })
+})
