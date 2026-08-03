@@ -101,6 +101,24 @@
           </button>
         </div>
 
+        <div class="stats-toggle-wrapper">
+          <button
+            type="button"
+            class="btn-attach"
+            data-testid="stats-toggle-btn"
+            title="Note statistics"
+            :aria-expanded="showStats"
+            @click="showStats = !showStats"
+          >
+            <span>ℹ️</span>
+          </button>
+          <div v-if="showStats" class="stats-popover" data-testid="stats-popover">
+            <span class="stat-item"><strong>{{ wordCount }}</strong> words</span>
+            <span class="stat-item"><strong>{{ charCount }}</strong> chars</span>
+            <span class="stat-item"><strong>{{ readingTimeMin }}</strong> min read</span>
+          </div>
+        </div>
+
         <button
           class="btn-attach"
           data-testid="history-btn"
@@ -131,15 +149,15 @@
           @change="handleFileSelected" 
         />
 
-        <button 
-          class="btn-save"
-          data-testid="save-note-btn"
-          :disabled="!isDirty && !isSaving"
-          @click="handleSave"
+        <span
+          v-if="isSaving || isDirty || showSavedIndicator"
+          class="save-status-pill"
+          data-testid="save-status-indicator"
+          :class="{ dirty: isDirty, saving: isSaving }"
         >
-          <span v-if="isSaving">Saving...</span>
-          <span v-else>{{ isDirty ? 'Save Changes' : 'Saved' }}</span>
-        </button>
+          <span class="dot"></span>
+          {{ isSaving ? 'Saving...' : isDirty ? 'Unsaved changes' : 'Saved' }}
+        </span>
       </div>
     </header>
     </div>
@@ -209,20 +227,6 @@
       </div>
     </div>
 
-    <!-- Live Status Bar -->
-    <footer class="editor-status-bar">
-      <div class="status-left">
-        <span class="status-pill" :class="{ dirty: isDirty, saving: isSaving }">
-          <span class="dot"></span>
-          {{ isSaving ? 'Saving...' : isDirty ? 'Unsaved changes' : 'Saved to vault' }}
-        </span>
-      </div>
-      <div class="status-right">
-        <span class="stat-item"><strong>{{ wordCount }}</strong> words</span>
-        <span class="stat-item"><strong>{{ charCount }}</strong> chars</span>
-        <span class="stat-item"><strong>{{ readingTimeMin }}</strong> min read</span>
-      </div>
-    </footer>
 
     <!-- Properties Panel -->
     <PropertiesPanel
@@ -279,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention, OutgoingLink } from '../services/types'
 import {
   uploadAttachment,
@@ -412,6 +416,12 @@ const viewMode = ref<'edit' | 'split' | 'preview'>('split')
 const editableContent = ref(props.note.content)
 const isDirty = ref(false)
 const isSaving = ref(false)
+const showSavedIndicator = ref(false)
+const showStats = ref(false)
+const AUTOSAVE_DEBOUNCE_MS = 1000
+const SAVED_INDICATOR_DURATION_MS = 2000
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null
+let savedIndicatorTimer: ReturnType<typeof setTimeout> | null = null
 const isUploading = ref(false)
 const isDraggingOver = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -477,7 +487,26 @@ const autocompleteStartIndex = ref(-1)
 const selectedSuggestionIndex = ref(0)
 const autocompleteStyle = ref({ top: '40px', left: '20px' })
 
+// `note` is replaced with a new object reference not just when the user
+// switches notes, but also every time our own autosave round-trips
+// (handleUpdateNote -> refreshNotesList reloads the same note). Comparing
+// ids lets us skip the reset below on that routine same-note reload —
+// otherwise it stomps the in-flight "Saved" indicator almost immediately
+// after every autosave, and could clobber newer unsaved edits typed
+// during the round-trip.
+let currentNoteId: number | null = null
 watch(() => props.note, (newNote) => {
+  if (newNote.id === currentNoteId) return
+  currentNoteId = newNote.id
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer)
+    autosaveTimer = null
+  }
+  if (savedIndicatorTimer) {
+    clearTimeout(savedIndicatorTimer)
+    savedIndicatorTimer = null
+  }
+  showSavedIndicator.value = false
   editableContent.value = newNote.content
   isDirty.value = false
   showAutocomplete.value = false
@@ -560,6 +589,10 @@ async function handleDeleteComment(commentId: number) {
 watch(editableContent, (newVal) => {
   if (newVal !== props.note.content) {
     isDirty.value = true
+    if (autosaveTimer) clearTimeout(autosaveTimer)
+    autosaveTimer = setTimeout(() => {
+      handleSave()
+    }, AUTOSAVE_DEBOUNCE_MS)
   }
 })
 
@@ -744,15 +777,29 @@ async function handleDeleteProperty(name: string) {
 }
 
 async function handleSave() {
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer)
+    autosaveTimer = null
+  }
   if (!isDirty.value) return
   isSaving.value = true
   try {
     emit('update-note', props.note.id, editableContent.value)
     isDirty.value = false
+    showSavedIndicator.value = true
+    if (savedIndicatorTimer) clearTimeout(savedIndicatorTimer)
+    savedIndicatorTimer = setTimeout(() => {
+      showSavedIndicator.value = false
+    }, SAVED_INDICATOR_DURATION_MS)
   } finally {
     isSaving.value = false
   }
 }
+
+onUnmounted(() => {
+  if (autosaveTimer) clearTimeout(autosaveTimer)
+  if (savedIndicatorTimer) clearTimeout(savedIndicatorTimer)
+})
 </script>
 
 <style scoped>
@@ -1023,29 +1070,6 @@ async function handleSave() {
   cursor: not-allowed;
 }
 
-.btn-save {
-  background: var(--color-action);
-  color: var(--color-neutral-0);
-  border: none;
-  padding: var(--space-1) var(--space-4);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-standard);
-  min-height: 36px;
-}
-
-.btn-save:hover:not(:disabled) {
-  background: var(--color-action-hover);
-}
-
-.btn-save:disabled {
-  background: var(--color-surface-emphasis);
-  color: var(--color-text-muted);
-  cursor: default;
-}
-
 .editor-body {
   flex: 1;
   /* Safety floor, not the primary sizing mechanism: .editor-container's own
@@ -1180,24 +1204,7 @@ async function handleSave() {
   font-size: 1.1rem;
 }
 
-.editor-status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-1) var(--space-4);
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.status-left, .status-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.status-pill {
+.save-status-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -1205,26 +1212,26 @@ async function handleSave() {
   color: var(--color-status-success);
 }
 
-.status-pill .dot {
+.save-status-pill .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--color-status-success);
 }
 
-.status-pill.dirty {
+.save-status-pill.dirty {
   color: var(--color-status-warning);
 }
 
-.status-pill.dirty .dot {
+.save-status-pill.dirty .dot {
   background: var(--color-status-warning);
 }
 
-.status-pill.saving {
+.save-status-pill.saving {
   color: var(--color-action);
 }
 
-.status-pill.saving .dot {
+.save-status-pill.saving .dot {
   background: var(--color-action);
   animation: pulse 1s infinite;
 }
@@ -1232,6 +1239,29 @@ async function handleSave() {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+
+.stats-toggle-wrapper {
+  position: relative;
+}
+
+.stats-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-float);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  z-index: 10;
 }
 
 .stat-item strong {

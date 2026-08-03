@@ -1,5 +1,5 @@
 import { mount, flushPromises } from '@vue/test-utils'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import NoteEditor from './components/NoteEditor.vue'
 import type { NoteDetail } from './services/types'
 
@@ -228,5 +228,163 @@ describe('NoteEditor empty metadata panels', () => {
     await flushPromises()
 
     expect(wrapper.find('[aria-label="Backlinks"]').exists()).toBe(true)
+  })
+})
+
+describe('NoteEditor autosave', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('shows no save-status pill when content is unchanged', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    expect(wrapper.find('[data-testid="save-status-indicator"]').exists()).toBe(false)
+  })
+
+  it('marks dirty and autosaves after the debounce timer elapses', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\nchanged')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="save-status-indicator"]').text()).toBe('Unsaved changes')
+    expect(wrapper.emitted('update-note')).toBeFalsy()
+
+    vi.advanceTimersByTime(1000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update-note')).toBeTruthy()
+    expect(wrapper.emitted('update-note')![0]).toEqual([1, '# Test Note\nchanged'])
+  })
+
+  it('does not re-fire the debounce timer on every keystroke', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\na')
+    vi.advanceTimersByTime(600)
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\nab')
+    vi.advanceTimersByTime(600)
+
+    expect(wrapper.emitted('update-note')).toBeFalsy()
+
+    vi.advanceTimersByTime(400)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update-note')).toBeTruthy()
+    expect(wrapper.emitted('update-note')!.length).toBe(1)
+  })
+
+  it('manual Ctrl+S save flushes immediately without a stale duplicate autosave', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\nchanged')
+    await wrapper.find('[data-testid="markdown-textarea"]').trigger('keydown', { key: 's', ctrlKey: true })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update-note')).toBeTruthy()
+    expect(wrapper.emitted('update-note')!.length).toBe(1)
+
+    vi.advanceTimersByTime(1000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update-note')!.length).toBe(1)
+  })
+
+  it('shows "Saved" after a successful save, then auto-dismisses the pill', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\nchanged')
+    vi.advanceTimersByTime(1000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="save-status-indicator"]').text()).toBe('Saved')
+
+    vi.advanceTimersByTime(2000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="save-status-indicator"]').exists()).toBe(false)
+  })
+
+  it('clears a pending autosave timer when switching to a different note', async () => {
+    const note = makeNote()
+    const wrapper = mount(NoteEditor, {
+      props: { note, allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\nchanged')
+
+    await wrapper.setProps({ note: makeNote({ id: 2, path: 'other.md', content: '# Other' }) })
+    await wrapper.vm.$nextTick()
+
+    vi.advanceTimersByTime(1000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update-note')).toBeFalsy()
+  })
+
+  it('clears a pending "Saved" auto-dismiss timer when switching to a different note', async () => {
+    const note = makeNote()
+    const wrapper = mount(NoteEditor, {
+      props: { note, allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.find('[data-testid="markdown-textarea"]').setValue('# Test Note\nchanged')
+    vi.advanceTimersByTime(1000)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="save-status-indicator"]').text()).toBe('Saved')
+
+    await wrapper.setProps({ note: makeNote({ id: 2, path: 'other.md', content: '# Other' }) })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="save-status-indicator"]').exists()).toBe(false)
+
+    vi.advanceTimersByTime(2000)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="save-status-indicator"]').exists()).toBe(false)
+  })
+})
+
+describe('NoteEditor stats popover', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('hides the stats popover by default and toggles it on button click', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    expect(wrapper.find('[data-testid="stats-popover"]').exists()).toBe(false)
+
+    await wrapper.find('[data-testid="stats-toggle-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="stats-popover"]').exists()).toBe(true)
+
+    await wrapper.find('[data-testid="stats-toggle-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="stats-popover"]').exists()).toBe(false)
+  })
+
+  it('no longer renders a permanent stats footer or explicit Save button', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    expect(wrapper.find('.editor-status-bar').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="save-note-btn"]').exists()).toBe(false)
   })
 })
