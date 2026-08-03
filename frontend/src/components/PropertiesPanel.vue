@@ -17,8 +17,66 @@
       <li v-for="prop in properties" :key="prop.name" class="property-item" data-testid="property-item">
         <div class="property-info">
           <span class="property-name">{{ prop.name }}</span>
-          <span class="property-type">{{ prop.type }}</span>
-          <span class="property-value">{{ formatValue(prop) }}</span>
+
+          <template v-if="editingName === prop.name">
+            <input
+              v-if="prop.type === 'string' || prop.type === 'list'"
+              v-model="editDraft"
+              type="text"
+              class="property-value-input"
+              data-testid="property-value-edit-input"
+              autofocus
+              @keydown.enter="commitEdit(prop)"
+              @keydown.escape="cancelEdit"
+              @blur="commitEdit(prop)"
+            />
+            <input
+              v-else-if="prop.type === 'numeric'"
+              v-model="editDraft"
+              type="number"
+              class="property-value-input"
+              data-testid="property-value-edit-input"
+              autofocus
+              @keydown.enter="commitEdit(prop)"
+              @keydown.escape="cancelEdit"
+              @blur="commitEdit(prop)"
+            />
+            <input
+              v-else-if="prop.type === 'datetime'"
+              v-model="editDraft"
+              type="datetime-local"
+              class="property-value-input"
+              data-testid="property-value-edit-input"
+              autofocus
+              @keydown.enter="commitEdit(prop)"
+              @keydown.escape="cancelEdit"
+              @blur="commitEdit(prop)"
+            />
+            <label v-else-if="prop.type === 'boolean'" class="property-checkbox-label">
+              <input
+                v-model="editDraftBool"
+                type="checkbox"
+                data-testid="property-value-edit-input"
+                autofocus
+                @change="commitEdit(prop)"
+                @keydown.escape="cancelEdit"
+              />
+              <span>{{ editDraftBool ? 'True' : 'False' }}</span>
+            </label>
+            <span v-else class="property-value">{{ formatValue(prop) }}</span>
+          </template>
+          <!-- json-typed properties (only reachable via direct frontmatter edits,
+               never via this panel's Add form) aren't a safe in-place edit
+               surface — arbitrary nested structure, no single-input match. -->
+          <button
+            v-else-if="prop.type !== 'json'"
+            type="button"
+            class="property-value-btn"
+            data-testid="property-value-btn"
+            :aria-label="`Edit ${prop.name}`"
+            @click="startEdit(prop)"
+          >{{ formatValue(prop) }}</button>
+          <span v-else class="property-value">{{ formatValue(prop) }}</span>
         </div>
         <button
           class="btn-delete-property"
@@ -112,6 +170,54 @@ const newType = ref<NotePropertyType>('string')
 const newValueText = ref('')
 const newValueBool = ref(false)
 
+// In-place value editing (#258): the value itself is the editing surface,
+// matching its existing type — no separate edit form, and type is never
+// re-stated or changeable here (it's chosen once via the Add form above).
+const editingName = ref<string | null>(null)
+const editDraft = ref('')
+const editDraftBool = ref(false)
+
+function startEdit(prop: NoteProperty) {
+  editingName.value = prop.name
+  if (prop.type === 'boolean') {
+    editDraftBool.value = Boolean(prop.value)
+  } else if (prop.type === 'list') {
+    editDraft.value = Array.isArray(prop.value) ? prop.value.join(', ') : ''
+  } else {
+    editDraft.value = prop.value === null || prop.value === undefined ? '' : String(prop.value)
+  }
+}
+
+function cancelEdit() {
+  editingName.value = null
+}
+
+function commitEdit(prop: NoteProperty) {
+  // Unmounting the edit input (which happens at the end of this function,
+  // via editingName.value = null) fires a native blur event in a real
+  // browser, re-invoking this handler through @blur — same re-entrant-call
+  // shape as NoteEditor.vue's confirmEditingIcon. Guard against it.
+  if (editingName.value !== prop.name) return
+
+  let value: unknown
+  switch (prop.type) {
+    case 'numeric':
+      value = Number(editDraft.value)
+      break
+    case 'boolean':
+      value = editDraftBool.value
+      break
+    case 'list':
+      value = editDraft.value.split(',').map(s => s.trim()).filter(Boolean)
+      break
+    default:
+      value = editDraft.value
+  }
+
+  emit('add-property', prop.name, value)
+  editingName.value = null
+}
+
 function formatValue(prop: NoteProperty): string {
   if (prop.value === null || prop.value === undefined) return '—'
   if (Array.isArray(prop.value)) return prop.value.join(', ')
@@ -195,19 +301,42 @@ function handleSubmit() {
   color: var(--color-text);
 }
 
-.property-type {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  background: var(--color-canvas);
-  border-radius: var(--radius-sm);
-  padding: 0 0.375rem;
-}
-
 .property-value {
   color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.property-value-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: inherit;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.property-value-btn:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.property-value-input {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-1);
+  color: var(--color-text);
+  font-size: inherit;
+  min-width: 80px;
+  min-height: 24px;
 }
 
 .btn-delete-property {
