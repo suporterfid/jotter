@@ -33,8 +33,9 @@ test.describe('Jotter Notes E2E Journey', () => {
     await page.fill('[data-testid="create-note-input"]', 'e2e-demo.md')
     await page.click('[data-testid="create-note-submit"]')
 
-    // Active note editor should appear
-    await expect(page.locator('[data-testid="editor-title"]')).toContainText('e2e-demo', { timeout: 10000 })
+    // Active note editor should appear. Title is now an editable textarea
+    // (#257), not chrome text, so assert its value rather than textContent.
+    await expect(page.locator('[data-testid="editor-title"]')).toHaveValue(/e2e-demo/, { timeout: 10000 })
     await expect(page.locator('[data-testid="editor-path"]')).toContainText('e2e-demo.md')
 
     // Edit content with headings, wikilinks, and malicious script to test safe rendering

@@ -215,4 +215,49 @@ MARKDOWN);
         // since that's what the frontend reads to render the cover.
         $this->assertSame('https://example.com/banner.jpg', $note->fresh()->frontmatter['cover']);
     }
+
+    public function test_title_frontmatter_key_is_excluded_from_property_projection(): void
+    {
+        $tenant = Tenant::create(['slug' => 'title-test', 'name' => 'Title Test']);
+        $vaultPath = storage_path('app/vaults/prop_title_'.uniqid());
+        @mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'title-test',
+            'name' => 'Title Test Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+
+        $storage = new VaultStorage();
+        $note = $storage->write($workspace, 'titled.md', <<<'MARKDOWN'
+---
+title: "Renamed via Title Field"
+status: "active"
+---
+# Original Heading
+MARKDOWN);
+
+        // title must not be projected as a queryable NoteProperty row (it
+        // would otherwise leak into the generic Properties panel, which #257
+        // relies on staying free of the dedicated title-editing affordance)...
+        $this->assertDatabaseMissing('note_properties', [
+            'note_id' => $note->id,
+            'name' => 'title',
+        ]);
+
+        // ...but a sibling ordinary key on the same note still is, proving
+        // the exclusion is scoped to `title` specifically.
+        $this->assertDatabaseHas('note_properties', [
+            'note_id' => $note->id,
+            'name' => 'status',
+            'type' => 'string',
+            'value_string' => 'active',
+        ]);
+
+        // frontmatter.title takes precedence over the body heading for the
+        // resolved title (MarkdownDocument::resolveTitle), matching what the
+        // frontend reads and displays.
+        $this->assertSame('Renamed via Title Field', $note->fresh()->title);
+    }
 }
