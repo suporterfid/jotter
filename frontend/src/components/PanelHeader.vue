@@ -51,8 +51,6 @@ defineEmits<{
   margin-bottom: var(--space-3);
   font-weight: 600;
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   font-size: 0.75rem;
 }
 

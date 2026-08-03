@@ -283,10 +283,13 @@ function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--color-surface-emphasis);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.property-item:hover {
+  background: var(--color-hover);
 }
 
 .property-info {
