@@ -1083,7 +1083,6 @@ async function handleSave() {
 .markdown-textarea {
   /* Centered reading column (Notion-style ~640-760px page), not full pane
      width — see docs/visual-identity.md §11, previously an open item. */
-  display: block;
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
@@ -1108,7 +1107,11 @@ async function handleSave() {
 .autocomplete-dropdown {
   position: absolute;
   top: 3.5rem;
-  left: 2rem;
+  /* Stays near the left edge of the centered 760px reading column
+     (#255) instead of the wrapper's full-width edge; falls back to the
+     pre-#255 fixed 2rem once the column stops being centered (viewport
+     narrower than the column + its margins). */
+  left: max(2rem, calc(50% - 348px));
   background: var(--color-surface);
   border: 1px solid var(--color-action);
   border-radius: var(--radius-md);
