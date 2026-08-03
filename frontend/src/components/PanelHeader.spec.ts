@@ -41,4 +41,14 @@ describe('PanelHeader', () => {
     const wrapper = mount(PanelHeader, { props: { title: 'Backlinks', collapsed: false } })
     expect(wrapper.find('[data-testid="panel-collapse-toggle"] .chevron').classes()).not.toContain('collapsed')
   })
+
+  it('applies panel-header-collapsed to the root when collapsed is true', () => {
+    const wrapper = mount(PanelHeader, { props: { title: 'Backlinks', collapsed: true } })
+    expect(wrapper.find('.panel-header').classes()).toContain('panel-header-collapsed')
+  })
+
+  it('does not apply panel-header-collapsed to the root when collapsed is false', () => {
+    const wrapper = mount(PanelHeader, { props: { title: 'Backlinks', collapsed: false } })
+    expect(wrapper.find('.panel-header').classes()).not.toContain('panel-header-collapsed')
+  })
 })

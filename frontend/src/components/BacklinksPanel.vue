@@ -1,5 +1,5 @@
 <template>
-  <aside class="backlinks-panel" aria-label="Backlinks">
+  <aside class="backlinks-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Backlinks">
     <PanelHeader title="Backlinks" :count="backlinks.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
@@ -52,6 +52,10 @@ const { collapsed, toggle } = useCollapsiblePanel('backlinks', false)
   padding: var(--space-4);
   font-size: 0.875rem;
   color: var(--color-text);
+}
+
+.backlinks-panel.panel-collapsed {
+  padding-bottom: 0;
 }
 
 .backlinks-empty {
