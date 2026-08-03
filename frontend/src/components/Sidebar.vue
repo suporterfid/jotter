@@ -1,5 +1,21 @@
 <template>
-  <aside class="sidebar" :class="{ 'mobile-open': isMobileSidebarOpen }">
+  <aside class="sidebar" :class="{ 'mobile-open': isMobileSidebarOpen, 'sidebar-collapsed': sidebarCollapsed }">
+    <!-- Floating expand affordance: only reachable/visible once the
+         sidebar itself has collapsed to zero width, and only above the
+         mobile breakpoint (mobile has its own hamburger toggle). -->
+    <button
+      v-if="sidebarCollapsed"
+      type="button"
+      class="sidebar-expand-btn"
+      aria-label="Expand sidebar"
+      data-testid="sidebar-expand-btn"
+      @click="toggleSidebarCollapsed"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
+
     <!-- Header -->
     <div class="sidebar-header">
       <div class="brand">
@@ -24,6 +40,18 @@
         @switch="(id) => emit('switch-workspace', id)"
       />
       <div class="header-actions">
+        <button
+          type="button"
+          class="btn-icon sidebar-collapse-btn"
+          data-testid="sidebar-collapse-btn"
+          aria-label="Collapse sidebar"
+          title="Collapse sidebar"
+          @click="toggleSidebarCollapsed"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
         <div class="more-menu-wrapper">
           <button
             class="btn-icon"
@@ -404,6 +432,7 @@ import WorkspaceSwitcher from './WorkspaceSwitcher.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
 import { moveNote, reorderNoteTree } from '../services/api'
 import { createNoteTreeSortable, type NoteTreeSortableHandle } from '../composables/useNoteTreeSortable'
+import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 
 const props = defineProps<{
   notes: NoteMeta[]
@@ -445,6 +474,14 @@ const emit = defineEmits<{
   (e: 'switch-workspace', workspaceId: number): void
   (e: 'switch-tenant', tenantId: number): void
 }>()
+
+// Desktop sidebar collapse (#259): hands the full window to the page,
+// matching Notion's `«` collapse. Self-contained in this component — the
+// expand button below is `position: fixed`, so it stays reachable even
+// when the sidebar's own width collapses to 0. Mobile's existing
+// transform-based drawer (`.mobile-open`) is untouched; this is scoped to
+// desktop widths only.
+const { collapsed: sidebarCollapsed, toggle: toggleSidebarCollapsed } = useCollapsiblePanel('sidebar-desktop', false)
 
 const searchQuery = ref('')
 const activeTag = ref<string | null>(null)
@@ -708,6 +745,47 @@ function handleImportSubmit() {
   display: flex;
   flex-direction: column;
   height: 100%;
+  transition: width var(--duration-standard) var(--ease-standard),
+              min-width var(--duration-standard) var(--ease-standard);
+}
+
+@media (min-width: 769px) {
+  .sidebar.sidebar-collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+    overflow: hidden;
+  }
+}
+
+.sidebar-expand-btn {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
+}
+
+.sidebar-expand-btn:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+@media (max-width: 768px) {
+  .sidebar-expand-btn {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
