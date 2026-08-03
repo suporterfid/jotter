@@ -320,6 +320,7 @@
     <!-- Properties Panel -->
     <PropertiesPanel
       :properties="note.properties || []"
+      :workspace-id="workspaceId"
       @add-property="handleAddProperty"
       @delete-property="handleDeleteProperty"
     />

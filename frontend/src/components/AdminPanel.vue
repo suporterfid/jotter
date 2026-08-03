@@ -47,9 +47,25 @@
 
         <h3>Workspaces List</h3>
         <ul class="admin-list">
-          <li v-for="ws in workspaces" :key="ws.id" class="admin-list-item">
-            <span><strong>{{ ws.name }}</strong> ({{ ws.slug }})</span>
-            <button class="danger-btn" @click="archiveWorkspace(ws.id)" :disabled="loading">Archive</button>
+          <li v-for="ws in workspaces" :key="ws.id" class="admin-list-item" :class="{ 'admin-list-item-column': editingWsId === ws.id }">
+            <template v-if="editingWsId === ws.id">
+              <div class="admin-form">
+                <input v-model="wsEditDraft.name" data-testid="admin-edit-workspace-name" placeholder="Workspace Name" required />
+                <input v-model="wsEditDraft.slug" data-testid="admin-edit-workspace-slug" placeholder="Slug" required />
+                <p class="admin-form-note">Vault path changes aren't offered here — moving the underlying files is handled separately.</p>
+                <div class="btn-group">
+                  <button class="secondary-btn" data-testid="admin-edit-workspace-cancel" type="button" @click="cancelEditWorkspace">Cancel</button>
+                  <button class="success-btn" data-testid="admin-edit-workspace-save" type="button" :disabled="loading" @click="saveEditWorkspace(ws.id)">Save</button>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <span><strong>{{ ws.name }}</strong> ({{ ws.slug }})</span>
+              <div class="btn-group">
+                <button class="secondary-btn" data-testid="admin-edit-workspace-btn" @click="startEditWorkspace(ws)">Edit</button>
+                <button class="danger-btn" @click="archiveWorkspace(ws.id)" :disabled="loading">Archive</button>
+              </div>
+            </template>
           </li>
         </ul>
       </div>
@@ -136,6 +152,9 @@ const newWs = ref<{ tenant_id: number | null; name: string; slug: string; vault_
 const newMember = ref({ subject_id: '', role: 'editor' })
 const newUser = ref({ name: '', email: '', password: '', is_admin: false })
 
+const editingWsId = ref<number | null>(null)
+const wsEditDraft = ref({ name: '', slug: '' })
+
 function close() {
   emit('close')
 }
@@ -201,6 +220,29 @@ async function createWorkspace() {
     await fetchWorkspaces()
   } catch (e: unknown) {
     error.value = extractErrorMessage(e, 'Workspace creation failed.')
+  } finally {
+    loading.value = false
+  }
+}
+
+function startEditWorkspace(ws: any) {
+  editingWsId.value = ws.id
+  wsEditDraft.value = { name: ws.name, slug: ws.slug }
+}
+
+function cancelEditWorkspace() {
+  editingWsId.value = null
+}
+
+async function saveEditWorkspace(id: number) {
+  error.value = ''
+  loading.value = true
+  try {
+    await api.put(`/admin/workspaces/${id}`, wsEditDraft.value)
+    editingWsId.value = null
+    await fetchWorkspaces()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to update workspace.')
   } finally {
     loading.value = false
   }
@@ -370,6 +412,22 @@ watch(() => props.isOpen, (val) => {
   align-items: center;
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
+}
+.admin-list-item-column.admin-list-item {
+  flex-direction: column;
+  align-items: stretch;
+}
+.admin-list-item-column .admin-form {
+  margin-bottom: 0;
+}
+.btn-group {
+  display: flex;
+  gap: var(--space-2);
+}
+.admin-form-note {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2);
 }
 .danger-btn { background: var(--color-status-danger); color: var(--color-neutral-0); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
 .warning-btn { background: var(--color-status-warning); color: var(--color-text-inverse); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }

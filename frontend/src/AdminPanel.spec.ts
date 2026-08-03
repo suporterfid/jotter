@@ -4,6 +4,7 @@ import AdminPanel from './components/AdminPanel.vue'
 
 const apiGet = vi.fn().mockResolvedValue({ data: { data: [] } })
 const apiPost = vi.fn().mockResolvedValue({ data: { data: {} } })
+const apiPut = vi.fn().mockResolvedValue({ data: { data: {} } })
 const apiDelete = vi.fn().mockResolvedValue({ data: {} })
 const adminResetPassword = vi.fn().mockResolvedValue(undefined)
 
@@ -11,6 +12,7 @@ vi.mock('./services/api', () => ({
   api: {
     get: (...args: unknown[]) => apiGet(...args),
     post: (...args: unknown[]) => apiPost(...args),
+    put: (...args: unknown[]) => apiPut(...args),
     delete: (...args: unknown[]) => apiDelete(...args),
   },
   getTenants: vi.fn().mockResolvedValue([
@@ -25,6 +27,7 @@ describe('AdminPanel Component', () => {
     vi.clearAllMocks()
     apiGet.mockResolvedValue({ data: { data: [] } })
     apiPost.mockResolvedValue({ data: { data: {} } })
+    apiPut.mockResolvedValue({ data: { data: {} } })
     adminResetPassword.mockResolvedValue(undefined)
   })
 
@@ -146,5 +149,73 @@ describe('AdminPanel Component', () => {
 
     expect(adminResetPassword).not.toHaveBeenCalled()
     promptSpy.mockRestore()
+  })
+
+  it('edits a workspace name and slug via the authenticated axios instance, without vault_path', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [{ id: 3, tenant_id: 1, slug: 'old-slug', name: 'Old Name' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    expect((wrapper.find('[data-testid="admin-edit-workspace-name"]').element as HTMLInputElement).value).toBe('Old Name')
+    expect((wrapper.find('[data-testid="admin-edit-workspace-slug"]').element as HTMLInputElement).value).toBe('old-slug')
+
+    await wrapper.find('[data-testid="admin-edit-workspace-name"]').setValue('New Name')
+    await wrapper.find('[data-testid="admin-edit-workspace-slug"]').setValue('new-slug')
+    await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
+    await flushPromises()
+
+    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'New Name', slug: 'new-slug' })
+    expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(false)
+  })
+
+  it('discards edits and closes the edit form on Cancel', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [{ id: 3, tenant_id: 1, slug: 'old-slug', name: 'Old Name' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-edit-workspace-name"]').setValue('Discarded Name')
+    await wrapper.find('[data-testid="admin-edit-workspace-cancel"]').trigger('click')
+
+    expect(apiPut).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Old Name')
+  })
+
+  it('shows the backend validation error and keeps the edit form open when saving fails', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [{ id: 3, tenant_id: 1, slug: 'old-slug', name: 'Old Name' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    apiPut.mockRejectedValue({ response: { data: { message: 'That slug is already taken.' } } })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-edit-workspace-slug"]').setValue('taken-slug')
+    await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('That slug is already taken.')
+    expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(true)
   })
 })

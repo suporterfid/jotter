@@ -101,8 +101,14 @@
         aria-label="New property name"
         data-testid="property-name-input"
         class="property-form-input"
+        list="known-property-names"
         required
+        @focus="loadKnownProperties"
+        @change="applyKnownPropertyType"
       />
+      <datalist id="known-property-names">
+        <option v-for="p in knownProperties" :key="p.name" :value="p.name" />
+      </datalist>
       <select v-model="newType" aria-label="New property type" data-testid="property-type-select" class="property-form-select">
         <option value="string">Text</option>
         <option value="numeric">Number</option>
@@ -149,13 +155,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
+import { getWorkspaceProperties } from '../services/api'
 import type { NoteProperty, NotePropertyType } from '../services/types'
 
-defineProps<{
+const props = defineProps<{
   properties: NoteProperty[]
+  workspaceId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -169,6 +177,28 @@ const newName = ref('')
 const newType = ref<NotePropertyType>('string')
 const newValueText = ref('')
 const newValueBool = ref(false)
+
+// Autocomplete for the Add-property name field, sourced from every
+// property name/type already in use anywhere in the workspace -- helps
+// avoid typos and accidental near-duplicate property names.
+const knownProperties = ref<Pick<NoteProperty, 'name' | 'type'>[]>([])
+
+async function loadKnownProperties() {
+  if (!props.workspaceId) return
+  try {
+    knownProperties.value = await getWorkspaceProperties(props.workspaceId)
+  } catch (err) {
+    console.error('Failed to load known workspace properties:', err)
+    knownProperties.value = []
+  }
+}
+
+watch(() => props.workspaceId, loadKnownProperties, { immediate: true })
+
+function applyKnownPropertyType() {
+  const match = knownProperties.value.find((p) => p.name === newName.value)
+  if (match) newType.value = match.type
+}
 
 // In-place value editing (#258): the value itself is the editing surface,
 // matching its existing type — no separate edit form, and type is never

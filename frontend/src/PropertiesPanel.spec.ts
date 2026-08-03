@@ -1,10 +1,18 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import PropertiesPanel from './components/PropertiesPanel.vue'
+
+const getWorkspaceProperties = vi.fn().mockResolvedValue([])
+
+vi.mock('./services/api', () => ({
+  getWorkspaceProperties: (...args: unknown[]) => getWorkspaceProperties(...args),
+}))
 
 describe('PropertiesPanel', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.clearAllMocks()
+    getWorkspaceProperties.mockResolvedValue([])
   })
 
   it('shows the empty state when there are no properties', () => {
@@ -186,5 +194,78 @@ describe('PropertiesPanel', () => {
     const wrapper = mount(PropertiesPanel, { props: { properties: [] } })
     await wrapper.find('[data-testid="panel-collapse-toggle"]').trigger('click')
     expect(wrapper.find('.properties-panel').classes()).not.toContain('panel-collapsed')
+  })
+})
+
+describe('PropertiesPanel name autocomplete', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('does not fetch workspace properties when no workspaceId is given', () => {
+    mount(PropertiesPanel, { props: { properties: [] } })
+    expect(getWorkspaceProperties).not.toHaveBeenCalled()
+  })
+
+  it('loads known property names into a datalist when workspaceId is given', async () => {
+    getWorkspaceProperties.mockResolvedValue([
+      { name: 'status', type: 'string' },
+      { name: 'priority', type: 'numeric' },
+    ])
+    const wrapper = mount(PropertiesPanel, { props: { properties: [], workspaceId: 1 } })
+    await flushPromises()
+
+    expect(getWorkspaceProperties).toHaveBeenCalledWith(1)
+    const options = wrapper.find('#known-property-names').findAll('option')
+    expect(options.map(o => o.attributes('value'))).toEqual(['status', 'priority'])
+  })
+
+  it("adopts a known property's existing type when its name is selected", async () => {
+    getWorkspaceProperties.mockResolvedValue([{ name: 'priority', type: 'numeric' }])
+    const wrapper = mount(PropertiesPanel, { props: { properties: [], workspaceId: 1 } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="property-name-input"]').setValue('priority')
+    await wrapper.find('[data-testid="property-name-input"]').trigger('change')
+
+    expect((wrapper.find('[data-testid="property-type-select"]').element as HTMLSelectElement).value).toBe('numeric')
+  })
+
+  it('re-fetches known properties on focus, since the panel instance is reused across note switches', async () => {
+    getWorkspaceProperties.mockResolvedValue([])
+    const wrapper = mount(PropertiesPanel, { props: { properties: [], workspaceId: 1 } })
+    await flushPromises()
+    expect(getWorkspaceProperties).toHaveBeenCalledTimes(1)
+
+    getWorkspaceProperties.mockResolvedValue([{ name: 'newly-added', type: 'string' }])
+    await wrapper.find('[data-testid="property-name-input"]').trigger('focus')
+    await flushPromises()
+
+    expect(getWorkspaceProperties).toHaveBeenCalledTimes(2)
+    const options = wrapper.find('#known-property-names').findAll('option')
+    expect(options.map(o => o.attributes('value'))).toContain('newly-added')
+  })
+
+  it('re-fetches known properties when the workspaceId prop changes', async () => {
+    getWorkspaceProperties.mockResolvedValue([{ name: 'from-ws-1', type: 'string' }])
+    const wrapper = mount(PropertiesPanel, { props: { properties: [], workspaceId: 1 } })
+    await flushPromises()
+    expect(getWorkspaceProperties).toHaveBeenCalledWith(1)
+
+    getWorkspaceProperties.mockResolvedValue([{ name: 'from-ws-2', type: 'string' }])
+    await wrapper.setProps({ workspaceId: 2 })
+    await flushPromises()
+
+    expect(getWorkspaceProperties).toHaveBeenCalledWith(2)
+    const options = wrapper.find('#known-property-names').findAll('option')
+    expect(options.map(o => o.attributes('value'))).toEqual(['from-ws-2'])
+  })
+
+  it('clears suggestions and does not throw when the properties fetch fails', async () => {
+    getWorkspaceProperties.mockRejectedValue(new Error('network down'))
+    const wrapper = mount(PropertiesPanel, { props: { properties: [], workspaceId: 1 } })
+    await flushPromises()
+
+    expect(wrapper.find('#known-property-names').findAll('option')).toHaveLength(0)
   })
 })
