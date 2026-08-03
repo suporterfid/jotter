@@ -30,6 +30,7 @@
       :active-tenant-id="activeTenantId"
       :frontend-version="APP_VERSION"
       :backend-version="backendVersion"
+      :auth-provider="authProvider"
       :folder-positions="folderPositions"
       :reveal-folder-request="revealFolderRequest"
       @notes-reordered="refreshNotesList"
@@ -55,9 +56,12 @@
       @switch-workspace="handleSwitchWorkspace"
       @switch-tenant="handleSwitchTenant"
       @toggle-admin-panel="isAdminPanelOpen = true"
+      @open-change-password="isChangePasswordOpen = true"
     />
 
     <AdminPanel :is-open="isAdminPanelOpen" @close="handleCloseAdminPanel" />
+
+    <ChangePasswordModal v-if="isChangePasswordOpen" @close="isChangePasswordOpen = false" />
 
     <!-- Main Content Area -->
     <main class="main-content">
@@ -234,6 +238,7 @@ import CollectionsTableView from './components/CollectionsTableView.vue'
 import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import AdminPanel from './components/AdminPanel.vue'
+import ChangePasswordModal from './components/ChangePasswordModal.vue'
 import {
   getWorkspaces,
   getTenants,
@@ -275,6 +280,8 @@ const activeNoteDetail = ref<NoteDetail | null>(null)
 
 const currentUser = ref<AuthUser | null>(null)
 const backendVersion = ref<string | null>(null)
+const authProvider = ref<string | null>(null)
+const isChangePasswordOpen = ref(false)
 const showLoginModal = ref(false)
 const isMobileSidebarOpen = ref(false)
 const isGraphViewActive = ref(false)
@@ -347,7 +354,10 @@ onMounted(async () => {
   }
 
   getAuthConfig()
-    .then((config) => { backendVersion.value = config.version })
+    .then((config) => {
+      backendVersion.value = config.version
+      authProvider.value = config.provider
+    })
     .catch(() => {})
 
   await initWorkspace()

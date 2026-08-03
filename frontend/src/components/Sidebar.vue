@@ -411,6 +411,18 @@
       </div>
       <div class="sidebar-footer-actions">
         <ThemeToggle />
+        <button
+          v-if="authProvider === 'local'"
+          class="btn-icon"
+          data-testid="change-password-btn"
+          title="Change Password"
+          @click="$emit('open-change-password')"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </button>
         <button class="btn-logout" data-testid="logout-btn" title="Sign Out" @click="$emit('logout')">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -460,6 +472,7 @@ const props = defineProps<{
   backendVersion?: string | null
   tenants?: Tenant[]
   activeTenantId?: number | null
+  authProvider?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -486,6 +499,7 @@ const emit = defineEmits<{
   (e: 'switch-workspace', workspaceId: number): void
   (e: 'switch-tenant', tenantId: number): void
   (e: 'toggle-admin-panel'): void
+  (e: 'open-change-password'): void
 }>()
 
 // Desktop sidebar collapse (#259): hands the full window to the page,
