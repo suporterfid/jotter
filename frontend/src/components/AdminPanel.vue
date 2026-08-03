@@ -101,6 +101,7 @@
           <li v-for="u in users" :key="u.id" class="admin-list-item">
             <span><strong>{{ u.name }}</strong> ({{ u.email }}) <em v-if="!u.is_active">[Deactivated]</em></span>
             <div class="btn-group">
+              <button class="secondary-btn" data-testid="admin-reset-password-btn" :disabled="loading" @click="resetPassword(u)">Reset Password</button>
               <button v-if="u.is_active" class="warning-btn" @click="toggleDeactivate(u, true)">Deactivate</button>
               <button v-else class="success-btn" @click="toggleDeactivate(u, false)">Reactivate</button>
             </div>
@@ -113,7 +114,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { api, getTenants } from '../services/api'
+import { api, getTenants, adminResetPassword } from '../services/api'
 import type { Tenant } from '../services/types'
 
 const props = defineProps<{ isOpen: boolean }>()
@@ -258,6 +259,19 @@ async function createUser() {
   }
 }
 
+async function resetPassword(u: any) {
+  const newPassword = prompt(`New password for ${u.email}:`)
+  if (!newPassword) return
+  loading.value = true
+  try {
+    await adminResetPassword(u.id, newPassword)
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, 'Failed to reset password.')
+  } finally {
+    loading.value = false
+  }
+}
+
 async function toggleDeactivate(u: any, deactivate: boolean) {
   loading.value = true
   try {
@@ -360,5 +374,6 @@ watch(() => props.isOpen, (val) => {
 .danger-btn { background: var(--color-status-danger); color: var(--color-neutral-0); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
 .warning-btn { background: var(--color-status-warning); color: var(--color-text-inverse); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
 .success-btn { background: var(--color-status-success); color: var(--color-neutral-0); border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
+.secondary-btn { background: transparent; border: 1px solid var(--color-border); color: var(--color-text); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; }
 </style>
 

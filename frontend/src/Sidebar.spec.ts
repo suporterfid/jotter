@@ -282,3 +282,28 @@ describe('Sidebar admin panel entry', () => {
     expect(wrapper.emitted('toggle-admin-panel')).toBeTruthy()
   })
 })
+
+describe('Sidebar change password entry', () => {
+  it('hides the Change Password button for a non-local auth provider', () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+        authProvider: 'grandpasson',
+      },
+    })
+    expect(wrapper.find('[data-testid="change-password-btn"]').exists()).toBe(false)
+  })
+
+  it('shows the Change Password button and emits open-change-password for the local provider', async () => {
+    const wrapper = mount(Sidebar, {
+      props: {
+        notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+        authProvider: 'local',
+      },
+    })
+    await wrapper.find('[data-testid="change-password-btn"]').trigger('click')
+    expect(wrapper.emitted('open-change-password')).toBeTruthy()
+  })
+})
