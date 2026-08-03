@@ -300,6 +300,8 @@ watch(() => props.isOpen, (val) => {
   border-radius: var(--radius-lg);
   width: 600px;
   max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
   padding: var(--space-6);
   box-shadow: var(--shadow-float);
 }
@@ -313,6 +315,7 @@ watch(() => props.isOpen, (val) => {
   gap: var(--space-2);
   margin: var(--space-4) 0;
   border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
 }
 .tab-btn {
   background: none;
@@ -320,6 +323,7 @@ watch(() => props.isOpen, (val) => {
   color: var(--color-text-muted);
   padding: var(--space-2) var(--space-4);
   cursor: pointer;
+  white-space: nowrap;
 }
 .tab-btn.active {
   color: var(--color-action);
@@ -352,8 +356,10 @@ watch(() => props.isOpen, (val) => {
 }
 .admin-list-item {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-2);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
 }

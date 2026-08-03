@@ -100,6 +100,7 @@ async function handleFileSelected(event: Event) {
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   width: 360px;
+  max-width: 90vw;
   box-shadow: var(--shadow-float);
 }
 
