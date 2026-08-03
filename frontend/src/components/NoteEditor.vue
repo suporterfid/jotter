@@ -198,7 +198,56 @@
           placeholder="Write Markdown here... Type [[ to reference another note, or / to insert a block."
           @input="handleInput"
           @keydown="handleKeyDown"
+          @mouseup="handleTextSelection"
         ></textarea>
+
+        <!-- Selection-triggered Comment affordance: a small floating
+             button appears near where the mouse was released after
+             selecting text, matching how Notion/Google Docs anchor
+             commenting to a selection instead of only offering a
+             global comment form at the bottom of the page. Positioned
+             from the mouseup event's own coordinates (a plain textarea
+             has no per-character DOM Range API to measure exact caret
+             position from, unlike a contenteditable surface) — so this
+             is mouse-selection-driven only, not keyboard (shift+arrow)
+             selection. -->
+        <button
+          v-if="showCommentTrigger"
+          type="button"
+          class="comment-trigger-btn"
+          data-testid="comment-trigger-btn"
+          :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
+          @mousedown.prevent="openCommentComposer"
+        >
+          💬 Comment
+        </button>
+
+        <div
+          v-if="showCommentComposer"
+          class="comment-composer"
+          data-testid="comment-composer"
+          :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
+        >
+          <textarea
+            v-model="commentComposerDraft"
+            class="comment-composer-textarea"
+            placeholder="Comment on selection..."
+            data-testid="comment-composer-textarea"
+            rows="2"
+            autofocus
+            @keydown.escape="closeCommentComposer"
+          ></textarea>
+          <div class="comment-composer-actions">
+            <button type="button" class="btn-comment-cancel" data-testid="comment-composer-cancel" @click="closeCommentComposer">Cancel</button>
+            <button
+              type="button"
+              class="btn-comment-submit"
+              data-testid="comment-composer-submit"
+              :disabled="!commentComposerDraft.trim()"
+              @click="submitSelectionComment"
+            >Comment</button>
+          </div>
+        </div>
 
         <!-- Wikilink Autocomplete Dropdown -->
         <div 
@@ -523,6 +572,13 @@ const commentsError = ref<string | null>(null)
 const unlinkedMentions = ref<UnlinkedMention[]>([])
 const outgoingLinks = ref<OutgoingLink[]>([])
 
+// Selection-triggered comment popover (#261)
+const showCommentTrigger = ref(false)
+const showCommentComposer = ref(false)
+const commentComposerDraft = ref('')
+const commentTriggerPos = ref({ top: 0, left: 0 })
+const pendingCommentAnchorLine = ref<number | null>(null)
+
 // Live Statistics
 const charCount = computed(() => editableContent.value.length)
 const wordCount = computed(() => {
@@ -607,6 +663,8 @@ watch(() => props.note, (newNote) => {
   titleDraft.value = newNote.title
   autosizeTitle()
   showAutocomplete.value = false
+  showCommentTrigger.value = false
+  showCommentComposer.value = false
   showHistory.value = false
   loadComments(newNote.id)
   loadUnlinkedMentions(newNote.id)
@@ -659,16 +717,56 @@ async function handleConvertToLink(mention: UnlinkedMention) {
   }
 }
 
-async function handleAddComment(content: string) {
+async function handleAddComment(content: string, anchorLine?: number) {
   if (!props.workspaceId) return
   commentsError.value = null
   try {
-    const comment = await addNoteComment(props.workspaceId, props.note.id, content)
+    const comment = await addNoteComment(props.workspaceId, props.note.id, content, anchorLine)
     comments.value.push(comment)
   } catch (err: any) {
     console.error('Failed to add comment:', err)
     commentsError.value = err.response?.data?.message || 'Failed to add comment.'
   }
+}
+
+function handleTextSelection(event: MouseEvent) {
+  const el = textareaRef.value
+  if (!el) return
+  const { selectionStart, selectionEnd } = el
+  if (selectionStart === selectionEnd) {
+    showCommentTrigger.value = false
+    return
+  }
+
+  const wrapperEl = el.parentElement
+  if (!wrapperEl) return
+  const wrapperRect = wrapperEl.getBoundingClientRect()
+  pendingCommentAnchorLine.value = editableContent.value.slice(0, selectionStart).split('\n').length
+  commentTriggerPos.value = {
+    top: event.clientY - wrapperRect.top + 12,
+    left: event.clientX - wrapperRect.left,
+  }
+  showCommentTrigger.value = true
+  showCommentComposer.value = false
+}
+
+function openCommentComposer() {
+  showCommentTrigger.value = false
+  showCommentComposer.value = true
+  commentComposerDraft.value = ''
+}
+
+function closeCommentComposer() {
+  showCommentComposer.value = false
+  commentComposerDraft.value = ''
+  pendingCommentAnchorLine.value = null
+}
+
+async function submitSelectionComment() {
+  const content = commentComposerDraft.value.trim()
+  if (!content) return
+  await handleAddComment(content, pendingCommentAnchorLine.value ?? undefined)
+  closeCommentComposer()
 }
 
 async function handleDeleteComment(commentId: number) {
@@ -742,6 +840,8 @@ function insertAttachmentMarkdown(attachment: { path: string; mime: string; url:
 function handleInput() {
   const el = textareaRef.value
   if (!el) return
+
+  showCommentTrigger.value = false
 
   const text = editableContent.value
   const cursorPos = el.selectionStart
@@ -1316,6 +1416,91 @@ onUnmounted(() => {
   background: var(--color-surface-emphasis);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.comment-trigger-btn {
+  position: absolute;
+  transform: translate(-50%, 0);
+  z-index: 50;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  box-shadow: var(--shadow-float);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.comment-trigger-btn:hover {
+  background: var(--color-hover);
+}
+
+.comment-composer {
+  position: absolute;
+  transform: translate(-50%, 0);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(280px, 90vw);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  box-shadow: var(--shadow-float);
+}
+
+.comment-composer-textarea {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.comment-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.btn-comment-cancel {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.btn-comment-cancel:hover {
+  background: var(--color-hover);
+}
+
+.btn-comment-submit {
+  background: var(--color-action);
+  color: var(--color-neutral-0);
+  border: none;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-comment-submit:hover:not(:disabled) {
+  background: var(--color-action-hover);
+}
+
+.btn-comment-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .autocomplete-item {
