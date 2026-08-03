@@ -7,14 +7,6 @@
         <button type="button" class="btn-cover-action" data-testid="remove-cover-btn" @click="clearCover">Remove</button>
       </div>
     </div>
-    <button
-      v-else
-      type="button"
-      class="add-cover-btn"
-      data-testid="add-cover-btn"
-      @click="isEditingCover = true"
-    >Add cover</button>
-
     <CoverImageModal
       v-if="isEditingCover && workspaceId"
       :workspace-id="workspaceId"
@@ -22,8 +14,20 @@
       @close="isEditingCover = false"
     />
 
-    <!-- Top Action Bar -->
-    <header class="editor-bar">
+    <!-- Title area: hovering (or keyboard-focusing) anywhere in this zone
+         reveals "Add cover" when the note has none, matching how the cover
+         image's own Change/Remove actions already reveal on hover. -->
+    <div class="editor-title-zone">
+      <button
+        v-if="!coverUrl"
+        type="button"
+        class="add-cover-btn"
+        data-testid="add-cover-btn"
+        @click="isEditingCover = true"
+      >Add cover</button>
+
+      <!-- Top Action Bar -->
+      <header class="editor-bar">
       <div class="note-meta-info">
         <div class="editor-title-row">
           <button
@@ -138,6 +142,7 @@
         </button>
       </div>
     </header>
+    </div>
 
     <!-- Main Editor Content Area -->
     <div 
@@ -849,18 +854,39 @@ async function handleSave() {
   color: var(--color-text);
 }
 
+.editor-title-zone {
+  position: relative;
+}
+
 .add-cover-btn {
+  display: block;
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 0 solid transparent;
   color: var(--color-text-muted);
-  padding: var(--space-2);
+  padding: 0 var(--space-2);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
   cursor: pointer;
   font-size: 0.8125rem;
   text-align: center;
-  transition: background-color var(--duration-fast) var(--ease-standard),
+  transition: max-height var(--duration-fast) var(--ease-standard),
+              padding var(--duration-fast) var(--ease-standard),
+              opacity var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              border-width var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard),
               color var(--duration-fast) var(--ease-standard);
+}
+
+.editor-title-zone:hover .add-cover-btn,
+.editor-title-zone:focus-within .add-cover-btn {
+  max-height: 40px;
+  padding: var(--space-2);
+  opacity: 1;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .add-cover-btn:hover {
