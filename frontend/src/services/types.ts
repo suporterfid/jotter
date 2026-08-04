@@ -197,6 +197,14 @@ export interface BoardColumnConfig {
   collapsed?: boolean
 }
 
+export interface NoteChecklistItem {
+  id: number
+  note_id: number
+  text: string
+  done: boolean
+  sort_position: number
+}
+
 export interface Board {
   id: number
   workspace_id: number
