@@ -29,6 +29,7 @@ final class GrandpaSSOnAdminEscalationTest extends TestCase
         parent::setUp();
 
         config(['jotter.sso.db_prefix' => self::PREFIX]);
+        config(['jotter.auth_provider' => 'grandpasson']);
 
         Schema::create(self::PREFIX.'users', function ($table) {
             $table->string('id', 36)->primary();
@@ -93,6 +94,48 @@ final class GrandpaSSOnAdminEscalationTest extends TestCase
         $subject = $this->resolveWithCookie($sessionId);
 
         $this->assertNull($subject);
+    }
+
+    /**
+     * Regression for the AdminUserController/AdminWorkspaceController/AdminMembershipController
+     * `authorizeAdmin()` bug: those checked Laravel's built-in `$request->user()`, which is only
+     * ever populated by LocalIdentityProvider's password-login flow (via `Auth::guard('web')
+     * ->login()`). The GrandpaSSOn AUTHSESSID-cookie path never touches that guard at all — it
+     * only produces an `AuthenticatedSubject` and relies on the `authenticated_subject` request
+     * attribute `AuthorizeWorkspaceAccess` middleware already sets. Every existing admin-endpoint
+     * test used `actingAs()`, which populates the guard directly and so never exercised this real
+     * request path — this test goes through the actual HTTP/cookie flow instead.
+     *
+     * AUTHSESSID is set via the raw $_COOKIE superglobal, not the test client's withCookie()
+     * (which round-trips through Laravel's EncryptCookies/DecryptCookies middleware). The real
+     * GrandpaSSOn cookie is plaintext, set by a different app entirely, so
+     * GrandpaSSOnIdentityProvider::resolveIdentity() deliberately falls back to reading
+     * $_COOKIE directly for it — matching that here is what makes this test exercise the real
+     * production code path instead of failing decryption on a cookie Laravel never encrypted.
+     */
+    public function test_an_admin_sso_user_can_reach_admin_endpoints_via_the_authsessid_cookie(): void
+    {
+        User::factory()->create(['email' => 'admin-sso-user@example.com', 'is_admin' => true]);
+        $ssoUserId = $this->insertSsoUser('admin-sso-user@example.com', 'Admin SSO User');
+        $sessionId = $this->insertSsoSession($ssoUserId, time() + 3600);
+
+        $_COOKIE['AUTHSESSID'] = $sessionId;
+        $response = $this->getJson('/api/admin/users');
+        unset($_COOKIE['AUTHSESSID']);
+
+        $response->assertOk();
+    }
+
+    public function test_a_non_admin_sso_user_still_gets_403_from_admin_endpoints(): void
+    {
+        $ssoUserId = $this->insertSsoUser('member-sso-user@example.com', 'Member SSO User');
+        $sessionId = $this->insertSsoSession($ssoUserId, time() + 3600);
+
+        $_COOKIE['AUTHSESSID'] = $sessionId;
+        $response = $this->getJson('/api/admin/users');
+        unset($_COOKIE['AUTHSESSID']);
+
+        $response->assertStatus(403);
     }
 
     private function insertSsoUser(string $email, string $displayName, string $status = 'active'): string

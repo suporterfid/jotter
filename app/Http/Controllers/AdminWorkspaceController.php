@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\VaultRootGuard;
 use App\Models\Workspace;
@@ -108,9 +109,24 @@ final class AdminWorkspaceController extends Controller
 
     private function authorizeAdmin(Request $request): void
     {
-        $user = $request->user();
-        if (! $user || ! $user->is_admin) {
+        if (config('jotter.auth_bypass', false)) {
+            return;
+        }
+
+        $subject = $this->currentSubject($request);
+        if (! $subject || ! $subject->isAdmin) {
             abort(403, 'Administrator access required.');
         }
+    }
+
+    /**
+     * AuthorizeWorkspaceAccess middleware resolves the caller via the app's own
+     * IdentityProvider (not Laravel's built-in auth guard — $request->user() is never
+     * populated by the GrandpaSSOn cookie-auth path, only by LocalIdentityProvider's
+     * password-login flow) and stashes the result here.
+     */
+    private function currentSubject(Request $request): ?AuthenticatedSubject
+    {
+        return $request->attributes->get('authenticated_subject');
     }
 }
