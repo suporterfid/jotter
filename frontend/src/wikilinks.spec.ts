@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveWikilinkTarget } from './services/wikilinks'
+import { resolveWikilinkTarget, parseEmbedTargets } from './services/wikilinks'
 import type { NoteMeta } from './services/types'
 
 function makeNote(overrides: Partial<NoteMeta> = {}): NoteMeta {
@@ -33,5 +33,31 @@ describe('resolveWikilinkTarget', () => {
   it('returns undefined when nothing matches', () => {
     const notes = [makeNote()]
     expect(resolveWikilinkTarget('nonexistent', notes)).toBeUndefined()
+  })
+})
+
+describe('parseEmbedTargets', () => {
+  it('returns an empty array when there are no embeds', () => {
+    expect(parseEmbedTargets('no embeds here')).toEqual([])
+  })
+
+  it('extracts a single embed target', () => {
+    expect(parseEmbedTargets('See ![[Ideas]] below.')).toEqual(['Ideas'])
+  })
+
+  it('extracts multiple distinct embed targets in order', () => {
+    expect(parseEmbedTargets('![[Ideas]] and ![[Projects/Jotter]]')).toEqual(['Ideas', 'Projects/Jotter'])
+  })
+
+  it('dedupes repeated embed targets', () => {
+    expect(parseEmbedTargets('![[Ideas]] again: ![[Ideas]]')).toEqual(['Ideas'])
+  })
+
+  it('strips a #heading fragment from the target', () => {
+    expect(parseEmbedTargets('![[Ideas#Section]]')).toEqual(['Ideas'])
+  })
+
+  it('does not match a plain [[wikilink]] (no ! prefix)', () => {
+    expect(parseEmbedTargets('[[Ideas]]')).toEqual([])
   })
 })
