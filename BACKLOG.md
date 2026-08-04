@@ -22,6 +22,20 @@ C1, C2, C3, C5, and C6 were resolved — see `docs/decisions.md`. This section p
 - **Roadmap baseline provenance.** `TODO(spec): confirm whether the roadmap's gap analysis was drawn from a different product of the same name. Until confirmed, spec §14.3 governs what counts as delivered.`
 - **Markdown textarea + Edit/Split/Preview toggle vs. real Notion-feel (#263, XL, P3).** `docs/20260803-jotter-editor-chrome-notion-parity-audit.md` §B.1, Part D.6, Open Question 1: `NoteEditor.vue`'s core editing surface is a single `<textarea>` in `--font-mono` paired with a rendered preview and an Edit/Split/Preview toggle — a control whose mere existence announces "this is a Markdown tool." No amount of chrome/spacing work (the rest of this audit's #250–#262) closes that gap while this textarea remains the primary editing surface. This collides directly with the Markdown-on-disk invariant (spec §1/`AGENTS.md`), so it's a product decision, not a UI task — do not drift into it via smaller PRs. Options, ascending cost: (a) keep the textarea, drop the toggle, default to a single rendered-ish view; (b) inline WYSIWYG over Markdown (TipTap/Milkdown/ProseMirror with a Markdown serializer, preserving the on-disk invariant) — the only option reaching real Notion parity while keeping the Markdown-on-disk rule intact, a multi-PR epic; (c) a real block model (furthest from current architecture, highest cost). The open question to resolve first: is Notion-*feel* the actual goal, or is Notion-*calm* enough via #250–#262 while keeping an honest Markdown editor? All other issues from the audit are independent of this answer and can proceed regardless.
 
+## Obsidian UI-parity gaps
+
+`docs/20260803-jotter-obsidian-ui-parity-audit.md` — findings from a UI
+comparison against Obsidian, verified against `frontend/src/` post-#285.
+Command palette, tag cloud/filter, collapsible sidebar, and the
+right-hand drawer were already shipped and dropped from this list during
+verification.
+
+- **No headings outline/TOC pane for the current note (#286, S, P2).**
+- **No hover preview for wikilinks (#287, M, P2).**
+- **No transclusion / `![[note]]` embeds (#288, M–L, P2).**
+- **No contextual/local graph per note (#289, M, P3).**
+- **No multi-pane / tabbed editing (#290, L, P3).**
+
 ## Not adopted
 
 - **Visual canvas / whiteboard** — spec §3 N3; the roadmap itself lists whiteboard parity as a non-goal for the next cycle.
