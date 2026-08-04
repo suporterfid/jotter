@@ -10,6 +10,7 @@ describe('BlockRegistry Service', () => {
     expect(blockDefinitions).toHaveProperty('toggle')
     expect(blockDefinitions).toHaveProperty('table')
     expect(blockDefinitions).toHaveProperty('divider')
+    expect(blockDefinitions).toHaveProperty('embed')
   })
 
   it('derives client allowed tags and attributes matching server definitions', () => {
@@ -21,5 +22,7 @@ describe('BlockRegistry Service', () => {
     expect(tags).toContain('table')
     expect(attrs).toContain('data-target')
     expect(attrs).toContain('data-language')
+    expect(attrs).toContain('data-embed-status')
+    expect(attrs).toContain('data-embed-target')
   })
 })
