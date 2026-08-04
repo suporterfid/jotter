@@ -15,7 +15,7 @@ vi.mock('./services/api', () => ({
   getNote: vi.fn(),
 }))
 
-import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -991,6 +991,78 @@ describe('NoteEditor wikilink embeds', () => {
 
     expect(getNote).not.toHaveBeenCalled()
     expect(wrapper.html()).toContain('data-embed-status="unresolved"')
+
+    wrapper.unmount()
+  })
+})
+
+describe('NoteEditor local graph', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.insertAdjacentHTML('beforeend', '<div id="app-right-drawer"></div>')
+  })
+
+  afterEach(() => {
+    document.getElementById('app-right-drawer')?.remove()
+  })
+
+  it('does not render the drawer until toggled open', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="local-graph-drawer"]')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('opens the drawer and shows backlinks + resolved outgoing links as neighbors, excluding unresolved and deduping mutual links', async () => {
+    ;(getOutgoingLinks as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 2, path: 'ideas.md', title: 'Ideas', target_ref: 'Ideas', target_block: null, resolved: true },
+      { id: null, path: null, title: null, target_ref: 'Missing', target_block: null, resolved: false },
+    ])
+    const wrapper = mount(NoteEditor, {
+      props: {
+        note: makeNote({
+          backlinks: [
+            { id: 2, path: 'ideas.md', title: 'Ideas' },
+            { id: 3, path: 'projects.md', title: 'Projects' },
+          ],
+        }),
+        allNotes: [],
+        workspaceId: 1,
+      },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="local-graph-drawer-btn"]').trigger('click')
+    const drawer = document.querySelector('[data-testid="local-graph-drawer"]')
+    expect(drawer).not.toBeNull()
+
+    const neighborNodes = drawer!.querySelectorAll('[data-testid="local-graph-neighbor"]')
+    expect(neighborNodes).toHaveLength(2)
+
+    wrapper.unmount()
+  })
+
+  it('clicking a neighbor node emits select-note with its id', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: {
+        note: makeNote({ backlinks: [{ id: 2, path: 'ideas.md', title: 'Ideas' }] }),
+        allNotes: [],
+        workspaceId: 1,
+      },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="local-graph-drawer-btn"]').trigger('click')
+
+    document.querySelector('[data-testid="local-graph-neighbor"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('select-note')![0]).toEqual([2])
 
     wrapper.unmount()
   })

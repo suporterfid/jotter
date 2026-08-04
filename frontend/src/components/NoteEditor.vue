@@ -114,6 +114,16 @@
 
         <button
           class="btn-attach"
+          data-testid="local-graph-drawer-btn"
+          title="Local Graph"
+          :aria-expanded="isLocalGraphDrawerOpen"
+          @click="isLocalGraphDrawerOpen = !isLocalGraphDrawerOpen"
+        >
+          <span>🕸️</span>
+        </button>
+
+        <button
+          class="btn-attach"
           data-testid="comments-drawer-btn"
           title="Comments"
           :aria-expanded="isCommentsDrawerOpen"
@@ -402,6 +412,33 @@
       </aside>
     </Teleport>
 
+    <!-- Local Graph Drawer: teleported to the same right-drawer mount point as
+         Outline/Comments, showing the note's immediate neighbors (backlinks +
+         resolved outgoing links) as a small radial graph (G.3, #289). -->
+    <Teleport to="#app-right-drawer">
+      <aside
+        v-if="isLocalGraphDrawerOpen"
+        class="local-graph-drawer"
+        data-testid="local-graph-drawer"
+      >
+        <div class="local-graph-drawer-header">
+          <h3>Local Graph</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            data-testid="local-graph-drawer-close-btn"
+            aria-label="Close local graph"
+            @click="isLocalGraphDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <LocalGraphPanel
+          :center-title="note.title"
+          :neighbors="localGraphNeighbors"
+          @select-neighbor="$emit('select-note', $event)"
+        />
+      </aside>
+    </Teleport>
+
     <!-- Backlinks Panel: purely derived/read-only (no creation affordance), so it's safe to
          omit entirely when empty, unlike Properties/Comments above which always need to stay
          mounted for their "add" forms. -->
@@ -462,6 +499,8 @@ import CommentsPanel from './CommentsPanel.vue'
 import CoverImageModal from './CoverImageModal.vue'
 import SlashMenu from './SlashMenu.vue'
 import OutlinePanel from './OutlinePanel.vue'
+import LocalGraphPanel from './LocalGraphPanel.vue'
+import type { LocalGraphNeighbor } from '../services/types'
 import { parseHeadings, type HeadingEntry } from '../services/outline'
 import WikilinkPreviewPopup from './WikilinkPreviewPopup.vue'
 import { resolveWikilinkTarget, parseEmbedTargets } from '../services/wikilinks'
@@ -661,6 +700,28 @@ const commentsError = ref<string | null>(null)
 const isCommentsDrawerOpen = ref(false)
 const isOutlineDrawerOpen = ref(false)
 const headings = computed<HeadingEntry[]>(() => parseHeadings(editableContent.value))
+
+const isLocalGraphDrawerOpen = ref(false)
+
+const localGraphNeighbors = computed<LocalGraphNeighbor[]>(() => {
+  const seen = new Set<number>()
+  const neighbors: LocalGraphNeighbor[] = []
+
+  for (const backlink of props.note.backlinks || []) {
+    if (seen.has(backlink.id)) continue
+    seen.add(backlink.id)
+    neighbors.push({ id: backlink.id, title: backlink.title, path: backlink.path, direction: 'backlink' })
+  }
+
+  for (const link of outgoingLinks.value) {
+    if (!link.resolved || link.id === null) continue
+    if (seen.has(link.id)) continue
+    seen.add(link.id)
+    neighbors.push({ id: link.id, title: link.title ?? link.path ?? '', path: link.path ?? '', direction: 'outgoing' })
+  }
+
+  return neighbors
+})
 
 function jumpToHeading(heading: HeadingEntry) {
   if (viewMode.value === 'preview') {
@@ -1882,6 +1943,42 @@ onUnmounted(() => {
 }
 
 .outline-drawer-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.local-graph-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(360px, 100vw);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-float);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .local-graph-drawer {
+    width: 100vw;
+  }
+}
+
+.local-graph-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.local-graph-drawer-header h3 {
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 600;
