@@ -78,4 +78,30 @@ describe('CollectionsBoardView', () => {
     await wrapper.get('[data-testid="collection-next-page"]').trigger('click')
     expect(wrapper.emitted('page-change')![0]).toEqual([2])
   })
+
+  it('shows an add-card form per column, closed by default', () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    expect(wrapper.findAll('[data-testid="board-add-card-button"]')).toHaveLength(3)
+    expect(wrapper.find('[data-testid="board-add-card-input"]').exists()).toBe(false)
+  })
+
+  it('emits create-card with the title and column key on submit, then closes the form', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    const draftColumn = wrapper.findAll('[data-testid="board-column"]')
+      .find(c => c.text().includes('draft'))!
+    await draftColumn.get('[data-testid="board-add-card-button"]').trigger('click')
+    await draftColumn.get('[data-testid="board-add-card-input"]').setValue('New task')
+    await draftColumn.get('[data-testid="board-add-card-form"]').trigger('submit')
+    expect(wrapper.emitted('create-card')![0]).toEqual(['New task', 'draft'])
+    expect(draftColumn.find('[data-testid="board-add-card-input"]').exists()).toBe(false)
+  })
+
+  it('does not emit create-card for a blank title', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    const draftColumn = wrapper.findAll('[data-testid="board-column"]')
+      .find(c => c.text().includes('draft'))!
+    await draftColumn.get('[data-testid="board-add-card-button"]').trigger('click')
+    await draftColumn.get('[data-testid="board-add-card-form"]').trigger('submit')
+    expect(wrapper.emitted('create-card')).toBeFalsy()
+  })
 })

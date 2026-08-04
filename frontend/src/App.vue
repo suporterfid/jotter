@@ -128,6 +128,7 @@
         @page-change="handleCollectionPageChange"
         @group-change="handleCollectionGroupChange"
         @move-card="handleCollectionMoveCard"
+        @create-card="handleCollectionCreateCard"
       />
 
       <!-- Calendar (Collections) View Mode -->
@@ -736,6 +737,20 @@ function handleCollectionSort(key: string) {
 
 function handleCollectionGroupChange(property: string) {
   collectionGroupProperty.value = property || null
+}
+
+async function handleCollectionCreateCard(title: string, columnValue: string) {
+  if (!activeWorkspaceId.value || !collectionGroupProperty.value) return
+  try {
+    const path = `untitled-${Date.now().toString(36)}.md`
+    const created = await createNote(activeWorkspaceId.value, path, `# ${title}\n\nWrite your thoughts here...`)
+    if (columnValue) {
+      await setNoteProperty(activeWorkspaceId.value, created.id, collectionGroupProperty.value, columnValue)
+    }
+    await refreshCollection(collectionPage.value.current_page)
+  } catch (err) {
+    console.error('Failed to create card:', err)
+  }
 }
 
 async function handleCollectionMoveCard(noteId: number, newValue: string) {
