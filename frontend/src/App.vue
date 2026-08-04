@@ -119,17 +119,26 @@
       />
 
       <!-- Board (Collections) View Mode -->
-      <CollectionsBoardView
-        v-else-if="isBoardViewActive"
-        :page="collectionPage"
-        :loading="collectionLoading"
-        :group-property="collectionGroupProperty"
-        @select-note="handleSelectNote"
-        @page-change="handleCollectionPageChange"
-        @group-change="handleCollectionGroupChange"
-        @move-card="handleCollectionMoveCard"
-        @create-card="handleCollectionCreateCard"
-      />
+      <div v-else-if="isBoardViewActive" class="board-view-wrapper">
+        <BoardSwitcher
+          :boards="boards"
+          :active-board-id="activeBoardId"
+          @select-board="handleSelectBoard"
+          @create-board="handleCreateBoard"
+          @rename-board="handleRenameBoard"
+          @delete-board="handleDeleteBoard"
+        />
+        <CollectionsBoardView
+          :page="collectionPage"
+          :loading="collectionLoading"
+          :group-property="collectionGroupProperty"
+          @select-note="handleSelectNote"
+          @page-change="handleCollectionPageChange"
+          @group-change="handleCollectionGroupChange"
+          @move-card="handleCollectionMoveCard"
+          @create-card="handleCollectionCreateCard"
+        />
+      </div>
 
       <!-- Calendar (Collections) View Mode -->
       <CollectionsCalendarView
@@ -275,9 +284,14 @@ import {
   getNotifications,
   markNotificationRead,
   deleteNotification,
-  getAuthConfig
+  getAuthConfig,
+  getBoards,
+  createBoard,
+  updateBoard,
+  deleteBoard
 } from './services/api'
-import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition } from './services/types'
+import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board } from './services/types'
+import BoardSwitcher from './components/BoardSwitcher.vue'
 import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
 import TabStrip from './components/TabStrip.vue'
@@ -372,6 +386,8 @@ const collectionSortKey = ref<string | null>(null)
 const collectionSortDir = ref<'asc' | 'desc'>('asc')
 const collectionGroupProperty = ref<string | null>(null)
 const collectionDateProperty = ref<string | null>(null)
+const boards = ref<Board[]>([])
+const activeBoardId = ref<number | null>(null)
 
 const availableTagsForSearch = computed(() => {
   const tagSet = new Set<string>()
@@ -684,6 +700,66 @@ async function handleToggleBoardView() {
     isTableViewActive.value = false
     isCalendarViewActive.value = false
     await refreshCollection()
+    await refreshBoards()
+  }
+}
+
+async function refreshBoards() {
+  if (!activeWorkspaceId.value) return
+  try {
+    boards.value = await getBoards(activeWorkspaceId.value)
+  } catch (err) {
+    console.error('Failed to load boards:', err)
+  }
+}
+
+async function handleSelectBoard(boardId: number | null) {
+  activeBoardId.value = boardId
+  const board = boards.value.find(b => b.id === boardId)
+  collectionGroupProperty.value = board?.group_property || null
+  collectionFilterProperty.value = board?.filter_property || ''
+  collectionFilterValue.value = board?.filter_value || ''
+  await refreshCollection(1)
+}
+
+async function handleCreateBoard(name: string) {
+  if (!activeWorkspaceId.value) return
+  try {
+    const board = await createBoard(activeWorkspaceId.value, {
+      name,
+      group_property: collectionGroupProperty.value,
+      filter_property: collectionFilterProperty.value || null,
+      filter_value: collectionFilterValue.value || null,
+    })
+    boards.value.push(board)
+    activeBoardId.value = board.id
+  } catch (err) {
+    console.error('Failed to create board:', err)
+  }
+}
+
+async function handleRenameBoard(boardId: number, name: string) {
+  if (!activeWorkspaceId.value) return
+  try {
+    const board = await updateBoard(activeWorkspaceId.value, boardId, { name })
+    const index = boards.value.findIndex(b => b.id === boardId)
+    if (index !== -1) boards.value[index] = board
+  } catch (err) {
+    console.error('Failed to rename board:', err)
+  }
+}
+
+async function handleDeleteBoard(boardId: number) {
+  if (!activeWorkspaceId.value) return
+  if (!confirm('Delete this board? This cannot be undone.')) return
+  try {
+    await deleteBoard(activeWorkspaceId.value, boardId)
+    boards.value = boards.value.filter(b => b.id !== boardId)
+    if (activeBoardId.value === boardId) {
+      activeBoardId.value = null
+    }
+  } catch (err) {
+    console.error('Failed to delete board:', err)
   }
 }
 
@@ -735,8 +811,15 @@ function handleCollectionSort(key: string) {
   }
 }
 
-function handleCollectionGroupChange(property: string) {
+async function handleCollectionGroupChange(property: string) {
   collectionGroupProperty.value = property || null
+  if (activeWorkspaceId.value && activeBoardId.value !== null) {
+    try {
+      await updateBoard(activeWorkspaceId.value, activeBoardId.value, { group_property: collectionGroupProperty.value })
+    } catch (err) {
+      console.error('Failed to save board view:', err)
+    }
+  }
 }
 
 async function handleCollectionCreateCard(title: string, columnValue: string) {
@@ -983,6 +1066,18 @@ async function handleWikilinkNavigation(target: string) {
 </script>
 
 <style>
+.board-view-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+.board-view-wrapper > .collections-board-view {
+  padding: 0;
+}
+
 /* Global reset */
 *, *::before, *::after {
   box-sizing: border-box;

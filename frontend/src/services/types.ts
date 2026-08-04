@@ -189,6 +189,16 @@ export interface CollectionNote {
   comments_count?: number
 }
 
+export interface Board {
+  id: number
+  workspace_id: number
+  name: string
+  group_property: string | null
+  filter_property: string | null
+  filter_value: string | null
+  sort_position: number
+}
+
 export interface CollectionPage {
   data: CollectionNote[]
   current_page: number

@@ -15,7 +15,7 @@ vi.mock('axios', () => {
   }
 })
 
-import { moveNote, reorderNoteTree, getFolderPositions } from './services/api'
+import { moveNote, reorderNoteTree, getFolderPositions, createBoard, updateBoard, deleteBoard } from './services/api'
 import axios from 'axios'
 
 const instance = (axios.create as ReturnType<typeof vi.fn>).mock.results[0].value
@@ -43,5 +43,20 @@ describe('note-tree API functions', () => {
   it('getFolderPositions gets the order endpoint and returns the data array', async () => {
     const result = await getFolderPositions(1)
     expect(result).toEqual([{ folder_path: 'docs', sort_position: 0 }])
+  })
+
+  it('createBoard posts the board attrs to the boards endpoint', async () => {
+    await createBoard(1, { name: 'Sprint', group_property: 'status' })
+    expect(instance.post).toHaveBeenCalledWith('/workspaces/1/boards', { name: 'Sprint', group_property: 'status' })
+  })
+
+  it('updateBoard puts the changed attrs to the board endpoint', async () => {
+    await updateBoard(1, 5, { name: 'Renamed' })
+    expect(instance.put).toHaveBeenCalledWith('/workspaces/1/boards/5', { name: 'Renamed' })
+  })
+
+  it('deleteBoard deletes the board endpoint', async () => {
+    await deleteBoard(1, 5)
+    expect(instance.delete).toHaveBeenCalledWith('/workspaces/1/boards/5')
   })
 })

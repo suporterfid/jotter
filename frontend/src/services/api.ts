@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem } from './types'
+import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -316,6 +316,32 @@ export async function getCollection(
 
   const response = await api.get<CollectionPage>(`/workspaces/${workspaceId}/collections?${params.toString()}`)
   return response.data
+}
+
+export async function getBoards(workspaceId: number): Promise<Board[]> {
+  const response = await api.get<{ data: Board[] }>(`/workspaces/${workspaceId}/boards`)
+  return response.data.data
+}
+
+export async function createBoard(
+  workspaceId: number,
+  attrs: { name: string; group_property?: string | null; filter_property?: string | null; filter_value?: string | null }
+): Promise<Board> {
+  const response = await api.post<{ data: Board }>(`/workspaces/${workspaceId}/boards`, attrs)
+  return response.data.data
+}
+
+export async function updateBoard(
+  workspaceId: number,
+  boardId: number,
+  attrs: Partial<{ name: string; group_property: string | null; filter_property: string | null; filter_value: string | null }>
+): Promise<Board> {
+  const response = await api.put<{ data: Board }>(`/workspaces/${workspaceId}/boards/${boardId}`, attrs)
+  return response.data.data
+}
+
+export async function deleteBoard(workspaceId: number, boardId: number): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/boards/${boardId}`)
 }
 
 export async function getLinkReport(workspaceId: number): Promise<LinkReport> {
