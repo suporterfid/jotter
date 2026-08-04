@@ -325,7 +325,7 @@ export async function getBoards(workspaceId: number): Promise<Board[]> {
 
 export async function createBoard(
   workspaceId: number,
-  attrs: { name: string; group_property?: string | null; filter_property?: string | null; filter_value?: string | null }
+  attrs: { name: string; group_property?: string | null; swimlane_property?: string | null; filter_property?: string | null; filter_value?: string | null }
 ): Promise<Board> {
   const response = await api.post<{ data: Board }>(`/workspaces/${workspaceId}/boards`, attrs)
   return response.data.data
@@ -334,7 +334,7 @@ export async function createBoard(
 export async function updateBoard(
   workspaceId: number,
   boardId: number,
-  attrs: Partial<{ name: string; group_property: string | null; filter_property: string | null; filter_value: string | null; column_config: Board['column_config'] }>
+  attrs: Partial<{ name: string; group_property: string | null; swimlane_property: string | null; filter_property: string | null; filter_value: string | null; column_config: Board['column_config'] }>
 ): Promise<Board> {
   const response = await api.put<{ data: Board }>(`/workspaces/${workspaceId}/boards/${boardId}`, attrs)
   return response.data.data

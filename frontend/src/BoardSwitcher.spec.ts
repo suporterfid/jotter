@@ -4,8 +4,8 @@ import BoardSwitcher from './components/BoardSwitcher.vue'
 import type { Board } from './services/types'
 
 const boards: Board[] = [
-  { id: 1, workspace_id: 1, name: 'Sprint', group_property: 'status', filter_property: null, filter_value: null, column_config: null, sort_position: 0 },
-  { id: 2, workspace_id: 1, name: 'Roadmap', group_property: 'quarter', filter_property: null, filter_value: null, column_config: null, sort_position: 1 },
+  { id: 1, workspace_id: 1, name: 'Sprint', group_property: 'status', swimlane_property: null, filter_property: null, filter_value: null, column_config: null, sort_position: 0 },
+  { id: 2, workspace_id: 1, name: 'Roadmap', group_property: 'quarter', swimlane_property: null, filter_property: null, filter_value: null, column_config: null, sort_position: 1 },
 ]
 
 describe('BoardSwitcher', () => {

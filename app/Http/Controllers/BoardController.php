@@ -37,6 +37,7 @@ final class BoardController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'group_property' => ['nullable', 'string', 'max:255'],
+            'swimlane_property' => ['nullable', 'string', 'max:255'],
             'filter_property' => ['nullable', 'string', 'max:255'],
             'filter_value' => ['nullable', 'string', 'max:255'],
             'column_config' => ['nullable', 'array'],
@@ -46,6 +47,7 @@ final class BoardController extends Controller
             'workspace_id' => $workspaceId,
             'name' => $validated['name'],
             'group_property' => $validated['group_property'] ?? null,
+            'swimlane_property' => $validated['swimlane_property'] ?? null,
             'filter_property' => $validated['filter_property'] ?? null,
             'filter_value' => $validated['filter_value'] ?? null,
             'column_config' => $validated['column_config'] ?? null,
@@ -69,6 +71,7 @@ final class BoardController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'group_property' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'swimlane_property' => ['sometimes', 'nullable', 'string', 'max:255'],
             'filter_property' => ['sometimes', 'nullable', 'string', 'max:255'],
             'filter_value' => ['sometimes', 'nullable', 'string', 'max:255'],
             'column_config' => ['sometimes', 'nullable', 'array'],

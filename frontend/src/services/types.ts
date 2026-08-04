@@ -202,6 +202,7 @@ export interface Board {
   workspace_id: number
   name: string
   group_property: string | null
+  swimlane_property: string | null
   filter_property: string | null
   filter_value: string | null
   column_config: BoardColumnConfig[] | null

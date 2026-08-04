@@ -132,11 +132,13 @@
           :page="collectionPage"
           :loading="collectionLoading"
           :group-property="collectionGroupProperty"
+          :swimlane-property="collectionSwimlaneProperty"
           :configurable="activeBoardId !== null"
           :column-config="activeBoardColumnConfig"
           @select-note="handleSelectNote"
           @page-change="handleCollectionPageChange"
           @group-change="handleCollectionGroupChange"
+          @swimlane-change="handleCollectionSwimlaneChange"
           @move-card="handleCollectionMoveCard"
           @create-card="handleCollectionCreateCard"
           @reorder-columns="handleReorderColumns"
@@ -390,6 +392,7 @@ const collectionFilterValue = ref('')
 const collectionSortKey = ref<string | null>(null)
 const collectionSortDir = ref<'asc' | 'desc'>('asc')
 const collectionGroupProperty = ref<string | null>(null)
+const collectionSwimlaneProperty = ref<string | null>(null)
 const collectionDateProperty = ref<string | null>(null)
 const boards = ref<Board[]>([])
 const activeBoardId = ref<number | null>(null)
@@ -763,6 +766,7 @@ async function handleSelectBoard(boardId: number | null) {
   activeBoardId.value = boardId
   const board = boards.value.find(b => b.id === boardId)
   collectionGroupProperty.value = board?.group_property || null
+  collectionSwimlaneProperty.value = board?.swimlane_property || null
   collectionFilterProperty.value = board?.filter_property || ''
   collectionFilterValue.value = board?.filter_value || ''
   await refreshCollection(1)
@@ -774,6 +778,7 @@ async function handleCreateBoard(name: string) {
     const board = await createBoard(activeWorkspaceId.value, {
       name,
       group_property: collectionGroupProperty.value,
+      swimlane_property: collectionSwimlaneProperty.value,
       filter_property: collectionFilterProperty.value || null,
       filter_value: collectionFilterValue.value || null,
     })
@@ -868,13 +873,27 @@ async function handleCollectionGroupChange(property: string) {
   }
 }
 
-async function handleCollectionCreateCard(title: string, columnValue: string) {
+async function handleCollectionSwimlaneChange(property: string) {
+  collectionSwimlaneProperty.value = property || null
+  if (activeWorkspaceId.value && activeBoardId.value !== null) {
+    try {
+      await updateBoard(activeWorkspaceId.value, activeBoardId.value, { swimlane_property: collectionSwimlaneProperty.value })
+    } catch (err) {
+      console.error('Failed to save board view:', err)
+    }
+  }
+}
+
+async function handleCollectionCreateCard(title: string, columnValue: string, rowValue: string | null) {
   if (!activeWorkspaceId.value || !collectionGroupProperty.value) return
   try {
     const path = `untitled-${Date.now().toString(36)}.md`
     const created = await createNote(activeWorkspaceId.value, path, `# ${title}\n\nWrite your thoughts here...`)
     if (columnValue) {
       await setNoteProperty(activeWorkspaceId.value, created.id, collectionGroupProperty.value, columnValue)
+    }
+    if (rowValue && collectionSwimlaneProperty.value) {
+      await setNoteProperty(activeWorkspaceId.value, created.id, collectionSwimlaneProperty.value, rowValue)
     }
     await refreshCollection(collectionPage.value.current_page)
   } catch (err) {
