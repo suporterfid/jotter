@@ -10,6 +10,13 @@ describe('Markdown rendering & XSS security', () => {
     expect(html).toContain('<strong>bold</strong>')
   })
 
+  it('stamps matching ids on rendered headings for outline navigation', () => {
+    const md = '# Notes\n\nSome text.\n\n## Notes'
+    const html = renderMarkdown(md)
+    expect(html).toContain('<h1 id="notes">')
+    expect(html).toContain('<h2 id="notes-2">')
+  })
+
   it('parses wikilinks into data-target anchor elements', () => {
     const md = 'Check out [[Projects/Jotter|Jotter Docs]] and [[Ideas]].'
     const html = renderMarkdown(md)
