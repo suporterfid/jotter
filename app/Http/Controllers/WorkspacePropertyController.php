@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Audit\AuditEvent;
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Vault\MarkdownDocument;
 use App\Domain\Vault\NotePropertyType;
 use App\Domain\Vault\VaultStorage;
@@ -31,7 +33,7 @@ final class WorkspacePropertyController extends Controller
         return response()->json(['data' => $properties]);
     }
 
-    public function setProperty(Request $request, Workspace $workspace, Note $note, VaultStorage $storage): JsonResponse
+    public function setProperty(Request $request, Workspace $workspace, Note $note, VaultStorage $storage, AuditRecorder $auditRecorder): JsonResponse
     {
         $this->ensureScopedNote($workspace, $note);
 
@@ -49,6 +51,16 @@ final class WorkspacePropertyController extends Controller
 
         $newContent = MarkdownDocument::compose($frontmatter, $parsed->body);
         $updatedNote = $storage->write($workspace, $note->path, $newContent);
+
+        $subject = $request->attributes->get('authenticated_subject');
+        $auditRecorder->record(
+            event: AuditEvent::NOTE_UPDATED,
+            tenantId: $workspace->tenant_id,
+            workspaceId: $workspace->id,
+            actorId: $subject?->subjectId,
+            metadata: ['action' => 'property_set', 'name' => $validated['name'], 'value' => $validated['value']],
+            noteId: $note->id
+        );
 
         return response()->json(['data' => $this->metadata($updatedNote)]);
     }

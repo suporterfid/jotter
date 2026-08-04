@@ -58,6 +58,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/workspaces/{workspace}/notes/{note}/checklist-items', [\App\Http\Controllers\NoteChecklistItemController::class, 'store']);
     Route::put('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'update']);
     Route::delete('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'destroy']);
+    Route::get('/workspaces/{workspace}/notes/{note}/activity', [\App\Http\Controllers\WorkspaceNoteActivityController::class, 'index']);
 
     Route::get('/workspaces/{workspace}/notifications', [\App\Http\Controllers\WorkspaceNotificationController::class, 'index']);
     Route::post('/workspaces/{workspace}/notifications/{notification}/read', [\App\Http\Controllers\WorkspaceNotificationController::class, 'markAsRead']);

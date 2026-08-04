@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem } from './types'
+import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -269,6 +269,11 @@ export async function updateChecklistItem(
 
 export async function deleteChecklistItem(workspaceId: number, noteId: number, itemId: number): Promise<void> {
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}/checklist-items/${itemId}`)
+}
+
+export async function getNoteActivity(workspaceId: number, noteId: number): Promise<NoteActivityEntry[]> {
+  const response = await api.get<{ data: NoteActivityEntry[] }>(`/workspaces/${workspaceId}/notes/${noteId}/activity`)
+  return response.data.data
 }
 
 export interface ImportResult {

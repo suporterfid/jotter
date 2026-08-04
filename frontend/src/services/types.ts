@@ -198,6 +198,14 @@ export interface BoardColumnConfig {
   auto_archive?: boolean
 }
 
+export interface NoteActivityEntry {
+  id: number
+  event: string
+  metadata: Record<string, unknown> | null
+  actor_subject_id: string | null
+  created_at: string | null
+}
+
 export interface NoteChecklistItem {
   id: number
   note_id: number

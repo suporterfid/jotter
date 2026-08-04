@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Audit\AuditEvent;
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Models\Note;
 use App\Models\NoteChecklistItem;
@@ -11,13 +13,15 @@ use Illuminate\Http\Request;
 final class NoteChecklistItemController extends Controller
 {
     public function __construct(
-        private readonly IdentityProvider $identityProvider
+        private readonly IdentityProvider $identityProvider,
+        private readonly AuditRecorder $auditRecorder = new AuditRecorder
     ) {}
 
     public function index(Request $request, int $workspaceId, int $noteId): JsonResponse
     {
-        if ($denied = $this->authorizeAndFindNote($request, $workspaceId, $noteId)) {
-            return $denied;
+        $note = $this->authorizeAndFindNote($request, $workspaceId, $noteId);
+        if ($note instanceof JsonResponse) {
+            return $note;
         }
 
         $items = NoteChecklistItem::query()->where('note_id', $noteId)->orderBy('sort_position')->orderBy('id')->get();
@@ -27,8 +31,9 @@ final class NoteChecklistItemController extends Controller
 
     public function store(Request $request, int $workspaceId, int $noteId): JsonResponse
     {
-        if ($denied = $this->authorizeAndFindNote($request, $workspaceId, $noteId)) {
-            return $denied;
+        $note = $this->authorizeAndFindNote($request, $workspaceId, $noteId);
+        if ($note instanceof JsonResponse) {
+            return $note;
         }
 
         $validated = $request->validate([
@@ -42,13 +47,16 @@ final class NoteChecklistItemController extends Controller
             'sort_position' => NoteChecklistItem::query()->where('note_id', $noteId)->count(),
         ]);
 
+        $this->recordActivity($request, $note, 'checklist_item_created', ['text' => $item->text]);
+
         return response()->json(['data' => $item], 201);
     }
 
     public function update(Request $request, int $workspaceId, int $noteId, int $itemId): JsonResponse
     {
-        if ($denied = $this->authorizeAndFindNote($request, $workspaceId, $noteId)) {
-            return $denied;
+        $note = $this->authorizeAndFindNote($request, $workspaceId, $noteId);
+        if ($note instanceof JsonResponse) {
+            return $note;
         }
 
         $item = NoteChecklistItem::query()->where('note_id', $noteId)->find($itemId);
@@ -63,13 +71,18 @@ final class NoteChecklistItemController extends Controller
 
         $item->update($validated);
 
+        if (array_key_exists('done', $validated)) {
+            $this->recordActivity($request, $note, $validated['done'] ? 'checklist_item_checked' : 'checklist_item_unchecked', ['text' => $item->text]);
+        }
+
         return response()->json(['data' => $item]);
     }
 
     public function destroy(Request $request, int $workspaceId, int $noteId, int $itemId): JsonResponse
     {
-        if ($denied = $this->authorizeAndFindNote($request, $workspaceId, $noteId)) {
-            return $denied;
+        $note = $this->authorizeAndFindNote($request, $workspaceId, $noteId);
+        if ($note instanceof JsonResponse) {
+            return $note;
         }
 
         $item = NoteChecklistItem::query()->where('note_id', $noteId)->find($itemId);
@@ -82,7 +95,7 @@ final class NoteChecklistItemController extends Controller
         return response()->json(null, 204);
     }
 
-    private function authorizeAndFindNote(Request $request, int $workspaceId, int $noteId): ?JsonResponse
+    private function authorizeAndFindNote(Request $request, int $workspaceId, int $noteId): Note|JsonResponse
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
@@ -98,6 +111,19 @@ final class NoteChecklistItemController extends Controller
             return response()->json(['message' => 'Note not found.'], 404);
         }
 
-        return null;
+        return $note;
+    }
+
+    private function recordActivity(Request $request, Note $note, string $action, array $metadata): void
+    {
+        $subject = $request->attributes->get('authenticated_subject');
+        $this->auditRecorder->record(
+            event: AuditEvent::NOTE_UPDATED,
+            tenantId: $note->workspace->tenant_id,
+            workspaceId: $note->workspace_id,
+            actorId: $subject?->subjectId,
+            metadata: array_merge(['action' => $action], $metadata),
+            noteId: $note->id
+        );
     }
 }

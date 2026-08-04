@@ -146,6 +146,16 @@
 
         <button
           class="btn-attach"
+          data-testid="activity-drawer-btn"
+          title="Activity"
+          :aria-expanded="isActivityDrawerOpen"
+          @click="isActivityDrawerOpen = !isActivityDrawerOpen"
+        >
+          <span>🕐</span>
+        </button>
+
+        <button
+          class="btn-attach"
           data-testid="attach-file-btn"
           :disabled="isUploading"
           @click="triggerFileInput"
@@ -429,6 +439,30 @@
       </aside>
     </Teleport>
 
+    <!-- Activity Drawer: teleported to the same right-drawer mount point.
+         Per-card activity feed (#308) — property changes (board moves,
+         archive) and checklist changes on this note, sourced from the
+         workspace's existing append-only audit log filtered by note_id. -->
+    <Teleport to="#app-right-drawer">
+      <aside
+        v-if="isActivityDrawerOpen"
+        class="comments-drawer"
+        data-testid="activity-drawer"
+      >
+        <div class="comments-drawer-header">
+          <h3>Activity</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            data-testid="activity-drawer-close-btn"
+            aria-label="Close activity"
+            @click="isActivityDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <ActivityPanel :entries="activityEntries" />
+      </aside>
+    </Teleport>
+
     <!-- Outline Drawer: teleported to the same right-drawer mount point as
          Comments (#262), listing the note's headings for quick navigation
          (G.1, #286). -->
@@ -520,13 +554,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
-import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, UnlinkedMention, OutgoingLink } from '../services/types'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink } from '../services/types'
 import {
   uploadAttachment,
   getNoteRevisions, getNoteRevision, restoreNoteRevision,
   setNoteProperty, deleteNoteProperty,
   getNoteComments, addNoteComment, deleteNoteComment,
   getChecklistItems, createChecklistItem, updateChecklistItem, deleteChecklistItem,
+  getNoteActivity,
   getUnlinkedMentions, getNote, updateNote,
   getOutgoingLinks
 } from '../services/api'
@@ -537,6 +572,7 @@ import UnlinkedMentionsPanel from './UnlinkedMentionsPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import ChecklistPanel from './ChecklistPanel.vue'
+import ActivityPanel from './ActivityPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
 import CoverImageModal from './CoverImageModal.vue'
 import SlashMenu from './SlashMenu.vue'
@@ -738,6 +774,8 @@ const comments = ref<NoteComment[]>([])
 const commentsError = ref<string | null>(null)
 const checklistItems = ref<NoteChecklistItem[]>([])
 const isChecklistDrawerOpen = ref(false)
+const activityEntries = ref<NoteActivityEntry[]>([])
+const isActivityDrawerOpen = ref(false)
 // Deliberately NOT reset on note switch (see the watcher below) — like a
 // sidebar, staying open while browsing between notes is the expected
 // drawer behavior, not per-note ephemeral UI state.
@@ -954,9 +992,19 @@ watch(() => props.note, (newNote) => {
   showHistory.value = false
   loadComments(newNote.id)
   loadChecklistItems(newNote.id)
+  loadActivity(newNote.id)
   loadUnlinkedMentions(newNote.id)
   loadOutgoingLinks(newNote.id)
 }, { immediate: true })
+
+async function loadActivity(noteId: number) {
+  if (!props.workspaceId) return
+  try {
+    activityEntries.value = await getNoteActivity(props.workspaceId, noteId)
+  } catch (err) {
+    console.error('Failed to load activity:', err)
+  }
+}
 
 async function loadComments(noteId: number) {
   commentsError.value = null
