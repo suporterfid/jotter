@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { allTagNames, filterNotesByTag, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
-import type { CollectionNote, CollectionPage } from './services/types'
+import { allTagNames, coverImageUrl, filterNotesByTag, firstDateProperty, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
+import type { CollectionNote, CollectionPage, RawNoteProperty } from './services/types'
 
-function makeNote(id: number, tags: string[]): CollectionNote {
-  return { id, path: `${id}.md`, title: `Note ${id}`, properties: [], tags: tags.map((name, i) => ({ id: i, name })) }
+function makeNote(id: number, tags: string[], properties: RawNoteProperty[] = []): CollectionNote {
+  return { id, path: `${id}.md`, title: `Note ${id}`, properties, tags: tags.map((name, i) => ({ id: i, name })) }
+}
+
+function stringProp(name: string, value: string): RawNoteProperty {
+  return { id: 1, note_id: 1, name, type: 'string', value_string: value, value_numeric: null, value_boolean: null, value_datetime: null, value_json: null }
+}
+
+function dateProp(name: string, value: string): RawNoteProperty {
+  return { id: 2, note_id: 1, name, type: 'datetime', value_string: null, value_numeric: null, value_boolean: null, value_datetime: value, value_json: null }
 }
 
 function makeEl(dataset: Record<string, string>): HTMLElement {
@@ -67,5 +75,28 @@ describe('filterNotesByTag', () => {
 
   it('returns only notes carrying the selected tag', () => {
     expect(filterNotesByTag(notes, 'personal')).toEqual([notes[1], notes[2]])
+  })
+})
+
+describe('coverImageUrl', () => {
+  it('returns the cover property value when set', () => {
+    const note = makeNote(1, [], [stringProp('cover', 'https://example.com/img.png')])
+    expect(coverImageUrl(note)).toBe('https://example.com/img.png')
+  })
+
+  it('returns null when there is no cover property or it is blank', () => {
+    expect(coverImageUrl(makeNote(1, []))).toBeNull()
+    expect(coverImageUrl(makeNote(1, [], [stringProp('cover', '  ')]))).toBeNull()
+  })
+})
+
+describe('firstDateProperty', () => {
+  it('returns the first datetime property name and value', () => {
+    const note = makeNote(1, [], [stringProp('status', 'open'), dateProp('due', '2026-08-10')])
+    expect(firstDateProperty(note)).toEqual({ name: 'due', value: '2026-08-10' })
+  })
+
+  it('returns null when there is no datetime property', () => {
+    expect(firstDateProperty(makeNote(1, [], [stringProp('status', 'open')]))).toBeNull()
   })
 })

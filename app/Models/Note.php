@@ -55,4 +55,9 @@ class Note extends Model
     {
         return $this->hasMany(NoteProperty::class);
     }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(NoteComment::class);
+    }
 }
