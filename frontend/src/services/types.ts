@@ -189,6 +189,14 @@ export interface CollectionNote {
   comments_count?: number
 }
 
+export interface BoardColumnConfig {
+  key: string
+  label?: string | null
+  color?: string | null
+  wip_limit?: number | null
+  collapsed?: boolean
+}
+
 export interface Board {
   id: number
   workspace_id: number
@@ -196,6 +204,7 @@ export interface Board {
   group_property: string | null
   filter_property: string | null
   filter_value: string | null
+  column_config: BoardColumnConfig[] | null
   sort_position: number
 }
 

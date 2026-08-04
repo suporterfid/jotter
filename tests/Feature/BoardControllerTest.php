@@ -88,6 +88,29 @@ final class BoardControllerTest extends TestCase
             ->assertJsonPath('data.filter_value', 'alice');
     }
 
+    public function test_persists_column_configuration(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $workspace = $this->makeWorkspace();
+        $board = Board::create(['workspace_id' => $workspace->id, 'name' => 'Original']);
+
+        $columnConfig = [
+            ['key' => 'done', 'label' => 'Done', 'color' => '#22c55e', 'wip_limit' => 3, 'collapsed' => false],
+            ['key' => 'draft', 'label' => 'Draft', 'color' => null, 'wip_limit' => null, 'collapsed' => true],
+        ];
+
+        $response = $this->actingAs($admin)->putJson("/api/workspaces/{$workspace->id}/boards/{$board->id}", [
+            'column_config' => $columnConfig,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.column_config.0.key', 'done')
+            ->assertJsonPath('data.column_config.0.wip_limit', 3)
+            ->assertJsonPath('data.column_config.1.collapsed', true);
+
+        $this->assertEquals($columnConfig, $board->fresh()->column_config);
+    }
+
     public function test_deletes_a_board(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

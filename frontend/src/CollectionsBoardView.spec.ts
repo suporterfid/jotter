@@ -144,6 +144,65 @@ describe('CollectionsBoardView', () => {
     expect(cards[0].text()).toContain('A')
   })
 
+  it('does not show column config controls by default', () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    expect(wrapper.find('[data-testid="board-column-move-right"]').exists()).toBe(false)
+  })
+
+  it('shows reorder, collapse, and edit controls per column when configurable', () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status', configurable: true } })
+    expect(wrapper.findAll('[data-testid="board-column-move-left"]').length).toBeGreaterThan(0)
+    expect(wrapper.findAll('[data-testid="board-column-move-right"]').length).toBeGreaterThan(0)
+    expect(wrapper.findAll('[data-testid="board-column-collapse-toggle"]').length).toBe(3)
+    expect(wrapper.findAll('[data-testid="board-column-edit-button"]').length).toBe(3)
+  })
+
+  it('emits reorder-columns with the swapped key order', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status', configurable: true } })
+    const firstColumn = wrapper.findAll('[data-testid="board-column"]')[0]
+    await firstColumn.get('[data-testid="board-column-move-right"]').trigger('click')
+    expect(wrapper.emitted('reorder-columns')![0][0]).toEqual(['draft', 'done', 'No value'])
+  })
+
+  it('emits toggle-column-collapse with the column key', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status', configurable: true } })
+    const firstColumn = wrapper.findAll('[data-testid="board-column"]')[0]
+    await firstColumn.get('[data-testid="board-column-collapse-toggle"]').trigger('click')
+    expect(wrapper.emitted('toggle-column-collapse')).toBeTruthy()
+  })
+
+  it('hides the column body when the column is collapsed', () => {
+    const wrapper = mount(CollectionsBoardView, {
+      props: {
+        page, groupProperty: 'status', configurable: true,
+        columnConfig: [{ key: 'draft', collapsed: true }],
+      },
+    })
+    const draftColumn = wrapper.findAll('[data-testid="board-column"]').find(c => c.text().includes('draft'))!
+    expect(draftColumn.find('[data-testid="board-column-body"]').exists()).toBe(false)
+  })
+
+  it('emits update-column with the edited label, color, and wip limit', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status', configurable: true } })
+    const draftColumn = wrapper.findAll('[data-testid="board-column"]').find(c => c.text().includes('draft'))!
+    await draftColumn.get('[data-testid="board-column-edit-button"]').trigger('click')
+    await draftColumn.get('[data-testid="board-column-label-input"]').setValue('In Progress')
+    await draftColumn.get('[data-testid="board-column-wip-input"]').setValue('2')
+    await draftColumn.get('[data-testid="board-column-edit-form"]').trigger('submit')
+    expect(wrapper.emitted('update-column')![0]).toEqual(['draft', { label: 'In Progress', color: null, wip_limit: 2 }])
+  })
+
+  it('flags a column over its WIP limit', () => {
+    const wrapper = mount(CollectionsBoardView, {
+      props: {
+        page, groupProperty: 'status', configurable: true,
+        columnConfig: [{ key: 'draft', wip_limit: 0 }],
+      },
+    })
+    const draftColumn = wrapper.findAll('[data-testid="board-column"]').find(c => c.text().includes('draft'))!
+    expect(draftColumn.find('[data-testid="board-column-wip-warning"]').exists()).toBe(true)
+  })
+
   it('does not emit create-card for a blank title', async () => {
     const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
     const draftColumn = wrapper.findAll('[data-testid="board-column"]')

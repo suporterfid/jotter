@@ -132,11 +132,16 @@
           :page="collectionPage"
           :loading="collectionLoading"
           :group-property="collectionGroupProperty"
+          :configurable="activeBoardId !== null"
+          :column-config="activeBoardColumnConfig"
           @select-note="handleSelectNote"
           @page-change="handleCollectionPageChange"
           @group-change="handleCollectionGroupChange"
           @move-card="handleCollectionMoveCard"
           @create-card="handleCollectionCreateCard"
+          @reorder-columns="handleReorderColumns"
+          @toggle-column-collapse="handleToggleColumnCollapse"
+          @update-column="handleUpdateColumn"
         />
       </div>
 
@@ -290,7 +295,7 @@ import {
   updateBoard,
   deleteBoard
 } from './services/api'
-import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board } from './services/types'
+import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig } from './services/types'
 import BoardSwitcher from './components/BoardSwitcher.vue'
 import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
@@ -711,6 +716,47 @@ async function refreshBoards() {
   } catch (err) {
     console.error('Failed to load boards:', err)
   }
+}
+
+const activeBoardColumnConfig = computed(() => {
+  const board = boards.value.find(b => b.id === activeBoardId.value)
+  return board?.column_config ?? null
+})
+
+async function persistColumnConfig(config: BoardColumnConfig[]) {
+  if (!activeWorkspaceId.value || activeBoardId.value === null) return
+  try {
+    const board = await updateBoard(activeWorkspaceId.value, activeBoardId.value, { column_config: config })
+    const index = boards.value.findIndex(b => b.id === board.id)
+    if (index !== -1) boards.value[index] = board
+  } catch (err) {
+    console.error('Failed to save column configuration:', err)
+  }
+}
+
+function handleReorderColumns(keys: string[]) {
+  const existing = activeBoardColumnConfig.value ?? []
+  const byKey = new Map(existing.map(c => [c.key, c]))
+  const config = keys.map(key => byKey.get(key) ?? { key })
+  persistColumnConfig(config)
+}
+
+function handleToggleColumnCollapse(key: string) {
+  const existing = activeBoardColumnConfig.value ?? []
+  const found = existing.find(c => c.key === key)
+  const config = found
+    ? existing.map(c => (c.key === key ? { ...c, collapsed: !c.collapsed } : c))
+    : [...existing, { key, collapsed: true }]
+  persistColumnConfig(config)
+}
+
+function handleUpdateColumn(key: string, attrs: { label: string; color: string | null; wip_limit: number | null }) {
+  const existing = activeBoardColumnConfig.value ?? []
+  const found = existing.find(c => c.key === key)
+  const config = found
+    ? existing.map(c => (c.key === key ? { ...c, ...attrs } : c))
+    : [...existing, { key, ...attrs }]
+  persistColumnConfig(config)
 }
 
 async function handleSelectBoard(boardId: number | null) {

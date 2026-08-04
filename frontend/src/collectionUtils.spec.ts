@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { allTagNames, coverImageUrl, filterNotesByTag, firstDateProperty, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
+import { allTagNames, applyColumnConfig, coverImageUrl, filterNotesByTag, firstDateProperty, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
+import type { BoardColumn } from './services/collectionUtils'
 import type { CollectionNote, CollectionPage, RawNoteProperty } from './services/types'
 
 function makeNote(id: number, tags: string[], properties: RawNoteProperty[] = []): CollectionNote {
@@ -98,5 +99,36 @@ describe('firstDateProperty', () => {
 
   it('returns null when there is no datetime property', () => {
     expect(firstDateProperty(makeNote(1, [], [stringProp('status', 'open')]))).toBeNull()
+  })
+})
+
+describe('applyColumnConfig', () => {
+  const columns: BoardColumn[] = [
+    { key: 'draft', label: 'draft', notes: [] },
+    { key: 'done', label: 'done', notes: [] },
+    { key: 'review', label: 'review', notes: [] },
+  ]
+
+  it('returns derived columns unchanged, defaulted, when there is no config', () => {
+    expect(applyColumnConfig(columns, null)).toEqual([
+      { key: 'draft', label: 'draft', notes: [], color: null, wipLimit: null, collapsed: false },
+      { key: 'done', label: 'done', notes: [], color: null, wipLimit: null, collapsed: false },
+      { key: 'review', label: 'review', notes: [], color: null, wipLimit: null, collapsed: false },
+    ])
+  })
+
+  it('reorders columns to match the config order and applies overrides', () => {
+    const result = applyColumnConfig(columns, [
+      { key: 'done', label: 'Done!', color: '#22c55e', wip_limit: 3, collapsed: false },
+      { key: 'draft', collapsed: true },
+    ])
+    expect(result.map(c => c.key)).toEqual(['done', 'draft', 'review'])
+    expect(result[0]).toMatchObject({ label: 'Done!', color: '#22c55e', wipLimit: 3 })
+    expect(result[1]).toMatchObject({ label: 'draft', collapsed: true })
+  })
+
+  it('drops config entries for columns no longer present in the data', () => {
+    const result = applyColumnConfig(columns, [{ key: 'archived', label: 'Archived' }])
+    expect(result.map(c => c.key)).toEqual(['draft', 'done', 'review'])
   })
 })
