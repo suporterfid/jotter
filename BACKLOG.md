@@ -28,13 +28,32 @@ C1, C2, C3, C5, and C6 were resolved — see `docs/decisions.md`. This section p
 comparison against Obsidian, verified against `frontend/src/` post-#285.
 Command palette, tag cloud/filter, collapsible sidebar, and the
 right-hand drawer were already shipped and dropped from this list during
-verification.
+verification. All five remaining items shipped 2026-08-04 (G.4 scope A —
+tab strip, single active pane — only; true split-screen, scope B, is
+separate future work, blocked on pane-scoping G.1/G.5's DOM-id lookups):
 
-- **No headings outline/TOC pane for the current note (#286, S, P2).**
-- **No hover preview for wikilinks (#287, M, P2).**
-- **No transclusion / `![[note]]` embeds (#288, M–L, P2).**
-- **No contextual/local graph per note (#289, M, P3).**
-- **No multi-pane / tabbed editing (#290, L, P3).**
+- ~~No headings outline/TOC pane for the current note~~ (#286, shipped #292).
+- ~~No hover preview for wikilinks~~ (#287, shipped #293).
+- ~~No transclusion / `![[note]]` embeds~~ (#288, shipped #294).
+- ~~No contextual/local graph per note~~ (#289, shipped #295).
+- ~~No multi-pane / tabbed editing (scope A)~~ (#290, shipped #297).
+
+## Trello board-parity gaps
+
+`docs/20260804-jotter-trello-board-parity-audit.md` — findings from a
+comparison of `CollectionsBoardView.vue` against Trello's board/card
+feature set.
+
+- **No drag-and-drop cards between board columns (#299, L, P1).**
+- **No card creation from the board (#300, M, P2).**
+- **Card face shows only title + path (#302, M–L, P2).**
+- **Tags/labels not surfaced or filterable on the board (#306, S–M, P2).**
+- **No column configuration — reorder/rename/color/WIP limit/collapse (#301, L, P3).**
+- **No multiple boards / saved views (#303, L, P3).**
+- **No swimlanes / second grouping dimension (#304, L, P3).**
+- **No card-level checklists distinct from note content (#305, M–L, P3) — needs a scope decision first (derived from existing task-list syntax vs. a new data model), see the issue.**
+- **No archive state / done-column automation (#307, M, P3).**
+- **No per-card activity feed (#308, M, P3).**
 
 ## Not adopted
 
