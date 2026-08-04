@@ -59,6 +59,33 @@
             <span class="board-card-path">{{ note.path }}</span>
           </button>
         </div>
+        <form
+          v-if="addCardColumnKey === column.key"
+          class="board-add-card-form"
+          data-testid="board-add-card-form"
+          @submit.prevent="submitAddCard(column.key)"
+        >
+          <input
+            v-model="addCardTitle"
+            type="text"
+            placeholder="Card title"
+            aria-label="New card title"
+            data-testid="board-add-card-input"
+            class="add-card-input"
+            autofocus
+          />
+          <button type="submit" class="btn-add-card-confirm">Add</button>
+          <button type="button" class="btn-add-card-cancel" @click="cancelAddCard">Cancel</button>
+        </form>
+        <button
+          v-else
+          type="button"
+          class="btn-add-card"
+          data-testid="board-add-card-button"
+          @click="openAddCard(column.key)"
+        >
+          + Add card
+        </button>
       </div>
     </div>
 
@@ -108,6 +135,7 @@ const emit = defineEmits<{
   (e: 'page-change', page: number): void
   (e: 'group-change', property: string): void
   (e: 'move-card', noteId: number, newValue: string): void
+  (e: 'create-card', title: string, columnValue: string): void
 }>()
 
 const groupPropertyInput = ref(props.groupProperty || '')
@@ -193,6 +221,28 @@ watch(columns, () => {
 })
 
 onBeforeUnmount(destroySortables)
+
+// Card creation from the board (#300): one column has its add-card form
+// open at a time, tracked by column key.
+const addCardColumnKey = ref<string | null>(null)
+const addCardTitle = ref('')
+
+function openAddCard(key: string) {
+  addCardColumnKey.value = key
+  addCardTitle.value = ''
+}
+
+function cancelAddCard() {
+  addCardColumnKey.value = null
+  addCardTitle.value = ''
+}
+
+function submitAddCard(columnKey: string) {
+  const title = addCardTitle.value.trim()
+  if (!title) return
+  emit('create-card', title, columnKey === UNGROUPED_LABEL ? '' : columnKey)
+  cancelAddCard()
+}
 </script>
 
 <style scoped>
@@ -347,6 +397,58 @@ onBeforeUnmount(destroySortables)
 .board-card-ghost {
   background: var(--color-hover);
   opacity: 0.6;
+}
+
+.btn-add-card {
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  padding: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  text-align: left;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.btn-add-card:hover {
+  background: var(--color-surface-emphasis);
+  color: var(--color-text);
+}
+
+.board-add-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.add-card-input {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  min-height: 32px;
+}
+
+.btn-add-card-confirm,
+.btn-add-card-cancel {
+  background: var(--color-action);
+  color: var(--color-neutral-0);
+  border: none;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  min-height: 28px;
+}
+
+.btn-add-card-cancel {
+  background: var(--color-surface-emphasis);
+  color: var(--color-text-muted);
 }
 
 .board-card-title {
