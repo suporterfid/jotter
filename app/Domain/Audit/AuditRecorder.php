@@ -14,7 +14,8 @@ final class AuditRecorder
         ?int $tenantId = null,
         ?int $workspaceId = null,
         ?string $actorId = null,
-        array $metadata = []
+        array $metadata = [],
+        ?int $noteId = null
     ): AuditLog {
         $ip = request()->ip() ?? '127.0.0.1';
 
@@ -24,6 +25,7 @@ final class AuditRecorder
         return AuditLog::query()->create([
             'tenant_id' => $tenantId,
             'workspace_id' => $workspaceId,
+            'note_id' => $noteId,
             'actor_subject_id' => $actorId,
             'actor_type' => $actorId ? 'user' : 'system',
             'actor_id' => $actorId,
