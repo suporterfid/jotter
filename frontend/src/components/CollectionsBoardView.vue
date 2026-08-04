@@ -40,13 +40,19 @@
           <span class="board-column-title">{{ column.label }}</span>
           <span class="count-badge">{{ column.notes.length }}</span>
         </div>
-        <div class="board-column-body">
+        <div
+          class="board-column-body"
+          data-testid="board-column-body"
+          :data-column-key="column.key"
+          :ref="(el) => setColumnBodyRef(column.key, el)"
+        >
           <button
             v-for="note in column.notes"
             :key="note.id"
             type="button"
             class="board-card"
             data-testid="board-card"
+            :data-note-id="note.id"
             @click="$emit('select-note', note.id)"
           >
             <span class="board-card-title">{{ note.title || note.path }}</span>
@@ -81,9 +87,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
+import Sortable from 'sortablejs'
 import type { CollectionPage } from '../services/types'
-import { formatPropertyValue, propertyColumns as computePropertyColumns } from '../services/collectionUtils'
+import {
+  formatPropertyValue,
+  propertyColumns as computePropertyColumns,
+  resolveCardMove,
+  UNGROUPED_LABEL,
+} from '../services/collectionUtils'
 
 const props = defineProps<{
   page: CollectionPage
@@ -95,6 +107,7 @@ const emit = defineEmits<{
   (e: 'select-note', noteId: number): void
   (e: 'page-change', page: number): void
   (e: 'group-change', property: string): void
+  (e: 'move-card', noteId: number, newValue: string): void
 }>()
 
 const groupPropertyInput = ref(props.groupProperty || '')
@@ -108,8 +121,6 @@ function applyGroupProperty() {
 }
 
 const propertyColumns = computed(() => computePropertyColumns(props.page))
-
-const UNGROUPED_LABEL = 'No value'
 
 const columns = computed(() => {
   if (!props.groupProperty) return []
@@ -127,6 +138,61 @@ const columns = computed(() => {
   })
   return sortedKeys.map(key => ({ key, label: key, notes: groups.get(key)! }))
 })
+
+// Drag-and-drop between columns (#299): one Sortable instance per column
+// body, sharing a group so cards can move between them. onEnd resolves the
+// move via the pure resolveCardMove() rather than deciding inline, so the
+// decision logic is unit-testable without a real Sortable instance.
+const columnBodyRefs = new Map<string, HTMLElement>()
+
+function setColumnBodyRef(key: string, el: unknown) {
+  if (el instanceof HTMLElement) {
+    columnBodyRefs.set(key, el)
+  } else {
+    columnBodyRefs.delete(key)
+  }
+}
+
+let sortableInstances: Sortable[] = []
+
+function destroySortables() {
+  sortableInstances.forEach(s => s.destroy())
+  sortableInstances = []
+}
+
+function initSortables() {
+  destroySortables()
+  for (const el of columnBodyRefs.values()) {
+    sortableInstances.push(
+      Sortable.create(el, {
+        group: 'board-column',
+        animation: 150,
+        ghostClass: 'board-card-ghost',
+        // Native HTML5 drag-and-drop never fires from touch input, so the
+        // fallback (mouse/touch-event-based) simulation is required for
+        // touch support, same as the sidebar's note-tree drag-and-drop.
+        forceFallback: true,
+        onEnd(evt) {
+          const from = evt.from as HTMLElement
+          const to = evt.to as HTMLElement
+          const item = evt.item as HTMLElement
+          const move = resolveCardMove(from, to, item)
+          if (move) emit('move-card', move.noteId, move.newValue)
+        },
+      })
+    )
+  }
+}
+
+onMounted(() => {
+  nextTick(initSortables)
+})
+
+watch(columns, () => {
+  nextTick(initSortables)
+})
+
+onBeforeUnmount(destroySortables)
 </script>
 
 <style scoped>
@@ -276,6 +342,11 @@ const columns = computed(() => {
 
 .board-card:hover {
   background: var(--color-surface-emphasis);
+}
+
+.board-card-ghost {
+  background: var(--color-hover);
+  opacity: 0.6;
 }
 
 .board-card-title {
