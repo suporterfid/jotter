@@ -12,9 +12,10 @@ vi.mock('./services/api', () => ({
   addNoteComment: vi.fn().mockResolvedValue({
     id: 1, actor_name: 'Admin', content: 'placeholder', anchor_line: null, created_at: '2026-08-03T00:00:00Z',
   }),
+  getNote: vi.fn(),
 }))
 
-import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -861,6 +862,78 @@ describe('NoteEditor outline drawer', () => {
     const expectedOffset = '# Title\n\nBody text.\n\n'.length
     expect(document.activeElement).toBe(textarea)
     expect(textarea.selectionStart).toBe(expectedOffset)
+
+    wrapper.unmount()
+  })
+})
+
+describe('NoteEditor wikilink hover preview', () => {
+  const allNotes = [
+    { id: 2, path: 'ideas.md', title: 'Ideas', frontmatter: null, sort_position: null, updated_at: '2026-07-31T00:00:00Z' },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(getNote as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 2, path: 'ideas.md', title: 'Ideas', frontmatter: null, sort_position: null,
+      updated_at: '2026-07-31T00:00:00Z', content: '# Ideas\n\nSome body.', backlinks: [],
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('shows the popup with fetched content after hovering a resolved wikilink', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'See [[Ideas]].' }), allNotes, workspaceId: 1 },
+    })
+    await flushPromises()
+    vi.useFakeTimers()
+
+    const link = wrapper.get('a.wikilink')
+    await link.trigger('mouseover')
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(wrapper.find('[data-testid="wikilink-preview-popup"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Some body.')
+    expect(getNote).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+  })
+
+  it('caches fetched content so hovering the same link twice only fetches once', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'See [[Ideas]].' }), allNotes, workspaceId: 1 },
+    })
+    await flushPromises()
+    vi.useFakeTimers()
+
+    const link = wrapper.get('a.wikilink')
+    await link.trigger('mouseover')
+    await vi.advanceTimersByTimeAsync(300)
+    await link.trigger('mouseout')
+
+    await link.trigger('mouseover')
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(getNote).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('shows the new-note affordance for an unresolved target without calling getNote', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'See [[Missing]].' }), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+    vi.useFakeTimers()
+
+    const link = wrapper.get('a.wikilink')
+    await link.trigger('mouseover')
+    await vi.advanceTimersByTimeAsync(300)
+
+    expect(wrapper.text()).toContain('No note yet')
+    expect(getNote).not.toHaveBeenCalled()
 
     wrapper.unmount()
   })

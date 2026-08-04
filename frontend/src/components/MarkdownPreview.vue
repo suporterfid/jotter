@@ -1,14 +1,17 @@
 <template>
-  <div 
-    class="markdown-preview prose prose-invert" 
+  <div
+    class="markdown-preview prose prose-invert"
     v-html="renderedContent"
     @click="handlePreviewClick"
     @change="handleCheckboxChange"
+    @mouseover="handleWikilinkMouseOver"
+    @mouseout="handleWikilinkMouseOut"
+    @scroll="handleScroll"
   ></div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
 import { renderMarkdown } from '../services/markdown'
 
 const props = defineProps<{
@@ -18,6 +21,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'navigate-wikilink', target: string): void
   (e: 'toggle-task', itemText: string, isChecked: boolean): void
+  (e: 'hover-wikilink', target: string, rect: DOMRect): void
+  (e: 'unhover-wikilink'): void
 }>()
 
 const renderedContent = computed(() => renderMarkdown(props.content || ''))
@@ -59,6 +64,47 @@ function handleCheckboxChange(event: Event) {
     }
   }
 }
+
+// Hover preview (G.2): debounced so a mouse merely passing over a link on
+// its way elsewhere doesn't trigger a fetch — only a genuine pause does.
+let hoverTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearHoverTimer() {
+  if (hoverTimer) {
+    clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
+}
+
+function handleWikilinkMouseOver(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const link = target.closest('a.wikilink') as HTMLAnchorElement | null
+  if (!link) return
+  const wikilinkTarget = link.getAttribute('data-target')
+  if (!wikilinkTarget) return
+
+  clearHoverTimer()
+  hoverTimer = setTimeout(() => {
+    hoverTimer = null
+    emit('hover-wikilink', wikilinkTarget, link.getBoundingClientRect())
+  }, 300)
+}
+
+function handleWikilinkMouseOut(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const link = target.closest('a.wikilink') as HTMLAnchorElement | null
+  if (!link) return
+
+  clearHoverTimer()
+  emit('unhover-wikilink')
+}
+
+function handleScroll() {
+  clearHoverTimer()
+  emit('unhover-wikilink')
+}
+
+onBeforeUnmount(clearHoverTimer)
 </script>
 
 <style scoped>
