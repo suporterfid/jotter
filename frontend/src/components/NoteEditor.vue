@@ -104,6 +104,16 @@
 
         <button
           class="btn-attach"
+          data-testid="outline-drawer-btn"
+          title="Outline"
+          :aria-expanded="isOutlineDrawerOpen"
+          @click="isOutlineDrawerOpen = !isOutlineDrawerOpen"
+        >
+          <span>📑</span>
+        </button>
+
+        <button
+          class="btn-attach"
           data-testid="comments-drawer-btn"
           title="Comments"
           :aria-expanded="isCommentsDrawerOpen"
@@ -356,6 +366,29 @@
       </aside>
     </Teleport>
 
+    <!-- Outline Drawer: teleported to the same right-drawer mount point as
+         Comments (#262), listing the note's headings for quick navigation
+         (G.1, #286). -->
+    <Teleport to="#app-right-drawer">
+      <aside
+        v-if="isOutlineDrawerOpen"
+        class="outline-drawer"
+        data-testid="outline-drawer"
+      >
+        <div class="outline-drawer-header">
+          <h3>Outline</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            data-testid="outline-drawer-close-btn"
+            aria-label="Close outline"
+            @click="isOutlineDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <OutlinePanel :headings="headings" @jump-to-heading="jumpToHeading" />
+      </aside>
+    </Teleport>
+
     <!-- Backlinks Panel: purely derived/read-only (no creation affordance), so it's safe to
          omit entirely when empty, unlike Properties/Comments above which always need to stay
          mounted for their "add" forms. -->
@@ -415,6 +448,8 @@ import PropertiesPanel from './PropertiesPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
 import CoverImageModal from './CoverImageModal.vue'
 import SlashMenu from './SlashMenu.vue'
+import OutlinePanel from './OutlinePanel.vue'
+import { parseHeadings, type HeadingEntry } from '../services/outline'
 import type { BlockDefinition } from '../services/blockRegistry'
 
 const props = defineProps<{
@@ -608,6 +643,26 @@ const commentsError = ref<string | null>(null)
 // sidebar, staying open while browsing between notes is the expected
 // drawer behavior, not per-note ephemeral UI state.
 const isCommentsDrawerOpen = ref(false)
+const isOutlineDrawerOpen = ref(false)
+const headings = computed<HeadingEntry[]>(() => parseHeadings(editableContent.value))
+
+function jumpToHeading(heading: HeadingEntry) {
+  if (viewMode.value === 'preview') {
+    document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+
+  const lines = editableContent.value.split('\n')
+  let offset = 0
+  for (let i = 0; i < heading.line; i += 1) {
+    offset += lines[i].length + 1
+  }
+
+  const textarea = textareaRef.value
+  if (!textarea) return
+  textarea.setSelectionRange(offset, offset)
+  textarea.focus()
+}
 const unlinkedMentions = ref<UnlinkedMention[]>([])
 const outgoingLinks = ref<OutgoingLink[]>([])
 
@@ -1708,5 +1763,41 @@ onUnmounted(() => {
 .drawer-close-btn:hover {
   color: var(--color-text);
   background: var(--color-hover);
+}
+
+.outline-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(360px, 100vw);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-float);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .outline-drawer {
+    width: 100vw;
+  }
+}
+
+.outline-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.outline-drawer-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
 }
 </style>

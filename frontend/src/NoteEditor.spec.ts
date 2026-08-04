@@ -797,3 +797,71 @@ describe('NoteEditor comments drawer', () => {
     wrapper.unmount()
   })
 })
+
+describe('NoteEditor outline drawer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.insertAdjacentHTML('beforeend', '<div id="app-right-drawer"></div>')
+  })
+
+  afterEach(() => {
+    document.getElementById('app-right-drawer')?.remove()
+  })
+
+  it('does not render the drawer until toggled open', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="outline-drawer"]')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('opens the drawer via the outline toggle button and lists headings from the note content', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: {
+        note: makeNote({ content: '# Title\n\n## Section' }),
+        allNotes: [],
+        workspaceId: 1,
+      },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="outline-drawer-btn"]').trigger('click')
+    const drawer = document.querySelector('[data-testid="outline-drawer"]')
+    expect(drawer).not.toBeNull()
+    expect(drawer!.textContent).toContain('Title')
+    expect(drawer!.textContent).toContain('Section')
+
+    ;(document.querySelector('[data-testid="outline-drawer-close-btn"]') as HTMLElement).click()
+    await wrapper.vm.$nextTick()
+    expect(document.querySelector('[data-testid="outline-drawer"]')).toBeNull()
+
+    wrapper.unmount()
+  })
+
+  it('clicking a heading in edit/split mode moves the textarea caret to that heading and focuses it', async () => {
+    const content = '# Title\n\nBody text.\n\n## Section'
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content }), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="outline-drawer-btn"]').trigger('click')
+
+    const items = document.querySelectorAll('[data-testid="outline-item-btn"]')
+    expect(items).toHaveLength(2)
+    ;(items[1] as HTMLElement).click()
+    await wrapper.vm.$nextTick()
+
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]').element as HTMLTextAreaElement
+    const expectedOffset = '# Title\n\nBody text.\n\n'.length
+    expect(document.activeElement).toBe(textarea)
+    expect(textarea.selectionStart).toBe(expectedOffset)
+
+    wrapper.unmount()
+  })
+})
