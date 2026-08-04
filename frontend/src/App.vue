@@ -127,6 +127,7 @@
         @select-note="handleSelectNote"
         @page-change="handleCollectionPageChange"
         @group-change="handleCollectionGroupChange"
+        @move-card="handleCollectionMoveCard"
       />
 
       <!-- Calendar (Collections) View Mode -->
@@ -269,6 +270,7 @@ import {
   getLinkReport,
   publishWorkspace,
   getCollection,
+  setNoteProperty,
   getNotifications,
   markNotificationRead,
   deleteNotification,
@@ -734,6 +736,17 @@ function handleCollectionSort(key: string) {
 
 function handleCollectionGroupChange(property: string) {
   collectionGroupProperty.value = property || null
+}
+
+async function handleCollectionMoveCard(noteId: number, newValue: string) {
+  if (!activeWorkspaceId.value || !collectionGroupProperty.value) return
+  try {
+    await setNoteProperty(activeWorkspaceId.value, noteId, collectionGroupProperty.value, newValue)
+  } catch (err) {
+    console.error('Failed to move card:', err)
+  } finally {
+    await refreshCollection(collectionPage.value.current_page)
+  }
 }
 
 function handleCollectionDatePropertyChange(property: string) {
