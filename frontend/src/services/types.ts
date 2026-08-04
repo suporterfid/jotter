@@ -43,6 +43,13 @@ export interface OutgoingLink {
   resolved: boolean
 }
 
+export interface LocalGraphNeighbor {
+  id: number
+  title: string
+  path: string
+  direction: 'backlink' | 'outgoing'
+}
+
 export interface UnlinkedMention {
   id: number
   path: string
