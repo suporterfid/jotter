@@ -135,6 +135,17 @@
 
         <button
           class="btn-attach"
+          data-testid="checklist-drawer-btn"
+          title="Checklist"
+          :aria-expanded="isChecklistDrawerOpen"
+          @click="isChecklistDrawerOpen = !isChecklistDrawerOpen"
+        >
+          <span>☑</span>
+          <span v-if="checklistItems.length">{{ checklistItems.filter(i => i.done).length }}/{{ checklistItems.length }}</span>
+        </button>
+
+        <button
+          class="btn-attach"
           data-testid="attach-file-btn"
           :disabled="isUploading"
           @click="triggerFileInput"
@@ -389,6 +400,35 @@
       </aside>
     </Teleport>
 
+    <!-- Checklist Drawer: teleported to the same right-drawer mount point as
+         Comments. Card-level checklist as a genuinely separate structure
+         from the note's own Markdown content (#305) — a note-scoped list of
+         checklist_items rows, not derived from `- [ ]` syntax in the body. -->
+    <Teleport to="#app-right-drawer">
+      <aside
+        v-if="isChecklistDrawerOpen"
+        class="comments-drawer"
+        data-testid="checklist-drawer"
+      >
+        <div class="comments-drawer-header">
+          <h3>Checklist</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            data-testid="checklist-drawer-close-btn"
+            aria-label="Close checklist"
+            @click="isChecklistDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <ChecklistPanel
+          :items="checklistItems"
+          @add-item="handleAddChecklistItem"
+          @toggle-item="handleToggleChecklistItem"
+          @delete-item="handleDeleteChecklistItem"
+        />
+      </aside>
+    </Teleport>
+
     <!-- Outline Drawer: teleported to the same right-drawer mount point as
          Comments (#262), listing the note's headings for quick navigation
          (G.1, #286). -->
@@ -480,12 +520,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
-import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention, OutgoingLink } from '../services/types'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, UnlinkedMention, OutgoingLink } from '../services/types'
 import {
   uploadAttachment,
   getNoteRevisions, getNoteRevision, restoreNoteRevision,
   setNoteProperty, deleteNoteProperty,
   getNoteComments, addNoteComment, deleteNoteComment,
+  getChecklistItems, createChecklistItem, updateChecklistItem, deleteChecklistItem,
   getUnlinkedMentions, getNote, updateNote,
   getOutgoingLinks
 } from '../services/api'
@@ -495,6 +536,7 @@ import OutgoingLinksPanel from './OutgoingLinksPanel.vue'
 import UnlinkedMentionsPanel from './UnlinkedMentionsPanel.vue'
 import HistoryPanel from './HistoryPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
+import ChecklistPanel from './ChecklistPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
 import CoverImageModal from './CoverImageModal.vue'
 import SlashMenu from './SlashMenu.vue'
@@ -694,6 +736,8 @@ const revisionPreviewLoading = ref(false)
 
 const comments = ref<NoteComment[]>([])
 const commentsError = ref<string | null>(null)
+const checklistItems = ref<NoteChecklistItem[]>([])
+const isChecklistDrawerOpen = ref(false)
 // Deliberately NOT reset on note switch (see the watcher below) — like a
 // sidebar, staying open while browsing between notes is the expected
 // drawer behavior, not per-note ephemeral UI state.
@@ -909,6 +953,7 @@ watch(() => props.note, (newNote) => {
   showCommentComposer.value = false
   showHistory.value = false
   loadComments(newNote.id)
+  loadChecklistItems(newNote.id)
   loadUnlinkedMentions(newNote.id)
   loadOutgoingLinks(newNote.id)
 }, { immediate: true })
@@ -920,6 +965,48 @@ async function loadComments(noteId: number) {
     comments.value = await getNoteComments(props.workspaceId, noteId)
   } catch (err) {
     console.error('Failed to load comments:', err)
+  }
+}
+
+async function loadChecklistItems(noteId: number) {
+  if (!props.workspaceId) return
+  try {
+    checklistItems.value = await getChecklistItems(props.workspaceId, noteId)
+  } catch (err) {
+    console.error('Failed to load checklist items:', err)
+  }
+}
+
+async function handleAddChecklistItem(text: string) {
+  if (!props.workspaceId) return
+  try {
+    const item = await createChecklistItem(props.workspaceId, props.note.id, text)
+    checklistItems.value.push(item)
+  } catch (err) {
+    console.error('Failed to add checklist item:', err)
+  }
+}
+
+async function handleToggleChecklistItem(itemId: number) {
+  if (!props.workspaceId) return
+  const item = checklistItems.value.find(i => i.id === itemId)
+  if (!item) return
+  try {
+    const updated = await updateChecklistItem(props.workspaceId, props.note.id, itemId, { done: !item.done })
+    const index = checklistItems.value.findIndex(i => i.id === itemId)
+    if (index !== -1) checklistItems.value[index] = updated
+  } catch (err) {
+    console.error('Failed to toggle checklist item:', err)
+  }
+}
+
+async function handleDeleteChecklistItem(itemId: number) {
+  if (!props.workspaceId) return
+  try {
+    await deleteChecklistItem(props.workspaceId, props.note.id, itemId)
+    checklistItems.value = checklistItems.value.filter(i => i.id !== itemId)
+  } catch (err) {
+    console.error('Failed to delete checklist item:', err)
   }
 }
 

@@ -60,4 +60,9 @@ class Note extends Model
     {
         return $this->hasMany(NoteComment::class);
     }
+
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(NoteChecklistItem::class)->orderBy('sort_position')->orderBy('id');
+    }
 }

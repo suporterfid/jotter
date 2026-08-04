@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board } from './types'
+import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -245,6 +245,30 @@ export async function addNoteComment(
 
 export async function deleteNoteComment(workspaceId: number, noteId: number, commentId: number): Promise<void> {
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}/comments/${commentId}`)
+}
+
+export async function getChecklistItems(workspaceId: number, noteId: number): Promise<NoteChecklistItem[]> {
+  const response = await api.get<{ data: NoteChecklistItem[] }>(`/workspaces/${workspaceId}/notes/${noteId}/checklist-items`)
+  return response.data.data
+}
+
+export async function createChecklistItem(workspaceId: number, noteId: number, text: string): Promise<NoteChecklistItem> {
+  const response = await api.post<{ data: NoteChecklistItem }>(`/workspaces/${workspaceId}/notes/${noteId}/checklist-items`, { text })
+  return response.data.data
+}
+
+export async function updateChecklistItem(
+  workspaceId: number,
+  noteId: number,
+  itemId: number,
+  attrs: Partial<{ text: string; done: boolean }>
+): Promise<NoteChecklistItem> {
+  const response = await api.put<{ data: NoteChecklistItem }>(`/workspaces/${workspaceId}/notes/${noteId}/checklist-items/${itemId}`, attrs)
+  return response.data.data
+}
+
+export async function deleteChecklistItem(workspaceId: number, noteId: number, itemId: number): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/notes/${noteId}/checklist-items/${itemId}`)
 }
 
 export interface ImportResult {

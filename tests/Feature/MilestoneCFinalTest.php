@@ -156,9 +156,14 @@ final class MilestoneCFinalTest extends TestCase
 
         /** @var VaultStorage $storage */
         $storage = $this->app->make(VaultStorage::class);
-        $storage->write($workspace, 'checklist.md', "# Checklist\n\n- [x] done one\n- [ ] todo one\n- [ ] todo two\n");
+        $storage->write($workspace, 'checklist.md', '# Checklist');
 
         $note = Note::where('workspace_id', $workspace->id)->where('path', 'checklist.md')->firstOrFail();
+        // Checklist progress is a genuinely separate card-level structure
+        // (#305), not derived from the note's markdown task-list syntax.
+        \App\Models\NoteChecklistItem::create(['note_id' => $note->id, 'text' => 'done one', 'done' => true, 'sort_position' => 0]);
+        \App\Models\NoteChecklistItem::create(['note_id' => $note->id, 'text' => 'todo one', 'done' => false, 'sort_position' => 1]);
+        \App\Models\NoteChecklistItem::create(['note_id' => $note->id, 'text' => 'todo two', 'done' => false, 'sort_position' => 2]);
         NoteComment::create([
             'workspace_id' => $workspace->id,
             'note_id' => $note->id,
