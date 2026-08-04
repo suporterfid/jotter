@@ -20,6 +20,16 @@
         <option v-for="col in propertyColumns" :key="col" :value="col" />
       </datalist>
       <button type="submit" class="btn-group-apply" data-testid="board-group-apply">Group</button>
+      <select
+        v-if="allTags.length > 0"
+        v-model="tagFilter"
+        aria-label="Filter by tag"
+        data-testid="board-tag-filter"
+        class="tag-filter-select"
+      >
+        <option value="">All tags</option>
+        <option v-for="tag in allTags" :key="tag" :value="tag">{{ tag }}</option>
+      </select>
     </form>
 
     <div v-if="loading" class="panel-empty">
@@ -57,6 +67,14 @@
           >
             <span class="board-card-title">{{ note.title || note.path }}</span>
             <span class="board-card-path">{{ note.path }}</span>
+            <span v-if="noteTagNames(note).length > 0" class="board-card-tags">
+              <span
+                v-for="tag in noteTagNames(note)"
+                :key="tag"
+                class="board-card-tag"
+                data-testid="board-card-tag"
+              >{{ tag }}</span>
+            </span>
           </button>
         </div>
         <form
@@ -118,7 +136,10 @@ import { computed, ref, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import Sortable from 'sortablejs'
 import type { CollectionPage } from '../services/types'
 import {
+  allTagNames,
+  filterNotesByTag,
   formatPropertyValue,
+  noteTagNames,
   propertyColumns as computePropertyColumns,
   resolveCardMove,
   UNGROUPED_LABEL,
@@ -150,10 +171,14 @@ function applyGroupProperty() {
 
 const propertyColumns = computed(() => computePropertyColumns(props.page))
 
+const tagFilter = ref('')
+const allTags = computed(() => allTagNames(props.page))
+
 const columns = computed(() => {
   if (!props.groupProperty) return []
+  const notes = filterNotesByTag(props.page.data, tagFilter.value)
   const groups = new Map<string, typeof props.page.data>()
-  for (const note of props.page.data) {
+  for (const note of notes) {
     const label = formatPropertyValue(note, props.groupProperty)
     const key = label === '—' ? UNGROUPED_LABEL : label
     if (!groups.has(key)) groups.set(key, [])
@@ -461,6 +486,31 @@ function submitAddCard(columnKey: string) {
   color: var(--color-text-muted);
   font-family: var(--font-mono, monospace);
   font-size: 0.7rem;
+}
+
+.board-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.board-card-tag {
+  background: var(--color-surface-emphasis);
+  color: var(--color-text-muted);
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+}
+
+.tag-filter-select {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  min-height: 32px;
 }
 
 .pagination-bar {

@@ -33,6 +33,23 @@ export function propertyColumns(page: CollectionPage): string[] {
   return Array.from(names).sort()
 }
 
+export function noteTagNames(note: CollectionNote): string[] {
+  return (note.tags ?? []).map(t => t.name)
+}
+
+export function allTagNames(page: CollectionPage): string[] {
+  const names = new Set<string>()
+  for (const note of page.data) {
+    for (const name of noteTagNames(note)) names.add(name)
+  }
+  return Array.from(names).sort()
+}
+
+export function filterNotesByTag(notes: CollectionNote[], tag: string): CollectionNote[] {
+  if (!tag) return notes
+  return notes.filter(note => noteTagNames(note).includes(tag))
+}
+
 export const UNGROUPED_LABEL = 'No value'
 
 /**
