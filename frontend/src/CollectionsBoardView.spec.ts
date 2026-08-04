@@ -11,13 +11,15 @@ const page: CollectionPage = {
       id: 1, path: 'a.md', title: 'A',
       properties: [
         { id: 1, note_id: 1, name: 'status', type: 'string', value_string: 'draft', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null }
-      ]
+      ],
+      tags: [{ id: 1, name: 'urgent' }]
     },
     {
       id: 2, path: 'b.md', title: 'B',
       properties: [
         { id: 2, note_id: 2, name: 'status', type: 'string', value_string: 'done', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null }
-      ]
+      ],
+      tags: [{ id: 2, name: 'work' }]
     },
     {
       id: 3, path: 'c.md', title: 'C',
@@ -94,6 +96,28 @@ describe('CollectionsBoardView', () => {
     await draftColumn.get('[data-testid="board-add-card-form"]').trigger('submit')
     expect(wrapper.emitted('create-card')![0]).toEqual(['New task', 'draft'])
     expect(draftColumn.find('[data-testid="board-add-card-input"]').exists()).toBe(false)
+  })
+
+  it('shows tag pills on the card face', () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    expect(wrapper.find('[data-testid="board-card-tag"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('urgent')
+    expect(wrapper.text()).toContain('work')
+  })
+
+  it('offers a tag filter with every tag present on the page', () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    const options = wrapper.findAll('[data-testid="board-tag-filter"] option').map(o => o.text())
+    expect(options).toContain('urgent')
+    expect(options).toContain('work')
+  })
+
+  it('filters cards to only those carrying the selected tag', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    await wrapper.get('[data-testid="board-tag-filter"]').setValue('urgent')
+    const cards = wrapper.findAll('[data-testid="board-card"]')
+    expect(cards).toHaveLength(1)
+    expect(cards[0].text()).toContain('A')
   })
 
   it('does not emit create-card for a blank title', async () => {

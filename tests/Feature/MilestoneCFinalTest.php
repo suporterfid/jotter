@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Domain\Vault\VaultStorage;
+use App\Models\Note;
 use App\Models\NoteComment;
 use App\Models\Notification;
+use App\Models\Tag;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Workspace;
@@ -107,5 +109,34 @@ final class MilestoneCFinalTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.title', 'High Priority');
+    }
+
+    public function test_collections_response_includes_each_notes_tags(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'test-tags', 'name' => 'Test Tags']);
+        $vaultPath = storage_path('app/vaults/m_c_tags_'.uniqid());
+        mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'tags',
+            'name' => 'Tags Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+
+        /** @var VaultStorage $storage */
+        $storage = $this->app->make(VaultStorage::class);
+        $storage->write($workspace, 'tagged.md', "# Tagged Note");
+
+        $note = Note::where('workspace_id', $workspace->id)->where('path', 'tagged.md')->firstOrFail();
+        $tag = Tag::create(['workspace_id' => $workspace->id, 'name' => 'urgent']);
+        $note->tags()->attach($tag);
+
+        $response = $this->actingAs($admin)
+            ->getJson("/api/workspaces/{$workspace->id}/collections");
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.tags.0.name', 'urgent');
     }
 }

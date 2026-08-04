@@ -173,11 +173,17 @@ export interface RawNoteProperty {
   value_json: unknown | null
 }
 
+export interface CollectionTag {
+  id: number
+  name: string
+}
+
 export interface CollectionNote {
   id: number
   path: string
   title: string
   properties: RawNoteProperty[]
+  tags?: CollectionTag[]
 }
 
 export interface CollectionPage {
