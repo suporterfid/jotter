@@ -268,6 +268,7 @@ import {
 } from './services/api'
 import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition } from './services/types'
 import { APP_VERSION } from './version'
+import { resolveWikilinkTarget } from './services/wikilinks'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -884,17 +885,12 @@ async function handleSearchFiltersChange(filters: SearchFilters) {
 }
 
 async function handleWikilinkNavigation(target: string) {
-  const targetLower = target.toLowerCase().trim()
-  
-  const match = notes.value.find(n => 
-    n.title.toLowerCase() === targetLower ||
-    n.path.toLowerCase() === targetLower ||
-    n.path.toLowerCase() === `${targetLower}.md`
-  )
+  const match = resolveWikilinkTarget(target, notes.value)
 
   if (match) {
     await handleSelectNote(match.id)
   } else {
+    const targetLower = target.toLowerCase().trim()
     const newPath = targetLower.endsWith('.md') ? targetLower : `${targetLower}.md`
     await handleCreateNote(newPath)
   }
