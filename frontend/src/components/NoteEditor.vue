@@ -308,6 +308,7 @@
           @navigate-wikilink="$emit('navigate-wikilink', $event)"
           @hover-wikilink="handleHoverWikilink"
           @unhover-wikilink="handleUnhoverWikilink"
+          :resolve-embed="resolveEmbed"
         />
       </div>
 
@@ -441,7 +442,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
+import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, UnlinkedMention, OutgoingLink } from '../services/types'
 import {
   uploadAttachment,
@@ -463,7 +464,8 @@ import SlashMenu from './SlashMenu.vue'
 import OutlinePanel from './OutlinePanel.vue'
 import { parseHeadings, type HeadingEntry } from '../services/outline'
 import WikilinkPreviewPopup from './WikilinkPreviewPopup.vue'
-import { resolveWikilinkTarget } from '../services/wikilinks'
+import { resolveWikilinkTarget, parseEmbedTargets } from '../services/wikilinks'
+import { renderMarkdown, type EmbedResolution } from '../services/markdown'
 import type { BlockDefinition } from '../services/blockRegistry'
 
 const props = defineProps<{
@@ -718,6 +720,35 @@ async function handleHoverWikilink(target: string, rect: DOMRect) {
 
 function handleUnhoverWikilink() {
   hoveredPreview.value = null
+}
+
+const embedContentCache = reactive(new Map<number, string>())
+
+watch(editableContent, (content) => {
+  const targets = parseEmbedTargets(content)
+  targets.forEach(async (target) => {
+    const match = resolveWikilinkTarget(target, props.allNotes)
+    if (!match || match.id === props.note.id) return
+    if (embedContentCache.has(match.id)) return
+    if (!props.workspaceId) return
+
+    try {
+      const detail = await getNote(props.workspaceId, match.id)
+      embedContentCache.set(match.id, detail.content)
+    } catch {
+      // Passive affordance — a failed fetch just leaves the embed on its loading state.
+    }
+  })
+}, { immediate: true })
+
+function resolveEmbed(target: string): EmbedResolution {
+  const match = resolveWikilinkTarget(target, props.allNotes)
+  if (!match) return { status: 'unresolved' }
+  if (match.id === props.note.id) return { status: 'circular' }
+
+  const content = embedContentCache.get(match.id)
+  if (content === undefined) return { status: 'loading' }
+  return { status: 'resolved', html: renderMarkdown(content) }
 }
 const unlinkedMentions = ref<UnlinkedMention[]>([])
 const outgoingLinks = ref<OutgoingLink[]>([])

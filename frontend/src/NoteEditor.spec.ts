@@ -938,3 +938,60 @@ describe('NoteEditor wikilink hover preview', () => {
     wrapper.unmount()
   })
 })
+
+describe('NoteEditor wikilink embeds', () => {
+  const allNotes = [
+    { id: 2, path: 'ideas.md', title: 'Ideas', frontmatter: null, sort_position: null, updated_at: '2026-07-31T00:00:00Z' },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(getNote as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 2, path: 'ideas.md', title: 'Ideas', frontmatter: null, sort_position: null,
+      updated_at: '2026-07-31T00:00:00Z', content: 'Idea body.', backlinks: [],
+    })
+  })
+
+  it('fetches and renders a resolved embed', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: 'Before.\n\n![[Ideas]]' }), allNotes, workspaceId: 1 },
+    })
+    await flushPromises()
+
+    expect(getNote).toHaveBeenCalledTimes(1)
+    expect(wrapper.html()).toContain('data-embed-status="resolved"')
+    expect(wrapper.text()).toContain('Idea body.')
+
+    wrapper.unmount()
+  })
+
+  it('renders the circular guard for a note embedding its own id, without calling getNote', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: {
+        note: makeNote({ id: 1, content: 'See ![[Test Note]].' }),
+        allNotes: [
+          { id: 1, path: 'test-note.md', title: 'Test Note', frontmatter: null, sort_position: null, updated_at: '2026-07-31T00:00:00Z' },
+        ],
+        workspaceId: 1,
+      },
+    })
+    await flushPromises()
+
+    expect(getNote).not.toHaveBeenCalled()
+    expect(wrapper.html()).toContain('data-embed-status="circular"')
+
+    wrapper.unmount()
+  })
+
+  it('renders the unresolved message for an embed with no matching note, without calling getNote', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '![[Missing]]' }), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+
+    expect(getNote).not.toHaveBeenCalled()
+    expect(wrapper.html()).toContain('data-embed-status="unresolved"')
+
+    wrapper.unmount()
+  })
+})
