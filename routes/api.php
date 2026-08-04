@@ -60,6 +60,10 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::delete('/workspaces/{workspace}/notifications/{notification}', [\App\Http\Controllers\WorkspaceNotificationController::class, 'destroy']);
 
     Route::get('/workspaces/{workspace}/collections', [\App\Http\Controllers\WorkspaceCollectionController::class, 'index']);
+    Route::get('/workspaces/{workspace}/boards', [\App\Http\Controllers\BoardController::class, 'index']);
+    Route::post('/workspaces/{workspace}/boards', [\App\Http\Controllers\BoardController::class, 'store']);
+    Route::put('/workspaces/{workspace}/boards/{board}', [\App\Http\Controllers\BoardController::class, 'update']);
+    Route::delete('/workspaces/{workspace}/boards/{board}', [\App\Http\Controllers\BoardController::class, 'destroy']);
     Route::post('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'store']);
     Route::post('/workspaces/{workspace}/notes/from-template', [\App\Http\Controllers\WorkspaceTemplateController::class, 'createFromTemplate']);
     Route::match(['get', 'post'], '/workspaces/{workspace}/daily/{date?}', [\App\Http\Controllers\WorkspaceTemplateController::class, 'dailyNote']);
