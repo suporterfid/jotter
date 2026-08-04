@@ -69,6 +69,12 @@ final class WorkspaceCollectionController extends Controller
             });
         }
 
+        if (! $request->boolean('include_archived')) {
+            $query->whereDoesntHave('properties', function ($pQuery) {
+                $pQuery->where('name', 'archived')->where('value_boolean', true);
+            });
+        }
+
         $perPage = min(100, max(1, (int) $request->query('per_page', 25)));
         $notes = $query->orderBy('title')->paginate($perPage);
 

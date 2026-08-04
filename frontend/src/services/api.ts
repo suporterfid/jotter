@@ -330,12 +330,13 @@ export async function deleteNotification(workspaceId: number, notificationId: nu
 
 export async function getCollection(
   workspaceId: number,
-  filters: { property?: string; value?: string; page?: number } = {}
+  filters: { property?: string; value?: string; page?: number; includeArchived?: boolean } = {}
 ): Promise<CollectionPage> {
   const params = new URLSearchParams()
   if (filters.property) params.set('property', filters.property)
   if (filters.value) params.set('value', filters.value)
   if (filters.page) params.set('page', String(filters.page))
+  if (filters.includeArchived) params.set('include_archived', '1')
   params.set('per_page', '50')
 
   const response = await api.get<CollectionPage>(`/workspaces/${workspaceId}/collections?${params.toString()}`)

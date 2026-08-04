@@ -135,6 +135,7 @@
           :swimlane-property="collectionSwimlaneProperty"
           :configurable="activeBoardId !== null"
           :column-config="activeBoardColumnConfig"
+          :show-archived="showArchivedNotes"
           @select-note="handleSelectNote"
           @page-change="handleCollectionPageChange"
           @group-change="handleCollectionGroupChange"
@@ -144,6 +145,8 @@
           @reorder-columns="handleReorderColumns"
           @toggle-column-collapse="handleToggleColumnCollapse"
           @update-column="handleUpdateColumn"
+          @toggle-archive="handleToggleArchive"
+          @archived-filter-change="handleArchivedFilterChange"
         />
       </div>
 
@@ -299,6 +302,7 @@ import {
 } from './services/api'
 import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig } from './services/types'
 import BoardSwitcher from './components/BoardSwitcher.vue'
+import { isArchived } from './services/collectionUtils'
 import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
 import TabStrip from './components/TabStrip.vue'
@@ -393,6 +397,7 @@ const collectionSortKey = ref<string | null>(null)
 const collectionSortDir = ref<'asc' | 'desc'>('asc')
 const collectionGroupProperty = ref<string | null>(null)
 const collectionSwimlaneProperty = ref<string | null>(null)
+const showArchivedNotes = ref(false)
 const collectionDateProperty = ref<string | null>(null)
 const boards = ref<Board[]>([])
 const activeBoardId = ref<number | null>(null)
@@ -834,7 +839,8 @@ async function refreshCollection(page = 1) {
     collectionPage.value = await getCollection(activeWorkspaceId.value, {
       property: collectionFilterProperty.value || undefined,
       value: collectionFilterValue.value || undefined,
-      page
+      page,
+      includeArchived: showArchivedNotes.value
     })
   } catch (err) {
     console.error('Failed to load collection:', err)
@@ -905,11 +911,33 @@ async function handleCollectionMoveCard(noteId: number, newValue: string) {
   if (!activeWorkspaceId.value || !collectionGroupProperty.value) return
   try {
     await setNoteProperty(activeWorkspaceId.value, noteId, collectionGroupProperty.value, newValue)
+    const destinationColumn = (activeBoardColumnConfig.value ?? []).find(c => c.key === newValue)
+    if (destinationColumn?.auto_archive) {
+      await setNoteProperty(activeWorkspaceId.value, noteId, 'archived', true)
+    }
   } catch (err) {
     console.error('Failed to move card:', err)
   } finally {
     await refreshCollection(collectionPage.value.current_page)
   }
+}
+
+async function handleToggleArchive(noteId: number) {
+  if (!activeWorkspaceId.value) return
+  const note = collectionPage.value.data.find(n => n.id === noteId)
+  if (!note) return
+  try {
+    await setNoteProperty(activeWorkspaceId.value, noteId, 'archived', !isArchived(note))
+  } catch (err) {
+    console.error('Failed to toggle archive:', err)
+  } finally {
+    await refreshCollection(collectionPage.value.current_page)
+  }
+}
+
+async function handleArchivedFilterChange(value: boolean) {
+  showArchivedNotes.value = value
+  await refreshCollection(1)
 }
 
 function handleCollectionDatePropertyChange(property: string) {

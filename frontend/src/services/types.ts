@@ -195,6 +195,7 @@ export interface BoardColumnConfig {
   color?: string | null
   wip_limit?: number | null
   collapsed?: boolean
+  auto_archive?: boolean
 }
 
 export interface NoteChecklistItem {
