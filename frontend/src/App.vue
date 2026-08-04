@@ -63,6 +63,14 @@
 
     <ChangePasswordModal v-if="isChangePasswordOpen" @close="isChangePasswordOpen = false" />
 
+    <TabStrip
+      v-if="showTabStrip"
+      :tabs="openTabsList"
+      :active-id="activeNoteId"
+      @select-tab="handleSelectNote"
+      @close-tab="handleCloseTab"
+    />
+
     <!-- Main Content Area -->
     <main class="main-content">
       <!-- Graph View Mode -->
@@ -224,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import NoteEditor from './components/NoteEditor.vue'
 import SearchResults from './components/SearchResults.vue'
@@ -269,6 +277,8 @@ import {
 import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition } from './services/types'
 import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
+import TabStrip from './components/TabStrip.vue'
+import { useOpenTabs } from './composables/useOpenTabs'
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -278,6 +288,45 @@ const notes = ref<NoteMeta[]>([])
 const folderPositions = ref<FolderPosition[]>([])
 const activeNoteId = ref<number | null>(null)
 const activeNoteDetail = ref<NoteDetail | null>(null)
+
+const { openNoteIds, loadTabs, saveTabs, openTab, closeTab } = useOpenTabs()
+
+const openTabsList = computed(() =>
+  openNoteIds.value
+    .map(id => {
+      const note = notes.value.find(n => n.id === id)
+      return note ? { id, title: note.title || note.path } : null
+    })
+    .filter((tab): tab is { id: number; title: string } => tab !== null)
+)
+
+const showTabStrip = computed(() =>
+  openNoteIds.value.length > 0 &&
+  !isGraphViewActive.value &&
+  !isAttachmentsActive.value &&
+  !isAuditLogActive.value &&
+  !isLinkReportActive.value &&
+  !isTableViewActive.value &&
+  !isBoardViewActive.value &&
+  !isCalendarViewActive.value &&
+  !isSearchActive.value
+)
+
+watch([openNoteIds, activeNoteId], () => {
+  if (!activeWorkspaceId.value) return
+  saveTabs(activeWorkspaceId.value, activeNoteId.value)
+}, { deep: true })
+
+async function handleCloseTab(noteId: number) {
+  const nextActiveId = closeTab(noteId, activeNoteId.value)
+  if (nextActiveId === activeNoteId.value) return
+  if (nextActiveId === null) {
+    activeNoteId.value = null
+    activeNoteDetail.value = null
+  } else {
+    await loadActiveNote(nextActiveId)
+  }
+}
 
 const currentUser = ref<AuthUser | null>(null)
 const backendVersion = ref<string | null>(null)
@@ -403,6 +452,7 @@ async function initWorkspace() {
       localStorage.setItem(WORKSPACE_STORAGE_KEY, String(list[0].id))
     }
 
+    activeNoteId.value = loadTabs(activeWorkspaceId.value)
     await refreshNotesList()
     await refreshNotifications()
   } catch (err) {
@@ -413,6 +463,7 @@ async function initWorkspace() {
 async function handleSwitchWorkspace(workspaceId: number) {
   activeWorkspaceId.value = workspaceId
   localStorage.setItem(WORKSPACE_STORAGE_KEY, String(workspaceId))
+  activeNoteId.value = loadTabs(workspaceId)
   await refreshNotesList()
   await refreshNotifications()
 }
@@ -556,6 +607,7 @@ async function loadActiveNote(noteId: number) {
 }
 
 async function handleSelectNote(noteId: number) {
+  openTab(noteId)
   isMobileSidebarOpen.value = false
   isSearchActive.value = false
   isAttachmentsActive.value = false
@@ -833,9 +885,14 @@ async function handleDeleteNote(noteId: number) {
   if (!confirm('Are you sure you want to delete this note?')) return
   try {
     await deleteNote(activeWorkspaceId.value, noteId)
-    if (activeNoteId.value === noteId) {
-      activeNoteId.value = null
-      activeNoteDetail.value = null
+    const nextActiveId = closeTab(noteId, activeNoteId.value)
+    if (nextActiveId !== activeNoteId.value) {
+      if (nextActiveId === null) {
+        activeNoteId.value = null
+        activeNoteDetail.value = null
+      } else {
+        await loadActiveNote(nextActiveId)
+      }
     }
     await refreshNotesList()
   } catch (err) {

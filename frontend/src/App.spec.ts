@@ -1,7 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces, getAuthConfig, getTenants } from './services/api'
+import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -226,5 +226,108 @@ describe('App tenant switching and persistence', () => {
     expect(localStorage.getItem('jotter-active-tenant-id')).toBe('2')
     expect(getWorkspaces).toHaveBeenLastCalledWith(2)
     expect(wrapper.findComponent({ name: 'Sidebar' }).props('workspaceId')).toBe(9)
+  })
+})
+
+describe('App tab strip', () => {
+  it('opening the same note twice does not duplicate its tab', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('select-note', 10)
+    await flushPromises()
+
+    expect(wrapper.findAllComponents({ name: 'TabStrip' })[0].props('tabs')).toEqual([
+      { id: 10, title: 'Welcome Note' },
+    ])
+  })
+
+  it('opening a second note keeps the first tab present', async () => {
+    vi.mocked(getNotes).mockResolvedValueOnce([
+      { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+      { id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+    ])
+    vi.mocked(getNote).mockResolvedValueOnce({
+      id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null,
+      updated_at: '2026-07-27T00:00:00Z', content: '# Second', backlinks: [],
+    })
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('select-note', 11)
+    await flushPromises()
+
+    const tabs = wrapper.findComponent({ name: 'TabStrip' }).props('tabs')
+    expect(tabs.map((t: { id: number }) => t.id)).toEqual([10, 11])
+  })
+
+  it('closing the active tab switches to and loads a neighbor', async () => {
+    vi.mocked(getNotes).mockResolvedValueOnce([
+      { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+      { id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+    ])
+    vi.mocked(getNote).mockResolvedValueOnce({
+      id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null,
+      updated_at: '2026-07-27T00:00:00Z', content: '# Welcome', backlinks: [],
+    }).mockResolvedValueOnce({
+      id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null,
+      updated_at: '2026-07-27T00:00:00Z', content: '# Second', backlinks: [],
+    })
+    const wrapper = mount(App)
+    await flushPromises()
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('select-note', 11)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'TabStrip' }).vm.$emit('close-tab', 11)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'TabStrip' }).props('activeId')).toBe(10)
+    expect(wrapper.findComponent({ name: 'NoteEditor' }).props('note').id).toBe(10)
+  })
+
+  it('closing the last tab clears to the empty state', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'TabStrip' }).vm.$emit('close-tab', 10)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'NoteEditor' }).exists()).toBe(false)
+    expect(wrapper.text()).toContain('No Note Selected')
+  })
+
+  it('deleting a note removes its tab', async () => {
+    vi.mocked(getNotes).mockResolvedValueOnce([
+      { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+    ]).mockResolvedValueOnce([])
+    vi.mocked(deleteNote).mockResolvedValueOnce(undefined)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('delete-note', 10)
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'TabStrip' }).exists()).toBe(false)
+  })
+
+  it('restores the open tabs and active note from localStorage on remount', async () => {
+    vi.mocked(getNotes).mockResolvedValue([
+      { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+      { id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+    ])
+    localStorage.setItem('jotter-open-tabs:1', JSON.stringify({ openNoteIds: [10, 11], activeNoteId: 11 }))
+    vi.mocked(getNote).mockResolvedValueOnce({
+      id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null,
+      updated_at: '2026-07-27T00:00:00Z', content: '# Second', backlinks: [],
+    })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const tabs = wrapper.findComponent({ name: 'TabStrip' }).props('tabs')
+    expect(tabs.map((t: { id: number }) => t.id)).toEqual([10, 11])
+    expect(wrapper.findComponent({ name: 'TabStrip' }).props('activeId')).toBe(11)
   })
 })
