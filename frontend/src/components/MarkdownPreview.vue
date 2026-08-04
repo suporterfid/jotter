@@ -12,10 +12,11 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue'
-import { renderMarkdown } from '../services/markdown'
+import { renderMarkdown, type EmbedResolution } from '../services/markdown'
 
 const props = defineProps<{
   content: string
+  resolveEmbed?: (target: string) => EmbedResolution
 }>()
 
 const emit = defineEmits<{
@@ -25,7 +26,7 @@ const emit = defineEmits<{
   (e: 'unhover-wikilink'): void
 }>()
 
-const renderedContent = computed(() => renderMarkdown(props.content || ''))
+const renderedContent = computed(() => renderMarkdown(props.content || '', props.resolveEmbed))
 
 function handlePreviewClick(event: MouseEvent) {
   const target = event.target as HTMLElement
