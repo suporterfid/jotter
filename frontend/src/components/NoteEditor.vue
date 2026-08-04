@@ -220,6 +220,7 @@
           @input="handleInput"
           @keydown="handleKeyDown"
           @mouseup="handleTextSelection"
+          @scroll="handleUnhoverWikilink"
         ></textarea>
 
         <!-- Selection-triggered Comment affordance: a small floating
@@ -302,11 +303,22 @@
 
       <!-- Preview Area -->
       <div v-show="viewMode !== 'edit'" class="preview-wrapper">
-        <MarkdownPreview 
-          :content="editableContent" 
+        <MarkdownPreview
+          :content="editableContent"
           @navigate-wikilink="$emit('navigate-wikilink', $event)"
+          @hover-wikilink="handleHoverWikilink"
+          @unhover-wikilink="handleUnhoverWikilink"
         />
       </div>
+
+      <!-- Wikilink Hover Preview Popup (G.2, #287) -->
+      <WikilinkPreviewPopup
+        v-if="hoveredPreview"
+        :rect="hoveredPreview.rect"
+        :note="hoveredPreview.resolved?.note ?? null"
+        :content="hoveredPreview.resolved?.content ?? null"
+        :unresolved-target="hoveredPreview.unresolvedTarget"
+      />
 
       <!-- Drag & Drop Upload Overlay -->
       <div 
@@ -450,6 +462,8 @@ import CoverImageModal from './CoverImageModal.vue'
 import SlashMenu from './SlashMenu.vue'
 import OutlinePanel from './OutlinePanel.vue'
 import { parseHeadings, type HeadingEntry } from '../services/outline'
+import WikilinkPreviewPopup from './WikilinkPreviewPopup.vue'
+import { resolveWikilinkTarget } from '../services/wikilinks'
 import type { BlockDefinition } from '../services/blockRegistry'
 
 const props = defineProps<{
@@ -662,6 +676,48 @@ function jumpToHeading(heading: HeadingEntry) {
   if (!textarea) return
   textarea.setSelectionRange(offset, offset)
   textarea.focus()
+}
+
+interface HoveredWikilinkPreview {
+  rect: DOMRect
+  resolved: { note: NoteMeta; content: string | null } | null
+  unresolvedTarget: string | null
+}
+
+const hoveredPreview = ref<HoveredWikilinkPreview | null>(null)
+const noteContentCache = new Map<number, string>()
+
+async function handleHoverWikilink(target: string, rect: DOMRect) {
+  const match = resolveWikilinkTarget(target, props.allNotes)
+
+  if (!match) {
+    hoveredPreview.value = { rect, resolved: null, unresolvedTarget: target }
+    return
+  }
+
+  const cached = noteContentCache.get(match.id)
+  if (cached !== undefined) {
+    hoveredPreview.value = { rect, resolved: { note: match, content: cached }, unresolvedTarget: null }
+    return
+  }
+
+  hoveredPreview.value = { rect, resolved: { note: match, content: null }, unresolvedTarget: null }
+  if (!props.workspaceId) return
+
+  try {
+    const detail = await getNote(props.workspaceId, match.id)
+    noteContentCache.set(match.id, detail.content)
+    // A hover the user has already left must not clobber a newer one.
+    if (hoveredPreview.value?.resolved?.note.id === match.id) {
+      hoveredPreview.value = { ...hoveredPreview.value, resolved: { note: match, content: detail.content } }
+    }
+  } catch {
+    // Passive affordance — a failed fetch just leaves the popup on its loading state.
+  }
+}
+
+function handleUnhoverWikilink() {
+  hoveredPreview.value = null
 }
 const unlinkedMentions = ref<UnlinkedMention[]>([])
 const outgoingLinks = ref<OutgoingLink[]>([])
