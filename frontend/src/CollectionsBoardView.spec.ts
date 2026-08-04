@@ -94,7 +94,7 @@ describe('CollectionsBoardView', () => {
     await draftColumn.get('[data-testid="board-add-card-button"]').trigger('click')
     await draftColumn.get('[data-testid="board-add-card-input"]').setValue('New task')
     await draftColumn.get('[data-testid="board-add-card-form"]').trigger('submit')
-    expect(wrapper.emitted('create-card')![0]).toEqual(['New task', 'draft'])
+    expect(wrapper.emitted('create-card')![0]).toEqual(['New task', 'draft', null])
     expect(draftColumn.find('[data-testid="board-add-card-input"]').exists()).toBe(false)
   })
 
@@ -201,6 +201,75 @@ describe('CollectionsBoardView', () => {
     })
     const draftColumn = wrapper.findAll('[data-testid="board-column"]').find(c => c.text().includes('draft'))!
     expect(draftColumn.find('[data-testid="board-column-wip-warning"]').exists()).toBe(true)
+  })
+
+  it('renders a single unlabeled row when no swimlane property is set', () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    expect(wrapper.findAll('[data-testid="board-row"]')).toHaveLength(1)
+    expect(wrapper.find('[data-testid="board-row-label"]').exists()).toBe(false)
+  })
+
+  it('emits swimlane-change with the trimmed property name on change', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    await wrapper.get('[data-testid="board-swimlane-property"]').setValue('  assignee  ')
+    await wrapper.get('[data-testid="board-swimlane-property"]').trigger('change')
+    expect(wrapper.emitted('swimlane-change')![0]).toEqual(['assignee'])
+  })
+
+  it('splits notes into one row per swimlane value, each with the same columns', () => {
+    const swimlanePage: CollectionPage = {
+      ...page,
+      data: [
+        {
+          id: 5, path: 'e.md', title: 'E',
+          properties: [
+            { id: 6, note_id: 5, name: 'status', type: 'string', value_string: 'draft', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+            { id: 7, note_id: 5, name: 'assignee', type: 'string', value_string: 'alice', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+          ],
+        },
+        {
+          id: 6, path: 'f.md', title: 'F',
+          properties: [
+            { id: 8, note_id: 6, name: 'status', type: 'string', value_string: 'done', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+            { id: 9, note_id: 6, name: 'assignee', type: 'string', value_string: 'bob', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+          ],
+        },
+      ],
+    }
+    const wrapper = mount(CollectionsBoardView, {
+      props: { page: swimlanePage, groupProperty: 'status', swimlaneProperty: 'assignee' },
+    })
+    const rows = wrapper.findAll('[data-testid="board-row"]')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].text()).toContain('alice')
+    expect(rows[0].findAll('[data-testid="board-column"]')).toHaveLength(2)
+    const aliceCards = rows[0].findAll('[data-testid="board-card"]')
+    expect(aliceCards).toHaveLength(1)
+    expect(aliceCards[0].text()).toContain('E')
+  })
+
+  it('emits create-card with the row value alongside the column value', async () => {
+    const swimlanePage: CollectionPage = {
+      ...page,
+      data: [
+        {
+          id: 5, path: 'e.md', title: 'E',
+          properties: [
+            { id: 6, note_id: 5, name: 'status', type: 'string', value_string: 'draft', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+            { id: 7, note_id: 5, name: 'assignee', type: 'string', value_string: 'alice', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+          ],
+        },
+      ],
+    }
+    const wrapper = mount(CollectionsBoardView, {
+      props: { page: swimlanePage, groupProperty: 'status', swimlaneProperty: 'assignee' },
+    })
+    const aliceRow = wrapper.findAll('[data-testid="board-row"]')[0]
+    const draftColumn = aliceRow.findAll('[data-testid="board-column"]').find(c => c.text().includes('draft'))!
+    await draftColumn.get('[data-testid="board-add-card-button"]').trigger('click')
+    await draftColumn.get('[data-testid="board-add-card-input"]').setValue('New task')
+    await draftColumn.get('[data-testid="board-add-card-form"]').trigger('submit')
+    expect(wrapper.emitted('create-card')![0]).toEqual(['New task', 'draft', 'alice'])
   })
 
   it('does not emit create-card for a blank title', async () => {

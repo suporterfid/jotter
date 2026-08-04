@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allTagNames, applyColumnConfig, coverImageUrl, filterNotesByTag, firstDateProperty, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
+import { allTagNames, applyColumnConfig, coverImageUrl, filterNotesByTag, firstDateProperty, groupNotesIntoColumns, groupNotesIntoSwimlaneRows, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
 import type { BoardColumn } from './services/collectionUtils'
 import type { CollectionNote, CollectionPage, RawNoteProperty } from './services/types'
 
@@ -99,6 +99,32 @@ describe('firstDateProperty', () => {
 
   it('returns null when there is no datetime property', () => {
     expect(firstDateProperty(makeNote(1, [], [stringProp('status', 'open')]))).toBeNull()
+  })
+})
+
+describe('groupNotesIntoColumns', () => {
+  it('groups notes by the property value, with a column for missing values sorted last', () => {
+    const notes = [
+      makeNote(1, [], [stringProp('status', 'draft')]),
+      makeNote(2, [], [stringProp('status', 'done')]),
+      makeNote(3, [], []),
+    ]
+    const result = groupNotesIntoColumns(notes, 'status')
+    expect(result.map(c => c.key)).toEqual(['done', 'draft', UNGROUPED_LABEL])
+    expect(result.find(c => c.key === 'draft')!.notes).toEqual([notes[0]])
+  })
+})
+
+describe('groupNotesIntoSwimlaneRows', () => {
+  it('groups notes by the swimlane property value, sorted, missing values last', () => {
+    const notes = [
+      makeNote(1, [], [stringProp('assignee', 'bob')]),
+      makeNote(2, [], [stringProp('assignee', 'alice')]),
+      makeNote(3, [], []),
+    ]
+    const result = groupNotesIntoSwimlaneRows(notes, 'assignee')
+    expect(result.map(r => r.key)).toEqual(['alice', 'bob', UNGROUPED_LABEL])
+    expect(result.find(r => r.key === 'bob')!.notes).toEqual([notes[0]])
   })
 })
 

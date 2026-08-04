@@ -11,6 +11,7 @@ class Board extends Model
         'workspace_id',
         'name',
         'group_property',
+        'swimlane_property',
         'filter_property',
         'filter_value',
         'column_config',

@@ -20,6 +20,16 @@
         <option v-for="col in propertyColumns" :key="col" :value="col" />
       </datalist>
       <button type="submit" class="btn-group-apply" data-testid="board-group-apply">Group</button>
+      <input
+        v-model="swimlanePropertyInput"
+        type="text"
+        placeholder="Swimlane by property (optional)"
+        aria-label="Swimlane by property name"
+        data-testid="board-swimlane-property"
+        class="group-input"
+        :list="'board-property-options'"
+        @change="applySwimlaneProperty"
+      />
       <select
         v-if="allTags.length > 0"
         v-model="tagFilter"
@@ -44,9 +54,12 @@
       <p>Choose a property above to group notes into columns.</p>
     </div>
 
-    <div v-else class="board-scroll">
+    <div v-else class="board-rows">
+    <div v-for="row in displayRows" :key="row.key" class="board-row" data-testid="board-row">
+      <div v-if="row.label !== null" class="board-row-label" data-testid="board-row-label">{{ row.label }}</div>
+      <div class="board-scroll">
       <div
-        v-for="(column, index) in columns"
+        v-for="(column, index) in row.columns"
         :key="column.key"
         class="board-column"
         :style="column.color ? { borderTopColor: column.color, borderTopWidth: '3px' } : {}"
@@ -89,7 +102,7 @@
             type="button"
             class="btn-column-reorder"
             data-testid="board-column-move-right"
-            :disabled="index === columns.length - 1"
+            :disabled="index === row.columns.length - 1"
             @click="moveColumn(column.key, 1)"
           >▶</button>
         </div>
@@ -132,7 +145,8 @@
           class="board-column-body"
           data-testid="board-column-body"
           :data-column-key="column.key"
-          :ref="(el) => setColumnBodyRef(column.key, el)"
+          :data-row-key="row.key"
+          :ref="(el) => setColumnBodyRef(row.key, column.key, el)"
         >
           <button
             v-for="note in column.notes"
@@ -182,10 +196,10 @@
           </button>
         </div>
         <form
-          v-if="addCardColumnKey === column.key"
+          v-if="addCardRowKey === row.key && addCardColumnKey === column.key"
           class="board-add-card-form"
           data-testid="board-add-card-form"
-          @submit.prevent="submitAddCard(column.key)"
+          @submit.prevent="submitAddCard(row.key, column.key)"
         >
           <input
             v-model="addCardTitle"
@@ -204,11 +218,13 @@
           type="button"
           class="btn-add-card"
           data-testid="board-add-card-button"
-          @click="openAddCard(column.key)"
+          @click="openAddCard(row.key, column.key)"
         >
           + Add card
         </button>
       </div>
+      </div>
+    </div>
     </div>
 
     <div v-if="page.last_page > 1" class="pagination-bar">
@@ -245,7 +261,8 @@ import {
   coverImageUrl,
   filterNotesByTag,
   firstDateProperty,
-  formatPropertyValue,
+  groupNotesIntoColumns,
+  groupNotesIntoSwimlaneRows,
   noteTagNames,
   propertyColumns as computePropertyColumns,
   resolveCardMove,
@@ -256,6 +273,7 @@ const props = defineProps<{
   page: CollectionPage
   loading?: boolean
   groupProperty?: string | null
+  swimlaneProperty?: string | null
   configurable?: boolean
   columnConfig?: BoardColumnConfig[] | null
 }>()
@@ -264,21 +282,31 @@ const emit = defineEmits<{
   (e: 'select-note', noteId: number): void
   (e: 'page-change', page: number): void
   (e: 'group-change', property: string): void
+  (e: 'swimlane-change', property: string): void
   (e: 'move-card', noteId: number, newValue: string): void
-  (e: 'create-card', title: string, columnValue: string): void
+  (e: 'create-card', title: string, columnValue: string, rowValue: string | null): void
   (e: 'reorder-columns', keys: string[]): void
   (e: 'toggle-column-collapse', key: string): void
   (e: 'update-column', key: string, attrs: { label: string; color: string | null; wip_limit: number | null }): void
 }>()
 
 const groupPropertyInput = ref(props.groupProperty || '')
+const swimlanePropertyInput = ref(props.swimlaneProperty || '')
 
 watch(() => props.groupProperty, (value) => {
   groupPropertyInput.value = value || ''
 })
 
+watch(() => props.swimlaneProperty, (value) => {
+  swimlanePropertyInput.value = value || ''
+})
+
 function applyGroupProperty() {
   emit('group-change', groupPropertyInput.value.trim())
+}
+
+function applySwimlaneProperty() {
+  emit('swimlane-change', swimlanePropertyInput.value.trim())
 }
 
 const propertyColumns = computed(() => computePropertyColumns(props.page))
@@ -286,23 +314,34 @@ const propertyColumns = computed(() => computePropertyColumns(props.page))
 const tagFilter = ref('')
 const allTags = computed(() => allTagNames(props.page))
 
+const filteredNotes = computed(() => filterNotesByTag(props.page.data, tagFilter.value))
+
 const columns = computed(() => {
   if (!props.groupProperty) return []
-  const notes = filterNotesByTag(props.page.data, tagFilter.value)
-  const groups = new Map<string, typeof props.page.data>()
-  for (const note of notes) {
-    const label = formatPropertyValue(note, props.groupProperty)
-    const key = label === '—' ? UNGROUPED_LABEL : label
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(note)
-  }
-  const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
-    if (a === UNGROUPED_LABEL) return 1
-    if (b === UNGROUPED_LABEL) return -1
-    return a.localeCompare(b)
-  })
-  const derived = sortedKeys.map(key => ({ key, label: key, notes: groups.get(key)! }))
+  const derived = groupNotesIntoColumns(filteredNotes.value, props.groupProperty)
   return applyColumnConfig(derived, props.columnConfig)
+})
+
+interface DisplayRow {
+  key: string
+  label: string | null
+  columns: ReturnType<typeof applyColumnConfig>
+}
+
+const displayRows = computed<DisplayRow[]>(() => {
+  if (!props.groupProperty) return []
+  if (!props.swimlaneProperty) {
+    return [{ key: '__all__', label: null, columns: columns.value }]
+  }
+  return groupNotesIntoSwimlaneRows(filteredNotes.value, props.swimlaneProperty).map(row => {
+    const rowColumns = groupNotesIntoColumns(row.notes, props.groupProperty!)
+    const byKey = new Map(rowColumns.map(c => [c.key, c.notes]))
+    return {
+      key: row.key,
+      label: row.label,
+      columns: columns.value.map(col => ({ ...col, notes: byKey.get(col.key) ?? [] })),
+    }
+  })
 })
 
 const editingColumnKey = ref<string | null>(null)
@@ -336,16 +375,20 @@ function submitColumnEdit(key: string) {
 }
 
 // Drag-and-drop between columns (#299): one Sortable instance per column
-// body, sharing a group so cards can move between them. onEnd resolves the
-// move via the pure resolveCardMove() rather than deciding inline, so the
-// decision logic is unit-testable without a real Sortable instance.
+// body, keyed by "rowKey::columnKey" since swimlanes (#304) repeat the same
+// column key across rows. Each row is its own Sortable group so a card can
+// only move between columns within its own swimlane, never across rows.
+// onEnd resolves the move via the pure resolveCardMove() rather than
+// deciding inline, so the decision logic is unit-testable without a real
+// Sortable instance.
 const columnBodyRefs = new Map<string, HTMLElement>()
 
-function setColumnBodyRef(key: string, el: unknown) {
+function setColumnBodyRef(rowKey: string, columnKey: string, el: unknown) {
+  const compositeKey = `${rowKey}::${columnKey}`
   if (el instanceof HTMLElement) {
-    columnBodyRefs.set(key, el)
+    columnBodyRefs.set(compositeKey, el)
   } else {
-    columnBodyRefs.delete(key)
+    columnBodyRefs.delete(compositeKey)
   }
 }
 
@@ -358,10 +401,11 @@ function destroySortables() {
 
 function initSortables() {
   destroySortables()
-  for (const el of columnBodyRefs.values()) {
+  for (const [compositeKey, el] of columnBodyRefs.entries()) {
+    const rowKey = compositeKey.split('::')[0]
     sortableInstances.push(
       Sortable.create(el, {
-        group: 'board-column',
+        group: `board-column-row-${rowKey}`,
         animation: 150,
         ghostClass: 'board-card-ghost',
         // Native HTML5 drag-and-drop never fires from touch input, so the
@@ -384,31 +428,35 @@ onMounted(() => {
   nextTick(initSortables)
 })
 
-watch(columns, () => {
+watch(displayRows, () => {
   nextTick(initSortables)
 })
 
 onBeforeUnmount(destroySortables)
 
-// Card creation from the board (#300): one column has its add-card form
-// open at a time, tracked by column key.
+// Card creation from the board (#300): one column (within one row) has its
+// add-card form open at a time.
+const addCardRowKey = ref<string | null>(null)
 const addCardColumnKey = ref<string | null>(null)
 const addCardTitle = ref('')
 
-function openAddCard(key: string) {
-  addCardColumnKey.value = key
+function openAddCard(rowKey: string, columnKey: string) {
+  addCardRowKey.value = rowKey
+  addCardColumnKey.value = columnKey
   addCardTitle.value = ''
 }
 
 function cancelAddCard() {
+  addCardRowKey.value = null
   addCardColumnKey.value = null
   addCardTitle.value = ''
 }
 
-function submitAddCard(columnKey: string) {
+function submitAddCard(rowKey: string, columnKey: string) {
   const title = addCardTitle.value.trim()
   if (!title) return
-  emit('create-card', title, columnKey === UNGROUPED_LABEL ? '' : columnKey)
+  const rowValue = rowKey === '__all__' ? null : rowKey === UNGROUPED_LABEL ? '' : rowKey
+  emit('create-card', title, columnKey === UNGROUPED_LABEL ? '' : columnKey, rowValue)
   cancelAddCard()
 }
 </script>
@@ -496,11 +544,25 @@ function submitAddCard(columnKey: string) {
   padding: var(--space-8) 0;
 }
 
+.board-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.board-row-label {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
 .board-scroll {
   display: flex;
   gap: var(--space-4);
   overflow-x: auto;
-  flex: 1;
   align-items: flex-start;
   padding-bottom: var(--space-2);
 }

@@ -68,6 +68,42 @@ export interface BoardColumn {
   notes: CollectionNote[]
 }
 
+function sortGroupKeys(keys: string[]): string[] {
+  return keys.sort((a, b) => {
+    if (a === UNGROUPED_LABEL) return 1
+    if (b === UNGROUPED_LABEL) return -1
+    return a.localeCompare(b)
+  })
+}
+
+export function groupNotesIntoColumns(notes: CollectionNote[], groupProperty: string): BoardColumn[] {
+  const groups = new Map<string, CollectionNote[]>()
+  for (const note of notes) {
+    const label = formatPropertyValue(note, groupProperty)
+    const key = label === '—' ? UNGROUPED_LABEL : label
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(note)
+  }
+  return sortGroupKeys(Array.from(groups.keys())).map(key => ({ key, label: key, notes: groups.get(key)! }))
+}
+
+export interface SwimlaneRow {
+  key: string
+  label: string
+  notes: CollectionNote[]
+}
+
+export function groupNotesIntoSwimlaneRows(notes: CollectionNote[], swimlaneProperty: string): SwimlaneRow[] {
+  const groups = new Map<string, CollectionNote[]>()
+  for (const note of notes) {
+    const label = formatPropertyValue(note, swimlaneProperty)
+    const key = label === '—' ? UNGROUPED_LABEL : label
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(note)
+  }
+  return sortGroupKeys(Array.from(groups.keys())).map(key => ({ key, label: key, notes: groups.get(key)! }))
+}
+
 export interface ConfiguredBoardColumn extends BoardColumn {
   color: string | null
   wipLimit: number | null

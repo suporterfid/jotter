@@ -111,6 +111,20 @@ final class BoardControllerTest extends TestCase
         $this->assertEquals($columnConfig, $board->fresh()->column_config);
     }
 
+    public function test_persists_swimlane_property(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $workspace = $this->makeWorkspace();
+        $board = Board::create(['workspace_id' => $workspace->id, 'name' => 'Original']);
+
+        $response = $this->actingAs($admin)->putJson("/api/workspaces/{$workspace->id}/boards/{$board->id}", [
+            'swimlane_property' => 'assignee',
+        ]);
+
+        $response->assertOk()->assertJsonPath('data.swimlane_property', 'assignee');
+        $this->assertSame('assignee', $board->fresh()->swimlane_property);
+    }
+
     public function test_deletes_a_board(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
