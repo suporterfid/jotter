@@ -45,12 +45,90 @@
     </div>
 
     <div v-else class="board-scroll">
-      <div v-for="column in columns" :key="column.key" class="board-column" data-testid="board-column">
+      <div
+        v-for="(column, index) in columns"
+        :key="column.key"
+        class="board-column"
+        :style="column.color ? { borderTopColor: column.color, borderTopWidth: '3px' } : {}"
+        data-testid="board-column"
+      >
         <div class="board-column-header">
+          <template v-if="configurable">
+            <button
+              type="button"
+              class="btn-column-reorder"
+              data-testid="board-column-move-left"
+              :disabled="index === 0"
+              @click="moveColumn(column.key, -1)"
+            >◀</button>
+          </template>
+          <button
+            v-if="configurable"
+            type="button"
+            class="btn-column-collapse"
+            data-testid="board-column-collapse-toggle"
+            @click="$emit('toggle-column-collapse', column.key)"
+          >{{ column.collapsed ? '▸' : '▾' }}</button>
           <span class="board-column-title">{{ column.label }}</span>
-          <span class="count-badge">{{ column.notes.length }}</span>
+          <span
+            class="count-badge"
+            :class="{ 'count-badge-over-limit': column.wipLimit !== null && column.notes.length > column.wipLimit }"
+            data-testid="board-column-wip-warning"
+            v-if="column.wipLimit !== null && column.notes.length > column.wipLimit"
+          >{{ column.notes.length }}/{{ column.wipLimit }}</span>
+          <span v-else class="count-badge">{{ column.notes.length }}</span>
+          <button
+            v-if="configurable"
+            type="button"
+            class="btn-column-edit"
+            data-testid="board-column-edit-button"
+            @click="openColumnEdit(column)"
+          >⚙</button>
+          <button
+            v-if="configurable"
+            type="button"
+            class="btn-column-reorder"
+            data-testid="board-column-move-right"
+            :disabled="index === columns.length - 1"
+            @click="moveColumn(column.key, 1)"
+          >▶</button>
         </div>
+        <form
+          v-if="editingColumnKey === column.key"
+          class="board-column-edit-form"
+          data-testid="board-column-edit-form"
+          @submit.prevent="submitColumnEdit(column.key)"
+        >
+          <input
+            v-model="columnEditLabel"
+            type="text"
+            placeholder="Column label"
+            aria-label="Column label"
+            data-testid="board-column-label-input"
+            class="column-edit-input"
+          />
+          <select v-model="columnEditColor" aria-label="Column color" data-testid="board-column-color-select" class="column-edit-input">
+            <option value="">No color</option>
+            <option value="#ef4444">Red</option>
+            <option value="#f59e0b">Amber</option>
+            <option value="#22c55e">Green</option>
+            <option value="#3b82f6">Blue</option>
+            <option value="#a855f7">Purple</option>
+          </select>
+          <input
+            v-model="columnEditWipLimit"
+            type="number"
+            min="0"
+            placeholder="WIP limit"
+            aria-label="WIP limit"
+            data-testid="board-column-wip-input"
+            class="column-edit-input"
+          />
+          <button type="submit" class="btn-add-card-confirm">Save</button>
+          <button type="button" class="btn-add-card-cancel" @click="editingColumnKey = null">Cancel</button>
+        </form>
         <div
+          v-if="!column.collapsed"
           class="board-column-body"
           data-testid="board-column-body"
           :data-column-key="column.key"
@@ -160,9 +238,10 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import Sortable from 'sortablejs'
-import type { CollectionPage } from '../services/types'
+import type { BoardColumnConfig, CollectionPage } from '../services/types'
 import {
   allTagNames,
+  applyColumnConfig,
   coverImageUrl,
   filterNotesByTag,
   firstDateProperty,
@@ -177,6 +256,8 @@ const props = defineProps<{
   page: CollectionPage
   loading?: boolean
   groupProperty?: string | null
+  configurable?: boolean
+  columnConfig?: BoardColumnConfig[] | null
 }>()
 
 const emit = defineEmits<{
@@ -185,6 +266,9 @@ const emit = defineEmits<{
   (e: 'group-change', property: string): void
   (e: 'move-card', noteId: number, newValue: string): void
   (e: 'create-card', title: string, columnValue: string): void
+  (e: 'reorder-columns', keys: string[]): void
+  (e: 'toggle-column-collapse', key: string): void
+  (e: 'update-column', key: string, attrs: { label: string; color: string | null; wip_limit: number | null }): void
 }>()
 
 const groupPropertyInput = ref(props.groupProperty || '')
@@ -217,8 +301,39 @@ const columns = computed(() => {
     if (b === UNGROUPED_LABEL) return -1
     return a.localeCompare(b)
   })
-  return sortedKeys.map(key => ({ key, label: key, notes: groups.get(key)! }))
+  const derived = sortedKeys.map(key => ({ key, label: key, notes: groups.get(key)! }))
+  return applyColumnConfig(derived, props.columnConfig)
 })
+
+const editingColumnKey = ref<string | null>(null)
+const columnEditLabel = ref('')
+const columnEditColor = ref('')
+const columnEditWipLimit = ref('')
+
+function moveColumn(key: string, direction: -1 | 1) {
+  const keys = columns.value.map(c => c.key)
+  const idx = keys.indexOf(key)
+  const swapIdx = idx + direction
+  if (swapIdx < 0 || swapIdx >= keys.length) return
+  ;[keys[idx], keys[swapIdx]] = [keys[swapIdx], keys[idx]]
+  emit('reorder-columns', keys)
+}
+
+function openColumnEdit(column: { key: string; label: string; color: string | null; wipLimit: number | null }) {
+  editingColumnKey.value = column.key
+  columnEditLabel.value = column.label
+  columnEditColor.value = column.color ?? ''
+  columnEditWipLimit.value = column.wipLimit !== null ? String(column.wipLimit) : ''
+}
+
+function submitColumnEdit(key: string) {
+  emit('update-column', key, {
+    label: columnEditLabel.value.trim(),
+    color: columnEditColor.value || null,
+    wip_limit: columnEditWipLimit.value !== '' ? Number(columnEditWipLimit.value) : null,
+  })
+  editingColumnKey.value = null
+}
 
 // Drag-and-drop between columns (#299): one Sortable instance per column
 // body, sharing a group so cards can move between them. onEnd resolves the
@@ -411,9 +526,49 @@ function submitAddCard(columnKey: string) {
   border-bottom: 1px solid var(--color-border);
 }
 
+.btn-column-reorder,
+.btn-column-collapse,
+.btn-column-edit {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 var(--space-1);
+}
+
+.btn-column-reorder:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.count-badge-over-limit {
+  background: var(--color-danger, #d33);
+  color: var(--color-neutral-0);
+}
+
+.board-column-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.column-edit-input {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  min-height: 32px;
+}
+
 .board-column-title {
   font-weight: 600;
   font-size: 0.85rem;
+  flex: 1;
   color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;

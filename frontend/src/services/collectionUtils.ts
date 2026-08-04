@@ -1,4 +1,4 @@
-import type { CollectionNote, CollectionPage, RawNoteProperty } from './types'
+import type { BoardColumnConfig, CollectionNote, CollectionPage, RawNoteProperty } from './types'
 
 export function rawValue(prop: RawNoteProperty): string | number | boolean | unknown | null {
   switch (prop.type) {
@@ -60,6 +60,54 @@ export function coverImageUrl(note: CollectionNote): string | null {
 export function firstDateProperty(note: CollectionNote): { name: string; value: string } | null {
   const prop = note.properties.find(p => p.type === 'datetime' && p.value_datetime)
   return prop ? { name: prop.name, value: prop.value_datetime as string } : null
+}
+
+export interface BoardColumn {
+  key: string
+  label: string
+  notes: CollectionNote[]
+}
+
+export interface ConfiguredBoardColumn extends BoardColumn {
+  color: string | null
+  wipLimit: number | null
+  collapsed: boolean
+}
+
+/**
+ * Merges the derived columns (from distinct property values present in the
+ * page) with the board's persisted per-column config — order, label
+ * override, color, WIP limit, collapsed. Columns with no config keep their
+ * derived order, appended after configured ones. Config entries for values
+ * no longer present in the data are dropped rather than shown empty.
+ */
+export function applyColumnConfig(
+  columns: BoardColumn[],
+  config: BoardColumnConfig[] | null | undefined
+): ConfiguredBoardColumn[] {
+  const byKey = new Map(columns.map(c => [c.key, c]))
+  const configured: ConfiguredBoardColumn[] = []
+  const seen = new Set<string>()
+
+  for (const entry of config ?? []) {
+    const column = byKey.get(entry.key)
+    if (!column) continue
+    configured.push({
+      ...column,
+      label: entry.label || column.label,
+      color: entry.color ?? null,
+      wipLimit: entry.wip_limit ?? null,
+      collapsed: entry.collapsed ?? false,
+    })
+    seen.add(entry.key)
+  }
+
+  for (const column of columns) {
+    if (seen.has(column.key)) continue
+    configured.push({ ...column, color: null, wipLimit: null, collapsed: false })
+  }
+
+  return configured
 }
 
 export const UNGROUPED_LABEL = 'No value'

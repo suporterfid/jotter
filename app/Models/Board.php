@@ -13,8 +13,16 @@ class Board extends Model
         'group_property',
         'filter_property',
         'filter_value',
+        'column_config',
         'sort_position',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'column_config' => 'array',
+        ];
+    }
 
     public function workspace(): BelongsTo
     {

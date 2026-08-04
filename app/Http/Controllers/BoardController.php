@@ -39,6 +39,7 @@ final class BoardController extends Controller
             'group_property' => ['nullable', 'string', 'max:255'],
             'filter_property' => ['nullable', 'string', 'max:255'],
             'filter_value' => ['nullable', 'string', 'max:255'],
+            'column_config' => ['nullable', 'array'],
         ]);
 
         $board = Board::create([
@@ -47,6 +48,7 @@ final class BoardController extends Controller
             'group_property' => $validated['group_property'] ?? null,
             'filter_property' => $validated['filter_property'] ?? null,
             'filter_value' => $validated['filter_value'] ?? null,
+            'column_config' => $validated['column_config'] ?? null,
             'sort_position' => Board::query()->where('workspace_id', $workspaceId)->count(),
         ]);
 
@@ -69,6 +71,7 @@ final class BoardController extends Controller
             'group_property' => ['sometimes', 'nullable', 'string', 'max:255'],
             'filter_property' => ['sometimes', 'nullable', 'string', 'max:255'],
             'filter_value' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'column_config' => ['sometimes', 'nullable', 'array'],
         ]);
 
         $board->update($validated);
