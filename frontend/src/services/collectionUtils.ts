@@ -50,6 +50,11 @@ export function filterNotesByTag(notes: CollectionNote[], tag: string): Collecti
   return notes.filter(note => noteTagNames(note).includes(tag))
 }
 
+export function isArchived(note: CollectionNote): boolean {
+  const prop = findProperty(note, 'archived')
+  return prop?.type === 'boolean' && prop.value_boolean === true
+}
+
 export function coverImageUrl(note: CollectionNote): string | null {
   const prop = findProperty(note, 'cover')
   if (!prop || prop.type !== 'string') return null
@@ -108,6 +113,7 @@ export interface ConfiguredBoardColumn extends BoardColumn {
   color: string | null
   wipLimit: number | null
   collapsed: boolean
+  autoArchive: boolean
 }
 
 /**
@@ -134,13 +140,14 @@ export function applyColumnConfig(
       color: entry.color ?? null,
       wipLimit: entry.wip_limit ?? null,
       collapsed: entry.collapsed ?? false,
+      autoArchive: entry.auto_archive ?? false,
     })
     seen.add(entry.key)
   }
 
   for (const column of columns) {
     if (seen.has(column.key)) continue
-    configured.push({ ...column, color: null, wipLimit: null, collapsed: false })
+    configured.push({ ...column, color: null, wipLimit: null, collapsed: false, autoArchive: false })
   }
 
   return configured

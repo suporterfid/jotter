@@ -122,6 +122,34 @@ describe('CollectionsBoardView', () => {
     expect(wrapper.find('[data-testid="board-card-comments"]').text()).toContain('2')
   })
 
+  it('shows an archive toggle button on every card and emits toggle-archive with the note id', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    const buttons = wrapper.findAll('[data-testid="board-card-archive-toggle"]')
+    expect(buttons.length).toBeGreaterThan(0)
+    await buttons[0].trigger('click')
+    expect(wrapper.emitted('toggle-archive')).toBeTruthy()
+  })
+
+  it('shows an archived badge for archived notes', () => {
+    const archivedPage: CollectionPage = {
+      ...page,
+      data: [{
+        id: 7, path: 'g.md', title: 'G',
+        properties: [
+          { id: 10, note_id: 7, name: 'archived', type: 'boolean', value_string: null, value_numeric: null, value_boolean: true, value_datetime: null, value_json: null },
+        ],
+      }],
+    }
+    const wrapper = mount(CollectionsBoardView, { props: { page: archivedPage, groupProperty: 'status' } })
+    expect(wrapper.find('[data-testid="board-card-archived-badge"]').exists()).toBe(true)
+  })
+
+  it('shows a show-archived checkbox and emits archived-filter-change', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
+    await wrapper.get('[data-testid="board-show-archived"]').setValue(true)
+    expect(wrapper.emitted('archived-filter-change')![0]).toEqual([true])
+  })
+
   it('shows tag pills on the card face', () => {
     const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
     expect(wrapper.find('[data-testid="board-card-tag"]').exists()).toBe(true)
@@ -189,7 +217,16 @@ describe('CollectionsBoardView', () => {
     await draftColumn.get('[data-testid="board-column-label-input"]').setValue('In Progress')
     await draftColumn.get('[data-testid="board-column-wip-input"]').setValue('2')
     await draftColumn.get('[data-testid="board-column-edit-form"]').trigger('submit')
-    expect(wrapper.emitted('update-column')![0]).toEqual(['draft', { label: 'In Progress', color: null, wip_limit: 2 }])
+    expect(wrapper.emitted('update-column')![0]).toEqual(['draft', { label: 'In Progress', color: null, wip_limit: 2, auto_archive: false }])
+  })
+
+  it('emits update-column with auto_archive when the checkbox is set', async () => {
+    const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status', configurable: true } })
+    const draftColumn = wrapper.findAll('[data-testid="board-column"]').find(c => c.text().includes('draft'))!
+    await draftColumn.get('[data-testid="board-column-edit-button"]').trigger('click')
+    await draftColumn.get('[data-testid="board-column-auto-archive-checkbox"]').setValue(true)
+    await draftColumn.get('[data-testid="board-column-edit-form"]').trigger('submit')
+    expect(wrapper.emitted('update-column')![0][1]).toMatchObject({ auto_archive: true })
   })
 
   it('flags a column over its WIP limit', () => {

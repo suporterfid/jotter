@@ -140,6 +140,38 @@ final class MilestoneCFinalTest extends TestCase
             ->assertJsonPath('data.0.tags.0.name', 'urgent');
     }
 
+    public function test_collections_excludes_archived_notes_by_default(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'test-archive', 'name' => 'Test Archive']);
+        $vaultPath = storage_path('app/vaults/m_c_archive_'.uniqid());
+        mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'archive',
+            'name' => 'Archive Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+
+        /** @var VaultStorage $storage */
+        $storage = $this->app->make(VaultStorage::class);
+        $storage->write($workspace, 'active.md', '# Active');
+        $storage->write($workspace, 'archived.md', '# Archived');
+
+        $archivedNote = Note::where('workspace_id', $workspace->id)->where('path', 'archived.md')->firstOrFail();
+        $this->actingAs($admin)->postJson(
+            "/api/workspaces/{$workspace->id}/notes/{$archivedNote->id}/properties",
+            ['name' => 'archived', 'value' => true]
+        )->assertOk();
+
+        $default = $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/collections");
+        $default->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.title', 'Active');
+
+        $withArchived = $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/collections?include_archived=1");
+        $withArchived->assertOk()->assertJsonPath('total', 2);
+    }
+
     public function test_collections_response_includes_checklist_progress_and_comment_count(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allTagNames, applyColumnConfig, coverImageUrl, filterNotesByTag, firstDateProperty, groupNotesIntoColumns, groupNotesIntoSwimlaneRows, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
+import { allTagNames, applyColumnConfig, coverImageUrl, filterNotesByTag, firstDateProperty, groupNotesIntoColumns, groupNotesIntoSwimlaneRows, isArchived, noteTagNames, resolveCardMove, UNGROUPED_LABEL } from './services/collectionUtils'
 import type { BoardColumn } from './services/collectionUtils'
 import type { CollectionNote, CollectionPage, RawNoteProperty } from './services/types'
 
@@ -79,6 +79,15 @@ describe('filterNotesByTag', () => {
   })
 })
 
+describe('isArchived', () => {
+  it('returns true only when the archived property is boolean true', () => {
+    const archived: RawNoteProperty = { id: 1, note_id: 1, name: 'archived', type: 'boolean', value_string: null, value_numeric: null, value_boolean: true, value_datetime: null, value_json: null }
+    expect(isArchived(makeNote(1, [], [archived]))).toBe(true)
+    expect(isArchived(makeNote(1, [], []))).toBe(false)
+    expect(isArchived(makeNote(1, [], [{ ...archived, value_boolean: false }]))).toBe(false)
+  })
+})
+
 describe('coverImageUrl', () => {
   it('returns the cover property value when set', () => {
     const note = makeNote(1, [], [stringProp('cover', 'https://example.com/img.png')])
@@ -137,9 +146,9 @@ describe('applyColumnConfig', () => {
 
   it('returns derived columns unchanged, defaulted, when there is no config', () => {
     expect(applyColumnConfig(columns, null)).toEqual([
-      { key: 'draft', label: 'draft', notes: [], color: null, wipLimit: null, collapsed: false },
-      { key: 'done', label: 'done', notes: [], color: null, wipLimit: null, collapsed: false },
-      { key: 'review', label: 'review', notes: [], color: null, wipLimit: null, collapsed: false },
+      { key: 'draft', label: 'draft', notes: [], color: null, wipLimit: null, collapsed: false, autoArchive: false },
+      { key: 'done', label: 'done', notes: [], color: null, wipLimit: null, collapsed: false, autoArchive: false },
+      { key: 'review', label: 'review', notes: [], color: null, wipLimit: null, collapsed: false, autoArchive: false },
     ])
   })
 
@@ -151,6 +160,12 @@ describe('applyColumnConfig', () => {
     expect(result.map(c => c.key)).toEqual(['done', 'draft', 'review'])
     expect(result[0]).toMatchObject({ label: 'Done!', color: '#22c55e', wipLimit: 3 })
     expect(result[1]).toMatchObject({ label: 'draft', collapsed: true })
+  })
+
+  it('carries auto_archive through as autoArchive', () => {
+    const result = applyColumnConfig(columns, [{ key: 'done', auto_archive: true }])
+    expect(result.find(c => c.key === 'done')!.autoArchive).toBe(true)
+    expect(result.find(c => c.key === 'draft')!.autoArchive).toBe(false)
   })
 
   it('drops config entries for columns no longer present in the data', () => {

@@ -40,6 +40,15 @@
         <option value="">All tags</option>
         <option v-for="tag in allTags" :key="tag" :value="tag">{{ tag }}</option>
       </select>
+      <label class="show-archived-label">
+        <input
+          type="checkbox"
+          :checked="showArchived"
+          data-testid="board-show-archived"
+          @change="$emit('archived-filter-change', ($event.target as HTMLInputElement).checked)"
+        />
+        Show archived
+      </label>
     </form>
 
     <div v-if="loading" class="panel-empty">
@@ -137,6 +146,14 @@
             data-testid="board-column-wip-input"
             class="column-edit-input"
           />
+          <label class="auto-archive-label">
+            <input
+              v-model="columnEditAutoArchive"
+              type="checkbox"
+              data-testid="board-column-auto-archive-checkbox"
+            />
+            Auto-archive cards dropped here
+          </label>
           <button type="submit" class="btn-add-card-confirm">Save</button>
           <button type="button" class="btn-add-card-cancel" @click="editingColumnKey = null">Cancel</button>
         </form>
@@ -148,9 +165,8 @@
           :data-row-key="row.key"
           :ref="(el) => setColumnBodyRef(row.key, column.key, el)"
         >
+          <div v-for="note in column.notes" :key="note.id" class="board-card-wrapper">
           <button
-            v-for="note in column.notes"
-            :key="note.id"
             type="button"
             class="board-card"
             data-testid="board-card"
@@ -164,7 +180,14 @@
               :src="coverImageUrl(note)!"
               alt=""
             />
-            <span class="board-card-title">{{ note.title || note.path }}</span>
+            <span class="board-card-title-row">
+              <span class="board-card-title">{{ note.title || note.path }}</span>
+              <span
+                v-if="isArchived(note)"
+                class="board-card-archived-badge"
+                data-testid="board-card-archived-badge"
+              >Archived</span>
+            </span>
             <span class="board-card-path">{{ note.path }}</span>
             <span v-if="noteTagNames(note).length > 0" class="board-card-tags">
               <span
@@ -194,6 +217,15 @@
               </span>
             </span>
           </button>
+          <button
+            type="button"
+            class="board-card-archive-toggle"
+            data-testid="board-card-archive-toggle"
+            :aria-label="isArchived(note) ? 'Unarchive' : 'Archive'"
+            :title="isArchived(note) ? 'Unarchive' : 'Archive'"
+            @click="$emit('toggle-archive', note.id)"
+          >{{ isArchived(note) ? '📤' : '📦' }}</button>
+          </div>
         </div>
         <form
           v-if="addCardRowKey === row.key && addCardColumnKey === column.key"
@@ -263,6 +295,7 @@ import {
   firstDateProperty,
   groupNotesIntoColumns,
   groupNotesIntoSwimlaneRows,
+  isArchived,
   noteTagNames,
   propertyColumns as computePropertyColumns,
   resolveCardMove,
@@ -276,6 +309,7 @@ const props = defineProps<{
   swimlaneProperty?: string | null
   configurable?: boolean
   columnConfig?: BoardColumnConfig[] | null
+  showArchived?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -287,7 +321,9 @@ const emit = defineEmits<{
   (e: 'create-card', title: string, columnValue: string, rowValue: string | null): void
   (e: 'reorder-columns', keys: string[]): void
   (e: 'toggle-column-collapse', key: string): void
-  (e: 'update-column', key: string, attrs: { label: string; color: string | null; wip_limit: number | null }): void
+  (e: 'update-column', key: string, attrs: { label: string; color: string | null; wip_limit: number | null; auto_archive: boolean }): void
+  (e: 'toggle-archive', noteId: number): void
+  (e: 'archived-filter-change', showArchived: boolean): void
 }>()
 
 const groupPropertyInput = ref(props.groupProperty || '')
@@ -348,6 +384,7 @@ const editingColumnKey = ref<string | null>(null)
 const columnEditLabel = ref('')
 const columnEditColor = ref('')
 const columnEditWipLimit = ref('')
+const columnEditAutoArchive = ref(false)
 
 function moveColumn(key: string, direction: -1 | 1) {
   const keys = columns.value.map(c => c.key)
@@ -358,11 +395,12 @@ function moveColumn(key: string, direction: -1 | 1) {
   emit('reorder-columns', keys)
 }
 
-function openColumnEdit(column: { key: string; label: string; color: string | null; wipLimit: number | null }) {
+function openColumnEdit(column: { key: string; label: string; color: string | null; wipLimit: number | null; autoArchive: boolean }) {
   editingColumnKey.value = column.key
   columnEditLabel.value = column.label
   columnEditColor.value = column.color ?? ''
   columnEditWipLimit.value = column.wipLimit !== null ? String(column.wipLimit) : ''
+  columnEditAutoArchive.value = column.autoArchive
 }
 
 function submitColumnEdit(key: string) {
@@ -370,6 +408,7 @@ function submitColumnEdit(key: string) {
     label: columnEditLabel.value.trim(),
     color: columnEditColor.value || null,
     wip_limit: columnEditWipLimit.value !== '' ? Number(columnEditWipLimit.value) : null,
+    auto_archive: columnEditAutoArchive.value,
   })
   editingColumnKey.value = null
 }
@@ -721,10 +760,50 @@ function submitAddCard(rowKey: string, columnKey: string) {
   color: var(--color-text-muted);
 }
 
+.board-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .board-card-title {
+  flex: 1;
   font-weight: 500;
   font-size: 0.8125rem;
   color: var(--color-text);
+}
+
+.board-card-archived-badge {
+  background: var(--color-surface-emphasis);
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-pill);
+}
+
+.board-card-wrapper {
+  position: relative;
+}
+
+.board-card-archive-toggle {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 2px;
+}
+
+.show-archived-label,
+.auto-archive-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
 }
 
 .board-card-path {
