@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Auth\AuthenticatedSubject;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,7 +51,7 @@ final class AdminUserController extends Controller
 
         $this->auditRecorder->record(
             event: AuditEvent::USER_CREATED,
-            actorId: (string) $request->user()?->id,
+            actorId: $this->currentSubject($request)?->subjectId,
             metadata: [
                 'created_user_id' => $user->id,
                 'email' => $user->email,
@@ -78,7 +79,7 @@ final class AdminUserController extends Controller
 
         $this->auditRecorder->record(
             event: AuditEvent::USER_DEACTIVATED,
-            actorId: (string) $request->user()?->id,
+            actorId: $this->currentSubject($request)?->subjectId,
             metadata: [
                 'target_user_id' => $user->id,
                 'email' => $user->email,
@@ -97,7 +98,7 @@ final class AdminUserController extends Controller
 
         $this->auditRecorder->record(
             event: AuditEvent::USER_REACTIVATED,
-            actorId: (string) $request->user()?->id,
+            actorId: $this->currentSubject($request)?->subjectId,
             metadata: [
                 'target_user_id' => $user->id,
                 'email' => $user->email,
@@ -122,7 +123,7 @@ final class AdminUserController extends Controller
 
         $this->auditRecorder->record(
             event: AuditEvent::USER_PASSWORD_RESET,
-            actorId: (string) $request->user()?->id,
+            actorId: $this->currentSubject($request)?->subjectId,
             metadata: [
                 'target_user_id' => $user->id,
                 'email' => $user->email,
@@ -169,10 +170,25 @@ final class AdminUserController extends Controller
 
     private function authorizeAdmin(Request $request): void
     {
-        $user = $request->user();
-        if (! $user || ! $user->is_admin) {
+        if (config('jotter.auth_bypass', false)) {
+            return;
+        }
+
+        $subject = $this->currentSubject($request);
+        if (! $subject || ! $subject->isAdmin) {
             abort(403, 'Administrator access required.');
         }
+    }
+
+    /**
+     * AuthorizeWorkspaceAccess middleware resolves the caller via the app's own
+     * IdentityProvider (not Laravel's built-in auth guard — $request->user() is never
+     * populated by the GrandpaSSOn cookie-auth path, only by LocalIdentityProvider's
+     * password-login flow) and stashes the result here.
+     */
+    private function currentSubject(Request $request): ?AuthenticatedSubject
+    {
+        return $request->attributes->get('authenticated_subject');
     }
 
     private function ensureLocalProvider(): void
