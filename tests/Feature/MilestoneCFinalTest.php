@@ -139,4 +139,40 @@ final class MilestoneCFinalTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.0.tags.0.name', 'urgent');
     }
+
+    public function test_collections_response_includes_checklist_progress_and_comment_count(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'test-card-face', 'name' => 'Test Card Face']);
+        $vaultPath = storage_path('app/vaults/m_c_card_face_'.uniqid());
+        mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'card-face',
+            'name' => 'Card Face Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+
+        /** @var VaultStorage $storage */
+        $storage = $this->app->make(VaultStorage::class);
+        $storage->write($workspace, 'checklist.md', "# Checklist\n\n- [x] done one\n- [ ] todo one\n- [ ] todo two\n");
+
+        $note = Note::where('workspace_id', $workspace->id)->where('path', 'checklist.md')->firstOrFail();
+        NoteComment::create([
+            'workspace_id' => $workspace->id,
+            'note_id' => $note->id,
+            'user_id' => $admin->id,
+            'actor_name' => $admin->name,
+            'content' => 'A comment',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->getJson("/api/workspaces/{$workspace->id}/collections");
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.checklist_total', 3)
+            ->assertJsonPath('data.0.checklist_done', 1)
+            ->assertJsonPath('data.0.comments_count', 1);
+    }
 }

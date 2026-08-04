@@ -98,6 +98,30 @@ describe('CollectionsBoardView', () => {
     expect(draftColumn.find('[data-testid="board-add-card-input"]').exists()).toBe(false)
   })
 
+  it('shows a cover image, due date, checklist progress, and comment count on the card face', () => {
+    const richPage: CollectionPage = {
+      ...page,
+      data: [
+        {
+          id: 4, path: 'd.md', title: 'D',
+          properties: [
+            { id: 3, note_id: 4, name: 'status', type: 'string', value_string: 'draft', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+            { id: 4, note_id: 4, name: 'cover', type: 'string', value_string: 'https://example.com/cover.png', value_numeric: null, value_boolean: null, value_datetime: null, value_json: null },
+            { id: 5, note_id: 4, name: 'due', type: 'datetime', value_string: null, value_numeric: null, value_boolean: null, value_datetime: '2026-08-10', value_json: null },
+          ],
+          checklist_total: 3,
+          checklist_done: 1,
+          comments_count: 2,
+        },
+      ],
+    }
+    const wrapper = mount(CollectionsBoardView, { props: { page: richPage, groupProperty: 'status' } })
+    expect(wrapper.find('[data-testid="board-card-cover"]').attributes('src')).toBe('https://example.com/cover.png')
+    expect(wrapper.find('[data-testid="board-card-due"]').text()).toContain('2026-08-10')
+    expect(wrapper.find('[data-testid="board-card-checklist"]').text()).toContain('1/3')
+    expect(wrapper.find('[data-testid="board-card-comments"]').text()).toContain('2')
+  })
+
   it('shows tag pills on the card face', () => {
     const wrapper = mount(CollectionsBoardView, { props: { page, groupProperty: 'status' } })
     expect(wrapper.find('[data-testid="board-card-tag"]').exists()).toBe(true)

@@ -30,7 +30,8 @@ final class WorkspaceCollectionController extends Controller
 
         $query = Note::query()
             ->where('workspace_id', $workspaceId)
-            ->with(['properties', 'tags']);
+            ->with(['properties', 'tags'])
+            ->withCount('comments');
 
         if ($propertyKey !== null && $propertyKey !== '') {
             $query->whereHas('properties', function ($pQuery) use ($propertyKey, $propertyValue) {
@@ -67,6 +68,28 @@ final class WorkspaceCollectionController extends Controller
         $perPage = min(100, max(1, (int) $request->query('per_page', 25)));
         $notes = $query->orderBy('title')->paginate($perPage);
 
+        $notes->getCollection()->transform(function (Note $note) {
+            $checklist = self::checklistProgress($note->search_content ?? '');
+            $note->setAttribute('checklist_total', $checklist['total']);
+            $note->setAttribute('checklist_done', $checklist['done']);
+
+            return $note;
+        });
+
         return response()->json($notes);
+    }
+
+    /**
+     * @return array{total: int, done: int}
+     */
+    private static function checklistProgress(string $body): array
+    {
+        preg_match_all('/^\s*[-*]\s+\[([ xX])\]/m', $body, $matches);
+        $marks = $matches[1] ?? [];
+
+        return [
+            'total' => count($marks),
+            'done' => count(array_filter($marks, fn (string $m) => strtolower($m) === 'x')),
+        ];
     }
 }

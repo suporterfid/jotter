@@ -65,6 +65,13 @@
             :data-note-id="note.id"
             @click="$emit('select-note', note.id)"
           >
+            <img
+              v-if="coverImageUrl(note)"
+              class="board-card-cover"
+              data-testid="board-card-cover"
+              :src="coverImageUrl(note)!"
+              alt=""
+            />
             <span class="board-card-title">{{ note.title || note.path }}</span>
             <span class="board-card-path">{{ note.path }}</span>
             <span v-if="noteTagNames(note).length > 0" class="board-card-tags">
@@ -74,6 +81,25 @@
                 class="board-card-tag"
                 data-testid="board-card-tag"
               >{{ tag }}</span>
+            </span>
+            <span class="board-card-meta">
+              <span v-if="firstDateProperty(note)" class="board-card-due" data-testid="board-card-due">
+                {{ firstDateProperty(note)!.value }}
+              </span>
+              <span
+                v-if="note.checklist_total && note.checklist_total > 0"
+                class="board-card-checklist"
+                data-testid="board-card-checklist"
+              >
+                ☑ {{ note.checklist_done ?? 0 }}/{{ note.checklist_total }}
+              </span>
+              <span
+                v-if="note.comments_count && note.comments_count > 0"
+                class="board-card-comments"
+                data-testid="board-card-comments"
+              >
+                💬 {{ note.comments_count }}
+              </span>
             </span>
           </button>
         </div>
@@ -137,7 +163,9 @@ import Sortable from 'sortablejs'
 import type { CollectionPage } from '../services/types'
 import {
   allTagNames,
+  coverImageUrl,
   filterNotesByTag,
+  firstDateProperty,
   formatPropertyValue,
   noteTagNames,
   propertyColumns as computePropertyColumns,
@@ -486,6 +514,23 @@ function submitAddCard(columnKey: string) {
   color: var(--color-text-muted);
   font-family: var(--font-mono, monospace);
   font-size: 0.7rem;
+}
+
+.board-card-cover {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-1);
+}
+
+.board-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
 }
 
 .board-card-tags {

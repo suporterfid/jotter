@@ -184,6 +184,9 @@ export interface CollectionNote {
   title: string
   properties: RawNoteProperty[]
   tags?: CollectionTag[]
+  checklist_total?: number
+  checklist_done?: number
+  comments_count?: number
 }
 
 export interface CollectionPage {

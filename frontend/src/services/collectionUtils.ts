@@ -50,6 +50,18 @@ export function filterNotesByTag(notes: CollectionNote[], tag: string): Collecti
   return notes.filter(note => noteTagNames(note).includes(tag))
 }
 
+export function coverImageUrl(note: CollectionNote): string | null {
+  const prop = findProperty(note, 'cover')
+  if (!prop || prop.type !== 'string') return null
+  const value = prop.value_string
+  return value && value.trim() !== '' ? value : null
+}
+
+export function firstDateProperty(note: CollectionNote): { name: string; value: string } | null {
+  const prop = note.properties.find(p => p.type === 'datetime' && p.value_datetime)
+  return prop ? { name: prop.name, value: prop.value_datetime as string } : null
+}
+
 export const UNGROUPED_LABEL = 'No value'
 
 /**
