@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { parseHeadings, type HeadingEntry } from './outline'
+import { EMBED_PATTERN } from './wikilinks'
 
 // Configure marked with GFM (GitHub Flavored Markdown)
 marked.use({
@@ -12,13 +13,49 @@ marked.use({
  * Transforms wikilinks like [[note]], [[note|alias]], [[note#heading]] into HTML anchors.
  */
 export function renderWikilinks(text: string): string {
-  // Pattern: [[target]] or [[target|alias]]
-  return text.replace(/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_match, target, alias) => {
+  // Pattern: [[target]] or [[target|alias]] — the (?<!!) lookbehind skips
+  // ![[...]] embeds (handled separately by renderEmbeds), so an embed's
+  // inner [[...]] is never also turned into a plain link.
+  return text.replace(/(?<!!)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_match, target, alias) => {
     const cleanTarget = target.trim()
     const label = (alias || target).trim()
     const safeTarget = DOMPurify.sanitize(cleanTarget)
     const safeLabel = DOMPurify.sanitize(label)
     return `<a class="wikilink" data-target="${safeTarget}" href="#/note/${encodeURIComponent(safeTarget)}">${safeLabel}</a>`
+  })
+}
+
+export interface EmbedResolution {
+  status: 'resolved' | 'loading' | 'unresolved' | 'circular'
+  html?: string
+}
+
+/**
+ * Splices ![[Target]] embeds into <div class="embed-block"> blocks, using
+ * the caller-supplied resolveEmbed callback to decide each embed's content.
+ * Runs before renderWikilinks so the negative lookbehind there never has to
+ * see an embed's [[...]] portion. When resolveEmbed is omitted this is a
+ * no-op — the source of v1's non-recursive nesting: an embedded note's own
+ * ![[...]] syntax, rendered via a plain renderMarkdown() call with no
+ * resolver, is left completely literal.
+ */
+function renderEmbeds(text: string, resolveEmbed?: (target: string) => EmbedResolution): string {
+  if (!resolveEmbed) return text
+  return text.replace(EMBED_PATTERN, (_match, target) => {
+    const cleanTarget = target.trim()
+    const safeTarget = DOMPurify.sanitize(cleanTarget)
+    const resolution = resolveEmbed(cleanTarget)
+
+    if (resolution.status === 'resolved' && resolution.html !== undefined) {
+      return `<div class="embed-block" data-embed-status="resolved" data-embed-target="${safeTarget}">${resolution.html}</div>`
+    }
+    if (resolution.status === 'loading') {
+      return `<div class="embed-block" data-embed-status="loading" data-embed-target="${safeTarget}">Loading embed…</div>`
+    }
+    if (resolution.status === 'circular') {
+      return `<div class="embed-block" data-embed-status="circular" data-embed-target="${safeTarget}">Cannot embed a note within itself.</div>`
+    }
+    return `<div class="embed-block" data-embed-status="unresolved" data-embed-target="${safeTarget}">Note not found: '${safeTarget}'</div>`
   })
 }
 
@@ -65,13 +102,13 @@ export function renderCallouts(text: string): string {
 /**
  * Parses markdown to HTML, processes wikilinks, callouts, code block wrappers, and sanitizes output.
  */
-export function renderMarkdown(markdownText: string): string {
+export function renderMarkdown(markdownText: string, resolveEmbed?: (target: string) => EmbedResolution): string {
   if (!markdownText) return ''
 
   const headings = parseHeadings(markdownText)
 
-  // Convert wikilinks and callouts
-  const withWikilinks = renderWikilinks(markdownText)
+  const withEmbeds = renderEmbeds(markdownText, resolveEmbed)
+  const withWikilinks = renderWikilinks(withEmbeds)
   const withCallouts = renderCallouts(withWikilinks)
 
   // Convert markdown to HTML

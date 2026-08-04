@@ -18,6 +18,7 @@ class BlockRegistryTest extends TestCase
         $this->assertArrayHasKey('toggle', $defs);
         $this->assertArrayHasKey('table', $defs);
         $this->assertArrayHasKey('divider', $defs);
+        $this->assertArrayHasKey('embed', $defs);
     }
 
     public function test_allowed_tags_and_attributes_derivation(): void
@@ -33,5 +34,6 @@ class BlockRegistryTest extends TestCase
         $this->assertContains('data-target', $attrs);
         $this->assertContains('data-language', $attrs);
         $this->assertContains('class', $attrs);
+        $this->assertContains('data-embed-status', $attrs);
     }
 }

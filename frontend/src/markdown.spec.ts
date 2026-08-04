@@ -77,4 +77,45 @@ describe('Markdown rendering & XSS security', () => {
     expect(html).toContain('<table>')
     expect(html).toContain('<hr')
   })
+
+  it('renders a resolved embed inline via the resolveEmbed callback', () => {
+    const md = 'Before.\n\n![[Ideas]]\n\nAfter.'
+    const html = renderMarkdown(md, (target) => {
+      expect(target).toBe('Ideas')
+      return { status: 'resolved', html: '<p>Idea body.</p>' }
+    })
+    expect(html).toContain('data-embed-status="resolved"')
+    expect(html).toContain('data-embed-target="Ideas"')
+    expect(html).toContain('Idea body.')
+  })
+
+  it('renders a loading placeholder for a loading embed', () => {
+    const html = renderMarkdown('![[Ideas]]', () => ({ status: 'loading' }))
+    expect(html).toContain('data-embed-status="loading"')
+    expect(html).toContain('Loading embed')
+  })
+
+  it('renders an unresolved-note message for an unresolved embed', () => {
+    const html = renderMarkdown('![[Missing]]', () => ({ status: 'unresolved' }))
+    expect(html).toContain('data-embed-status="unresolved"')
+    expect(html).toContain('Missing')
+  })
+
+  it('renders a circular-embed guard message', () => {
+    const html = renderMarkdown('![[Self]]', () => ({ status: 'circular' }))
+    expect(html).toContain('data-embed-status="circular"')
+    expect(html).toContain('Cannot embed a note within itself')
+  })
+
+  it('leaves ![[...]] completely literal when no resolveEmbed is given', () => {
+    const html = renderMarkdown('![[Ideas]]')
+    expect(html).toContain('![[Ideas]]')
+    expect(html).not.toContain('class="wikilink"')
+  })
+
+  it('still renders a plain [[Note]] link unaffected by the embed lookbehind', () => {
+    const html = renderMarkdown('[[Ideas]]')
+    expect(html).toContain('class="wikilink"')
+    expect(html).toContain('data-target="Ideas"')
+  })
 })

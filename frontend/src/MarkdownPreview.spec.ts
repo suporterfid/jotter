@@ -59,3 +59,23 @@ describe('MarkdownPreview wikilink hover', () => {
     expect(wrapper.emitted('unhover-wikilink')).toHaveLength(1)
   })
 })
+
+describe('MarkdownPreview embeds', () => {
+  it('threads a resolveEmbed prop into the rendered output', () => {
+    const wrapper = mount(MarkdownPreview, {
+      props: {
+        content: 'Before.\n\n![[Ideas]]',
+        resolveEmbed: () => ({ status: 'resolved', html: '<p>Idea body.</p>' }),
+      },
+    })
+    expect(wrapper.html()).toContain('data-embed-status="resolved"')
+    expect(wrapper.html()).toContain('Idea body.')
+  })
+
+  it('leaves an embed literal when no resolveEmbed prop is given', () => {
+    const wrapper = mount(MarkdownPreview, {
+      props: { content: '![[Ideas]]' },
+    })
+    expect(wrapper.text()).toContain('![[Ideas]]')
+  })
+})

@@ -61,6 +61,13 @@ final class BlockRegistry
                 'allowed_attributes' => ['class'],
                 'slash_menu' => ['label' => 'Divider', 'icon' => 'minus'],
             ],
+            'embed' => [
+                'name' => 'Embed',
+                'syntax' => '![[Note Title]]',
+                'allowed_tags' => ['div'],
+                'allowed_attributes' => ['class', 'data-embed-status', 'data-embed-target'],
+                'slash_menu' => ['label' => 'Embed Note', 'icon' => 'layout'],
+            ],
         ];
     }
 
