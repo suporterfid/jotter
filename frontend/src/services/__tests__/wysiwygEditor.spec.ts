@@ -99,6 +99,80 @@ describe('createWysiwygEditor', () => {
     await handle.destroy()
   })
 
+  describe('selection formatting toolbar', () => {
+    it('fires onSelectionFormat with null when there is no selection', async () => {
+      const states: unknown[] = []
+      const root = document.createElement('div')
+      const handle = await createWysiwygEditor(root, 'Some text here.\n', () => {}, undefined, (s) => states.push(s))
+
+      root.dispatchEvent(new KeyboardEvent('keyup', { key: 'a' }))
+      expect(states.at(-1)).toBeNull()
+
+      await handle.destroy()
+    })
+
+    it('fires onSelectionFormat with coords and no active marks for a plain-text selection', async () => {
+      const states: (null | { bold: boolean; italic: boolean; strike: boolean; code: boolean })[] = []
+      const root = document.createElement('div')
+      const handle = await createWysiwygEditor(root, 'Some text here.\n', () => {}, undefined, (s) => states.push(s))
+
+      handle.selectTextRange(1, 5)
+      root.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift' }))
+
+      expect(states.at(-1)).toMatchObject({ bold: false, italic: false, strike: false, code: false })
+
+      await handle.destroy()
+    })
+
+    it('toggleMark("bold") wraps the selection in strong and reports it as active', async () => {
+      const states: (null | { bold: boolean })[] = []
+      const changes: string[] = []
+      const root = document.createElement('div')
+      const handle = await createWysiwygEditor(root, 'Some text here.\n', (md) => changes.push(md), undefined, (s) => states.push(s))
+
+      handle.selectTextRange(1, 5)
+      root.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift' }))
+      handle.toggleMark('bold')
+      root.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift' }))
+
+      expect(states.at(-1)).toMatchObject({ bold: true })
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(changes.at(-1)?.trim()).toBe('**Some** text here.')
+
+      await handle.destroy()
+    })
+
+    it('toggleMark("italic")/"strike"/"code" wrap the selection with the right markdown', async () => {
+      const root = document.createElement('div')
+      const changes: string[] = []
+      const handle = await createWysiwygEditor(root, 'italic\n', (md) => changes.push(md))
+      handle.selectTextRange(1, 7)
+      handle.toggleMark('italic')
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      // remark-stringify's default emphasis delimiter is `*`, not `_`.
+      expect(changes.at(-1)?.trim()).toBe('*italic*')
+      await handle.destroy()
+
+      const root2 = document.createElement('div')
+      const changes2: string[] = []
+      const handle2 = await createWysiwygEditor(root2, 'strike\n', (md) => changes2.push(md))
+      handle2.selectTextRange(1, 7)
+      handle2.toggleMark('strike')
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(changes2.at(-1)?.trim()).toBe('~~strike~~')
+      await handle2.destroy()
+
+      const root3 = document.createElement('div')
+      const changes3: string[] = []
+      const handle3 = await createWysiwygEditor(root3, 'code\n', (md) => changes3.push(md))
+      handle3.selectTextRange(1, 5)
+      handle3.toggleMark('code')
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(changes3.at(-1)?.trim()).toBe('`code`')
+      await handle3.destroy()
+    })
+  })
+
   describe('getSelectionAnchorLine (WY.4, #324)', () => {
     it('returns null when there is no selection (collapsed cursor)', async () => {
       const root = document.createElement('div')
