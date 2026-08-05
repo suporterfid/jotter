@@ -21,6 +21,11 @@ describe('TabStrip', () => {
     expect(items[1].classes()).toContain('active')
   })
 
+  it('renders as a vertical column, not a horizontal row', () => {
+    const wrapper = mount(TabStrip, { props: { tabs, activeId: 1 } })
+    expect(wrapper.find('.tab-strip').classes()).toContain('tab-strip-vertical')
+  })
+
   it('emits select-tab when a tab is clicked', async () => {
     const wrapper = mount(TabStrip, { props: { tabs, activeId: 1 } })
     await wrapper.findAll('[data-testid="tab-strip-item"]')[1].trigger('click')
