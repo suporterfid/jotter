@@ -48,6 +48,27 @@ If Note A assigns string `"2"` to property `priority` and Note B assigns integer
 
 ---
 
+## Decision — WYSIWYG editor (Issue #263)
+
+`BACKLOG.md`'s "Needs a decision" section carried #263 open since 2026-08-03: is Notion-*feel* the goal for `NoteEditor.vue` (→ inline WYSIWYG, a multi-PR epic), or is Notion-*calm* enough via chrome/spacing work alone, keeping an honest Markdown editor?
+
+**Decided 2026-08-05: Notion-feel is the goal. Option (b) — inline WYSIWYG over Markdown.**
+
+### Options considered (per the audit's Part D.6, ascending cost)
+- (a) Keep the `<textarea>`, drop the Edit/Split/Preview toggle, default to a single rendered-ish view.
+- (b) Inline WYSIWYG over Markdown (TipTap/Milkdown/ProseMirror with a Markdown serializer), preserving the Markdown-on-disk invariant.
+- (c) A real block model.
+
+### Rationale
+(c) risks the Markdown-on-disk invariant itself (spec §1 / `AGENTS.md`) by moving the source of truth toward a block model — rejected outright, consistent with C3's existing "only syntax that degrades to readable plain Markdown elsewhere is supported" position above. (a) is effectively already covered by #250–#262's chrome/spacing work, and the audit's own text states no amount of that work closes the Notion gap while a monospace textarea remains the primary editing surface. (b) is the only option that reaches real Notion parity while keeping the invariant intact.
+
+Within (b), **Milkdown** (not TipTap) is the chosen library: its document model is Markdown-native (built on `remark`), so round-trip fidelity is part of each node's spec rather than a serializer bolted onto a JSON-first document model. Given the invariant is the entire reason this decision required deliberation, "Markdown is the native format" outweighs TipTap's larger plugin ecosystem.
+
+### Scope and sequencing
+Full phased breakdown, risks, and non-goals: `docs/20260805-jotter-wysiwyg-editor-epic-spec.md`. Filed as five sequenced issues (#321–#325), each gated on the previous one being merged and green, per `AGENTS.md`'s PR-sequence rule. Implementation has not started as of this decision — this entry and the spec doc are docs-only, matching how #278 recorded the original decision-needed state and #309 filed the Trello board-parity epic's issues without implementing them in the same PR.
+
+---
+
 ## Adding a new decision
 
 Append a new dated `##` section below this line, in the same format: the question being decided, the options considered, and the choice made with its rationale. Do not edit a resolved decision's original entry — supersede it with a new one that references the old.
