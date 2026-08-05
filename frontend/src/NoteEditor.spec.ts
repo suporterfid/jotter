@@ -1067,3 +1067,53 @@ describe('NoteEditor local graph', () => {
     wrapper.unmount()
   })
 })
+
+describe('NoteEditor "Live" WYSIWYG view mode (WY.2, #322)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('is additive: edit/split/preview are still the default and unaffected', () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    expect(wrapper.find('.editor-body').classes()).toContain('view-split')
+    expect(wrapper.find('[data-testid="markdown-textarea"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('clicking "Live" mounts the WYSIWYG editor and hides the textarea/preview', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '# Hello\n' }), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="view-mode-live"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.editor-body').classes()).toContain('view-live')
+    expect(wrapper.find('[data-testid="wysiwyg-editor"]').exists()).toBe(true)
+    expect(wrapper.find('h1').text()).toBe('Hello')
+
+    wrapper.unmount()
+  })
+
+  it('switching away from "Live" unmounts the WYSIWYG editor', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="view-mode-live"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="wysiwyg-editor"]').exists()).toBe(true)
+
+    await wrapper.find('[data-testid="view-mode-edit"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="wysiwyg-editor"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+})
