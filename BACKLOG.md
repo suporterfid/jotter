@@ -53,18 +53,18 @@ separate future work, blocked on pane-scoping G.1/G.5's DOM-id lookups):
 
 `docs/20260804-jotter-trello-board-parity-audit.md` — findings from a
 comparison of `CollectionsBoardView.vue` against Trello's board/card
-feature set.
+feature set. All ten shipped:
 
-- **No drag-and-drop cards between board columns (#299, L, P1).**
-- **No card creation from the board (#300, M, P2).**
-- **Card face shows only title + path (#302, M–L, P2).**
-- **Tags/labels not surfaced or filterable on the board (#306, S–M, P2).**
-- **No column configuration — reorder/rename/color/WIP limit/collapse (#301, L, P3).**
-- **No multiple boards / saved views (#303, L, P3).**
-- **No swimlanes / second grouping dimension (#304, L, P3).**
-- **No card-level checklists distinct from note content (#305, M–L, P3) — needs a scope decision first (derived from existing task-list syntax vs. a new data model), see the issue.**
-- **No archive state / done-column automation (#307, M, P3).**
-- **No per-card activity feed (#308, M, P3).**
+- ~~**No drag-and-drop cards between board columns (#299, L, P1).**~~ **Shipped** (PR #310).
+- ~~**No card creation from the board (#300, M, P2).**~~ **Shipped** (PR #311).
+- ~~**Card face shows only title + path (#302, M–L, P2).**~~ **Shipped** — cover, due date, checklist, comments (PR #313).
+- ~~**Tags/labels not surfaced or filterable on the board (#306, S–M, P2).**~~ **Shipped** (PR #312).
+- ~~**No column configuration — reorder/rename/color/WIP limit/collapse (#301, L, P3).**~~ **Shipped** (PR #315).
+- ~~**No multiple boards / saved views (#303, L, P3).**~~ **Shipped** (PR #314).
+- ~~**No swimlanes / second grouping dimension (#304, L, P3).**~~ **Shipped** (PR #316).
+- ~~**No card-level checklists distinct from note content (#305, M–L, P3).**~~ **Shipped** — checklists as a separate structure, not derived from task-list syntax (PR #317).
+- ~~**No archive state / done-column automation (#307, M, P3).**~~ **Shipped** (PR #318).
+- ~~**No per-card activity feed (#308, M, P3).**~~ **Shipped** (PR #319).
 
 ## Not adopted
 
