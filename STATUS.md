@@ -1,7 +1,7 @@
 # Jotter — Project Status
 
 - **Current Version:** v0.9.0 (v0 spec contracts complete; v1 work in progress)
-- **Last Updated:** 2026-08-05 (WY.1 — Milkdown round-trip fidelity harness, PR TBD)
+- **Last Updated:** 2026-08-05 (WY.1 — Milkdown round-trip fidelity harness, PR #328)
 - **Repo:** https://github.com/suporterfid/jotter
 - **Production Site:** https://hub.taskconnect.com.br/
 - **CI Status:** 🟢 Green on `main`. #140 and #142 fixed via PR #144, merged and confirmed on two green GitHub Actions runs, both issues closed. **`main` is now branch-protected** (#148): the `test` CI job is a required status check, `enforce_admins` is on, force-pushes and deletions are disabled — direct pushes and merges without green CI are rejected by GitHub. Verified live: an empty direct-push commit was rejected with `Required status check "test" is expected`. This is the mechanism that was missing when #140 regressed silently after #49.
