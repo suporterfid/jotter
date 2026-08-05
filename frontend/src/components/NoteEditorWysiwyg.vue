@@ -65,6 +65,18 @@ onBeforeUnmount(() => {
   handle?.destroy()
   handle = null
 })
+
+/**
+ * Lets NoteEditor.vue's SlashMenu (#256) insert a block at the cursor
+ * without string-splicing into a textarea that no longer exists in this
+ * mode — blockRegistry.ts stays the single source of truth for each
+ * block's markdown snippet either way.
+ */
+function insertBlock(markdown: string) {
+  handle?.insertMarkdown(markdown)
+}
+
+defineExpose({ insertBlock })
 </script>
 
 <style scoped>
