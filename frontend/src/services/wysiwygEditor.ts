@@ -2,22 +2,27 @@ import { Editor, defaultValueCtx, rootCtx } from '@milkdown/kit/core'
 import { commonmark } from '@milkdown/kit/preset/commonmark'
 import { gfm } from '@milkdown/kit/preset/gfm'
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener'
-import { replaceAll } from '@milkdown/kit/utils'
+import { replaceAll, insert } from '@milkdown/kit/utils'
+import { wikilinkNode } from './wysiwygNodes/wikilink'
+import { embedNode } from './wysiwygNodes/embed'
+import { calloutNode } from './wysiwygNodes/callout'
+import { toggleNode } from './wysiwygNodes/toggle'
 
 export interface WysiwygEditorHandle {
   /** Pushes external markdown into the editor (e.g. switching notes). */
   setMarkdown(markdown: string): void
+  /** Inserts a raw markdown snippet at the current selection (slash menu). */
+  insertMarkdown(markdown: string): void
   destroy(): Promise<void>
 }
 
 /**
  * Creates a Milkdown editor mounted on `root`, wired so every content change
  * (typing, paste, or an external setMarkdown() call) invokes onMarkdownChanged
- * with the freshly serialized markdown. Standard CommonMark+GFM nodes only —
- * the same configuration WY.1's round-trip harness
- * (services/__tests__/wysiwygRoundTrip.spec.ts) already proves is safe for
- * Jotter's syntax: [[wikilink]], ![[embed]], and > [!NOTE] callouts pass
- * through as plain text until WY.3 adds native nodes for them.
+ * with the freshly serialized markdown. CommonMark+GFM plus WY.3's (#323)
+ * native nodes for [[wikilink]], ![[embed]], > [!NOTE] callouts, and
+ * <details>/<summary> toggles — each proven against the round-trip harness
+ * in its own wysiwygNodes/__tests__ spec before being wired in here.
  */
 export async function createWysiwygEditor(
   root: HTMLElement,
@@ -37,12 +42,19 @@ export async function createWysiwygEditor(
     .use(commonmark)
     .use(gfm)
     .use(listener)
+    .use(wikilinkNode)
+    .use(embedNode)
+    .use(calloutNode)
+    .use(toggleNode)
 
   await editor.create()
 
   return {
     setMarkdown(markdown: string) {
       editor.action(replaceAll(markdown))
+    },
+    insertMarkdown(markdown: string) {
+      editor.action(insert(markdown))
     },
     async destroy() {
       await editor.destroy()
