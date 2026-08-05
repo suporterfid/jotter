@@ -30,6 +30,12 @@ test.describe('Selection-triggered comments (#261)', () => {
     await page.click('[data-testid="create-note-submit"]')
     await expect(page.locator('[data-testid="editor-path"]')).toContainText(path, { timeout: 10000 })
 
+    // WY.5 (#325) made 'live' the default view mode; this test exercises
+    // the textarea's own selection-driven comment trigger specifically
+    // (WY.4/#324 already covers the Live surface's equivalent at the
+    // unit-test level), so switch to Edit first.
+    await page.click('[data-testid="view-mode-edit"]')
+
     const editorTextarea = page.locator('[data-testid="markdown-textarea"]')
     await editorTextarea.fill('First line\nSomething interesting here.\nThird line.')
     await expect(page.locator('[data-testid="save-status-indicator"]')).toContainText('Saved', { timeout: 10000 })

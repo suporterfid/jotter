@@ -775,7 +775,13 @@ async function clearIcon() {
   }
 }
 
-const viewMode = ref<'edit' | 'split' | 'preview' | 'live'>('split')
+// 'live' is the default as of WY.5 (#325) — this is the PR that actually
+// resolves the Notion-feel gap #263 identified; WY.1-WY.4 were
+// prerequisite infrastructure with no default-experience change. Raw
+// 'edit' (and 'split'/'preview') stay fully reachable via the toggle as a
+// power-user/debug fallback, not removed — see the epic spec §6 for why
+// fully retiring the toggle is deferred to a later decision.
+const viewMode = ref<'edit' | 'split' | 'preview' | 'live'>('live')
 const editableContent = ref(props.note.content)
 const isDirty = ref(false)
 const isSaving = ref(false)

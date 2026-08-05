@@ -38,6 +38,11 @@ test.describe('Jotter Notes E2E Journey', () => {
     await expect(page.locator('[data-testid="editor-title"]')).toHaveValue(/e2e-demo/, { timeout: 10000 })
     await expect(page.locator('[data-testid="editor-path"]')).toContainText('e2e-demo.md')
 
+    // WY.5 (#325) made 'live' the default view mode; this test needs the
+    // raw textarea AND the rendered .markdown-preview pane both visible,
+    // so switch to Split explicitly.
+    await page.click('[data-testid="view-mode-split"]')
+
     // Edit content with headings, wikilinks, and malicious script to test safe rendering
     const editorTextarea = page.locator('[data-testid="markdown-textarea"]')
     await editorTextarea.fill('# Demo Note\n\nLinking to [[welcome.md|Welcome]] note.\n\n<script>window.XSS_EXECUTED=true;</script>')
