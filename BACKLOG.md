@@ -27,7 +27,7 @@ C1, C2, C3, C5, and C6 were resolved — see `docs/decisions.md`. This section p
 
 - ~~**WY.1 — Markdown ⇄ Milkdown round-trip fidelity harness, no UI change (#321, M, P2).**~~ **Shipped.** `frontend/src/services/__tests__/wysiwygRoundTrip.spec.ts`; 8 known gaps (front matter, wikilinks, embeds, callouts, list/table cosmetic normalization) documented as required WY.3 scope, not silently dropped.
 - ~~**WY.2 — Additive "Live" WYSIWYG view mode alongside Edit/Split/Preview (#322, L, P2).**~~ **Shipped.** `NoteEditorWysiwyg.vue` + `frontMatterGuard.ts`; front matter now safely round-trips through this mode (WY.1's most severe known gap, closed).
-- **WY.3 — Native nodes for wikilinks/embeds/callouts/toggles/tables + slash menu on the WYSIWYG surface (#323, L, P2).**
+- ~~**WY.3 — Native nodes for wikilinks/embeds/callouts/toggles/tables + slash menu on the WYSIWYG surface (#323, L, P2).**~~ **Shipped.** `wysiwygNodes/{wikilink,embed,callout,toggle}.ts`; all four moved from KNOWN_GAP_FIXTURES to LOSSLESS_FIXTURES. Known limit: multi-paragraph toggle bodies aren't parsed (single-line form only).
 - **WY.4 — Port comment-anchoring and history/restore off textarea coordinate hacks (#324, M, P3).**
 - **WY.5 — Make "Live" the default view mode; keep raw source as an opt-in fallback (#325, M, P3).**
 
