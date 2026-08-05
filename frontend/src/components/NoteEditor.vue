@@ -266,54 +266,6 @@
           @scroll="handleUnhoverWikilink"
         ></textarea>
 
-        <!-- Selection-triggered Comment affordance: a small floating
-             button appears near where the mouse was released after
-             selecting text, matching how Notion/Google Docs anchor
-             commenting to a selection instead of only offering a
-             global comment form at the bottom of the page. Positioned
-             from the mouseup event's own coordinates (a plain textarea
-             has no per-character DOM Range API to measure exact caret
-             position from, unlike a contenteditable surface) — so this
-             is mouse-selection-driven only, not keyboard (shift+arrow)
-             selection. -->
-        <button
-          v-if="showCommentTrigger"
-          type="button"
-          class="comment-trigger-btn"
-          data-testid="comment-trigger-btn"
-          :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
-          @mousedown.prevent="openCommentComposer"
-        >
-          💬 Comment
-        </button>
-
-        <div
-          v-if="showCommentComposer"
-          class="comment-composer"
-          data-testid="comment-composer"
-          :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
-        >
-          <textarea
-            v-model="commentComposerDraft"
-            class="comment-composer-textarea"
-            placeholder="Comment on selection..."
-            data-testid="comment-composer-textarea"
-            rows="2"
-            autofocus
-            @keydown.escape="closeCommentComposer"
-          ></textarea>
-          <div class="comment-composer-actions">
-            <button type="button" class="btn-comment-cancel" data-testid="comment-composer-cancel" @click="closeCommentComposer">Cancel</button>
-            <button
-              type="button"
-              class="btn-comment-submit"
-              data-testid="comment-composer-submit"
-              :disabled="!commentComposerDraft.trim()"
-              @click="submitSelectionComment"
-            >Comment</button>
-          </div>
-        </div>
-
         <!-- Wikilink Autocomplete Dropdown -->
         <div 
           v-if="showAutocomplete && autocompleteSuggestions.length > 0" 
@@ -341,7 +293,56 @@
           ref="wysiwygRef"
           v-model:content="editableContent"
           @slash-query="handleWysiwygSlashQuery"
+          @comment-trigger="handleWysiwygCommentTrigger"
         />
+      </div>
+
+      <!-- Selection-triggered Comment affordance: a small floating button
+           appears near where the mouse was released after selecting text,
+           matching how Notion/Google Docs anchor commenting to a
+           selection instead of only offering a global comment form at
+           the bottom of the page. A sibling of both editor surfaces (not
+           nested in textarea-wrapper), like SlashMenu below, so it stays
+           visible and correctly positioned regardless of viewMode,
+           including 'live' (WY.4, #324) where the textarea is v-show'd
+           away. Mouse-selection-driven only, not keyboard (shift+arrow)
+           selection, on both surfaces. -->
+      <button
+        v-if="showCommentTrigger"
+        type="button"
+        class="comment-trigger-btn"
+        data-testid="comment-trigger-btn"
+        :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
+        @mousedown.prevent="openCommentComposer"
+      >
+        💬 Comment
+      </button>
+
+      <div
+        v-if="showCommentComposer"
+        class="comment-composer"
+        data-testid="comment-composer"
+        :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
+      >
+        <textarea
+          v-model="commentComposerDraft"
+          class="comment-composer-textarea"
+          placeholder="Comment on selection..."
+          data-testid="comment-composer-textarea"
+          rows="2"
+          autofocus
+          @keydown.escape="closeCommentComposer"
+        ></textarea>
+        <div class="comment-composer-actions">
+          <button type="button" class="btn-comment-cancel" data-testid="comment-composer-cancel" @click="closeCommentComposer">Cancel</button>
+          <button
+            type="button"
+            class="btn-comment-submit"
+            data-testid="comment-composer-submit"
+            :disabled="!commentComposerDraft.trim()"
+            @click="submitSelectionComment"
+          >Comment</button>
+        </div>
       </div>
 
       <!-- Slash-command Menu: a sibling of both editor surfaces (not
@@ -1158,7 +1159,12 @@ function handleTextSelection(event: MouseEvent) {
     return
   }
 
-  const wrapperEl = el.parentElement
+  // .comment-trigger-btn/.comment-composer are positioned relative to
+  // .editor-body (they're siblings of textarea-wrapper/live-wrapper, not
+  // nested in either — see #323's SlashMenu relocation for the same
+  // reason), so coordinates are computed relative to that shared ancestor
+  // regardless of which surface the selection came from.
+  const wrapperEl = (event.currentTarget as HTMLElement).closest('.editor-body')
   if (!wrapperEl) return
   const wrapperRect = wrapperEl.getBoundingClientRect()
   pendingCommentAnchorLine.value = editableContent.value.slice(0, selectionStart).split('\n').length
@@ -1166,6 +1172,24 @@ function handleTextSelection(event: MouseEvent) {
     top: event.clientY - wrapperRect.top + 12,
     left: event.clientX - wrapperRect.left,
   }
+  showCommentTrigger.value = true
+  showCommentComposer.value = false
+}
+
+/**
+ * Live mode's equivalent of handleTextSelection above: NoteEditorWysiwyg.vue
+ * emits this on mouseup with an exact document-structure anchor line
+ * (wysiwygEditor.ts's getSelectionAnchorLine(), WY.4/#324) instead of the
+ * textarea's selectionStart character-offset heuristic, or null when the
+ * selection is collapsed.
+ */
+function handleWysiwygCommentTrigger(state: { line: number; top: number; left: number } | null) {
+  if (!state) {
+    showCommentTrigger.value = false
+    return
+  }
+  pendingCommentAnchorLine.value = state.line
+  commentTriggerPos.value = { top: state.top, left: state.left }
   showCommentTrigger.value = true
   showCommentComposer.value = false
 }
@@ -1428,6 +1452,11 @@ async function handleRestoreRevision(revisionId: number) {
   try {
     await restoreNoteRevision(props.workspaceId, props.note.id, revisionId)
     showHistory.value = false
+    // The note.id watch below (guarding autosave's own same-note reload)
+    // otherwise skips refreshing editableContent here too, since a
+    // restore keeps the same note id — force it to treat the upcoming
+    // prop update as a real content change (WY.4, #324).
+    currentNoteId = null
     emit('select-note', props.note.id)
   } catch (err) {
     console.error('Failed to restore revision:', err)

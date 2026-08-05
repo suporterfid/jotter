@@ -1,5 +1,5 @@
 <template>
-  <div ref="rootEl" class="wysiwyg-editor" data-testid="wysiwyg-editor"></div>
+  <div ref="rootEl" class="wysiwyg-editor" data-testid="wysiwyg-editor" @mouseup="handleMouseUp"></div>
 </template>
 
 <script setup lang="ts">
@@ -23,6 +23,10 @@ import { splitFrontMatter, joinFrontMatter } from '../services/frontMatterGuard'
  * [[wikilink]], ![[embed]], > [!NOTE] callouts, and <details> toggles are
  * native nodes as of WY.3 (#323); `slash-query` re-points NoteEditor.vue's
  * existing SlashMenu.vue (#256) at this editor instead of the textarea.
+ * `comment-trigger` does the same for the selection-driven "💬 Comment"
+ * affordance (WY.4, #324), using a real document-structure anchor line
+ * (wysiwygEditor.ts's getSelectionAnchorLine()) instead of the textarea's
+ * selectionStart character-offset heuristic.
  */
 const props = defineProps<{
   content: string
@@ -31,6 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:content', content: string): void
   (e: 'slash-query', state: SlashQuery | null): void
+  (e: 'comment-trigger', state: { line: number; top: number; left: number } | null): void
 }>()
 
 const rootEl = ref<HTMLElement | null>(null)
@@ -84,6 +89,30 @@ function insertBlock(markdown: string) {
 }
 
 defineExpose({ insertBlock })
+
+/**
+ * Live mode's equivalent of NoteEditor.vue's handleTextSelection: a real
+ * document-structure anchor line instead of a textarea coordinate
+ * heuristic (WY.4, #324). Coordinates are computed relative to
+ * .editor-body (the shared ancestor comment-trigger-btn/comment-composer
+ * are positioned against), same as the textarea's own handler.
+ */
+function handleMouseUp(event: MouseEvent) {
+  const line = handle?.getSelectionAnchorLine() ?? null
+  if (line === null) {
+    emit('comment-trigger', null)
+    return
+  }
+
+  const wrapperEl = (event.currentTarget as HTMLElement).closest('.editor-body')
+  if (!wrapperEl) return
+  const wrapperRect = wrapperEl.getBoundingClientRect()
+  emit('comment-trigger', {
+    line,
+    top: event.clientY - wrapperRect.top + 12,
+    left: event.clientX - wrapperRect.left,
+  })
+}
 </script>
 
 <style scoped>
