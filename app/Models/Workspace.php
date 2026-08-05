@@ -44,4 +44,9 @@ class Workspace extends Model
     {
         return $this->hasMany(AuditLog::class);
     }
+
+    public function boards(): HasMany
+    {
+        return $this->hasMany(Board::class);
+    }
 }

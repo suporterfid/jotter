@@ -31,6 +31,9 @@ final class BoardControllerTest extends TestCase
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $workspace = $this->makeWorkspace();
+        // Workspace creation auto-creates a default board; this test is
+        // about ordering, not that feature, so clear it first.
+        Board::query()->where('workspace_id', $workspace->id)->delete();
         Board::create(['workspace_id' => $workspace->id, 'name' => 'Second', 'sort_position' => 1]);
         Board::create(['workspace_id' => $workspace->id, 'name' => 'First', 'sort_position' => 0]);
 
