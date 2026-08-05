@@ -20,7 +20,18 @@ As of 2026-07-29, every previously-tracked Milestone is delivered (backend and U
 C1, C2, C3, C5, and C6 were resolved — see `docs/decisions.md`. This section previously still listed them as open `TODO(spec)` blockers after they were resolved; that self-contradiction was found and fixed (#141).
 
 - **Roadmap baseline provenance.** `TODO(spec): confirm whether the roadmap's gap analysis was drawn from a different product of the same name. Until confirmed, spec §14.3 governs what counts as delivered.`
-- **Markdown textarea + Edit/Split/Preview toggle vs. real Notion-feel (#263, XL, P3).** `docs/20260803-jotter-editor-chrome-notion-parity-audit.md` §B.1, Part D.6, Open Question 1: `NoteEditor.vue`'s core editing surface is a single `<textarea>` in `--font-mono` paired with a rendered preview and an Edit/Split/Preview toggle — a control whose mere existence announces "this is a Markdown tool." No amount of chrome/spacing work (the rest of this audit's #250–#262) closes that gap while this textarea remains the primary editing surface. This collides directly with the Markdown-on-disk invariant (spec §1/`AGENTS.md`), so it's a product decision, not a UI task — do not drift into it via smaller PRs. Options, ascending cost: (a) keep the textarea, drop the toggle, default to a single rendered-ish view; (b) inline WYSIWYG over Markdown (TipTap/Milkdown/ProseMirror with a Markdown serializer, preserving the on-disk invariant) — the only option reaching real Notion parity while keeping the Markdown-on-disk rule intact, a multi-PR epic; (c) a real block model (furthest from current architecture, highest cost). The open question to resolve first: is Notion-*feel* the actual goal, or is Notion-*calm* enough via #250–#262 while keeping an honest Markdown editor? All other issues from the audit are independent of this answer and can proceed regardless.
+
+## WYSIWYG editor epic (decision resolved 2026-08-05 — option (b))
+
+`docs/20260805-jotter-wysiwyg-editor-epic-spec.md` resolves the #263 decision recorded above: Notion-feel is the goal, delivered as inline WYSIWYG over Markdown (Milkdown, preserving the on-disk invariant — see `docs/decisions.md` for full rationale). Sequenced as five issues, each gated on the previous one merged and green:
+
+- **WY.1 — Markdown ⇄ Milkdown round-trip fidelity harness, no UI change (#321, M, P2).**
+- **WY.2 — Additive "Live" WYSIWYG view mode alongside Edit/Split/Preview (#322, L, P2).**
+- **WY.3 — Native nodes for wikilinks/embeds/callouts/toggles/tables + slash menu on the WYSIWYG surface (#323, L, P2).**
+- **WY.4 — Port comment-anchoring and history/restore off textarea coordinate hacks (#324, M, P3).**
+- **WY.5 — Make "Live" the default view mode; keep raw source as an opt-in fallback (#325, M, P3).**
+
+Fully removing the Edit/Split/Preview toggle (the audit's literal D.6b ask) is deliberately not committed scope in WY.1–WY.5 — see the spec doc §6.
 
 ## Obsidian UI-parity gaps
 
