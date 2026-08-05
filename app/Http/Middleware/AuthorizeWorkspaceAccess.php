@@ -71,6 +71,30 @@ final class AuthorizeWorkspaceAccess
 
                 return response()->json(['message' => 'Forbidden workspace access.'], 403);
             }
+
+            if (($subject->attributes['auth_method'] ?? null) === 'grandpasson_service_token') {
+                $requiredScope = in_array($request->method(), ['GET', 'HEAD'], true)
+                    ? 'kb:read'
+                    : 'kb:write';
+
+                if (! in_array($requiredScope, $subject->attributes['scopes'], true)) {
+                    (new \App\Domain\Audit\AuditRecorder)->record(
+                        \App\Domain\Audit\AuditEvent::AUTH_FORBIDDEN,
+                        $tenantId,
+                        $workspaceId,
+                        $subject->subjectId,
+                        [
+                            'reason' => 'insufficient_scope',
+                            'required_scope' => $requiredScope,
+                            'scopes' => $subject->attributes['scopes'],
+                            'path' => $request->path(),
+                            'method' => $request->method(),
+                        ]
+                    );
+
+                    return response()->json(['message' => 'Token does not have the required scope.'], 403);
+                }
+            }
         }
 
         $request->attributes->set('authenticated_subject', $subject);
