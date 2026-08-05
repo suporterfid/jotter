@@ -4,6 +4,8 @@ namespace App\Domain\Auth\Providers;
 
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\GrandpaSson\HttpIntrospectionClient;
+use App\Domain\Auth\GrandpaSson\IntrospectionClientInterface;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,14 +16,27 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
 {
     private readonly LocalIdentityProvider $localProvider;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly IntrospectionClientInterface $introspection = new HttpIntrospectionClient()
+    ) {
         $this->localProvider = new LocalIdentityProvider();
     }
 
     public function resolveIdentity(Request $request): ?AuthenticatedSubject
     {
-        // 1. Check GrandpaSSOn AUTHSESSID session cookie
+        // 1. Check Bearer GrandpaSSOn service token (client_credentials flow) —
+        // see docs/superpowers/specs/2026-08-05-grandpasson-service-tokens-design.md
+        if (config('jotter.grandpasson_resource.inbound_enabled', false)) {
+            $bearerToken = $request->bearerToken();
+            if ($bearerToken) {
+                $subject = $this->resolveFromServiceToken($bearerToken);
+                if ($subject !== null) {
+                    return $subject;
+                }
+            }
+        }
+
+        // 2. Check GrandpaSSOn AUTHSESSID session cookie
         $authSessId = $request->cookie('AUTHSESSID') ?? ($_COOKIE['AUTHSESSID'] ?? null);
 
         if ($authSessId) {
@@ -31,7 +46,7 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
             }
         }
 
-        // 2. Check active web session if authenticated via login endpoint
+        // 3. Check active web session if authenticated via login endpoint
         /** @var User|null $user */
         $user = Auth::guard('web')->user();
         if ($user && $request->hasSession() && $request->session()->has('sso_authenticated')) {
@@ -45,6 +60,34 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
         }
 
         return null;
+    }
+
+    /**
+     * A GrandpaSSOn client_credentials service token has no User row — it
+     * represents a machine caller scoped to exactly the workspace(s) named
+     * in its `aud` claim (see isAuthorizedForWorkspace() below), not a
+     * Membership row. attributes['auth_method'] distinguishes this subject
+     * type everywhere else in this class and in AuthorizeWorkspaceAccess.
+     */
+    private function resolveFromServiceToken(string $token): ?AuthenticatedSubject
+    {
+        $result = $this->introspection->introspect($token);
+        if (! $result->active || $result->clientId === null) {
+            return null;
+        }
+
+        return new AuthenticatedSubject(
+            subjectId: "service:{$result->clientId}",
+            email: '',
+            name: "Service client {$result->clientId}",
+            isAdmin: false,
+            user: null,
+            attributes: [
+                'auth_method' => 'grandpasson_service_token',
+                'scopes' => $result->scopes,
+                'audiences' => $result->audiences,
+            ],
+        );
     }
 
     /**
