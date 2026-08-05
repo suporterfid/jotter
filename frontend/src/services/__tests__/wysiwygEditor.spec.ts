@@ -50,4 +50,52 @@ describe('createWysiwygEditor', () => {
 
     await expect(handle.destroy()).resolves.toBeUndefined()
   })
+
+  it('fires onSlashQuery when "/" is typed at the start of a paragraph, and null once the query breaks', async () => {
+    const root = document.createElement('div')
+    const queries: Array<{ query: string; top: number; left: number } | null> = []
+
+    const handle = await createWysiwygEditor(root, '\n', () => {}, (state) => queries.push(state))
+
+    root.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }))
+    expect(queries.at(-1)).toBeNull()
+
+    handle.setMarkdown('/tab')
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    root.dispatchEvent(new KeyboardEvent('keyup', { key: 'b' }))
+
+    expect(queries.at(-1)).toMatchObject({ query: 'tab' })
+
+    handle.setMarkdown('/tab done')
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    root.dispatchEvent(new KeyboardEvent('keyup', { key: 'e' }))
+
+    expect(queries.at(-1)).toBeNull()
+
+    await handle.destroy()
+  })
+
+  it('insertBlockReplacingSlashQuery replaces the "/query" text with the inserted block', async () => {
+    const root = document.createElement('div')
+    const changes: string[] = []
+    let lastQuery: { query: string; top: number; left: number } | null = null
+
+    const handle = await createWysiwygEditor(root, '\n', (md) => changes.push(md), (state) => {
+      lastQuery = state
+    })
+
+    handle.setMarkdown('/table')
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    root.dispatchEvent(new KeyboardEvent('keyup', { key: 'e' }))
+    expect(lastQuery).toMatchObject({ query: 'table' })
+
+    handle.insertBlockReplacingSlashQuery('- [ ] Task item')
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    // Bullet marker renormalized `-` -> `*` — WY.1's documented, cosmetic
+    // remark-stringify gap (wysiwygRoundTrip.spec.ts), not a bug here.
+    expect(changes.at(-1)?.trim()).toBe('* [ ] Task item')
+
+    await handle.destroy()
+  })
 })

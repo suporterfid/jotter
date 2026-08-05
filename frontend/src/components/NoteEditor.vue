@@ -333,23 +333,29 @@
           </div>
         </div>
 
-        <!-- Slash-command Menu -->
-        <SlashMenu
-          ref="slashMenuRef"
-          :is-open="showSlashMenu"
-          :filter-query="slashMenuQuery"
-          :style="slashMenuStyle"
-          @select="selectSlashBlock"
-          @close="closeSlashMenu"
-        />
       </div>
 
       <!-- Live WYSIWYG Area (WY.2, #322) -->
       <div v-if="viewMode === 'live'" class="live-wrapper">
         <NoteEditorWysiwyg
+          ref="wysiwygRef"
           v-model:content="editableContent"
+          @slash-query="handleWysiwygSlashQuery"
         />
       </div>
+
+      <!-- Slash-command Menu: a sibling of both editor surfaces (not
+           nested in textarea-wrapper) so it stays visible and correctly
+           positioned regardless of viewMode, including 'live' (#323) where
+           the textarea is v-show'd away. -->
+      <SlashMenu
+        ref="slashMenuRef"
+        :is-open="showSlashMenu"
+        :filter-query="slashMenuQuery"
+        :style="slashMenuStyle"
+        @select="selectSlashBlock"
+        @close="closeSlashMenu"
+      />
 
       <!-- Preview Area -->
       <div v-show="viewMode !== 'edit' && viewMode !== 'live'" class="preview-wrapper">
@@ -977,6 +983,23 @@ const slashMenuQuery = ref('')
 const slashMenuStartIndex = ref(-1)
 const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null)
 const slashMenuStyle = ref({ top: '40px', left: '20px' })
+const wysiwygRef = ref<InstanceType<typeof NoteEditorWysiwyg> | null>(null)
+
+/**
+ * Re-points the same SlashMenu.vue (#256) at the Live WYSIWYG surface
+ * (WY.3, #323): NoteEditorWysiwyg.vue emits this from
+ * wysiwygEditor.ts's onSlashQuery, using the same "start of line, or
+ * after a space" trigger rule handleInput's textarea version uses below.
+ */
+function handleWysiwygSlashQuery(state: { query: string; top: number; left: number } | null) {
+  if (!state) {
+    showSlashMenu.value = false
+    return
+  }
+  showSlashMenu.value = true
+  slashMenuQuery.value = state.query
+  slashMenuStyle.value = { top: `${state.top}px`, left: `${state.left}px` }
+}
 
 // `note` is replaced with a new object reference not just when the user
 // switches notes, but also every time our own autosave round-trips
@@ -1341,6 +1364,12 @@ function selectSuggestion(suggestion: NoteMeta) {
 }
 
 function selectSlashBlock(block: BlockDefinition) {
+  if (viewMode.value === 'live') {
+    wysiwygRef.value?.insertBlock(block.syntax)
+    showSlashMenu.value = false
+    return
+  }
+
   const el = textareaRef.value
   if (!el) return
 

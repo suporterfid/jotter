@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { createWysiwygEditor, type WysiwygEditorHandle } from '../services/wysiwygEditor'
+import { createWysiwygEditor, type SlashQuery, type WysiwygEditorHandle } from '../services/wysiwygEditor'
 import { splitFrontMatter, joinFrontMatter } from '../services/frontMatterGuard'
 
 /**
@@ -20,9 +20,9 @@ import { splitFrontMatter, joinFrontMatter } from '../services/frontMatterGuard'
  * unchanged on every emit — CommonMark has no front matter concept and
  * destroys it (see wysiwygRoundTrip.spec.ts's "front matter" known gap).
  *
- * [[wikilink]], ![[embed]], and > [!NOTE] callouts have no native node yet
- * (WY.3, #323) — they pass through as plain text, which WY.1's round-trip
- * harness already proves is safe.
+ * [[wikilink]], ![[embed]], > [!NOTE] callouts, and <details> toggles are
+ * native nodes as of WY.3 (#323); `slash-query` re-points NoteEditor.vue's
+ * existing SlashMenu.vue (#256) at this editor instead of the textarea.
  */
 const props = defineProps<{
   content: string
@@ -30,6 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:content', content: string): void
+  (e: 'slash-query', state: SlashQuery | null): void
 }>()
 
 const rootEl = ref<HTMLElement | null>(null)
@@ -45,11 +46,16 @@ let lastEmitted = props.content
 onMounted(async () => {
   if (!rootEl.value) return
   const { body } = splitFrontMatter(props.content)
-  handle = await createWysiwygEditor(rootEl.value, body, (markdown) => {
-    const full = joinFrontMatter(frontMatter, markdown)
-    lastEmitted = full
-    emit('update:content', full)
-  })
+  handle = await createWysiwygEditor(
+    rootEl.value,
+    body,
+    (markdown) => {
+      const full = joinFrontMatter(frontMatter, markdown)
+      lastEmitted = full
+      emit('update:content', full)
+    },
+    (state) => emit('slash-query', state)
+  )
 })
 
 watch(() => props.content, (newContent) => {
@@ -65,6 +71,19 @@ onBeforeUnmount(() => {
   handle?.destroy()
   handle = null
 })
+
+/**
+ * Lets NoteEditor.vue's SlashMenu (#256) insert a block without
+ * string-splicing into a textarea that no longer exists in this mode —
+ * blockRegistry.ts stays the single source of truth for each block's
+ * markdown snippet either way. Replaces the triggering "/query" text when
+ * called from a slash-query selection; otherwise inserts at the cursor.
+ */
+function insertBlock(markdown: string) {
+  handle?.insertBlockReplacingSlashQuery(markdown)
+}
+
+defineExpose({ insertBlock })
 </script>
 
 <style scoped>

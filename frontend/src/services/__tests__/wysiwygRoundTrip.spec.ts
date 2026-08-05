@@ -2,25 +2,31 @@ import { describe, expect, it } from 'vitest'
 import { roundTripMarkdown } from '../wysiwygRoundTrip'
 
 /**
- * WY.1 round-trip fidelity harness (docs/20260805-jotter-wysiwyg-editor-epic-spec.md §5).
+ * WY.1/WY.3 round-trip fidelity harness (docs/20260805-jotter-wysiwyg-editor-epic-spec.md §5).
  *
  * Every syntax feature `frontend/src/services/markdown.ts` and
  * `app/Domain/Vault/MarkdownServerRenderer.php` special-case gets a fixture
- * here, run through Markdown → Milkdown doc → Markdown.
+ * here, run through Markdown → Milkdown doc → Markdown (now with WY.3's
+ * (#323) native wikilink/embed/callout/toggle nodes loaded, see
+ * wysiwygRoundTrip.ts).
  *
  * Two categories, both required by the issue's acceptance criteria:
  *
  * - LOSSLESS_FIXTURES: byte-identical (after trimming trailing newline)
  *   round trip. A regression here is a real bug — these must never move to
- *   the gaps list silently.
+ *   the gaps list silently. Wikilinks, embeds, callouts, and single-line
+ *   toggles moved here from KNOWN_GAP_FIXTURES once WY.3 gave them native
+ *   nodes (previously they survived only as defensively-escaped plain text).
  * - KNOWN_GAP_FIXTURES: the round trip is NOT lossless today. Each entry
  *   asserts the *actual current* mangled output (not the original input),
  *   so CI stays green while the mismatch stays visible and undeniable —
- *   this is what "documented, not silently dropped" means. Every entry here
- *   is required scope for WY.3 (#323): either a native ProseMirror node
- *   needs to be added for the construct, or (for front matter) the WYSIWYG
- *   editor must strip/reattach it outside Milkdown's parse, the same way
- *   MarkdownDocument::parse()/compose() already does server-side.
+ *   this is what "documented, not silently dropped" means. Front matter
+ *   is still listed here: this harness parses raw markdown directly, and
+ *   front-matter stripping is a NoteEditorWysiwyg.vue-level concern
+ *   (frontMatterGuard.ts, WY.2/#322), not something Milkdown's parse itself
+ *   handles. The bullet-marker and table-separator entries are cosmetic
+ *   remark-stringify renormalizations, not missing native nodes — left as
+ *   a "nice to have" for a future WY phase if it becomes a real complaint.
  */
 
 interface LosslessFixture {
@@ -82,6 +88,30 @@ const LOSSLESS_FIXTURES: LosslessFixture[] = [
     name: 'blockquote (plain, no callout marker)',
     markdown: '> A plain quoted line.\n',
   },
+  {
+    name: 'wikilink [[Note]] (native node since WY.3, #323)',
+    markdown: 'See [[Other Note]] for more.\n',
+  },
+  {
+    name: 'wikilink with alias and heading anchor: [[Note#Heading|Alias]] (native node since WY.3)',
+    markdown: '[[Note#Heading|Alias]]\n',
+  },
+  {
+    name: 'wikilink block reference: [[Note#^blockid]] (native node since WY.3)',
+    markdown: '[[Note#^blockid]]\n',
+  },
+  {
+    name: 'embed ![[Note]] (native node since WY.3)',
+    markdown: 'See ![[Other Note]] embedded.\n',
+  },
+  {
+    name: 'callout > [!NOTE] (native node since WY.3)',
+    markdown: '> [!NOTE] This is a note.\n',
+  },
+  {
+    name: 'toggle <details><summary>...</summary>...</details> (native node since WY.3, single-line only)',
+    markdown: '<details><summary>Toggle</summary>Content</details>\n',
+  },
 ]
 
 const KNOWN_GAP_FIXTURES: KnownGapFixture[] = [
@@ -96,36 +126,6 @@ const KNOWN_GAP_FIXTURES: KnownGapFixture[] = [
     markdown: '| A | B |\n| --- | --- |\n| 1 | 2 |\n',
     actualOutput: '| A | B |\n| - | - |\n| 1 | 2 |\n',
     gap: 'GFM table serialization shortens the separator row to the minimum valid width (`-` instead of `---`). Semantically identical CommonMark, not byte-identical. Same disposition as the bullet-marker gap above — cosmetic diff on every saved table, worth a serializer option in WY.3 if avoidable.',
-  },
-  {
-    name: 'wikilink [[Note]]',
-    markdown: 'See [[Other Note]] for more.\n',
-    actualOutput: 'See \\[\\[Other Note]] for more.\n',
-    gap: 'No native wikilink node exists yet (that is WY.3\'s job, from blockRegistry.ts). Milkdown sees literal `[[`/`]]` text and remark-stringify defensively backslash-escapes the brackets so they cannot be misread as link syntax on the next parse. Saving a note through the WYSIWYG editor today would permanently rewrite every wikilink in the file with escape characters — this is the single highest-priority native node for WY.3.',
-  },
-  {
-    name: 'wikilink with alias and heading anchor: [[Note#Heading|Alias]]',
-    markdown: '[[Note#Heading|Alias]]\n',
-    actualOutput: '\\[\\[Note#Heading|Alias]]\n',
-    gap: 'Same bracket-escaping gap as the plain wikilink above; alias and #heading fragment syntax is untouched inside the escaped brackets, so WY.3\'s wikilink node must parse alias/heading/block-ref forms, not just the bare target.',
-  },
-  {
-    name: 'wikilink block reference: [[Note#^blockid]]',
-    markdown: '[[Note#^blockid]]\n',
-    actualOutput: '\\[\\[Note#^blockid]]\n',
-    gap: 'Same bracket-escaping gap. WikilinkExtractor.php\'s targetBlock() parsing (the `#^id` convention) needs a matching case in WY.3\'s wikilink node.',
-  },
-  {
-    name: 'embed ![[Note]]',
-    markdown: 'See ![[Other Note]] embedded.\n',
-    actualOutput: 'See !\\[\\[Other Note]] embedded.\n',
-    gap: 'Same root cause as the wikilink gap — no native embed node yet (blockRegistry.ts "embed" entry), so the `![[`/`]]` brackets get defensively escaped. Required scope for WY.3 alongside the wikilink node.',
-  },
-  {
-    name: 'callout > [!NOTE]',
-    markdown: '> [!NOTE] This is a note.\n',
-    actualOutput: '> \\[!NOTE] This is a note.\n',
-    gap: 'No native callout node yet (blockRegistry.ts "callout" entry). Milkdown sees a plain blockquote containing literal `[!NOTE]` text and escapes the brackets the same way it does for wikilinks. Required scope for WY.3.',
   },
   {
     name: 'front matter',
