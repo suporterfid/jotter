@@ -41,7 +41,7 @@ async function domFor(markdown: string): Promise<{ root: HTMLElement; destroy: (
     .use(embedNode)
 
   await editor.create()
-  return { root, destroy: () => editor.destroy() }
+  return { root, destroy: async () => { await editor.destroy() } }
 }
 
 describe('embedNode', () => {

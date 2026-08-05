@@ -58,7 +58,7 @@ function calloutToMarkdown() {
         tracker.shift(2)
         const value = state.indentLines(
           state.containerFlow(node, tracker.current()),
-          (line, index, blank) => `>${blank ? '' : ' '}${line}`
+          (line, _index, blank) => `>${blank ? '' : ' '}${line}`
         )
         exit()
         return value.replace(/^> /, `> [!${node.calloutType}] `)
@@ -67,9 +67,8 @@ function calloutToMarkdown() {
   }
 }
 
-function attachToMarkdownExtension() {
-  // eslint-disable-next-line @typescript-eslint/no-this-alias
-  const processor = this as { data: (key: string, value?: unknown) => unknown }
+function attachToMarkdownExtension(this: { data: (key: string, value?: unknown) => unknown }) {
+  const processor = this
   const existing = (processor.data('toMarkdownExtensions') as unknown[] | undefined) ?? []
   processor.data('toMarkdownExtensions', [...existing, calloutToMarkdown()])
   return (tree: Root) => tree

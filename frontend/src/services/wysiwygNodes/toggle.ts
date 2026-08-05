@@ -67,9 +67,8 @@ function toggleToMarkdown() {
   }
 }
 
-function attachToMarkdownExtension() {
-  // eslint-disable-next-line @typescript-eslint/no-this-alias
-  const processor = this as { data: (key: string, value?: unknown) => unknown }
+function attachToMarkdownExtension(this: { data: (key: string, value?: unknown) => unknown }) {
+  const processor = this
   const existing = (processor.data('toMarkdownExtensions') as unknown[] | undefined) ?? []
   processor.data('toMarkdownExtensions', [...existing, toggleToMarkdown()])
   return (tree: Root) => tree
