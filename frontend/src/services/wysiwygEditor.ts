@@ -1,4 +1,5 @@
-import { Editor, defaultValueCtx, editorViewCtx, rootCtx } from '@milkdown/kit/core'
+import { Editor, defaultValueCtx, editorViewCtx, rootCtx, serializerCtx } from '@milkdown/kit/core'
+import { TextSelection } from '@milkdown/kit/prose/state'
 import { commonmark } from '@milkdown/kit/preset/commonmark'
 import { gfm } from '@milkdown/kit/preset/gfm'
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener'
@@ -23,6 +24,17 @@ export interface WysiwygEditorHandle {
   insertMarkdown(markdown: string): void
   /** Replaces the `/query` text that triggered the slash menu with a block. */
   insertBlockReplacingSlashQuery(markdown: string): void
+  /**
+   * The 1-based markdown line the current selection's containing top-level
+   * block starts on (the same "line N" convention NoteComment.anchor_line
+   * already uses), or null if the selection is collapsed. Computed by
+   * serializing only the doc's preceding sibling blocks and counting
+   * newlines — an exact document-structure mapping, not a coordinate
+   * heuristic (WY.4, #324).
+   */
+  getSelectionAnchorLine(): number | null
+  /** Test-only: programmatically sets the selection (mouse selection can't be simulated under jsdom). */
+  selectTextRange(from: number, to: number): void
   destroy(): Promise<void>
 }
 
@@ -122,6 +134,35 @@ export async function createWysiwygEditor(
       editor.action(insert(markdown))
       slashStartPos = -1
       onSlashQuery?.(null)
+    },
+    getSelectionAnchorLine() {
+      const { selection } = view.state
+      if (selection.empty) return null
+
+      const $from = selection.$from
+      const prefixFragment = view.state.doc.content.cut(0, $from.before(1))
+      if (prefixFragment.size === 0) return 1
+
+      const prefixDoc = view.state.schema.topNodeType.create(null, prefixFragment)
+      const serializer = editor.ctx.get(serializerCtx)
+      // Serializing the prefix as its own standalone doc always ends with
+      // exactly one trailing newline, but the full document has a blank
+      // line separating this prefix from the block the selection is in —
+      // that separator line is what the selection's block actually starts
+      // after, so it must be added back.
+      return serializer(prefixDoc).split('\n').length + 1
+    },
+    selectTextRange(from: number, to: number) {
+      const size = view.state.doc.content.size
+      const clampedTo = Math.max(0, Math.min(to, size - 1))
+      let clampedFrom = Math.max(0, Math.min(from, size - 1))
+      // A caller-requested non-collapsed range (from !== to) that both
+      // clamp to the same ceiling would otherwise silently collapse.
+      if (clampedFrom === clampedTo && from !== to && clampedTo > 0) {
+        clampedFrom = clampedTo - 1
+      }
+      const selection = TextSelection.create(view.state.doc, clampedFrom, clampedTo)
+      view.dispatch(view.state.tr.setSelection(selection))
     },
     async destroy() {
       root.removeEventListener('keyup', checkSlashTrigger)

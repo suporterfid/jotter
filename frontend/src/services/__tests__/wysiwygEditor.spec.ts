@@ -98,4 +98,45 @@ describe('createWysiwygEditor', () => {
 
     await handle.destroy()
   })
+
+  describe('getSelectionAnchorLine (WY.4, #324)', () => {
+    it('returns null when there is no selection (collapsed cursor)', async () => {
+      const root = document.createElement('div')
+      const handle = await createWysiwygEditor(root, '# Hello\n\nWorld\n', () => {})
+
+      expect(handle.getSelectionAnchorLine()).toBeNull()
+
+      await handle.destroy()
+    })
+
+    it('returns 1 when the selection is inside the first block', async () => {
+      const root = document.createElement('div')
+      const handle = await createWysiwygEditor(root, 'First paragraph.\n\nSecond paragraph.\n', () => {})
+
+      handle.selectTextRange(2, 6)
+      expect(handle.getSelectionAnchorLine()).toBe(1)
+
+      await handle.destroy()
+    })
+
+    it('returns the line the block starts on when the selection is in a later block', async () => {
+      const root = document.createElement('div')
+      const handle = await createWysiwygEditor(
+        root,
+        '# Heading\n\nFirst paragraph.\n\nSecond paragraph.\n',
+        () => {}
+      )
+
+      // A position past the end clamps to the very end of the document,
+      // i.e. inside the last block ("Second paragraph.") — avoids relying
+      // on exact ProseMirror position arithmetic in the test itself.
+      handle.selectTextRange(Number.MAX_SAFE_INTEGER - 2, Number.MAX_SAFE_INTEGER)
+
+      // "# Heading\n\nFirst paragraph.\n\n" is 4 lines (heading, blank,
+      // paragraph, blank) so the second paragraph starts on line 5.
+      expect(handle.getSelectionAnchorLine()).toBe(5)
+
+      await handle.destroy()
+    })
+  })
 })

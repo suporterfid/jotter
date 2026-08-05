@@ -13,9 +13,11 @@ vi.mock('./services/api', () => ({
     id: 1, actor_name: 'Admin', content: 'placeholder', anchor_line: null, created_at: '2026-08-03T00:00:00Z',
   }),
   getNote: vi.fn(),
+  getNoteRevisions: vi.fn().mockResolvedValue([]),
+  restoreNoteRevision: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, restoreNoteRevision } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -1114,6 +1116,111 @@ describe('NoteEditor "Live" WYSIWYG view mode (WY.2, #322)', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="wysiwyg-editor"]').exists()).toBe(false)
 
+    wrapper.unmount()
+  })
+})
+
+describe('NoteEditor selection-driven features on the Live surface (WY.4, #324)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows the comment-trigger button at the coordinates the WYSIWYG component reports', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="view-mode-live"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+
+    const wysiwyg = wrapper.findComponent({ name: 'NoteEditorWysiwyg' })
+    wysiwyg.vm.$emit('comment-trigger', { line: 3, top: 50, left: 20 })
+    await wrapper.vm.$nextTick()
+
+    const btn = wrapper.find('[data-testid="comment-trigger-btn"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('style')).toContain('top: 50px')
+    expect(btn.attributes('style')).toContain('left: 20px')
+
+    wrapper.unmount()
+  })
+
+  it('a null comment-trigger hides the button (collapsed selection)', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="view-mode-live"]').trigger('click')
+    await flushPromises()
+
+    const wysiwyg = wrapper.findComponent({ name: 'NoteEditorWysiwyg' })
+    wysiwyg.vm.$emit('comment-trigger', { line: 3, top: 50, left: 20 })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(true)
+
+    wysiwyg.vm.$emit('comment-trigger', null)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="comment-trigger-btn"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('submitting a comment from the Live surface uses the reported anchor line', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="view-mode-live"]').trigger('click')
+    await flushPromises()
+
+    const wysiwyg = wrapper.findComponent({ name: 'NoteEditorWysiwyg' })
+    wysiwyg.vm.$emit('comment-trigger', { line: 7, top: 50, left: 20 })
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('[data-testid="comment-trigger-btn"]').trigger('mousedown')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="comment-composer-textarea"]').setValue('Nice section.')
+    await wrapper.find('[data-testid="comment-composer-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(addNoteComment).toHaveBeenCalledWith(1, 1, 'Nice section.', 7)
+
+    wrapper.unmount()
+  })
+
+  it('restoring a revision (same note id, new content) refreshes the Live surface', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '# Original\n' }), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await wrapper.find('[data-testid="view-mode-live"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('h1').text()).toBe('Original')
+
+    await wrapper.find('[data-testid="history-btn"]').trigger('click')
+    await flushPromises()
+    wrapper.findComponent({ name: 'HistoryPanel' }).vm.$emit('restore-revision', 1)
+    await flushPromises()
+
+    expect(restoreNoteRevision).toHaveBeenCalledWith(1, 1, 1)
+    // Real app: the parent handles `select-note` by re-fetching the same
+    // note id with the restored content and passing a new `note` prop —
+    // this is the read-path half of that round trip (WY.1's harness
+    // already guarantees the write/re-parse half is lossless).
+    expect(wrapper.emitted('select-note')![0]).toEqual([1])
+    await wrapper.setProps({ note: makeNote({ content: '# Restored\n' }) })
+    await flushPromises()
+
+    expect(wrapper.find('h1').text()).toBe('Restored')
+
+    confirmSpy.mockRestore()
     wrapper.unmount()
   })
 })
