@@ -48,29 +48,41 @@
       <div class="editor-controls">
         <!-- View Mode Switcher -->
         <div class="view-mode-toggle">
-          <button 
-            class="toggle-btn" 
+          <button
+            class="toggle-btn"
+            data-testid="view-mode-edit"
             :class="{ active: viewMode === 'edit' }"
             @click="viewMode = 'edit'"
             title="Editor View"
           >
             Edit
           </button>
-          <button 
-            class="toggle-btn" 
+          <button
+            class="toggle-btn"
+            data-testid="view-mode-split"
             :class="{ active: viewMode === 'split' }"
             @click="viewMode = 'split'"
             title="Split View"
           >
             Split
           </button>
-          <button 
-            class="toggle-btn" 
+          <button
+            class="toggle-btn"
+            data-testid="view-mode-preview"
             :class="{ active: viewMode === 'preview' }"
             @click="viewMode = 'preview'"
             title="Preview View"
           >
             Preview
+          </button>
+          <button
+            class="toggle-btn"
+            data-testid="view-mode-live"
+            :class="{ active: viewMode === 'live' }"
+            @click="viewMode = 'live'"
+            title="Live WYSIWYG View"
+          >
+            Live
           </button>
         </div>
 
@@ -241,7 +253,7 @@
       @dragenter.prevent="handleDragOver"
     >
       <!-- Editor Area with Autocomplete -->
-      <div v-show="viewMode !== 'preview'" class="textarea-wrapper">
+      <div v-show="viewMode !== 'preview' && viewMode !== 'live'" class="textarea-wrapper">
         <textarea
           ref="textareaRef"
           v-model="editableContent"
@@ -332,8 +344,15 @@
         />
       </div>
 
+      <!-- Live WYSIWYG Area (WY.2, #322) -->
+      <div v-if="viewMode === 'live'" class="live-wrapper">
+        <NoteEditorWysiwyg
+          v-model:content="editableContent"
+        />
+      </div>
+
       <!-- Preview Area -->
-      <div v-show="viewMode !== 'edit'" class="preview-wrapper">
+      <div v-show="viewMode !== 'edit' && viewMode !== 'live'" class="preview-wrapper">
         <MarkdownPreview
           :content="editableContent"
           @navigate-wikilink="$emit('navigate-wikilink', $event)"
@@ -576,6 +595,7 @@ import ActivityPanel from './ActivityPanel.vue'
 import CommentsPanel from './CommentsPanel.vue'
 import CoverImageModal from './CoverImageModal.vue'
 import SlashMenu from './SlashMenu.vue'
+import NoteEditorWysiwyg from './NoteEditorWysiwyg.vue'
 import OutlinePanel from './OutlinePanel.vue'
 import LocalGraphPanel from './LocalGraphPanel.vue'
 import type { LocalGraphNeighbor } from '../services/types'
@@ -748,7 +768,7 @@ async function clearIcon() {
   }
 }
 
-const viewMode = ref<'edit' | 'split' | 'preview'>('split')
+const viewMode = ref<'edit' | 'split' | 'preview' | 'live'>('split')
 const editableContent = ref(props.note.content)
 const isDirty = ref(false)
 const isSaving = ref(false)
@@ -1739,6 +1759,10 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.editor-body.view-live .live-wrapper {
+  width: 100%;
+}
+
 .textarea-wrapper {
   position: relative;
   height: 100%;
@@ -1766,6 +1790,13 @@ onUnmounted(() => {
 .preview-wrapper {
   height: 100%;
   overflow-y: auto;
+  background: var(--color-canvas);
+}
+
+.live-wrapper {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
   background: var(--color-canvas);
 }
 
