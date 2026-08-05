@@ -42,6 +42,18 @@ return [
         'client_id' => env('JOTTER_SSO_CLIENT_ID'),
     ],
 
+    // GrandpaSSOn service-token (client_credentials) inbound auth for
+    // systemic REST API integrations — see docs/superpowers/specs/
+    // 2026-08-05-grandpasson-service-tokens-design.md. Off by default;
+    // when off, GrandpaSSOnIdentityProvider::resolveIdentity() behaves
+    // exactly as it did before this feature existed.
+    'grandpasson_resource' => [
+        'inbound_enabled' => (bool) env('JOTTER_GRANDPASSON_INBOUND_ENABLED', false),
+        'introspect_url' => env('JOTTER_GRANDPASSON_INTROSPECT_URL'),
+        'client_id' => env('JOTTER_GRANDPASSON_CLIENT_ID'),
+        'client_secret' => env('JOTTER_GRANDPASSON_CLIENT_SECRET'),
+    ],
+
     'attachments' => [
         'max_size_kb' => (int) env('JOTTER_ATTACHMENT_MAX_SIZE_KB', 20480), // 20MB
         'allowed_mimes' => [
