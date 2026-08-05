@@ -1,4 +1,5 @@
 import { Editor, commandsCtx, defaultValueCtx, editorViewCtx, rootCtx, serializerCtx } from '@milkdown/kit/core'
+import type { CmdKey } from '@milkdown/kit/core'
 import { TextSelection } from '@milkdown/kit/prose/state'
 import type { MarkType } from '@milkdown/kit/prose/model'
 import {
@@ -188,7 +189,7 @@ export async function createWysiwygEditor(
   root.addEventListener('mouseup', checkSelectionFormat)
   root.addEventListener('keyup', checkSelectionFormat)
 
-  const markCommands: Record<ToggleableMark, string> = {
+  const markCommands: Record<ToggleableMark, CmdKey<unknown>> = {
     bold: toggleStrongCommand.key,
     italic: toggleEmphasisCommand.key,
     strike: toggleStrikethroughCommand.key,
