@@ -7,6 +7,7 @@ use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\GrandpaSson\HttpIntrospectionClient;
 use App\Domain\Auth\GrandpaSson\IntrospectionClientInterface;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -167,6 +168,10 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
 
     public function isAuthorizedForWorkspace(AuthenticatedSubject $subject, int $workspaceId): bool
     {
+        if ($this->isServiceToken($subject)) {
+            return in_array("workspace/{$workspaceId}", $subject->attributes['audiences'], true);
+        }
+
         if ($subject->isAdmin) {
             return true;
         }
@@ -176,6 +181,10 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
 
     public function accessibleWorkspaceIds(AuthenticatedSubject $subject): ?array
     {
+        if ($this->isServiceToken($subject)) {
+            return $this->serviceTokenWorkspaceIds($subject);
+        }
+
         if ($subject->isAdmin) {
             return null;
         }
@@ -185,10 +194,39 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
 
     public function accessibleTenantIds(AuthenticatedSubject $subject): ?array
     {
+        if ($this->isServiceToken($subject)) {
+            return Workspace::query()
+                ->whereIn('id', $this->serviceTokenWorkspaceIds($subject))
+                ->pluck('tenant_id')
+                ->unique()
+                ->values()
+                ->all();
+        }
+
         if ($subject->isAdmin) {
             return null;
         }
 
         return $this->localProvider->accessibleTenantIds($subject);
+    }
+
+    private function isServiceToken(AuthenticatedSubject $subject): bool
+    {
+        return ($subject->attributes['auth_method'] ?? null) === 'grandpasson_service_token';
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function serviceTokenWorkspaceIds(AuthenticatedSubject $subject): array
+    {
+        $ids = [];
+        foreach ($subject->attributes['audiences'] ?? [] as $audience) {
+            if (preg_match('/^workspace\/(\d+)$/', $audience, $matches)) {
+                $ids[] = (int) $matches[1];
+            }
+        }
+
+        return $ids;
     }
 }
