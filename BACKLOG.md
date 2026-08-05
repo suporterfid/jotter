@@ -29,7 +29,7 @@ C1, C2, C3, C5, and C6 were resolved — see `docs/decisions.md`. This section p
 - ~~**WY.2 — Additive "Live" WYSIWYG view mode alongside Edit/Split/Preview (#322, L, P2).**~~ **Shipped.** `NoteEditorWysiwyg.vue` + `frontMatterGuard.ts`; front matter now safely round-trips through this mode (WY.1's most severe known gap, closed).
 - ~~**WY.3 — Native nodes for wikilinks/embeds/callouts/toggles/tables + slash menu on the WYSIWYG surface (#323, L, P2).**~~ **Shipped.** `wysiwygNodes/{wikilink,embed,callout,toggle}.ts`; all four moved from KNOWN_GAP_FIXTURES to LOSSLESS_FIXTURES. Known limit: multi-paragraph toggle bodies aren't parsed (single-line form only).
 - ~~**WY.4 — Port comment-anchoring and history/restore off textarea coordinate hacks (#324, M, P3).**~~ **Shipped.** `getSelectionAnchorLine()` (exact ProseMirror position mapping); fixed a real restore-into-same-note-id bug affecting all view modes, not just Live.
-- **WY.5 — Make "Live" the default view mode; keep raw source as an opt-in fallback (#325, M, P3).**
+- ~~**WY.5 — Make "Live" the default view mode; keep raw source as an opt-in fallback (#325, M, P3).**~~ **Shipped — epic complete, resolves #263.** `viewMode` defaults to `'live'`; decided to keep `Preview` (not retire it) rather than cross into the toggle-removal non-goal below.
 
 Fully removing the Edit/Split/Preview toggle (the audit's literal D.6b ask) is deliberately not committed scope in WY.1–WY.5 — see the spec doc §6.
 
