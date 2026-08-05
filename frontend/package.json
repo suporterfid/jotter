@@ -12,6 +12,7 @@
     "e2e": "node scripts/wait-for-app.mjs && playwright test"
   },
   "dependencies": {
+    "@milkdown/kit": "^7.22.0",
     "@vueuse/core": "^14.3.0",
     "axios": "^1.18.1",
     "dompurify": "^3.4.12",
