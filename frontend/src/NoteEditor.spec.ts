@@ -1,7 +1,21 @@
-import { mount, flushPromises } from '@vue/test-utils'
+import { config, mount, flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import NoteEditor from './components/NoteEditor.vue'
 import type { NoteDetail } from './services/types'
+
+// WY.5 (#325) made 'live' the default viewMode, so every mount() below now
+// mounts a real Milkdown instance unless told otherwise — an async,
+// real-timer-dependent editor most of these tests have nothing to do with
+// (and several use vi.useFakeTimers(), which Milkdown's own internal
+// scheduling can't tolerate). Stub it out globally; the handful of tests
+// that actually exercise the Live surface un-stub it locally via
+// `global: { stubs: { NoteEditorWysiwyg: false } }`.
+config.global.stubs = {
+  // A bare `true` auto-stub would drop the data-testid the real
+  // component's template carries, breaking existence checks — this
+  // preserves it while still never mounting real Milkdown.
+  NoteEditorWysiwyg: { name: 'NoteEditorWysiwyg', template: '<div data-testid="wysiwyg-editor"></div>' },
+}
 
 vi.mock('./services/api', () => ({
   getNoteComments: vi.fn().mockResolvedValue([]),
@@ -441,6 +455,11 @@ describe('NoteEditor slash-command menu', () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
     })
+    // Slash-menu-via-textarea is Edit/Split-mode's domain; WY.5 made Live
+    // the default, and selectSlashBlock() routes to the WYSIWYG surface
+    // when viewMode is 'live' (#323), so this must switch away first to
+    // exercise the textarea-splicing path this test is actually about.
+    await wrapper.find('[data-testid="view-mode-split"]').trigger('click')
     const textarea = wrapper.find('[data-testid="markdown-textarea"]')
     const el = textarea.element as HTMLTextAreaElement
     typeAndPosition(el, '/', 1)
@@ -513,6 +532,7 @@ describe('NoteEditor slash-command menu', () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
     })
+    await wrapper.find('[data-testid="view-mode-split"]').trigger('click')
     const textarea = wrapper.find('[data-testid="markdown-textarea"]')
     const el = textarea.element as HTMLTextAreaElement
     typeAndPosition(el, '/code', 5)
@@ -891,6 +911,12 @@ describe('NoteEditor wikilink hover preview', () => {
       props: { note: makeNote({ content: 'See [[Ideas]].' }), allNotes, workspaceId: 1 },
     })
     await flushPromises()
+    // Wikilink hover preview is a Preview-mode (MarkdownPreview.vue)
+    // feature, unrelated to WY.5's Live default; switch away from Live
+    // first so Milkdown's own async lifecycle (which needs real timers)
+    // isn't still settling once fake timers are engaged below.
+    await wrapper.find('[data-testid="view-mode-split"]').trigger('click')
+    await flushPromises()
     vi.useFakeTimers()
 
     const link = wrapper.get('a.wikilink')
@@ -908,6 +934,12 @@ describe('NoteEditor wikilink hover preview', () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote({ content: 'See [[Ideas]].' }), allNotes, workspaceId: 1 },
     })
+    await flushPromises()
+    // Wikilink hover preview is a Preview-mode (MarkdownPreview.vue)
+    // feature, unrelated to WY.5's Live default; switch away from Live
+    // first so Milkdown's own async lifecycle (which needs real timers)
+    // isn't still settling once fake timers are engaged below.
+    await wrapper.find('[data-testid="view-mode-split"]').trigger('click')
     await flushPromises()
     vi.useFakeTimers()
 
@@ -927,6 +959,8 @@ describe('NoteEditor wikilink hover preview', () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote({ content: 'See [[Missing]].' }), allNotes: [], workspaceId: 1 },
     })
+    await flushPromises()
+    await wrapper.find('[data-testid="view-mode-split"]').trigger('click')
     await flushPromises()
     vi.useFakeTimers()
 
@@ -1075,10 +1109,11 @@ describe('NoteEditor "Live" WYSIWYG view mode (WY.2, #322)', () => {
     vi.clearAllMocks()
   })
 
-  it('is additive: edit/split/preview are still the default and unaffected', () => {
+  it('edit/split/preview remain reachable via the view-mode toggle', async () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote(), allNotes: [], workspaceId: 1 },
     })
+    await wrapper.find('[data-testid="view-mode-split"]').trigger('click')
     expect(wrapper.find('.editor-body').classes()).toContain('view-split')
     expect(wrapper.find('[data-testid="markdown-textarea"]').exists()).toBe(true)
     wrapper.unmount()
@@ -1088,6 +1123,7 @@ describe('NoteEditor "Live" WYSIWYG view mode (WY.2, #322)', () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote({ content: '# Hello\n' }), allNotes: [], workspaceId: 1 },
       attachTo: document.body,
+      global: { stubs: { NoteEditorWysiwyg: false } },
     })
     await flushPromises()
 
@@ -1115,6 +1151,50 @@ describe('NoteEditor "Live" WYSIWYG view mode (WY.2, #322)', () => {
     await wrapper.find('[data-testid="view-mode-edit"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="wysiwyg-editor"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+})
+
+describe('NoteEditor "Live" is the default view mode (WY.5, #325)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('opening any existing note lands in the Live WYSIWYG surface with no Markdown syntax visible', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '# Hello\n\nSome **bold** text.\n' }), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+      global: { stubs: { NoteEditorWysiwyg: false } },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('.editor-body').classes()).toContain('view-live')
+    expect(wrapper.find('[data-testid="wysiwyg-editor"]').exists()).toBe(true)
+    expect(wrapper.find('h1').text()).toBe('Hello')
+    // No raw '#'/'**' syntax markers leak into the rendered surface.
+    expect(wrapper.find('[data-testid="wysiwyg-editor"]').text()).not.toContain('#')
+    expect(wrapper.find('[data-testid="wysiwyg-editor"]').text()).not.toContain('**')
+
+    wrapper.unmount()
+  })
+
+  it('switching to Edit shows the exact underlying Markdown, unchanged', async () => {
+    const content = '# Hello\n\nSome **bold** text.\n'
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content }), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+      global: { stubs: { NoteEditorWysiwyg: false } },
+    })
+    await flushPromises()
+    expect(wrapper.find('.editor-body').classes()).toContain('view-live')
+
+    await wrapper.find('[data-testid="view-mode-edit"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.editor-body').classes()).toContain('view-edit')
+    const textarea = wrapper.find<HTMLTextAreaElement>('[data-testid="markdown-textarea"]')
+    expect(textarea.element.value).toBe(content)
 
     wrapper.unmount()
   })
@@ -1198,6 +1278,7 @@ describe('NoteEditor selection-driven features on the Live surface (WY.4, #324)'
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote({ content: '# Original\n' }), allNotes: [], workspaceId: 1 },
       attachTo: document.body,
+      global: { stubs: { NoteEditorWysiwyg: false } },
     })
     await flushPromises()
     await wrapper.find('[data-testid="view-mode-live"]').trigger('click')
