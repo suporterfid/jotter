@@ -1,10 +1,60 @@
 <template>
   <div ref="rootEl" class="wysiwyg-editor" data-testid="wysiwyg-editor" @mouseup="handleMouseUp"></div>
+
+  <!-- Selection formatting toolbar: Notion-style, appears above a
+       non-collapsed selection instead of living as permanent chrome —
+       matches this surface's "no chrome unless needed" ethos (WY.5). -->
+  <div
+    v-if="selectionFormat"
+    class="format-toolbar"
+    data-testid="format-toolbar"
+    :style="{ top: `${selectionFormat.top}px`, left: `${selectionFormat.left}px` }"
+    @mousedown.prevent
+  >
+    <button
+      type="button"
+      class="format-btn"
+      data-testid="format-bold"
+      :class="{ active: selectionFormat.bold }"
+      title="Bold"
+      @click="toggleMark('bold')"
+    ><strong>B</strong></button>
+    <button
+      type="button"
+      class="format-btn"
+      data-testid="format-italic"
+      :class="{ active: selectionFormat.italic }"
+      title="Italic"
+      @click="toggleMark('italic')"
+    ><em>I</em></button>
+    <button
+      type="button"
+      class="format-btn"
+      data-testid="format-strike"
+      :class="{ active: selectionFormat.strike }"
+      title="Strikethrough"
+      @click="toggleMark('strike')"
+    ><s>S</s></button>
+    <button
+      type="button"
+      class="format-btn"
+      data-testid="format-code"
+      :class="{ active: selectionFormat.code }"
+      title="Inline code"
+      @click="toggleMark('code')"
+    ><code>&lt;/&gt;</code></button>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { createWysiwygEditor, type SlashQuery, type WysiwygEditorHandle } from '../services/wysiwygEditor'
+import {
+  createWysiwygEditor,
+  type SelectionFormat,
+  type SlashQuery,
+  type ToggleableMark,
+  type WysiwygEditorHandle,
+} from '../services/wysiwygEditor'
 import { splitFrontMatter, joinFrontMatter } from '../services/frontMatterGuard'
 
 /**
@@ -39,6 +89,7 @@ const emit = defineEmits<{
 }>()
 
 const rootEl = ref<HTMLElement | null>(null)
+const selectionFormat = ref<SelectionFormat | null>(null)
 let handle: WysiwygEditorHandle | null = null
 
 let frontMatter = splitFrontMatter(props.content).frontMatter
@@ -59,7 +110,8 @@ onMounted(async () => {
       lastEmitted = full
       emit('update:content', full)
     },
-    (state) => emit('slash-query', state)
+    (state) => emit('slash-query', state),
+    (state) => { selectionFormat.value = state }
   )
 })
 
@@ -90,6 +142,10 @@ function insertBlock(markdown: string) {
 
 defineExpose({ insertBlock })
 
+function toggleMark(mark: ToggleableMark) {
+  handle?.toggleMark(mark)
+}
+
 /**
  * Live mode's equivalent of NoteEditor.vue's handleTextSelection: a real
  * document-structure anchor line instead of a textarea coordinate
@@ -116,6 +172,42 @@ function handleMouseUp(event: MouseEvent) {
 </script>
 
 <style scoped>
+.format-toolbar {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 8px));
+  z-index: 60;
+  display: flex;
+  gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+  box-shadow: var(--shadow-float);
+}
+
+.format-btn {
+  min-width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.format-btn:hover {
+  background: var(--color-surface-emphasis);
+}
+
+.format-btn.active {
+  background: var(--color-action);
+  color: var(--color-on-action, #fff);
+}
+
 .wysiwyg-editor {
   flex: 1;
   min-height: 0;

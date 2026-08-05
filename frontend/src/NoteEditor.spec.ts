@@ -1200,6 +1200,30 @@ describe('NoteEditor "Live" is the default view mode (WY.5, #325)', () => {
   })
 })
 
+describe('NoteEditor Live surface formatting toolbar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('does not render the toolbar until a non-collapsed selection is reported', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '# Hello\n\nSome text.\n' }), allNotes: [], workspaceId: 1 },
+      attachTo: document.body,
+      global: { stubs: { NoteEditorWysiwyg: false } },
+    })
+    await flushPromises()
+
+    // No chrome unless a selection actually exists — matches the Live
+    // surface's "no permanent chrome" ethos (WY.5). The underlying
+    // bold/italic/strike/code toggle logic itself is covered exhaustively
+    // in wysiwygEditor.spec.ts (real text selection can't be simulated
+    // under jsdom at this component level).
+    expect(wrapper.find('[data-testid="format-toolbar"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+})
+
 describe('NoteEditor selection-driven features on the Live surface (WY.4, #324)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
