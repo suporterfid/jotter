@@ -1,6 +1,6 @@
 <template>
-  <aside class="unlinked-mentions-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Unlinked mentions">
-    <PanelHeader title="Unlinked Mentions" :count="mentions.length" :collapsed="collapsed" @toggle="toggle">
+  <aside class="unlinked-mentions-panel" :class="{ 'panel-collapsed': collapsed }" :aria-label="t('unlinkedMentionsPanel.title')">
+    <PanelHeader :title="t('unlinkedMentionsPanel.title')" :count="mentions.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <circle cx="12" cy="12" r="10"></circle>
@@ -12,7 +12,7 @@
 
     <div v-show="!collapsed" class="unlinked-mentions-body">
     <div v-if="mentions.length === 0" class="unlinked-mentions-empty">
-      <p>No unlinked mentions found.</p>
+      <p>{{ t('unlinkedMentionsPanel.empty') }}</p>
     </div>
 
     <ul v-else class="unlinked-mentions-list">
@@ -25,10 +25,10 @@
           type="button"
           class="convert-link-btn"
           data-testid="convert-to-link-btn"
-          :title="`Convert &quot;${mention.matched_phrase}&quot; into a wikilink`"
+          :title="t('unlinkedMentionsPanel.convertToLink', { phrase: mention.matched_phrase })"
           @click="$emit('convert-to-link', mention)"
         >
-          Link
+          {{ t('unlinkedMentionsPanel.link') }}
         </button>
       </li>
     </ul>
@@ -37,9 +37,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { UnlinkedMention } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   mentions: UnlinkedMention[]

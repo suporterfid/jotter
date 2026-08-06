@@ -1,7 +1,7 @@
 <template>
   <div class="local-graph-panel">
     <div v-if="neighbors.length === 0" class="local-graph-empty">
-      <p>No connections yet.</p>
+      <p>{{ t('localGraphPanel.empty') }}</p>
     </div>
     <svg v-else class="local-graph-svg" :viewBox="`0 0 ${width} ${height}`">
       <line
@@ -36,7 +36,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { LocalGraphNeighbor } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   centerTitle: string

@@ -1,7 +1,7 @@
 <template>
   <div class="outline-panel">
     <div v-if="headings.length === 0" class="outline-empty">
-      <p>No headings in this note yet.</p>
+      <p>{{ t('outlinePanel.noHeadings') }}</p>
     </div>
     <ul v-else class="outline-list">
       <li
@@ -23,7 +23,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { HeadingEntry } from '../services/outline'
+
+const { t } = useI18n()
 
 defineProps<{
   headings: HeadingEntry[]

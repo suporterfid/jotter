@@ -163,6 +163,27 @@ export default {
     closeLocalGraph: 'Fechar grafo local',
     restoreVersionConfirm: 'Restaurar esta versão? Alterações não salvas no editor serão perdidas.',
   },
+  outlinePanel: {
+    noHeadings: 'Ainda não há títulos nesta nota.',
+  },
+  backlinksPanel: {
+    title: 'Backlinks',
+    empty: 'Nenhuma nota ainda faz link para este documento.',
+  },
+  outgoingLinksPanel: {
+    title: 'Links de saída',
+    empty: 'Esta nota ainda não faz link para nenhuma outra nota.',
+    unresolved: 'não resolvido',
+  },
+  unlinkedMentionsPanel: {
+    title: 'Menções não vinculadas',
+    empty: 'Nenhuma menção não vinculada encontrada.',
+    convertToLink: 'Converter "{phrase}" em um wikilink',
+    link: 'Vincular',
+  },
+  localGraphPanel: {
+    empty: 'Ainda sem conexões.',
+  },
   markdownPreview: {
     copy: 'Copiar',
     copied: 'Copiado!',

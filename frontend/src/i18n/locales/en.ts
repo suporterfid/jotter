@@ -163,6 +163,27 @@ export default {
     closeLocalGraph: 'Close local graph',
     restoreVersionConfirm: 'Restore this version? Any unsaved changes in the editor will be lost.',
   },
+  outlinePanel: {
+    noHeadings: 'No headings in this note yet.',
+  },
+  backlinksPanel: {
+    title: 'Backlinks',
+    empty: 'No notes link to this document yet.',
+  },
+  outgoingLinksPanel: {
+    title: 'Outgoing Links',
+    empty: "This note doesn't link to any other notes yet.",
+    unresolved: 'unresolved',
+  },
+  unlinkedMentionsPanel: {
+    title: 'Unlinked Mentions',
+    empty: 'No unlinked mentions found.',
+    convertToLink: 'Convert "{phrase}" into a wikilink',
+    link: 'Link',
+  },
+  localGraphPanel: {
+    empty: 'No connections yet.',
+  },
   markdownPreview: {
     copy: 'Copy',
     copied: 'Copied!',

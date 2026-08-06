@@ -1,6 +1,6 @@
 <template>
-  <aside class="outgoing-links-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Outgoing links">
-    <PanelHeader title="Outgoing Links" :count="links.length" :collapsed="collapsed" @toggle="toggle">
+  <aside class="outgoing-links-panel" :class="{ 'panel-collapsed': collapsed }" :aria-label="t('outgoingLinksPanel.title')">
+    <PanelHeader :title="t('outgoingLinksPanel.title')" :count="links.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <line x1="7" y1="17" x2="17" y2="7"></line>
@@ -11,7 +11,7 @@
 
     <div v-show="!collapsed" class="outgoing-links-body">
     <div v-if="links.length === 0" class="outgoing-links-empty">
-      <p>This note doesn't link to any other notes yet.</p>
+      <p>{{ t('outgoingLinksPanel.empty') }}</p>
     </div>
 
     <ul v-else class="outgoing-links-list">
@@ -25,7 +25,7 @@
         <div class="outgoing-link-title">{{ link.title || link.target_ref }}</div>
         <div class="outgoing-link-meta">
           <span v-if="link.target_block" class="block-badge">^{{ link.target_block }}</span>
-          <span v-if="!link.resolved" class="unresolved-badge">unresolved</span>
+          <span v-if="!link.resolved" class="unresolved-badge">{{ t('outgoingLinksPanel.unresolved') }}</span>
           <span v-else class="outgoing-link-path">{{ link.path }}</span>
         </div>
       </li>
@@ -35,9 +35,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { OutgoingLink } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   links: OutgoingLink[]

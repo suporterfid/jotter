@@ -1,6 +1,6 @@
 <template>
-  <aside class="backlinks-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Backlinks">
-    <PanelHeader title="Backlinks" :count="backlinks.length" :collapsed="collapsed" @toggle="toggle">
+  <aside class="backlinks-panel" :class="{ 'panel-collapsed': collapsed }" :aria-label="t('backlinksPanel.title')">
+    <PanelHeader :title="t('backlinksPanel.title')" :count="backlinks.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
@@ -11,7 +11,7 @@
 
     <div v-show="!collapsed" class="backlinks-body">
     <div v-if="backlinks.length === 0" class="backlinks-empty">
-      <p>No notes link to this document yet.</p>
+      <p>{{ t('backlinksPanel.empty') }}</p>
     </div>
 
     <ul v-else class="backlinks-list">
@@ -30,9 +30,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { Backlink } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   backlinks: Backlink[]
