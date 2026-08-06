@@ -19,7 +19,7 @@
         type="button"
         class="tab-strip-close-btn"
         data-testid="tab-strip-close-btn"
-        :aria-label="`Close ${tab.title}`"
+        :aria-label="t('tabStrip.close', { title: tab.title })"
         @click.stop="$emit('close-tab', tab.id)"
       >&times;</button>
     </div>
@@ -27,6 +27,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps<{
   tabs: { id: number; title: string }[]
   activeId: number | null

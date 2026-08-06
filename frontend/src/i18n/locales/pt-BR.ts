@@ -28,4 +28,30 @@ export default {
     mismatchError: 'A nova senha e a confirmação não coincidem.',
     genericError: 'Falha ao alterar a senha.',
   },
+  theme: {
+    switchToLight: 'Mudar para tema claro',
+    switchToDark: 'Mudar para tema escuro',
+  },
+  tenantSwitcher: {
+    switchTenant: 'Trocar tenant',
+  },
+  workspaceSwitcher: {
+    switchWorkspace: 'Trocar workspace',
+  },
+  boardSwitcher: {
+    switchBoard: 'Trocar board',
+    unsavedView: 'Visualização não salva',
+    boardNamePlaceholder: 'Nome do board',
+    newBoardName: 'Nome do novo board',
+    create: 'Criar',
+    cancel: 'Cancelar',
+    newBoard: '+ Novo board',
+    renameBoard: 'Renomear board',
+    save: 'Salvar',
+    rename: 'Renomear',
+    delete: 'Excluir',
+  },
+  tabStrip: {
+    close: 'Fechar {title}',
+  },
 }

@@ -4,7 +4,7 @@
       class="tenant-switcher-select"
       data-testid="tenant-switcher-select"
       :value="activeTenantId ?? undefined"
-      aria-label="Switch tenant"
+      :aria-label="t('tenantSwitcher.switchTenant')"
       @change="handleChange"
     >
       <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">{{ tenant.name }}</option>
@@ -13,7 +13,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { Tenant } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   tenants: Tenant[]

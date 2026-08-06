@@ -4,10 +4,10 @@
       class="board-switcher-select"
       data-testid="board-switcher-select"
       :value="activeBoardId ?? ''"
-      aria-label="Switch board"
+      :aria-label="t('boardSwitcher.switchBoard')"
       @change="handleSelect"
     >
-      <option value="">Unsaved view</option>
+      <option value="">{{ t('boardSwitcher.unsavedView') }}</option>
       <option v-for="board in boards" :key="board.id" :value="board.id">{{ board.name }}</option>
     </select>
 
@@ -20,17 +20,17 @@
       <input
         v-model="draftName"
         type="text"
-        placeholder="Board name"
-        aria-label="New board name"
+        :placeholder="t('boardSwitcher.boardNamePlaceholder')"
+        :aria-label="t('boardSwitcher.newBoardName')"
         data-testid="board-new-input"
         class="board-name-input"
         autofocus
       />
-      <button type="submit" class="btn-board-confirm">Create</button>
-      <button type="button" class="btn-board-cancel" @click="isCreating = false">Cancel</button>
+      <button type="submit" class="btn-board-confirm">{{ t('boardSwitcher.create') }}</button>
+      <button type="button" class="btn-board-cancel" @click="isCreating = false">{{ t('boardSwitcher.cancel') }}</button>
     </form>
     <button v-else type="button" class="btn-board-action" data-testid="board-new-button" @click="startCreate">
-      + New board
+      {{ t('boardSwitcher.newBoard') }}
     </button>
 
     <template v-if="activeBoardId !== null">
@@ -43,17 +43,17 @@
         <input
           v-model="draftName"
           type="text"
-          placeholder="Board name"
-          aria-label="Rename board"
+          :placeholder="t('boardSwitcher.boardNamePlaceholder')"
+          :aria-label="t('boardSwitcher.renameBoard')"
           data-testid="board-rename-input"
           class="board-name-input"
           autofocus
         />
-        <button type="submit" class="btn-board-confirm">Save</button>
-        <button type="button" class="btn-board-cancel" @click="isRenaming = false">Cancel</button>
+        <button type="submit" class="btn-board-confirm">{{ t('boardSwitcher.save') }}</button>
+        <button type="button" class="btn-board-cancel" @click="isRenaming = false">{{ t('boardSwitcher.cancel') }}</button>
       </form>
       <button v-else type="button" class="btn-board-action" data-testid="board-rename-button" @click="startRename">
-        Rename
+        {{ t('boardSwitcher.rename') }}
       </button>
       <button
         type="button"
@@ -61,7 +61,7 @@
         data-testid="board-delete-button"
         @click="$emit('delete-board', activeBoardId)"
       >
-        Delete
+        {{ t('boardSwitcher.delete') }}
       </button>
     </template>
   </div>
@@ -69,7 +69,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Board } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   boards: Board[]

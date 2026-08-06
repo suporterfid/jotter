@@ -2,8 +2,8 @@
   <button
     type="button"
     class="theme-toggle"
-    :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
-    :title="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
+    :aria-label="isDark ? t('theme.switchToLight') : t('theme.switchToDark')"
+    :title="isDark ? t('theme.switchToLight') : t('theme.switchToDark')"
     @click="toggle"
   >
     <svg v-if="isDark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -25,8 +25,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTheme } from '../composables/useTheme'
 
+const { t } = useI18n()
 const { mode } = useTheme()
 const isDark = computed(() => mode.value === 'dark')
 

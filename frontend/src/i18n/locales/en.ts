@@ -28,4 +28,30 @@ export default {
     mismatchError: 'New password and confirmation do not match.',
     genericError: 'Failed to change password.',
   },
+  theme: {
+    switchToLight: 'Switch to light theme',
+    switchToDark: 'Switch to dark theme',
+  },
+  tenantSwitcher: {
+    switchTenant: 'Switch tenant',
+  },
+  workspaceSwitcher: {
+    switchWorkspace: 'Switch workspace',
+  },
+  boardSwitcher: {
+    switchBoard: 'Switch board',
+    unsavedView: 'Unsaved view',
+    boardNamePlaceholder: 'Board name',
+    newBoardName: 'New board name',
+    create: 'Create',
+    cancel: 'Cancel',
+    newBoard: '+ New board',
+    renameBoard: 'Rename board',
+    save: 'Save',
+    rename: 'Rename',
+    delete: 'Delete',
+  },
+  tabStrip: {
+    close: 'Close {title}',
+  },
 }

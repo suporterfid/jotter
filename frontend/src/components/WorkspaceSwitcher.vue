@@ -4,7 +4,7 @@
       class="workspace-switcher-select"
       data-testid="workspace-switcher-select"
       :value="activeWorkspaceId ?? undefined"
-      aria-label="Switch workspace"
+      :aria-label="t('workspaceSwitcher.switchWorkspace')"
       @change="handleChange"
     >
       <option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.name }}</option>
@@ -13,7 +13,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { Workspace } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   workspaces: Workspace[]
