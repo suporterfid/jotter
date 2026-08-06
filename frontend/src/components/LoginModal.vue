@@ -10,16 +10,16 @@
             <line x1="16" y1="17" x2="8" y2="17"></line>
             <polyline points="10 9 9 9 8 9"></polyline>
           </svg>
-          <h2>Jotter Sign In</h2>
+          <h2>{{ t('login.heading') }}</h2>
         </div>
-        <p class="login-subtitle">Enter your administrator credentials to access your notes vault.</p>
+        <p class="login-subtitle">{{ t('login.subtitle') }}</p>
       </div>
 
       <div v-if="ssoLoginUrl" class="sso-section">
         <a :href="ssoLoginUrl" class="btn-sso" data-testid="sso-login-link">
-          Sign in with GrandpaSSOn
+          {{ t('login.ssoButton') }}
         </a>
-        <div class="sso-divider"><span>or</span></div>
+        <div class="sso-divider"><span>{{ t('login.or') }}</span></div>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
@@ -28,26 +28,26 @@
         </div>
 
         <div class="form-group">
-          <label for="login-email">Email Address</label>
+          <label for="login-email">{{ t('login.emailLabel') }}</label>
           <input
             id="login-email"
             v-model="email"
             data-testid="login-email"
             type="email"
-            placeholder="admin@example.com"
+            :placeholder="t('login.emailPlaceholder')"
             required
             class="form-input"
           />
         </div>
 
         <div class="form-group">
-          <label for="login-password">Password</label>
+          <label for="login-password">{{ t('login.passwordLabel') }}</label>
           <input
             id="login-password"
             v-model="password"
             data-testid="login-password"
             type="password"
-            placeholder="••••••••••••"
+            :placeholder="t('login.passwordPlaceholder')"
             required
             class="form-input"
           />
@@ -59,8 +59,8 @@
           class="btn-login"
           :disabled="isSubmitting || !email.trim() || !password"
         >
-          <span v-if="isSubmitting">Signing In...</span>
-          <span v-else>Sign In</span>
+          <span v-if="isSubmitting">{{ t('login.signingIn') }}</span>
+          <span v-else>{{ t('login.signIn') }}</span>
         </button>
       </form>
     </div>
@@ -69,8 +69,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { login, getAuthConfig } from '../services/api'
 import type { AuthUser } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   show: boolean
@@ -113,9 +116,9 @@ async function handleLogin() {
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'response' in err) {
       const res = (err as { response?: { data?: { message?: string } } }).response
-      errorMessage.value = res?.data?.message || 'Invalid email or password.'
+      errorMessage.value = res?.data?.message || t('login.invalidCredentials')
     } else {
-      errorMessage.value = 'Failed to connect to authentication service.'
+      errorMessage.value = t('login.connectionFailed')
     }
   } finally {
     isSubmitting.value = false

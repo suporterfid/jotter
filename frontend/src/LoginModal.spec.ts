@@ -46,4 +46,12 @@ describe('LoginModal', () => {
     mount(LoginModal, { props: { show: false } })
     expect(getAuthConfig).not.toHaveBeenCalled()
   })
+
+  it('renders the sign-in heading and subtitle via i18n', () => {
+    const wrapper = mount(LoginModal, { props: { show: true } })
+    expect(wrapper.find('h2').text()).toBe('Jotter Sign In')
+    expect(wrapper.find('.login-subtitle').text()).toBe(
+      'Enter your administrator credentials to access your notes vault.',
+    )
+  })
 })
