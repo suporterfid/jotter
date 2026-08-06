@@ -23,16 +23,16 @@ final class WebDavController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $workspace = Workspace::query()->find($workspaceId);
         if (! $workspace) {
-            return response()->json(['message' => 'Workspace not found.'], 404);
+            return response()->json(['message' => __('messages.workspace_not_found')], 404);
         }
 
         $targetPath = trim($path ?? '', '/');
@@ -42,7 +42,7 @@ final class WebDavController extends Controller
                 ? $this->pathGuard->ensureVaultRoot($workspace)
                 : $this->pathGuard->resolve($workspace, $targetPath, mustExist: false, mustBeMarkdown: false);
         } catch (PathTraversalRejected) {
-            return response()->json(['message' => 'Invalid path traversal detected.'], 400);
+            return response()->json(['message' => __('messages.invalid_path_traversal')], 400);
         }
 
         return match (strtoupper($request->method())) {

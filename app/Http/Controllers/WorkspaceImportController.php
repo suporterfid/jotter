@@ -23,7 +23,7 @@ final class WorkspaceImportController extends Controller
 
         $file = $request->file('archive');
         if (! $file) {
-            return response()->json(['message' => 'Archive file is required.'], 422);
+            return response()->json(['message' => __('messages.archive_file_required')], 422);
         }
 
         $tempPath = storage_path('app/imports/import_'.uniqid('', true).'.zip');

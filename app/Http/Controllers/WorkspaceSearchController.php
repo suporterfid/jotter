@@ -40,7 +40,7 @@ final class WorkspaceSearchController extends Controller
 
         if ($criteria->isEmpty()) {
             return response()->json([
-                'message' => 'Search criteria must contain at least one filter or query string.',
+                'message' => __('messages.search_criteria_required'),
                 'errors' => [
                     'q' => ['At least one search filter or query string must be provided.'],
                 ],

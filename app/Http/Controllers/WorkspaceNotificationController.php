@@ -17,11 +17,11 @@ final class WorkspaceNotificationController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         if (! $subject->user) {
@@ -41,11 +41,11 @@ final class WorkspaceNotificationController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $notification = Notification::query()
@@ -55,7 +55,7 @@ final class WorkspaceNotificationController extends Controller
             ->first();
 
         if (! $notification) {
-            return response()->json(['message' => 'Notification not found.'], 404);
+            return response()->json(['message' => __('messages.notification_not_found')], 404);
         }
 
         $notification->update(['read_at' => now()]);
@@ -67,11 +67,11 @@ final class WorkspaceNotificationController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $notification = Notification::query()
@@ -81,11 +81,11 @@ final class WorkspaceNotificationController extends Controller
             ->first();
 
         if (! $notification) {
-            return response()->json(['message' => 'Notification not found.'], 404);
+            return response()->json(['message' => __('messages.notification_not_found')], 404);
         }
 
         $notification->delete();
 
-        return response()->json(['message' => 'Notification deleted.']);
+        return response()->json(['message' => __('messages.notification_deleted')]);
     }
 }

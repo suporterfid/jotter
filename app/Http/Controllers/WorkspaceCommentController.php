@@ -22,16 +22,16 @@ final class WorkspaceCommentController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $note = Note::query()->where('workspace_id', $workspaceId)->where('id', $noteId)->first();
         if (! $note) {
-            return response()->json(['message' => 'Note not found.'], 404);
+            return response()->json(['message' => __('messages.note_not_found')], 404);
         }
 
         $comments = NoteComment::query()
@@ -47,16 +47,16 @@ final class WorkspaceCommentController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $note = Note::query()->where('workspace_id', $workspaceId)->where('id', $noteId)->first();
         if (! $note) {
-            return response()->json(['message' => 'Note not found.'], 404);
+            return response()->json(['message' => __('messages.note_not_found')], 404);
         }
 
         $request->validate([
@@ -104,11 +104,11 @@ final class WorkspaceCommentController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $comment = NoteComment::query()
@@ -118,15 +118,15 @@ final class WorkspaceCommentController extends Controller
             ->first();
 
         if (! $comment) {
-            return response()->json(['message' => 'Comment not found.'], 404);
+            return response()->json(['message' => __('messages.comment_not_found')], 404);
         }
 
         if ($comment->user_id !== $subject->user?->id && ! $subject->isAdmin) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $comment->delete();
 
-        return response()->json(['message' => 'Comment deleted.']);
+        return response()->json(['message' => __('messages.comment_deleted')]);
     }
 }

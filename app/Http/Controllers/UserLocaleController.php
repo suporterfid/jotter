@@ -20,20 +20,20 @@ final class UserLocaleController extends Controller
         $subject = $this->identityProvider->resolveIdentity($request);
 
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         $locale = (string) $request->input('locale', '');
         if (! in_array($locale, self::SUPPORTED_LOCALES, true)) {
             return response()->json([
-                'message' => 'locale must be one of: '.implode(', ', self::SUPPORTED_LOCALES),
+                'message' => __('messages.locale_unsupported', ['locales' => implode(', ', self::SUPPORTED_LOCALES)]),
             ], 400);
         }
 
         if (($subject->attributes['sso_provider'] ?? null) === 'grandpasson') {
             $synced = $this->syncViaGrandpaSson($request, $locale);
             if (! $synced) {
-                return response()->json(['message' => 'Failed to update locale on GrandpaSSOn.'], 502);
+                return response()->json(['message' => __('messages.locale_grandpasson_sync_failed')], 502);
             }
         }
 

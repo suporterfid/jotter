@@ -61,7 +61,7 @@ final class NoteChecklistItemController extends Controller
 
         $item = NoteChecklistItem::query()->where('note_id', $noteId)->find($itemId);
         if (! $item) {
-            return response()->json(['message' => 'Checklist item not found.'], 404);
+            return response()->json(['message' => __('messages.checklist_item_not_found')], 404);
         }
 
         $validated = $request->validate([
@@ -87,7 +87,7 @@ final class NoteChecklistItemController extends Controller
 
         $item = NoteChecklistItem::query()->where('note_id', $noteId)->find($itemId);
         if (! $item) {
-            return response()->json(['message' => 'Checklist item not found.'], 404);
+            return response()->json(['message' => __('messages.checklist_item_not_found')], 404);
         }
 
         $item->delete();
@@ -99,16 +99,16 @@ final class NoteChecklistItemController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $note = Note::query()->where('workspace_id', $workspaceId)->where('id', $noteId)->first();
         if (! $note) {
-            return response()->json(['message' => 'Note not found.'], 404);
+            return response()->json(['message' => __('messages.note_not_found')], 404);
         }
 
         return $note;

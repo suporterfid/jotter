@@ -25,16 +25,16 @@ final class WorkspaceTemplateController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $workspace = Workspace::query()->find($workspaceId);
         if (! $workspace) {
-            return response()->json(['message' => 'Workspace not found.'], 404);
+            return response()->json(['message' => __('messages.workspace_not_found')], 404);
         }
 
         $request->validate([
@@ -47,7 +47,7 @@ final class WorkspaceTemplateController extends Controller
         $targetPath = $request->string('target_path')->trim()->toString();
 
         if (! $this->vaultStorage->exists($workspace, $templatePath)) {
-            return response()->json(['message' => "Template note not found: {$templatePath}"], 404);
+            return response()->json(['message' => __('messages.template_note_not_found', ['path' => $templatePath])], 404);
         }
 
         $rawTemplate = $this->vaultStorage->readContents($workspace, $templatePath);
@@ -61,7 +61,7 @@ final class WorkspaceTemplateController extends Controller
         $note = $this->vaultStorage->write($workspace, $targetPath, $renderedContent);
 
         return response()->json([
-            'message' => 'Note created from template.',
+            'message' => __('messages.note_created_from_template'),
             'data' => $note,
         ], 201);
     }
@@ -70,16 +70,16 @@ final class WorkspaceTemplateController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $workspace = Workspace::query()->find($workspaceId);
         if (! $workspace) {
-            return response()->json(['message' => 'Workspace not found.'], 404);
+            return response()->json(['message' => __('messages.workspace_not_found')], 404);
         }
 
         $date = $dateStr ? Carbon::parse($dateStr) : now();
@@ -93,7 +93,7 @@ final class WorkspaceTemplateController extends Controller
         try {
             $this->pathGuard->resolve($workspace, $relativePath, mustExist: false, mustBeMarkdown: true);
         } catch (\Throwable) {
-            return response()->json(['message' => 'Invalid daily note path pattern.'], 400);
+            return response()->json(['message' => __('messages.invalid_daily_note_path')], 400);
         }
 
         // If daily note already exists, return existing note

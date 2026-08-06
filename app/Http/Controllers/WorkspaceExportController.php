@@ -20,16 +20,16 @@ final class WorkspaceExportController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $workspace = Workspace::query()->find($workspaceId);
         if (! $workspace) {
-            return response()->json(['message' => 'Workspace not found.'], 404);
+            return response()->json(['message' => __('messages.workspace_not_found')], 404);
         }
 
         $exportDir = storage_path('app/private');
@@ -65,7 +65,7 @@ final class WorkspaceExportController extends Controller
 
         $zip = new ZipArchive();
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            return response()->json(['message' => 'Failed to create export zip archive.'], 500);
+            return response()->json(['message' => __('messages.failed_to_create_export_zip')], 500);
         }
 
         $notes = Note::query()->where('workspace_id', $workspaceId)->get();

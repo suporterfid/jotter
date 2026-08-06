@@ -65,7 +65,7 @@ final class BoardController extends Controller
 
         $board = Board::query()->where('workspace_id', $workspaceId)->find($boardId);
         if (! $board) {
-            return response()->json(['message' => 'Board not found.'], 404);
+            return response()->json(['message' => __('messages.board_not_found')], 404);
         }
 
         $validated = $request->validate([
@@ -90,7 +90,7 @@ final class BoardController extends Controller
 
         $board = Board::query()->where('workspace_id', $workspaceId)->find($boardId);
         if (! $board) {
-            return response()->json(['message' => 'Board not found.'], 404);
+            return response()->json(['message' => __('messages.board_not_found')], 404);
         }
 
         $board->delete();
@@ -102,11 +102,11 @@ final class BoardController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         return null;

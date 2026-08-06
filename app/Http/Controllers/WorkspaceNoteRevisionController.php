@@ -23,11 +23,11 @@ final class WorkspaceNoteRevisionController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $note = Note::query()
@@ -36,7 +36,7 @@ final class WorkspaceNoteRevisionController extends Controller
             ->first();
 
         if (! $note) {
-            return response()->json(['message' => 'Note not found.'], 404);
+            return response()->json(['message' => __('messages.note_not_found')], 404);
         }
 
         $revisions = NoteRevision::query()
@@ -52,11 +52,11 @@ final class WorkspaceNoteRevisionController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $revision = NoteRevision::query()
@@ -66,7 +66,7 @@ final class WorkspaceNoteRevisionController extends Controller
             ->first();
 
         if (! $revision) {
-            return response()->json(['message' => 'Revision not found.'], 404);
+            return response()->json(['message' => __('messages.revision_not_found')], 404);
         }
 
         return response()->json(['data' => $revision]);
@@ -76,11 +76,11 @@ final class WorkspaceNoteRevisionController extends Controller
     {
         $subject = $this->identityProvider->resolveIdentity($request);
         if (! $subject) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
         }
 
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+            return response()->json(['message' => __('messages.forbidden')], 403);
         }
 
         $workspace = Workspace::query()->find($workspaceId);
@@ -88,7 +88,7 @@ final class WorkspaceNoteRevisionController extends Controller
         $revision = NoteRevision::query()->where('workspace_id', $workspaceId)->where('note_id', $noteId)->where('id', $revisionId)->first();
 
         if (! $workspace || ! $note || ! $revision) {
-            return response()->json(['message' => 'Resource not found.'], 404);
+            return response()->json(['message' => __('messages.resource_not_found')], 404);
         }
 
         $restoredNote = $this->noteRevisions->restoreRevision(
@@ -100,7 +100,7 @@ final class WorkspaceNoteRevisionController extends Controller
         );
 
         return response()->json([
-            'message' => 'Revision restored successfully.',
+            'message' => __('messages.revision_restored_successfully'),
             'data' => $restoredNote,
         ]);
     }

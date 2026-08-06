@@ -86,7 +86,7 @@ final class AdminUserController extends Controller
             ]
         );
 
-        return response()->json(['message' => 'User deactivated successfully. Active sessions invalidated.']);
+        return response()->json(['message' => __('messages.user_deactivated_successfully')]);
     }
 
     public function reactivate(Request $request, User $user): JsonResponse
@@ -105,7 +105,7 @@ final class AdminUserController extends Controller
             ]
         );
 
-        return response()->json(['message' => 'User reactivated successfully.']);
+        return response()->json(['message' => __('messages.user_reactivated_successfully')]);
     }
 
     public function resetPassword(Request $request, User $user): JsonResponse
@@ -131,7 +131,7 @@ final class AdminUserController extends Controller
             ]
         );
 
-        return response()->json(['message' => 'User password reset successfully.']);
+        return response()->json(['message' => __('messages.user_password_reset_successfully')]);
     }
 
     public function changePassword(Request $request): JsonResponse
@@ -165,7 +165,7 @@ final class AdminUserController extends Controller
             ]
         );
 
-        return response()->json(['message' => 'Password changed successfully.']);
+        return response()->json(['message' => __('messages.password_changed_successfully')]);
     }
 
     private function authorizeAdmin(Request $request): void

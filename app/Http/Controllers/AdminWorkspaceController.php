@@ -103,7 +103,7 @@ final class AdminWorkspaceController extends Controller
         );
 
         return response()->json([
-            'message' => 'Workspace archived successfully. Vault files remain intact on disk.',
+            'message' => __('messages.workspace_archived_successfully'),
         ]);
     }
 
