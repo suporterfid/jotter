@@ -1,7 +1,7 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-card">
-      <h3>Set cover image</h3>
+      <h3>{{ t('coverImageModal.heading') }}</h3>
       <div class="cover-tabs">
         <button
           type="button"
@@ -9,18 +9,18 @@
           data-testid="cover-upload-tab-btn"
           :class="{ active: activeTab === 'upload' }"
           @click="activeTab = 'upload'"
-        >Upload</button>
+        >{{ t('coverImageModal.upload') }}</button>
         <button
           type="button"
           class="cover-tab-btn"
           data-testid="cover-url-tab-btn"
           :class="{ active: activeTab === 'url' }"
           @click="activeTab = 'url'"
-        >URL</button>
+        >{{ t('coverImageModal.url') }}</button>
       </div>
 
       <div v-if="activeTab === 'upload'">
-        <p class="modal-desc">Choose an image file to upload as the cover.</p>
+        <p class="modal-desc">{{ t('coverImageModal.uploadDesc') }}</p>
         <input
           type="file"
           accept="image/*"
@@ -31,23 +31,23 @@
       </div>
 
       <div v-else>
-        <p class="modal-desc">Paste a direct image URL.</p>
+        <p class="modal-desc">{{ t('coverImageModal.urlDesc') }}</p>
         <input
           v-model="urlDraft"
           type="url"
           class="modal-input"
           data-testid="cover-url-input"
-          placeholder="https://example.com/banner.jpg"
+          :placeholder="t('coverImageModal.urlPlaceholder')"
         />
         <div class="modal-actions">
-          <button type="button" class="btn-secondary" @click="$emit('close')">Cancel</button>
+          <button type="button" class="btn-secondary" @click="$emit('close')">{{ t('coverImageModal.cancel') }}</button>
           <button
             type="button"
             class="btn-primary"
             data-testid="cover-url-submit-btn"
             :disabled="urlDraft.trim() === ''"
             @click="$emit('set-cover', urlDraft.trim())"
-          >Set cover</button>
+          >{{ t('coverImageModal.setCover') }}</button>
         </div>
       </div>
     </div>
@@ -56,7 +56,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { uploadAttachment } from '../services/api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   workspaceId: number

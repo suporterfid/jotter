@@ -1,27 +1,27 @@
 <template>
   <div class="audit-log-viewer">
     <div class="panel-header">
-      <h2>Audit Log</h2>
+      <h2>{{ t('auditLogViewer.title') }}</h2>
       <span class="entry-count">{{ entries.length }}</span>
     </div>
-    <p class="panel-hint">Most recent 50 events for this workspace, newest first.</p>
+    <p class="panel-hint">{{ t('auditLogViewer.hint') }}</p>
 
     <div v-if="loading" class="panel-empty">
-      <p>Loading audit log…</p>
+      <p>{{ t('auditLogViewer.loading') }}</p>
     </div>
 
     <div v-else-if="entries.length === 0" class="panel-empty">
-      <p>No audit events recorded yet.</p>
+      <p>{{ t('auditLogViewer.empty') }}</p>
     </div>
 
     <table v-else class="audit-table">
       <thead>
         <tr>
-          <th scope="col">Time</th>
-          <th scope="col">Event</th>
-          <th scope="col">Actor</th>
-          <th scope="col">IP</th>
-          <th scope="col"><span class="sr-only">Details</span></th>
+          <th scope="col">{{ t('auditLogViewer.time') }}</th>
+          <th scope="col">{{ t('auditLogViewer.event') }}</th>
+          <th scope="col">{{ t('auditLogViewer.actor') }}</th>
+          <th scope="col">{{ t('auditLogViewer.ip') }}</th>
+          <th scope="col"><span class="sr-only">{{ t('auditLogViewer.details') }}</span></th>
         </tr>
       </thead>
       <tbody>
@@ -38,10 +38,10 @@
                 class="btn-toggle-details"
                 data-testid="audit-log-details-toggle"
                 :aria-expanded="expandedId === entry.id"
-                :aria-label="`Toggle details for ${entry.event} event`"
+                :aria-label="t('auditLogViewer.toggleDetails', { event: entry.event })"
                 @click="expandedId = expandedId === entry.id ? null : entry.id"
               >
-                {{ expandedId === entry.id ? 'Hide' : 'Details' }}
+                {{ expandedId === entry.id ? t('auditLogViewer.hide') : t('auditLogViewer.details') }}
               </button>
             </td>
           </tr>
@@ -58,7 +58,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AuditLogEntry } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   entries: AuditLogEntry[]

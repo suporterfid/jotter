@@ -1,22 +1,20 @@
 <template>
   <div class="link-report-viewer">
     <div class="panel-header">
-      <h2>Broken Links &amp; Orphans</h2>
+      <h2>{{ t('linkReportViewer.title') }}</h2>
     </div>
 
     <div v-if="loading" class="panel-empty">
-      <p>Loading report…</p>
+      <p>{{ t('linkReportViewer.loading') }}</p>
     </div>
 
     <template v-else>
       <section class="report-section">
         <div class="section-header">
-          <h3>Broken Links</h3>
+          <h3>{{ t('linkReportViewer.brokenLinks') }}</h3>
           <span class="count-badge">{{ report.broken_links.length }}</span>
         </div>
-        <p v-if="report.broken_links.length === 0" class="panel-empty-inline">
-          No broken <code>[[wikilinks]]</code> found.
-        </p>
+        <p v-if="report.broken_links.length === 0" class="panel-empty-inline" v-html="t('linkReportViewer.noBrokenLinks')"></p>
         <ul v-else class="broken-link-list">
           <li v-for="group in report.broken_links" :key="group.target_ref" class="broken-link-group" data-testid="broken-link-group">
             <div class="broken-link-target">
@@ -41,11 +39,11 @@
 
       <section class="report-section">
         <div class="section-header">
-          <h3>Orphan Notes</h3>
+          <h3>{{ t('linkReportViewer.orphanNotes') }}</h3>
           <span class="count-badge">{{ report.orphans.length }}</span>
         </div>
         <p v-if="report.orphans.length === 0" class="panel-empty-inline">
-          No orphan notes — every note has at least one inbound link.
+          {{ t('linkReportViewer.noOrphans') }}
         </p>
         <ul v-else class="orphan-list">
           <li v-for="orphan in report.orphans" :key="orphan.id" data-testid="orphan-note">
@@ -61,7 +59,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { LinkReport } from '../services/types'
+
+const { t } = useI18n()
 
 withDefaults(defineProps<{
   report: LinkReport

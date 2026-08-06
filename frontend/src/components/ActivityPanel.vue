@@ -1,6 +1,6 @@
 <template>
-  <aside class="activity-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Activity">
-    <PanelHeader title="Activity" :count="entries.length" :collapsed="collapsed" @toggle="toggle">
+  <aside class="activity-panel" :class="{ 'panel-collapsed': collapsed }" :aria-label="t('activityPanel.title')">
+    <PanelHeader :title="t('activityPanel.title')" :count="entries.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <circle cx="12" cy="12" r="10"></circle>
@@ -11,7 +11,7 @@
 
     <div v-show="!collapsed" class="activity-body">
       <div v-if="entries.length === 0" class="activity-empty">
-        <p>No activity yet.</p>
+        <p>{{ t('activityPanel.empty') }}</p>
       </div>
 
       <ul v-else class="activity-list">
@@ -25,9 +25,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { NoteActivityEntry } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   entries: NoteActivityEntry[]
@@ -39,13 +42,13 @@ function describe(entry: NoteActivityEntry): string {
   const meta = (entry.metadata ?? {}) as Record<string, unknown>
   switch (meta.action) {
     case 'property_set':
-      return `Set ${meta.name} to ${meta.value}`
+      return t('activityPanel.propertySet', { name: meta.name, value: meta.value })
     case 'checklist_item_created':
-      return `Added checklist item "${meta.text}"`
+      return t('activityPanel.checklistItemCreated', { text: meta.text })
     case 'checklist_item_checked':
-      return `Checked off "${meta.text}"`
+      return t('activityPanel.checklistItemChecked', { text: meta.text })
     case 'checklist_item_unchecked':
-      return `Unchecked "${meta.text}"`
+      return t('activityPanel.checklistItemUnchecked', { text: meta.text })
     default:
       return entry.event
   }

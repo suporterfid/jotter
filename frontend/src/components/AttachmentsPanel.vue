@@ -1,17 +1,17 @@
 <template>
   <div class="attachments-panel">
     <div class="panel-header">
-      <h2>Attachments</h2>
+      <h2>{{ t('attachmentsPanel.title') }}</h2>
       <span class="attachment-count">{{ attachments.length }}</span>
     </div>
 
     <div v-if="loading" class="panel-empty">
-      <p>Loading attachments…</p>
+      <p>{{ t('attachmentsPanel.loading') }}</p>
     </div>
 
     <div v-else-if="attachments.length === 0" class="panel-empty">
-      <p>No attachments yet.</p>
-      <p class="panel-empty-hint">Drag a file onto a note's editor to upload one.</p>
+      <p>{{ t('attachmentsPanel.empty') }}</p>
+      <p class="panel-empty-hint">{{ t('attachmentsPanel.emptyHint') }}</p>
     </div>
 
     <ul v-else class="attachment-grid">
@@ -21,7 +21,7 @@
           target="_blank"
           rel="noopener"
           class="attachment-preview-link"
-          :aria-label="`Open ${filename(attachment.path)}`"
+          :aria-label="t('attachmentsPanel.open', { name: filename(attachment.path) })"
         >
           <img
             v-if="attachment.mime.startsWith('image/')"
@@ -43,8 +43,8 @@
         <button
           class="btn-delete-attachment"
           data-testid="attachment-delete-btn"
-          title="Delete attachment"
-          :aria-label="`Delete ${filename(attachment.path)}`"
+          :title="t('attachmentsPanel.deleteTooltip')"
+          :aria-label="t('attachmentsPanel.delete', { name: filename(attachment.path) })"
           @click="$emit('delete-attachment', attachment)"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -58,7 +58,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { AttachmentItem } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   attachments: AttachmentItem[]
