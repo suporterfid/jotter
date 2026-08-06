@@ -10,7 +10,7 @@
           <line x1="15.5" y1="7.5" x2="13.5" y2="15.5"></line>
           <line x1="9" y1="6" x2="15" y2="6"></line>
         </svg>
-        <h2>Vault Relationship Graph</h2>
+        <h2>{{ t('graphView.title') }}</h2>
       </div>
       <button class="btn-close-graph" @click="$emit('close')">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -63,7 +63,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { NoteMeta } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   notes: NoteMeta[]

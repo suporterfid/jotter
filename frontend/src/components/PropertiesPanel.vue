@@ -1,6 +1,6 @@
 <template>
-  <aside class="properties-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Properties">
-    <PanelHeader title="Properties" :count="properties.length" :collapsed="collapsed" @toggle="toggle">
+  <aside class="properties-panel" :class="{ 'panel-collapsed': collapsed }" :aria-label="t('propertiesPanel.title')">
+    <PanelHeader :title="t('propertiesPanel.title')" :count="properties.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M3 6h18M7 12h10M11 18h2"></path>
@@ -10,7 +10,7 @@
 
     <div v-show="!collapsed" class="properties-body">
     <div v-if="properties.length === 0" class="properties-empty">
-      <p>No typed properties on this note yet.</p>
+      <p>{{ t('propertiesPanel.empty') }}</p>
     </div>
 
     <ul v-else class="properties-list">
@@ -61,7 +61,7 @@
                 @change="commitEdit(prop)"
                 @keydown.escape="cancelEdit"
               />
-              <span>{{ editDraftBool ? 'True' : 'False' }}</span>
+              <span>{{ editDraftBool ? t('propertiesPanel.true') : t('propertiesPanel.false') }}</span>
             </label>
             <span v-else class="property-value">{{ formatValue(prop) }}</span>
           </template>
@@ -73,7 +73,7 @@
             type="button"
             class="property-value-btn"
             data-testid="property-value-btn"
-            :aria-label="`Edit ${prop.name}`"
+            :aria-label="t('propertiesPanel.edit', { name: prop.name })"
             @click="startEdit(prop)"
           >{{ formatValue(prop) }}</button>
           <span v-else class="property-value">{{ formatValue(prop) }}</span>
@@ -81,8 +81,8 @@
         <button
           class="btn-delete-property"
           data-testid="property-delete-btn"
-          :aria-label="`Delete property ${prop.name}`"
-          title="Delete property"
+          :aria-label="t('propertiesPanel.delete', { name: prop.name })"
+          :title="t('propertiesPanel.deleteTooltip')"
           @click="$emit('delete-property', prop.name)"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -97,8 +97,8 @@
       <input
         v-model="newName"
         type="text"
-        placeholder="Property name"
-        aria-label="New property name"
+        :placeholder="t('propertiesPanel.namePlaceholder')"
+        :aria-label="t('propertiesPanel.newPropertyName')"
         data-testid="property-name-input"
         class="property-form-input"
         list="known-property-names"
@@ -109,20 +109,20 @@
       <datalist id="known-property-names">
         <option v-for="p in knownProperties" :key="p.name" :value="p.name" />
       </datalist>
-      <select v-model="newType" aria-label="New property type" data-testid="property-type-select" class="property-form-select">
-        <option value="string">Text</option>
-        <option value="numeric">Number</option>
-        <option value="boolean">Checkbox</option>
-        <option value="datetime">Date/time</option>
-        <option value="list">List (comma-separated)</option>
+      <select v-model="newType" :aria-label="t('propertiesPanel.typeLabel')" data-testid="property-type-select" class="property-form-select">
+        <option value="string">{{ t('propertiesPanel.typeText') }}</option>
+        <option value="numeric">{{ t('propertiesPanel.typeNumber') }}</option>
+        <option value="boolean">{{ t('propertiesPanel.typeCheckbox') }}</option>
+        <option value="datetime">{{ t('propertiesPanel.typeDatetime') }}</option>
+        <option value="list">{{ t('propertiesPanel.typeList') }}</option>
       </select>
 
       <input
         v-if="newType === 'string' || newType === 'list'"
         v-model="newValueText"
         type="text"
-        placeholder="Value"
-        aria-label="New property value"
+        :placeholder="t('propertiesPanel.valuePlaceholder')"
+        :aria-label="t('propertiesPanel.newPropertyValue')"
         data-testid="property-value-input"
         class="property-form-input"
       />
@@ -130,8 +130,8 @@
         v-else-if="newType === 'numeric'"
         v-model="newValueText"
         type="number"
-        placeholder="Value"
-        aria-label="New property value"
+        :placeholder="t('propertiesPanel.valuePlaceholder')"
+        :aria-label="t('propertiesPanel.newPropertyValue')"
         data-testid="property-value-input"
         class="property-form-input"
       />
@@ -139,16 +139,16 @@
         v-else-if="newType === 'datetime'"
         v-model="newValueText"
         type="datetime-local"
-        aria-label="New property value"
+        :aria-label="t('propertiesPanel.newPropertyValue')"
         data-testid="property-value-input"
         class="property-form-input"
       />
       <label v-else-if="newType === 'boolean'" class="property-checkbox-label">
-        <input v-model="newValueBool" type="checkbox" aria-label="New property value" data-testid="property-value-input" />
-        <span>{{ newValueBool ? 'True' : 'False' }}</span>
+        <input v-model="newValueBool" type="checkbox" :aria-label="t('propertiesPanel.newPropertyValue')" data-testid="property-value-input" />
+        <span>{{ newValueBool ? t('propertiesPanel.true') : t('propertiesPanel.false') }}</span>
       </label>
 
-      <button type="submit" class="btn-add-property" data-testid="property-add-btn">Add</button>
+      <button type="submit" class="btn-add-property" data-testid="property-add-btn">{{ t('propertiesPanel.add') }}</button>
     </form>
     </div>
   </aside>
@@ -156,10 +156,13 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import { getWorkspaceProperties } from '../services/api'
 import type { NoteProperty, NotePropertyType } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   properties: NoteProperty[]

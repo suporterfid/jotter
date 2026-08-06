@@ -2,15 +2,15 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="history-card" role="dialog" aria-modal="true" aria-labelledby="history-panel-title">
       <header class="history-header">
-        <h3 id="history-panel-title">Version History</h3>
-        <button type="button" class="btn-close" aria-label="Close version history" @click="$emit('close')">&times;</button>
+        <h3 id="history-panel-title">{{ t('historyPanel.title') }}</h3>
+        <button type="button" class="btn-close" :aria-label="t('historyPanel.close')" @click="$emit('close')">&times;</button>
       </header>
 
       <div class="history-body">
         <div class="revision-list-pane">
-          <div v-if="loading" class="pane-empty">Loading revisions…</div>
+          <div v-if="loading" class="pane-empty">{{ t('historyPanel.loading') }}</div>
           <div v-else-if="revisions.length === 0" class="pane-empty">
-            No saved revisions yet. Revisions are recorded each time this note's content changes.
+            {{ t('historyPanel.empty') }}
           </div>
           <ul v-else class="revision-list">
             <li
@@ -28,8 +28,8 @@
         </div>
 
         <div class="revision-preview-pane">
-          <div v-if="!selectedRevisionId" class="pane-empty">Select a revision to preview its content.</div>
-          <div v-else-if="previewLoading" class="pane-empty">Loading…</div>
+          <div v-if="!selectedRevisionId" class="pane-empty">{{ t('historyPanel.selectToPreview') }}</div>
+          <div v-else-if="previewLoading" class="pane-empty">{{ t('historyPanel.loadingPreview') }}</div>
           <template v-else-if="previewContent !== null">
             <pre class="revision-content" data-testid="revision-preview">{{ previewContent }}</pre>
             <div class="revision-actions">
@@ -39,7 +39,7 @@
                 data-testid="revision-restore-btn"
                 @click="$emit('restore-revision', selectedRevisionId)"
               >
-                Restore this version
+                {{ t('historyPanel.restore') }}
               </button>
             </div>
           </template>
@@ -50,7 +50,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { NoteRevisionMeta } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   revisions: NoteRevisionMeta[]

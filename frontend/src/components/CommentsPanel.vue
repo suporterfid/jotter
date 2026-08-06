@@ -1,6 +1,6 @@
 <template>
-  <aside class="comments-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Comments">
-    <PanelHeader title="Comments" :count="comments.length" :collapsed="collapsed" @toggle="toggle">
+  <aside class="comments-panel" :class="{ 'panel-collapsed': collapsed }" :aria-label="t('commentsPanel.title')">
+    <PanelHeader :title="t('commentsPanel.title')" :count="comments.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -12,7 +12,7 @@
     <p v-if="errorMessage" class="comments-error" role="alert">{{ errorMessage }}</p>
 
     <div v-if="comments.length === 0" class="comments-empty">
-      <p>No comments on this note yet.</p>
+      <p>{{ t('commentsPanel.empty') }}</p>
     </div>
 
     <ul v-else class="comments-list">
@@ -26,8 +26,8 @@
         <button
           class="btn-delete-comment"
           data-testid="comment-delete-btn"
-          :aria-label="`Delete comment by ${comment.actor_name}`"
-          title="Delete comment"
+          :aria-label="t('commentsPanel.delete', { name: comment.actor_name })"
+          :title="t('commentsPanel.deleteTooltip')"
           @click="$emit('delete-comment', comment.id)"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -41,14 +41,14 @@
     <form class="comment-form" @submit.prevent="handleSubmit">
       <textarea
         v-model="newContent"
-        placeholder="Write a comment... use @name to mention someone"
-        aria-label="New comment"
+        :placeholder="t('commentsPanel.placeholder')"
+        :aria-label="t('commentsPanel.newComment')"
         data-testid="comment-input"
         class="comment-form-textarea"
         rows="2"
       ></textarea>
       <button type="submit" class="btn-add-comment" data-testid="comment-submit-btn" :disabled="!newContent.trim()">
-        Comment
+        {{ t('commentsPanel.comment') }}
       </button>
     </form>
     </div>
@@ -57,9 +57,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { NoteComment } from '../services/types'
+
+const { t } = useI18n()
 
 defineProps<{
   comments: NoteComment[]

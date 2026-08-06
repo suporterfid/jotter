@@ -1,6 +1,6 @@
 <template>
-  <aside class="checklist-panel" :class="{ 'panel-collapsed': collapsed }" aria-label="Checklist">
-    <PanelHeader title="Checklist" :count="items.length" :collapsed="collapsed" @toggle="toggle">
+  <aside class="checklist-panel" :class="{ 'panel-collapsed': collapsed }" :aria-label="t('checklistPanel.title')">
+    <PanelHeader :title="t('checklistPanel.title')" :count="items.length" :collapsed="collapsed" @toggle="toggle">
       <template #icon>
         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
           <polyline points="9 11 12 14 22 4"></polyline>
@@ -13,7 +13,7 @@
       <p v-if="items.length > 0" class="checklist-progress">{{ doneCount }}/{{ items.length }}</p>
 
       <div v-if="items.length === 0" class="checklist-empty">
-        <p>No checklist items yet.</p>
+        <p>{{ t('checklistPanel.empty') }}</p>
       </div>
 
       <ul v-else class="checklist-list">
@@ -22,15 +22,15 @@
             type="checkbox"
             :checked="item.done"
             data-testid="checklist-item-checkbox"
-            :aria-label="`Mark '${item.text}' ${item.done ? 'not done' : 'done'}`"
+            :aria-label="item.done ? t('checklistPanel.markNotDone', { text: item.text }) : t('checklistPanel.markDone', { text: item.text })"
             @click="$emit('toggle-item', item.id)"
           />
           <span class="checklist-item-text" :class="{ 'checklist-item-done': item.done }">{{ item.text }}</span>
           <button
             class="btn-delete-checklist-item"
             data-testid="checklist-item-delete-btn"
-            :aria-label="`Delete '${item.text}'`"
-            title="Delete item"
+            :aria-label="t('checklistPanel.delete', { text: item.text })"
+            :title="t('checklistPanel.deleteTooltip')"
             @click="$emit('delete-item', item.id)"
           >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -45,13 +45,13 @@
         <input
           v-model="newText"
           type="text"
-          placeholder="Add a checklist item"
-          aria-label="New checklist item"
+          :placeholder="t('checklistPanel.addPlaceholder')"
+          :aria-label="t('checklistPanel.newItem')"
           data-testid="checklist-item-input"
           class="checklist-item-input"
         />
         <button type="submit" class="btn-add-checklist-item" data-testid="checklist-item-submit-btn" :disabled="!newText.trim()">
-          Add
+          {{ t('checklistPanel.add') }}
         </button>
       </form>
     </div>
@@ -60,9 +60,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { NoteChecklistItem } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   items: NoteChecklistItem[]
