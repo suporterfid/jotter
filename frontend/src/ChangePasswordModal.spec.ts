@@ -72,4 +72,9 @@ describe('ChangePasswordModal', () => {
     vi.advanceTimersByTime(1500)
     expect(wrapper.emitted('close')).toBeTruthy()
   })
+
+  it('renders the heading via i18n', () => {
+    const wrapper = mount(ChangePasswordModal)
+    expect(wrapper.find('h3').text()).toBe('Change Password')
+  })
 })

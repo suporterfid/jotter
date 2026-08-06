@@ -16,4 +16,16 @@ export default {
     invalidCredentials: 'E-mail ou senha inválidos.',
     connectionFailed: 'Falha ao conectar ao serviço de autenticação.',
   },
+  changePassword: {
+    heading: 'Alterar senha',
+    success: 'Senha alterada com sucesso.',
+    currentPlaceholder: 'Senha atual',
+    newPlaceholder: 'Nova senha',
+    confirmPlaceholder: 'Confirme a nova senha',
+    cancel: 'Cancelar',
+    saving: 'Salvando…',
+    submit: 'Alterar senha',
+    mismatchError: 'A nova senha e a confirmação não coincidem.',
+    genericError: 'Falha ao alterar a senha.',
+  },
 }

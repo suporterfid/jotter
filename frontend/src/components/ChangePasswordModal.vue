@@ -1,17 +1,17 @@
 <template>
   <div class="modal-overlay" data-testid="change-password-modal" @click.self="$emit('close')">
     <div class="modal-card">
-      <h3>Change Password</h3>
+      <h3>{{ t('changePassword.heading') }}</h3>
 
       <p v-if="error" class="modal-error" data-testid="change-password-error" role="alert">{{ error }}</p>
-      <p v-if="success" class="modal-success" data-testid="change-password-success" role="status">Password changed successfully.</p>
+      <p v-if="success" class="modal-success" data-testid="change-password-success" role="status">{{ t('changePassword.success') }}</p>
 
       <form @submit.prevent="submit">
         <input
           v-model="currentPassword"
           type="password"
           class="modal-input"
-          placeholder="Current password"
+          :placeholder="t('changePassword.currentPlaceholder')"
           data-testid="change-password-current"
           required
         />
@@ -19,7 +19,7 @@
           v-model="newPassword"
           type="password"
           class="modal-input"
-          placeholder="New password"
+          :placeholder="t('changePassword.newPlaceholder')"
           data-testid="change-password-new"
           required
         />
@@ -27,18 +27,18 @@
           v-model="confirmPassword"
           type="password"
           class="modal-input"
-          placeholder="Confirm new password"
+          :placeholder="t('changePassword.confirmPlaceholder')"
           data-testid="change-password-confirm"
           required
         />
         <div class="modal-actions">
-          <button type="button" class="btn-secondary" @click="$emit('close')">Cancel</button>
+          <button type="button" class="btn-secondary" @click="$emit('close')">{{ t('changePassword.cancel') }}</button>
           <button
             type="submit"
             class="btn-primary"
             data-testid="change-password-submit"
             :disabled="loading"
-          >{{ loading ? 'Saving…' : 'Change Password' }}</button>
+          >{{ loading ? t('changePassword.saving') : t('changePassword.submit') }}</button>
         </div>
       </form>
     </div>
@@ -47,7 +47,10 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { changePassword } from '../services/api'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -72,7 +75,7 @@ async function submit() {
   success.value = false
 
   if (newPassword.value !== confirmPassword.value) {
-    error.value = 'New password and confirmation do not match.'
+    error.value = t('changePassword.mismatchError')
     return
   }
 
@@ -86,7 +89,7 @@ async function submit() {
     autoCloseTimer = setTimeout(() => emit('close'), AUTO_CLOSE_DELAY_MS)
   } catch (e: unknown) {
     const axiosError = e as { response?: { data?: { message?: string } } }
-    error.value = axiosError.response?.data?.message || 'Failed to change password.'
+    error.value = axiosError.response?.data?.message || t('changePassword.genericError')
   } finally {
     loading.value = false
   }

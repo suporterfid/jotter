@@ -16,4 +16,16 @@ export default {
     invalidCredentials: 'Invalid email or password.',
     connectionFailed: 'Failed to connect to authentication service.',
   },
+  changePassword: {
+    heading: 'Change Password',
+    success: 'Password changed successfully.',
+    currentPlaceholder: 'Current password',
+    newPlaceholder: 'New password',
+    confirmPlaceholder: 'Confirm new password',
+    cancel: 'Cancel',
+    saving: 'Saving…',
+    submit: 'Change Password',
+    mismatchError: 'New password and confirmation do not match.',
+    genericError: 'Failed to change password.',
+  },
 }
