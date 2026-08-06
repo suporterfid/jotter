@@ -15,6 +15,7 @@ final class AuthenticatedSubject
         public readonly string $name,
         public readonly bool $isAdmin = false,
         public readonly ?User $user = null,
-        public readonly array $attributes = []
+        public readonly array $attributes = [],
+        public readonly string $locale = 'pt-BR',
     ) {}
 }

@@ -36,6 +36,7 @@ final class LocalIdentityProvider implements IdentityProvider
                         name: $user->name,
                         isAdmin: (bool) $user->is_admin,
                         user: $user,
+                        locale: $user->locale,
                     );
                 }
             }
@@ -55,6 +56,7 @@ final class LocalIdentityProvider implements IdentityProvider
             name: $user->name,
             isAdmin: (bool) $user->is_admin,
             user: $user,
+            locale: $user->locale,
         );
     }
 
@@ -138,6 +140,7 @@ final class LocalIdentityProvider implements IdentityProvider
             name: $user->name,
             isAdmin: (bool) $user->is_admin,
             user: $user,
+            locale: $user->locale,
         );
     }
 

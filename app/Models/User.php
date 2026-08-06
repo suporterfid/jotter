@@ -16,6 +16,7 @@ class User extends Authenticatable
 
     protected $attributes = [
         'is_active' => true,
+        'locale' => 'pt-BR',
     ];
 
     /**
