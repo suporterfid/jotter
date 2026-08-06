@@ -32,7 +32,8 @@ vi.mock('./services/api', () => ({
     subject_id: '1',
     email: 'admin@example.com',
     name: 'Admin',
-    is_admin: true
+    is_admin: true,
+    locale: 'pt-BR'
   }),
   login: vi.fn(),
   logout: vi.fn(),

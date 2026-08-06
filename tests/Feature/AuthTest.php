@@ -341,4 +341,19 @@ class AuthTest extends TestCase
             ->assertJsonPath('data.email', 'me@example.com')
             ->assertJsonPath('data.is_admin', true);
     }
+
+    public function test_me_endpoint_returns_the_subjects_locale(): void
+    {
+        $user = User::create([
+            'name' => 'Locale Response Test',
+            'email' => 'locale-response@example.com',
+            'password' => bcrypt('irrelevant'),
+            'locale' => 'en',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.locale', 'en');
+    }
 }

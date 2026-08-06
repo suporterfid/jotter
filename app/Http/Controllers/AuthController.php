@@ -102,6 +102,7 @@ final class AuthController extends Controller
                 'email' => $subject->email,
                 'name' => $subject->name,
                 'is_admin' => $subject->isAdmin,
+                'locale' => $subject->locale,
             ],
         ]);
     }

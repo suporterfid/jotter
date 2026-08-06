@@ -92,6 +92,7 @@ export interface AuthUser {
   email: string
   name: string
   is_admin: boolean
+  locale: string
 }
 
 export interface NoteRevisionMeta {

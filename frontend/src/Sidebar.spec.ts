@@ -263,7 +263,7 @@ describe('Sidebar admin panel entry', () => {
     const wrapper = mount(Sidebar, {
       props: {
         notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
-        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false, locale: 'pt-BR' },
       },
     })
     await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
@@ -274,7 +274,7 @@ describe('Sidebar admin panel entry', () => {
     const wrapper = mount(Sidebar, {
       props: {
         notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
-        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: true },
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: true, locale: 'pt-BR' },
       },
     })
     await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
@@ -288,7 +288,7 @@ describe('Sidebar change password entry', () => {
     const wrapper = mount(Sidebar, {
       props: {
         notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
-        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false, locale: 'pt-BR' },
         authProvider: 'grandpasson',
       },
     })
@@ -299,7 +299,7 @@ describe('Sidebar change password entry', () => {
     const wrapper = mount(Sidebar, {
       props: {
         notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev',
-        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false },
+        currentUser: { subject_id: '1', email: 'a@b.com', name: 'A', is_admin: false, locale: 'pt-BR' },
         authProvider: 'local',
       },
     })
