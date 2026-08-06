@@ -1,13 +1,10 @@
 import { config } from '@vue/test-utils'
-import { createI18n } from 'vue-i18n'
-import en from './i18n/locales/en'
-import ptBR from './i18n/locales/pt-BR'
+import i18n from './i18n'
 
-const testI18n = createI18n({
-  legacy: false,
-  locale: 'en',
-  fallbackLocale: 'en',
-  messages: { en, 'pt-BR': ptBR },
-})
+// Reuse the app's actual i18n singleton (not a separate instance) so tests that
+// import `i18n` directly observe the same locale ref that mounted components
+// read/write through useI18n(). Force English so none of the existing spec
+// files' rendered-text assertions need to change.
+i18n.global.locale.value = 'en'
 
-config.global.plugins.push(testI18n)
+config.global.plugins.push(i18n)

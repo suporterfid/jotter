@@ -254,6 +254,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import i18n from './i18n'
 import Sidebar from './components/Sidebar.vue'
 import NoteEditor from './components/NoteEditor.vue'
 import SearchResults from './components/SearchResults.vue'
@@ -431,6 +432,9 @@ onMounted(async () => {
   try {
     const user = await getMe()
     currentUser.value = user
+    if (user) {
+      i18n.global.locale.value = user.locale as 'pt-BR' | 'en'
+    }
   } catch {
     showLoginModal.value = true
   }

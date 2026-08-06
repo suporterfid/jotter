@@ -411,6 +411,7 @@
       </div>
       <div class="sidebar-footer-actions">
         <ThemeToggle />
+        <LocaleToggle />
         <button
           v-if="authProvider === 'local'"
           class="btn-icon"
@@ -452,6 +453,7 @@ import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem, Wo
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import LocaleToggle from './LocaleToggle.vue'
 import WorkspaceSwitcher from './WorkspaceSwitcher.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
 import { moveNote, reorderNoteTree } from '../services/api'

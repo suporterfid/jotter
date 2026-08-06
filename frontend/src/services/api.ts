@@ -51,6 +51,10 @@ export async function changePassword(currentPassword: string, newPassword: strin
   })
 }
 
+export async function updateLocale(locale: string): Promise<void> {
+  await api.post('/user/locale', { locale })
+}
+
 export async function adminResetPassword(userId: number, newPassword: string): Promise<void> {
   await api.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
 }
