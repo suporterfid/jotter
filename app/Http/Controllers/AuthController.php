@@ -24,7 +24,7 @@ final class AuthController extends Controller
 
         if (! $subject) {
             return response()->json([
-                'message' => 'Invalid email or password.',
+                'message' => __('messages.invalid_email_or_password'),
             ], 401);
         }
 
@@ -82,7 +82,7 @@ final class AuthController extends Controller
         $this->identityProvider->logout($request);
 
         return response()->json([
-            'message' => 'Logged out successfully.',
+            'message' => __('messages.logged_out_successfully'),
         ]);
     }
 
@@ -92,7 +92,7 @@ final class AuthController extends Controller
 
         if (! $subject) {
             return response()->json([
-                'message' => 'Unauthenticated.',
+                'message' => __('messages.unauthenticated'),
             ], 401);
         }
 

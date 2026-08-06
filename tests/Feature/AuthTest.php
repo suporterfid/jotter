@@ -356,4 +356,13 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.locale', 'en');
     }
+
+    public function test_invalid_login_message_is_translated_to_portuguese(): void
+    {
+        app()->setLocale('pt-BR');
+
+        $this->postJson('/api/auth/login', ['email' => 'nobody@example.com', 'password' => 'wrong'])
+            ->assertStatus(401)
+            ->assertJsonPath('message', 'E-mail ou senha inválidos.');
+    }
 }

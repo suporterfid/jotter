@@ -43,7 +43,7 @@ class AttachmentController extends Controller
 
         $file = $request->file('file');
         if (! $file || ! $file->isValid()) {
-            return response()->json(['message' => 'Invalid file upload.'], 400);
+            return response()->json(['message' => __('messages.invalid_file_upload')], 400);
         }
 
         $extension = strtolower($file->getClientOriginalExtension());
@@ -53,16 +53,20 @@ class AttachmentController extends Controller
         $allowedMimes = config('jotter.attachments.allowed_mimes', []);
 
         if ($extension !== '' && ! in_array($extension, $allowedExts, true)) {
+            $message = __('messages.file_extension_not_allowed', ['extension' => ".{$extension}"]);
+
             return response()->json([
-                'message' => "File extension [.{$extension}] is not allowed.",
-                'errors' => ['file' => ["File extension [.{$extension}] is not allowed."]],
+                'message' => $message,
+                'errors' => ['file' => [$message]],
             ], 422);
         }
 
         if ($mime !== '' && ! in_array($mime, $allowedMimes, true)) {
+            $message = __('messages.mime_type_not_allowed', ['mime' => $mime]);
+
             return response()->json([
-                'message' => "MIME type [{$mime}] is not allowed.",
-                'errors' => ['file' => ["MIME type [{$mime}] is not allowed."]],
+                'message' => $message,
+                'errors' => ['file' => [$message]],
             ], 422);
         }
 
@@ -88,7 +92,7 @@ class AttachmentController extends Controller
                 'Content-Disposition' => 'inline',
             ]);
         } catch (VaultNoteNotFound | PathTraversalRejected) {
-            return response()->json(['message' => "Attachment [{$path}] not found."], 404);
+            return response()->json(['message' => __('messages.attachment_not_found', ['path' => $path])], 404);
         }
     }
 
@@ -99,14 +103,14 @@ class AttachmentController extends Controller
             try {
                 $this->storage->readAttachmentInfo($workspace, $attachment);
             } catch (VaultNoteNotFound | PathTraversalRejected) {
-                return response()->json(['message' => "Attachment [{$attachment}] not found."], 404);
+                return response()->json(['message' => __('messages.attachment_not_found', ['path' => $attachment])], 404);
             }
         } elseif (! $existing) {
-            return response()->json(['message' => "Attachment [{$attachment}] not found."], 404);
+            return response()->json(['message' => __('messages.attachment_not_found', ['path' => $attachment])], 404);
         }
 
         $this->storage->deleteAttachment($workspace, $attachment);
 
-        return response()->json(['message' => 'Attachment deleted successfully.']);
+        return response()->json(['message' => __('messages.attachment_deleted_successfully')]);
     }
 }

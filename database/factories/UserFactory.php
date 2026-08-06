@@ -30,6 +30,12 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // English, not the pt-BR production default: the existing test suite
+            // asserts English literal response text for authenticated requests,
+            // and SetLocaleFromSubject renders every response in the acting
+            // user's locale. Tests that specifically exercise locale behavior
+            // set it explicitly via User::create() instead of the factory.
+            'locale' => 'en',
         ];
     }
 
