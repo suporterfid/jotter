@@ -1,5 +1,5 @@
 <template>
-  <div v-if="tabs.length > 0" class="tab-strip" role="tablist">
+  <div v-if="tabs.length > 0" class="tab-strip tab-strip-vertical" role="tablist">
     <div
       v-for="tab in tabs"
       :key="tab.id"
@@ -10,6 +10,10 @@
       data-testid="tab-strip-item"
       @click="$emit('select-tab', tab.id)"
     >
+      <svg class="tab-strip-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <path d="M14 2v6h6"></path>
+      </svg>
       <span class="tab-strip-title">{{ tab.title }}</span>
       <button
         type="button"
@@ -35,14 +39,17 @@ defineEmits<{
 </script>
 
 <style scoped>
-.tab-strip {
+.tab-strip-vertical {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  width: 200px;
+  flex: 0 0 200px;
+  padding: var(--space-2);
   gap: 2px;
-  padding: 0 var(--space-2);
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  height: 100%;
 }
 
 .tab-strip-item {
@@ -50,12 +57,10 @@ defineEmits<{
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-text-muted);
   font-size: 0.8125rem;
-  white-space: nowrap;
-  max-width: 200px;
 }
 
 .tab-strip-item:hover {
@@ -68,13 +73,20 @@ defineEmits<{
   font-weight: 500;
 }
 
+.tab-strip-icon {
+  flex-shrink: 0;
+}
+
 .tab-strip-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .tab-strip-close-btn {
+  flex-shrink: 0;
   background: transparent;
   border: none;
   color: inherit;
