@@ -1,17 +1,17 @@
 <template>
   <div class="collections-calendar-view">
     <div class="panel-header">
-      <h2>Calendar View</h2>
+      <h2>{{ t('collectionsCalendarView.title') }}</h2>
       <span class="count-badge">{{ page.total }}</span>
     </div>
-    <p class="panel-hint">Notes grouped by a datetime property, in date order.</p>
+    <p class="panel-hint">{{ t('collectionsCalendarView.hint') }}</p>
 
     <form class="group-bar" @submit.prevent="applyDateProperty">
       <input
         v-model="datePropertyInput"
         type="text"
-        placeholder="Datetime property (e.g. due_date)"
-        aria-label="Group by datetime property"
+        :placeholder="t('collectionsCalendarView.datePropertyPlaceholder')"
+        :aria-label="t('collectionsCalendarView.datePropertyLabel')"
         data-testid="calendar-date-property"
         class="group-input"
         :list="'calendar-property-options'"
@@ -19,19 +19,19 @@
       <datalist id="calendar-property-options">
         <option v-for="col in propertyColumns" :key="col" :value="col" />
       </datalist>
-      <button type="submit" class="btn-group-apply" data-testid="calendar-date-apply">Group</button>
+      <button type="submit" class="btn-group-apply" data-testid="calendar-date-apply">{{ t('collectionsCalendarView.group') }}</button>
     </form>
 
     <div v-if="loading" class="panel-empty">
-      <p>Loading notes…</p>
+      <p>{{ t('collectionsCalendarView.loading') }}</p>
     </div>
 
     <div v-else-if="page.data.length === 0" class="panel-empty">
-      <p>No notes match this view.</p>
+      <p>{{ t('collectionsCalendarView.noMatch') }}</p>
     </div>
 
     <div v-else-if="!dateProperty" class="panel-empty">
-      <p>Choose a datetime property above to lay notes out by date.</p>
+      <p>{{ t('collectionsCalendarView.choosePropertyAbove') }}</p>
     </div>
 
     <div v-else class="calendar-scroll">
@@ -64,9 +64,9 @@
         :disabled="page.current_page <= 1"
         @click="$emit('page-change', page.current_page - 1)"
       >
-        Previous
+        {{ t('collectionsCalendarView.previous') }}
       </button>
-      <span class="page-indicator">Page {{ page.current_page }} of {{ page.last_page }}</span>
+      <span class="page-indicator">{{ t('collectionsCalendarView.pageIndicator', { current: page.current_page, last: page.last_page }) }}</span>
       <button
         type="button"
         class="btn-page"
@@ -74,7 +74,7 @@
         :disabled="page.current_page >= page.last_page"
         @click="$emit('page-change', page.current_page + 1)"
       >
-        Next
+        {{ t('collectionsCalendarView.next') }}
       </button>
     </div>
   </div>
@@ -82,8 +82,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { CollectionNote, CollectionPage } from '../services/types'
 import { findProperty, rawValue, propertyColumns as computePropertyColumns } from '../services/collectionUtils'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   page: CollectionPage

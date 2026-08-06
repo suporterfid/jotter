@@ -1,29 +1,29 @@
 <template>
   <div class="collections-table-view">
     <div class="panel-header">
-      <h2>Table View</h2>
+      <h2>{{ t('collectionsTableView.title') }}</h2>
       <span class="count-badge">{{ page.total }}</span>
     </div>
-    <p class="panel-hint">All notes in this workspace with their typed properties as columns.</p>
+    <p class="panel-hint">{{ t('collectionsTableView.hint') }}</p>
 
     <form class="filter-bar" @submit.prevent="$emit('filter-change', filterProperty.trim(), filterValue.trim())">
       <input
         v-model="filterProperty"
         type="text"
-        placeholder="Property name"
-        aria-label="Filter by property name"
+        :placeholder="t('collectionsTableView.propertyNamePlaceholder')"
+        :aria-label="t('collectionsTableView.filterByPropertyName')"
         data-testid="collection-filter-property"
         class="filter-input"
       />
       <input
         v-model="filterValue"
         type="text"
-        placeholder="Value (optional)"
-        aria-label="Filter by property value"
+        :placeholder="t('collectionsTableView.valuePlaceholder')"
+        :aria-label="t('collectionsTableView.filterByPropertyValue')"
         data-testid="collection-filter-value"
         class="filter-input"
       />
-      <button type="submit" class="btn-filter-apply" data-testid="collection-filter-apply">Filter</button>
+      <button type="submit" class="btn-filter-apply" data-testid="collection-filter-apply">{{ t('collectionsTableView.filter') }}</button>
       <button
         v-if="filterProperty || filterValue"
         type="button"
@@ -31,16 +31,16 @@
         data-testid="collection-filter-clear"
         @click="clearFilter"
       >
-        Clear
+        {{ t('collectionsTableView.clear') }}
       </button>
     </form>
 
     <div v-if="loading" class="panel-empty">
-      <p>Loading notes…</p>
+      <p>{{ t('collectionsTableView.loading') }}</p>
     </div>
 
     <div v-else-if="page.data.length === 0" class="panel-empty">
-      <p>No notes match this view.</p>
+      <p>{{ t('collectionsTableView.noMatch') }}</p>
     </div>
 
     <div v-else class="table-scroll">
@@ -49,10 +49,10 @@
           <tr>
             <th scope="col">
               <button type="button" class="sort-btn" @click="$emit('sort', 'title')">
-                Title <span v-if="sortKey === 'title'">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+                {{ t('collectionsTableView.titleColumn') }} <span v-if="sortKey === 'title'">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
               </button>
             </th>
-            <th scope="col">Path</th>
+            <th scope="col">{{ t('collectionsTableView.pathColumn') }}</th>
             <th v-for="col in propertyColumns" :key="col" scope="col">
               <button type="button" class="sort-btn" @click="$emit('sort', col)">
                 {{ col }} <span v-if="sortKey === col">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
@@ -84,9 +84,9 @@
         :disabled="page.current_page <= 1"
         @click="$emit('page-change', page.current_page - 1)"
       >
-        Previous
+        {{ t('collectionsTableView.previous') }}
       </button>
-      <span class="page-indicator">Page {{ page.current_page }} of {{ page.last_page }}</span>
+      <span class="page-indicator">{{ t('collectionsTableView.pageIndicator', { current: page.current_page, last: page.last_page }) }}</span>
       <button
         type="button"
         class="btn-page"
@@ -94,7 +94,7 @@
         :disabled="page.current_page >= page.last_page"
         @click="$emit('page-change', page.current_page + 1)"
       >
-        Next
+        {{ t('collectionsTableView.next') }}
       </button>
     </div>
   </div>
@@ -102,8 +102,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { CollectionPage, CollectionNote } from '../services/types'
 import { rawValue, formatPropertyValue, propertyColumns as computePropertyColumns } from '../services/collectionUtils'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   page: CollectionPage

@@ -294,7 +294,7 @@ describe('App tab strip', () => {
     await flushPromises()
 
     expect(wrapper.findComponent({ name: 'NoteEditor' }).exists()).toBe(false)
-    expect(wrapper.text()).toContain('No Note Selected')
+    expect(wrapper.text()).toContain('Nenhuma nota selecionada')
   })
 
   it('deleting a note removes its tab', async () => {

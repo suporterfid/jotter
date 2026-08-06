@@ -3,7 +3,7 @@
     <button
       type="button"
       class="mobile-sidebar-toggle"
-      aria-label="Toggle sidebar"
+      :aria-label="t('app.toggleSidebar')"
       @click="isMobileSidebarOpen = !isMobileSidebarOpen"
     >
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
@@ -191,8 +191,8 @@
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
           </svg>
-          <h2>No Note Selected</h2>
-          <p>Select a note from the sidebar or create a new Markdown document to begin editing.</p>
+          <h2>{{ t('app.noNoteSelected') }}</h2>
+          <p>{{ t('app.noNoteSelectedDesc') }}</p>
         </div>
       </div>
     </main>
@@ -209,7 +209,7 @@
         type="button"
         class="error-banner-dismiss"
         data-testid="error-banner-dismiss"
-        aria-label="Dismiss error"
+        :aria-label="t('app.dismissError')"
         @click="errorMessage = null"
       >&times;</button>
     </div>
@@ -224,12 +224,12 @@
         rel="noopener"
         class="success-banner-link"
         data-testid="success-banner-link"
-      >Open</a>
+      >{{ t('app.open') }}</a>
       <button
         type="button"
         class="error-banner-dismiss"
         data-testid="success-banner-dismiss"
-        aria-label="Dismiss message"
+        :aria-label="t('app.dismissMessage')"
         @click="successMessage = null; successLink = null"
       >&times;</button>
     </div>
@@ -254,6 +254,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import i18n from './i18n'
 import Sidebar from './components/Sidebar.vue'
 import NoteEditor from './components/NoteEditor.vue'
@@ -308,6 +309,8 @@ import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
 import TabStrip from './components/TabStrip.vue'
 import { useOpenTabs } from './composables/useOpenTabs'
+
+const { t } = useI18n()
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
@@ -811,7 +814,7 @@ async function handleRenameBoard(boardId: number, name: string) {
 
 async function handleDeleteBoard(boardId: number) {
   if (!activeWorkspaceId.value) return
-  if (!confirm('Delete this board? This cannot be undone.')) return
+  if (!confirm(t('app.confirmDeleteBoard'))) return
   try {
     await deleteBoard(activeWorkspaceId.value, boardId)
     boards.value = boards.value.filter(b => b.id !== boardId)
@@ -965,15 +968,18 @@ async function handleImportWorkspace(archive: File, overwrite: boolean) {
   try {
     const result = await importWorkspaceArchive(activeWorkspaceId.value, archive, overwrite)
     await refreshNotesList()
-    const parts = [`${result.extracted_count} note(s) imported`, `${result.skipped_count} skipped`]
-    if (result.errors.length > 0) parts.push(`${result.errors.length} error(s)`)
-    successMessage.value = `Import complete: ${parts.join(', ')}.`
+    const parts = [
+      t('app.importedCount', { count: result.extracted_count }),
+      t('app.skippedCount', { count: result.skipped_count }),
+    ]
+    if (result.errors.length > 0) parts.push(t('app.errorCount', { count: result.errors.length }))
+    successMessage.value = t('app.importComplete', { parts: parts.join(', ') })
     if (result.errors.length > 0) {
       console.error('Import errors:', result.errors)
     }
   } catch (err: any) {
     console.error('Failed to import workspace archive:', err)
-    errorMessage.value = `Failed to import archive: ${err.response?.data?.message || err.message || 'Unknown error'}`
+    errorMessage.value = t('app.failedImportArchive', { message: err.response?.data?.message || err.message || t('app.unknownError') })
   }
 }
 
@@ -986,11 +992,11 @@ async function handlePublishWorkspace() {
   if (!activeWorkspaceId.value) return
   try {
     const result = await publishWorkspace(activeWorkspaceId.value)
-    successMessage.value = `Published ${result.notes_published} note(s) to the static site.`
+    successMessage.value = t('app.publishedNotes', { count: result.notes_published })
     successLink.value = result.site_url
   } catch (err: any) {
     console.error('Failed to publish workspace:', err)
-    errorMessage.value = `Failed to publish workspace: ${err.response?.data?.message || err.message || 'Unknown error'}`
+    errorMessage.value = t('app.failedPublishWorkspace', { message: err.response?.data?.message || err.message || t('app.unknownError') })
   }
 }
 
@@ -1020,13 +1026,13 @@ async function refreshAttachments() {
 
 async function handleDeleteAttachment(attachment: AttachmentItem) {
   if (!activeWorkspaceId.value) return
-  if (!confirm(`Delete "${attachment.path.split('/').pop()}"? This cannot be undone.`)) return
+  if (!confirm(t('app.confirmDeleteAttachment', { name: attachment.path.split('/').pop() }))) return
   try {
     await deleteAttachment(activeWorkspaceId.value, attachment.id)
     attachments.value = attachments.value.filter(a => a.id !== attachment.id)
   } catch (err) {
     console.error('Failed to delete attachment:', err)
-    errorMessage.value = 'Failed to delete attachment.'
+    errorMessage.value = t('app.failedDeleteAttachment')
   }
 }
 
@@ -1050,7 +1056,7 @@ async function handleCreateNote(path: string) {
     await handleSelectNote(created.id)
   } catch (err: any) {
     console.error('Failed to create note:', err)
-    errorMessage.value = `Failed to create note: ${err.response?.data?.message || err.message || 'Unknown error'}`
+    errorMessage.value = t('app.failedCreateNote', { message: err.response?.data?.message || err.message || t('app.unknownError') })
   }
 }
 
@@ -1062,7 +1068,7 @@ async function handleCreateNoteFromTemplate(templatePath: string, targetPath: st
     await handleSelectNote(created.id)
   } catch (err: any) {
     console.error('Failed to create note from template:', err)
-    errorMessage.value = `Failed to create note from template: ${err.response?.data?.message || err.message || 'Unknown error'}`
+    errorMessage.value = t('app.failedCreateNoteFromTemplate', { message: err.response?.data?.message || err.message || t('app.unknownError') })
   }
 }
 
@@ -1074,7 +1080,7 @@ async function handleDailyNote() {
     await handleSelectNote(note.id)
   } catch (err: any) {
     console.error('Failed to open daily note:', err)
-    errorMessage.value = `Failed to open daily note: ${err.response?.data?.message || err.message || 'Unknown error'}`
+    errorMessage.value = t('app.failedOpenDailyNote', { message: err.response?.data?.message || err.message || t('app.unknownError') })
   }
 }
 
@@ -1090,7 +1096,7 @@ async function handleUpdateNote(noteId: number, content: string) {
 
 async function handleDeleteNote(noteId: number) {
   if (!activeWorkspaceId.value) return
-  if (!confirm('Are you sure you want to delete this note?')) return
+  if (!confirm(t('app.confirmDeleteNote'))) return
   try {
     await deleteNote(activeWorkspaceId.value, noteId)
     const nextActiveId = closeTab(noteId, activeNoteId.value)

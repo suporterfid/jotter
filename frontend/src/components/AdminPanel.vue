@@ -2,7 +2,7 @@
   <div v-if="isOpen" class="admin-modal-overlay" data-testid="admin-panel" @click.self="close">
     <div class="admin-modal-container">
       <div class="admin-header">
-        <h2>Administration</h2>
+        <h2>{{ t('adminPanel.title') }}</h2>
         <button class="close-btn" @click="close">&times;</button>
       </div>
 
@@ -11,19 +11,19 @@
           :class="['tab-btn', { active: activeTab === 'workspaces' }]"
           @click="activeTab = 'workspaces'"
         >
-          Workspaces
+          {{ t('adminPanel.workspaces') }}
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'members' }]"
           @click="activeTab = 'members'"
         >
-          Members
+          {{ t('adminPanel.members') }}
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'users' }]"
           @click="activeTab = 'users'"
         >
-          Users
+          {{ t('adminPanel.users') }}
         </button>
       </div>
 
@@ -33,37 +33,37 @@
 
       <!-- Workspaces Tab -->
       <div v-if="activeTab === 'workspaces'" class="tab-content">
-        <h3>Create Workspace</h3>
+        <h3>{{ t('adminPanel.createWorkspace') }}</h3>
         <form @submit.prevent="createWorkspace" class="admin-form">
           <select v-model.number="newWs.tenant_id" data-testid="admin-new-workspace-tenant" required>
-            <option :value="null" disabled>Select a tenant…</option>
+            <option :value="null" disabled>{{ t('adminPanel.selectTenant') }}</option>
             <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">{{ tenant.name }}</option>
           </select>
-          <input v-model="newWs.name" placeholder="Workspace Name" data-testid="admin-new-workspace-name" required />
-          <input v-model="newWs.slug" placeholder="Slug (e.g. dev)" data-testid="admin-new-workspace-slug" required />
-          <input v-model="newWs.vault_path" placeholder="Vault Path" data-testid="admin-new-workspace-vault-path" required />
-          <button type="submit" data-testid="admin-new-workspace-submit" :disabled="loading">Create Workspace</button>
+          <input v-model="newWs.name" :placeholder="t('adminPanel.workspaceName')" data-testid="admin-new-workspace-name" required />
+          <input v-model="newWs.slug" :placeholder="t('adminPanel.slugPlaceholder')" data-testid="admin-new-workspace-slug" required />
+          <input v-model="newWs.vault_path" :placeholder="t('adminPanel.vaultPath')" data-testid="admin-new-workspace-vault-path" required />
+          <button type="submit" data-testid="admin-new-workspace-submit" :disabled="loading">{{ t('adminPanel.createWorkspaceSubmit') }}</button>
         </form>
 
-        <h3>Workspaces List</h3>
+        <h3>{{ t('adminPanel.workspacesList') }}</h3>
         <ul class="admin-list">
           <li v-for="ws in workspaces" :key="ws.id" class="admin-list-item" :class="{ 'admin-list-item-column': editingWsId === ws.id }">
             <template v-if="editingWsId === ws.id">
               <div class="admin-form">
-                <input v-model="wsEditDraft.name" data-testid="admin-edit-workspace-name" placeholder="Workspace Name" required />
-                <input v-model="wsEditDraft.slug" data-testid="admin-edit-workspace-slug" placeholder="Slug" required />
-                <p class="admin-form-note">Vault path changes aren't offered here — moving the underlying files is handled separately.</p>
+                <input v-model="wsEditDraft.name" data-testid="admin-edit-workspace-name" :placeholder="t('adminPanel.workspaceName')" required />
+                <input v-model="wsEditDraft.slug" data-testid="admin-edit-workspace-slug" :placeholder="t('adminPanel.slugPlaceholder')" required />
+                <p class="admin-form-note">{{ t('adminPanel.vaultPathNote') }}</p>
                 <div class="btn-group">
-                  <button class="secondary-btn" data-testid="admin-edit-workspace-cancel" type="button" @click="cancelEditWorkspace">Cancel</button>
-                  <button class="success-btn" data-testid="admin-edit-workspace-save" type="button" :disabled="loading" @click="saveEditWorkspace(ws.id)">Save</button>
+                  <button class="secondary-btn" data-testid="admin-edit-workspace-cancel" type="button" @click="cancelEditWorkspace">{{ t('adminPanel.cancel') }}</button>
+                  <button class="success-btn" data-testid="admin-edit-workspace-save" type="button" :disabled="loading" @click="saveEditWorkspace(ws.id)">{{ t('adminPanel.save') }}</button>
                 </div>
               </div>
             </template>
             <template v-else>
               <span><strong>{{ ws.name }}</strong> ({{ ws.slug }})</span>
               <div class="btn-group">
-                <button class="secondary-btn" data-testid="admin-edit-workspace-btn" @click="startEditWorkspace(ws)">Edit</button>
-                <button class="danger-btn" @click="archiveWorkspace(ws.id)" :disabled="loading">Archive</button>
+                <button class="secondary-btn" data-testid="admin-edit-workspace-btn" @click="startEditWorkspace(ws)">{{ t('adminPanel.edit') }}</button>
+                <button class="danger-btn" @click="archiveWorkspace(ws.id)" :disabled="loading">{{ t('adminPanel.archive') }}</button>
               </div>
             </template>
           </li>
@@ -72,54 +72,54 @@
 
       <!-- Members Tab -->
       <div v-if="activeTab === 'members'" class="tab-content">
-        <h3>Workspace Members</h3>
+        <h3>{{ t('adminPanel.workspaceMembers') }}</h3>
         <div class="select-group">
-          <label>Workspace:</label>
+          <label>{{ t('adminPanel.workspaceLabel') }}</label>
           <select v-model="selectedWsId" @change="fetchMembers">
             <option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.name }}</option>
           </select>
         </div>
 
         <form @submit.prevent="grantMember" class="admin-form" v-if="selectedWsId">
-          <input v-model="newMember.subject_id" placeholder="Subject ID / Email" required />
+          <input v-model="newMember.subject_id" :placeholder="t('adminPanel.subjectIdPlaceholder')" required />
           <select v-model="newMember.role">
-            <option value="owner">Owner</option>
-            <option value="admin">Admin</option>
-            <option value="editor">Editor</option>
-            <option value="viewer">Viewer</option>
+            <option value="owner">{{ t('adminPanel.roleOwner') }}</option>
+            <option value="admin">{{ t('adminPanel.roleAdmin') }}</option>
+            <option value="editor">{{ t('adminPanel.roleEditor') }}</option>
+            <option value="viewer">{{ t('adminPanel.roleViewer') }}</option>
           </select>
-          <button type="submit" :disabled="loading">Grant Access</button>
+          <button type="submit" :disabled="loading">{{ t('adminPanel.grantAccess') }}</button>
         </form>
 
         <ul class="admin-list" v-if="selectedWsId">
           <li v-for="m in members" :key="m.id" class="admin-list-item">
             <span><strong>{{ m.subject_id }}</strong> - {{ m.role }}</span>
-            <button class="danger-btn" @click="revokeMember(m.id)" :disabled="loading">Revoke</button>
+            <button class="danger-btn" @click="revokeMember(m.id)" :disabled="loading">{{ t('adminPanel.revoke') }}</button>
           </li>
         </ul>
       </div>
 
       <!-- Users Tab -->
       <div v-if="activeTab === 'users'" class="tab-content">
-        <h3>Create Local User</h3>
+        <h3>{{ t('adminPanel.createLocalUser') }}</h3>
         <form @submit.prevent="createUser" class="admin-form">
-          <input v-model="newUser.name" placeholder="Full Name" required />
-          <input v-model="newUser.email" type="email" placeholder="Email" required />
-          <input v-model="newUser.password" type="password" placeholder="Password" required />
+          <input v-model="newUser.name" :placeholder="t('adminPanel.fullName')" required />
+          <input v-model="newUser.email" type="email" :placeholder="t('adminPanel.email')" required />
+          <input v-model="newUser.password" type="password" :placeholder="t('adminPanel.password')" required />
           <label class="checkbox-label">
-            <input type="checkbox" v-model="newUser.is_admin" /> Is Admin
+            <input type="checkbox" v-model="newUser.is_admin" /> {{ t('adminPanel.isAdmin') }}
           </label>
-          <button type="submit" :disabled="loading">Create User</button>
+          <button type="submit" :disabled="loading">{{ t('adminPanel.createUser') }}</button>
         </form>
 
-        <h3>Users List</h3>
+        <h3>{{ t('adminPanel.usersList') }}</h3>
         <ul class="admin-list">
           <li v-for="u in users" :key="u.id" class="admin-list-item">
-            <span><strong>{{ u.name }}</strong> ({{ u.email }}) <em v-if="!u.is_active">[Deactivated]</em></span>
+            <span><strong>{{ u.name }}</strong> ({{ u.email }}) <em v-if="!u.is_active">{{ t('adminPanel.deactivatedTag') }}</em></span>
             <div class="btn-group">
-              <button class="secondary-btn" data-testid="admin-reset-password-btn" :disabled="loading" @click="resetPassword(u)">Reset Password</button>
-              <button v-if="u.is_active" class="warning-btn" @click="toggleDeactivate(u, true)">Deactivate</button>
-              <button v-else class="success-btn" @click="toggleDeactivate(u, false)">Reactivate</button>
+              <button class="secondary-btn" data-testid="admin-reset-password-btn" :disabled="loading" @click="resetPassword(u)">{{ t('adminPanel.resetPassword') }}</button>
+              <button v-if="u.is_active" class="warning-btn" @click="toggleDeactivate(u, true)">{{ t('adminPanel.deactivate') }}</button>
+              <button v-else class="success-btn" @click="toggleDeactivate(u, false)">{{ t('adminPanel.reactivate') }}</button>
             </div>
           </li>
         </ul>
@@ -130,8 +130,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { api, getTenants, adminResetPassword } from '../services/api'
 import type { Tenant } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits(['close'])
@@ -171,7 +174,7 @@ async function fetchTenants() {
       newWs.value.tenant_id = tenants.value[0].id
     }
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to load tenants.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedLoadTenants'))
   }
 }
 
@@ -184,7 +187,7 @@ async function fetchWorkspaces() {
       fetchMembers()
     }
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to load workspaces.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedLoadWorkspaces'))
   }
 }
 
@@ -194,7 +197,7 @@ async function fetchMembers() {
     const response = await api.get<{ data: any[] }>(`/admin/workspaces/${selectedWsId.value}/members`)
     members.value = response.data.data || []
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to load members.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedLoadMembers'))
   }
 }
 
@@ -203,14 +206,14 @@ async function fetchUsers() {
     const response = await api.get<{ data: any[] }>('/admin/users')
     users.value = response.data.data || []
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to load users.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedLoadUsers'))
   }
 }
 
 async function createWorkspace() {
   error.value = ''
   if (!newWs.value.tenant_id) {
-    error.value = 'Select a tenant.'
+    error.value = t('adminPanel.selectTenantError')
     return
   }
   loading.value = true
@@ -219,7 +222,7 @@ async function createWorkspace() {
     newWs.value = { tenant_id: newWs.value.tenant_id, name: '', slug: '', vault_path: '' }
     await fetchWorkspaces()
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Workspace creation failed.')
+    error.value = extractErrorMessage(e, t('adminPanel.workspaceCreationFailed'))
   } finally {
     loading.value = false
   }
@@ -242,20 +245,20 @@ async function saveEditWorkspace(id: number) {
     editingWsId.value = null
     await fetchWorkspaces()
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to update workspace.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedUpdateWorkspace'))
   } finally {
     loading.value = false
   }
 }
 
 async function archiveWorkspace(id: number) {
-  if (!confirm('Are you sure you want to archive this workspace? Files will be preserved.')) return
+  if (!confirm(t('adminPanel.confirmArchive'))) return
   loading.value = true
   try {
     await api.post(`/admin/workspaces/${id}/archive`)
     await fetchWorkspaces()
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to archive workspace.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedArchiveWorkspace'))
   } finally {
     loading.value = false
   }
@@ -269,7 +272,7 @@ async function grantMember() {
     newMember.value = { subject_id: '', role: 'editor' }
     await fetchMembers()
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to grant access.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedGrantAccess'))
   } finally {
     loading.value = false
   }
@@ -282,7 +285,7 @@ async function revokeMember(id: number) {
     await api.delete(`/admin/workspaces/${selectedWsId.value}/members/${id}`)
     await fetchMembers()
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to revoke access.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedRevokeAccess'))
   } finally {
     loading.value = false
   }
@@ -295,20 +298,20 @@ async function createUser() {
     newUser.value = { name: '', email: '', password: '', is_admin: false }
     await fetchUsers()
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to create user.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedCreateUser'))
   } finally {
     loading.value = false
   }
 }
 
 async function resetPassword(u: any) {
-  const newPassword = prompt(`New password for ${u.email}:`)
+  const newPassword = prompt(t('adminPanel.promptNewPassword', { email: u.email }))
   if (!newPassword) return
   loading.value = true
   try {
     await adminResetPassword(u.id, newPassword)
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to reset password.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedResetPassword'))
   } finally {
     loading.value = false
   }
@@ -321,7 +324,7 @@ async function toggleDeactivate(u: any, deactivate: boolean) {
     await api.post(endpoint)
     await fetchUsers()
   } catch (e: unknown) {
-    error.value = extractErrorMessage(e, 'Failed to update user.')
+    error.value = extractErrorMessage(e, t('adminPanel.failedUpdateUser'))
   } finally {
     loading.value = false
   }

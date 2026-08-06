@@ -1,17 +1,17 @@
 <template>
   <div class="collections-board-view">
     <div class="panel-header">
-      <h2>Board View</h2>
+      <h2>{{ t('collectionsBoardView.title') }}</h2>
       <span class="count-badge">{{ page.total }}</span>
     </div>
-    <p class="panel-hint">Notes grouped by a property, arranged as columns.</p>
+    <p class="panel-hint">{{ t('collectionsBoardView.hint') }}</p>
 
     <form class="group-bar" @submit.prevent="applyGroupProperty">
       <input
         v-model="groupPropertyInput"
         type="text"
-        placeholder="Property to group by (e.g. status)"
-        aria-label="Group by property name"
+        :placeholder="t('collectionsBoardView.groupPlaceholder')"
+        :aria-label="t('collectionsBoardView.groupLabel')"
         data-testid="board-group-property"
         class="group-input"
         :list="'board-property-options'"
@@ -19,12 +19,12 @@
       <datalist id="board-property-options">
         <option v-for="col in propertyColumns" :key="col" :value="col" />
       </datalist>
-      <button type="submit" class="btn-group-apply" data-testid="board-group-apply">Group</button>
+      <button type="submit" class="btn-group-apply" data-testid="board-group-apply">{{ t('collectionsBoardView.group') }}</button>
       <input
         v-model="swimlanePropertyInput"
         type="text"
-        placeholder="Swimlane by property (optional)"
-        aria-label="Swimlane by property name"
+        :placeholder="t('collectionsBoardView.swimlanePlaceholder')"
+        :aria-label="t('collectionsBoardView.swimlaneLabel')"
         data-testid="board-swimlane-property"
         class="group-input"
         :list="'board-property-options'"
@@ -33,11 +33,11 @@
       <select
         v-if="allTags.length > 0"
         v-model="tagFilter"
-        aria-label="Filter by tag"
+        :aria-label="t('collectionsBoardView.filterByTag')"
         data-testid="board-tag-filter"
         class="tag-filter-select"
       >
-        <option value="">All tags</option>
+        <option value="">{{ t('collectionsBoardView.allTags') }}</option>
         <option v-for="tag in allTags" :key="tag" :value="tag">{{ tag }}</option>
       </select>
       <label class="show-archived-label">
@@ -47,20 +47,20 @@
           data-testid="board-show-archived"
           @change="$emit('archived-filter-change', ($event.target as HTMLInputElement).checked)"
         />
-        Show archived
+        {{ t('collectionsBoardView.showArchived') }}
       </label>
     </form>
 
     <div v-if="loading" class="panel-empty">
-      <p>Loading notes…</p>
+      <p>{{ t('collectionsBoardView.loading') }}</p>
     </div>
 
     <div v-else-if="page.data.length === 0" class="panel-empty">
-      <p>No notes match this view.</p>
+      <p>{{ t('collectionsBoardView.noMatch') }}</p>
     </div>
 
     <div v-else-if="!groupProperty" class="panel-empty">
-      <p>Choose a property above to group notes into columns.</p>
+      <p>{{ t('collectionsBoardView.choosePropertyAbove') }}</p>
     </div>
 
     <div v-else class="board-rows">
@@ -124,25 +124,25 @@
           <input
             v-model="columnEditLabel"
             type="text"
-            placeholder="Column label"
-            aria-label="Column label"
+            :placeholder="t('collectionsBoardView.columnLabelPlaceholder')"
+            :aria-label="t('collectionsBoardView.columnLabelAria')"
             data-testid="board-column-label-input"
             class="column-edit-input"
           />
-          <select v-model="columnEditColor" aria-label="Column color" data-testid="board-column-color-select" class="column-edit-input">
-            <option value="">No color</option>
-            <option value="#ef4444">Red</option>
-            <option value="#f59e0b">Amber</option>
-            <option value="#22c55e">Green</option>
-            <option value="#3b82f6">Blue</option>
-            <option value="#a855f7">Purple</option>
+          <select v-model="columnEditColor" :aria-label="t('collectionsBoardView.columnColorAria')" data-testid="board-column-color-select" class="column-edit-input">
+            <option value="">{{ t('collectionsBoardView.noColor') }}</option>
+            <option value="#ef4444">{{ t('collectionsBoardView.colorRed') }}</option>
+            <option value="#f59e0b">{{ t('collectionsBoardView.colorAmber') }}</option>
+            <option value="#22c55e">{{ t('collectionsBoardView.colorGreen') }}</option>
+            <option value="#3b82f6">{{ t('collectionsBoardView.colorBlue') }}</option>
+            <option value="#a855f7">{{ t('collectionsBoardView.colorPurple') }}</option>
           </select>
           <input
             v-model="columnEditWipLimit"
             type="number"
             min="0"
-            placeholder="WIP limit"
-            aria-label="WIP limit"
+            :placeholder="t('collectionsBoardView.wipLimitPlaceholder')"
+            :aria-label="t('collectionsBoardView.wipLimitAria')"
             data-testid="board-column-wip-input"
             class="column-edit-input"
           />
@@ -152,10 +152,10 @@
               type="checkbox"
               data-testid="board-column-auto-archive-checkbox"
             />
-            Auto-archive cards dropped here
+            {{ t('collectionsBoardView.autoArchiveLabel') }}
           </label>
-          <button type="submit" class="btn-add-card-confirm">Save</button>
-          <button type="button" class="btn-add-card-cancel" @click="editingColumnKey = null">Cancel</button>
+          <button type="submit" class="btn-add-card-confirm">{{ t('collectionsBoardView.save') }}</button>
+          <button type="button" class="btn-add-card-cancel" @click="editingColumnKey = null">{{ t('collectionsBoardView.cancel') }}</button>
         </form>
         <div
           v-if="!column.collapsed"
@@ -186,7 +186,7 @@
                 v-if="isArchived(note)"
                 class="board-card-archived-badge"
                 data-testid="board-card-archived-badge"
-              >Archived</span>
+              >{{ t('collectionsBoardView.archived') }}</span>
             </span>
             <span class="board-card-path">{{ note.path }}</span>
             <span v-if="noteTagNames(note).length > 0" class="board-card-tags">
@@ -221,8 +221,8 @@
             type="button"
             class="board-card-archive-toggle"
             data-testid="board-card-archive-toggle"
-            :aria-label="isArchived(note) ? 'Unarchive' : 'Archive'"
-            :title="isArchived(note) ? 'Unarchive' : 'Archive'"
+            :aria-label="isArchived(note) ? t('collectionsBoardView.unarchive') : t('collectionsBoardView.archive')"
+            :title="isArchived(note) ? t('collectionsBoardView.unarchive') : t('collectionsBoardView.archive')"
             @click="$emit('toggle-archive', note.id)"
           >{{ isArchived(note) ? '📤' : '📦' }}</button>
           </div>
@@ -236,14 +236,14 @@
           <input
             v-model="addCardTitle"
             type="text"
-            placeholder="Card title"
-            aria-label="New card title"
+            :placeholder="t('collectionsBoardView.newCardTitlePlaceholder')"
+            :aria-label="t('collectionsBoardView.newCardTitleAria')"
             data-testid="board-add-card-input"
             class="add-card-input"
             autofocus
           />
-          <button type="submit" class="btn-add-card-confirm">Add</button>
-          <button type="button" class="btn-add-card-cancel" @click="cancelAddCard">Cancel</button>
+          <button type="submit" class="btn-add-card-confirm">{{ t('collectionsBoardView.add') }}</button>
+          <button type="button" class="btn-add-card-cancel" @click="cancelAddCard">{{ t('collectionsBoardView.cancel') }}</button>
         </form>
         <button
           v-else
@@ -252,7 +252,7 @@
           data-testid="board-add-card-button"
           @click="openAddCard(row.key, column.key)"
         >
-          + Add card
+          {{ t('collectionsBoardView.addCard') }}
         </button>
       </div>
       </div>
@@ -267,9 +267,9 @@
         :disabled="page.current_page <= 1"
         @click="$emit('page-change', page.current_page - 1)"
       >
-        Previous
+        {{ t('collectionsBoardView.previous') }}
       </button>
-      <span class="page-indicator">Page {{ page.current_page }} of {{ page.last_page }}</span>
+      <span class="page-indicator">{{ t('collectionsBoardView.pageIndicator', { current: page.current_page, last: page.last_page }) }}</span>
       <button
         type="button"
         class="btn-page"
@@ -277,7 +277,7 @@
         :disabled="page.current_page >= page.last_page"
         @click="$emit('page-change', page.current_page + 1)"
       >
-        Next
+        {{ t('collectionsBoardView.next') }}
       </button>
     </div>
   </div>
@@ -285,6 +285,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Sortable from 'sortablejs'
 import type { BoardColumnConfig, CollectionPage } from '../services/types'
 import {
@@ -301,6 +302,8 @@ import {
   resolveCardMove,
   UNGROUPED_LABEL,
 } from '../services/collectionUtils'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   page: CollectionPage
