@@ -12,7 +12,10 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { renderMarkdown, type EmbedResolution } from '../services/markdown'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   content: string
@@ -26,7 +29,7 @@ const emit = defineEmits<{
   (e: 'unhover-wikilink'): void
 }>()
 
-const renderedContent = computed(() => renderMarkdown(props.content || '', props.resolveEmbed))
+const renderedContent = computed(() => renderMarkdown(props.content || '', props.resolveEmbed, t('markdownPreview.copy')))
 
 function handlePreviewClick(event: MouseEvent) {
   const target = event.target as HTMLElement
@@ -37,8 +40,8 @@ function handlePreviewClick(event: MouseEvent) {
     const pre = copyBtn.closest('.code-block-wrapper')?.querySelector('pre')
     if (pre) {
       navigator.clipboard.writeText(pre.textContent || '')
-      copyBtn.textContent = 'Copied!'
-      setTimeout(() => { copyBtn.textContent = 'Copy' }, 2000)
+      copyBtn.textContent = t('markdownPreview.copied')
+      setTimeout(() => { copyBtn.textContent = t('markdownPreview.copy') }, 2000)
     }
     return
   }

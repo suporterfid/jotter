@@ -16,7 +16,7 @@
       class="format-btn"
       data-testid="format-bold"
       :class="{ active: selectionFormat.bold }"
-      title="Bold"
+      :title="t('wysiwyg.bold')"
       @click="toggleMark('bold')"
     ><strong>B</strong></button>
     <button
@@ -24,7 +24,7 @@
       class="format-btn"
       data-testid="format-italic"
       :class="{ active: selectionFormat.italic }"
-      title="Italic"
+      :title="t('wysiwyg.italic')"
       @click="toggleMark('italic')"
     ><em>I</em></button>
     <button
@@ -32,7 +32,7 @@
       class="format-btn"
       data-testid="format-strike"
       :class="{ active: selectionFormat.strike }"
-      title="Strikethrough"
+      :title="t('wysiwyg.strikethrough')"
       @click="toggleMark('strike')"
     ><s>S</s></button>
     <button
@@ -40,7 +40,7 @@
       class="format-btn"
       data-testid="format-code"
       :class="{ active: selectionFormat.code }"
-      title="Inline code"
+      :title="t('wysiwyg.inlineCode')"
       @click="toggleMark('code')"
     ><code>&lt;/&gt;</code></button>
   </div>
@@ -48,6 +48,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   createWysiwygEditor,
   type SelectionFormat,
@@ -78,6 +79,8 @@ import { splitFrontMatter, joinFrontMatter } from '../services/frontMatterGuard'
  * (wysiwygEditor.ts's getSelectionAnchorLine()) instead of the textarea's
  * selectionStart character-offset heuristic.
  */
+const { t } = useI18n()
+
 const props = defineProps<{
   content: string
 }>()

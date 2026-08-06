@@ -62,9 +62,9 @@ function renderEmbeds(text: string, resolveEmbed?: (target: string) => EmbedReso
 /**
  * Wraps <pre><code> blocks with a container and Copy button.
  */
-function wrapCodeBlocks(html: string): string {
+function wrapCodeBlocks(html: string, copyLabel: string): string {
   return html.replace(/<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/gi, (_match, codeAttrs, codeContent) => {
-    return `<div class="code-block-wrapper"><button class="copy-code-btn" type="button">Copy</button><pre><code${codeAttrs}>${codeContent}</code></pre></div>`
+    return `<div class="code-block-wrapper"><button class="copy-code-btn" type="button">${copyLabel}</button><pre><code${codeAttrs}>${codeContent}</code></pre></div>`
   })
 }
 
@@ -102,7 +102,11 @@ export function renderCallouts(text: string): string {
 /**
  * Parses markdown to HTML, processes wikilinks, callouts, code block wrappers, and sanitizes output.
  */
-export function renderMarkdown(markdownText: string, resolveEmbed?: (target: string) => EmbedResolution): string {
+export function renderMarkdown(
+  markdownText: string,
+  resolveEmbed?: (target: string) => EmbedResolution,
+  copyLabel = 'Copy',
+): string {
   if (!markdownText) return ''
 
   const headings = parseHeadings(markdownText)
@@ -115,7 +119,7 @@ export function renderMarkdown(markdownText: string, resolveEmbed?: (target: str
   let rawHtml = marked.parse(withCallouts, { async: false }) as string
 
   // Wrap code blocks
-  rawHtml = wrapCodeBlocks(rawHtml)
+  rawHtml = wrapCodeBlocks(rawHtml, copyLabel)
 
   // Stamp heading ids for outline navigation
   rawHtml = injectHeadingIds(rawHtml, headings)

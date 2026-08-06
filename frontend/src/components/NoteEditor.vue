@@ -3,8 +3,8 @@
     <div v-if="coverUrl" class="editor-cover-wrapper">
       <img class="editor-cover-image" data-testid="editor-cover-image" :src="coverUrl" alt="" />
       <div class="editor-cover-actions">
-        <button type="button" class="btn-cover-action" data-testid="change-cover-btn" @click="isEditingCover = true">Change</button>
-        <button type="button" class="btn-cover-action" data-testid="remove-cover-btn" @click="clearCover">Remove</button>
+        <button type="button" class="btn-cover-action" data-testid="change-cover-btn" @click="isEditingCover = true">{{ t('noteEditor.change') }}</button>
+        <button type="button" class="btn-cover-action" data-testid="remove-cover-btn" @click="clearCover">{{ t('noteEditor.remove') }}</button>
       </div>
     </div>
     <CoverImageModal
@@ -24,7 +24,7 @@
         class="add-cover-btn"
         data-testid="add-cover-btn"
         @click="isEditingCover = true"
-      >Add cover</button>
+      >{{ t('noteEditor.addCover') }}</button>
 
       <!-- Thin utility bar: breadcrumb + quiet actions only. The page
            title used to live here sharing a row with these controls and
@@ -53,36 +53,36 @@
             data-testid="view-mode-edit"
             :class="{ active: viewMode === 'edit' }"
             @click="viewMode = 'edit'"
-            title="Editor View"
+            :title="t('noteEditor.editorView')"
           >
-            Edit
+            {{ t('noteEditor.edit') }}
           </button>
           <button
             class="toggle-btn"
             data-testid="view-mode-split"
             :class="{ active: viewMode === 'split' }"
             @click="viewMode = 'split'"
-            title="Split View"
+            :title="t('noteEditor.splitView')"
           >
-            Split
+            {{ t('noteEditor.split') }}
           </button>
           <button
             class="toggle-btn"
             data-testid="view-mode-preview"
             :class="{ active: viewMode === 'preview' }"
             @click="viewMode = 'preview'"
-            title="Preview View"
+            :title="t('noteEditor.previewView')"
           >
-            Preview
+            {{ t('noteEditor.preview') }}
           </button>
           <button
             class="toggle-btn"
             data-testid="view-mode-live"
             :class="{ active: viewMode === 'live' }"
             @click="viewMode = 'live'"
-            title="Live WYSIWYG View"
+            :title="t('noteEditor.liveView')"
           >
-            Live
+            {{ t('noteEditor.live') }}
           </button>
         </div>
 
@@ -91,33 +91,33 @@
             type="button"
             class="btn-attach"
             data-testid="stats-toggle-btn"
-            title="Note statistics"
+            :title="t('noteEditor.noteStatistics')"
             :aria-expanded="showStats"
             @click="showStats = !showStats"
           >
             <span>ℹ️</span>
           </button>
           <div v-if="showStats" class="stats-popover" data-testid="stats-popover">
-            <span class="stat-item"><strong>{{ wordCount }}</strong> words</span>
-            <span class="stat-item"><strong>{{ charCount }}</strong> chars</span>
-            <span class="stat-item"><strong>{{ readingTimeMin }}</strong> min read</span>
+            <span class="stat-item"><strong>{{ wordCount }}</strong> {{ t('noteEditor.words') }}</span>
+            <span class="stat-item"><strong>{{ charCount }}</strong> {{ t('noteEditor.chars') }}</span>
+            <span class="stat-item"><strong>{{ readingTimeMin }}</strong> {{ t('noteEditor.minRead') }}</span>
           </div>
         </div>
 
         <button
           class="btn-attach"
           data-testid="history-btn"
-          title="Version History"
+          :title="t('noteEditor.versionHistory')"
           @click="openHistory"
         >
           <span>🕘</span>
-          <span>History</span>
+          <span>{{ t('noteEditor.history') }}</span>
         </button>
 
         <button
           class="btn-attach"
           data-testid="outline-drawer-btn"
-          title="Outline"
+          :title="t('noteEditor.outline')"
           :aria-expanded="isOutlineDrawerOpen"
           @click="isOutlineDrawerOpen = !isOutlineDrawerOpen"
         >
@@ -127,7 +127,7 @@
         <button
           class="btn-attach"
           data-testid="local-graph-drawer-btn"
-          title="Local Graph"
+          :title="t('noteEditor.localGraph')"
           :aria-expanded="isLocalGraphDrawerOpen"
           @click="isLocalGraphDrawerOpen = !isLocalGraphDrawerOpen"
         >
@@ -137,7 +137,7 @@
         <button
           class="btn-attach"
           data-testid="comments-drawer-btn"
-          title="Comments"
+          :title="t('noteEditor.comments')"
           :aria-expanded="isCommentsDrawerOpen"
           @click="isCommentsDrawerOpen = !isCommentsDrawerOpen"
         >
@@ -148,7 +148,7 @@
         <button
           class="btn-attach"
           data-testid="checklist-drawer-btn"
-          title="Checklist"
+          :title="t('noteEditor.checklist')"
           :aria-expanded="isChecklistDrawerOpen"
           @click="isChecklistDrawerOpen = !isChecklistDrawerOpen"
         >
@@ -159,7 +159,7 @@
         <button
           class="btn-attach"
           data-testid="activity-drawer-btn"
-          title="Activity"
+          :title="t('noteEditor.activity')"
           :aria-expanded="isActivityDrawerOpen"
           @click="isActivityDrawerOpen = !isActivityDrawerOpen"
         >
@@ -171,11 +171,11 @@
           data-testid="attach-file-btn"
           :disabled="isUploading"
           @click="triggerFileInput"
-          title="Attach File to Note"
+          :title="t('noteEditor.attachFile')"
         >
           <span>📎</span>
-          <span v-if="isUploading">Uploading...</span>
-          <span v-else>Attach</span>
+          <span v-if="isUploading">{{ t('noteEditor.uploading') }}</span>
+          <span v-else>{{ t('noteEditor.attach') }}</span>
         </button>
 
         <input 
@@ -193,7 +193,7 @@
           :class="{ dirty: isDirty, saving: isSaving }"
         >
           <span class="dot"></span>
-          {{ isSaving ? 'Saving...' : isDirty ? 'Unsaved changes' : 'Saved' }}
+          {{ isSaving ? t('noteEditor.savingStatus') : isDirty ? t('noteEditor.unsavedChanges') : t('noteEditor.saved') }}
         </span>
       </div>
     </header>
@@ -210,7 +210,7 @@
         v-if="!isEditingIcon"
         type="button"
         class="editor-icon-btn"
-        :aria-label="noteIcon ? 'Change page icon' : 'Set page icon'"
+        :aria-label="noteIcon ? t('noteEditor.changePageIcon') : t('noteEditor.setPageIcon')"
         data-testid="editor-icon-btn"
         @click="startEditingIcon"
       >
@@ -238,7 +238,7 @@
         class="editor-title-input"
         data-testid="editor-title"
         rows="1"
-        placeholder="Untitled"
+        :placeholder="t('noteEditor.untitledPlaceholder')"
         @input="handleTitleInput"
         @blur="saveTitle"
         @keydown.enter.prevent="focusContentFromTitle"
@@ -259,7 +259,7 @@
           v-model="editableContent"
           data-testid="markdown-textarea"
           class="markdown-textarea"
-          placeholder="Write Markdown here... Type [[ to reference another note, or / to insert a block."
+          :placeholder="t('noteEditor.markdownPlaceholder')"
           @input="handleInput"
           @keydown="handleKeyDown"
           @mouseup="handleTextSelection"
@@ -272,7 +272,7 @@
           class="autocomplete-dropdown"
           :style="autocompleteStyle"
         >
-          <div class="autocomplete-header">Link to Note</div>
+          <div class="autocomplete-header">{{ t('noteEditor.linkToNote') }}</div>
           <div 
             v-for="(suggestion, idx) in autocompleteSuggestions" 
             :key="suggestion.id"
@@ -315,7 +315,7 @@
         :style="{ top: `${commentTriggerPos.top}px`, left: `${commentTriggerPos.left}px` }"
         @mousedown.prevent="openCommentComposer"
       >
-        💬 Comment
+        {{ t('noteEditor.commentTriggerButton') }}
       </button>
 
       <div
@@ -327,21 +327,21 @@
         <textarea
           v-model="commentComposerDraft"
           class="comment-composer-textarea"
-          placeholder="Comment on selection..."
+          :placeholder="t('noteEditor.commentPlaceholder')"
           data-testid="comment-composer-textarea"
           rows="2"
           autofocus
           @keydown.escape="closeCommentComposer"
         ></textarea>
         <div class="comment-composer-actions">
-          <button type="button" class="btn-comment-cancel" data-testid="comment-composer-cancel" @click="closeCommentComposer">Cancel</button>
+          <button type="button" class="btn-comment-cancel" data-testid="comment-composer-cancel" @click="closeCommentComposer">{{ t('noteEditor.cancel') }}</button>
           <button
             type="button"
             class="btn-comment-submit"
             data-testid="comment-composer-submit"
             :disabled="!commentComposerDraft.trim()"
             @click="submitSelectionComment"
-          >Comment</button>
+          >{{ t('noteEditor.comment') }}</button>
         </div>
       </div>
 
@@ -391,7 +391,7 @@
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          <span>Drop file here to attach to note</span>
+          <span>{{ t('noteEditor.dropFileHere') }}</span>
         </div>
       </div>
     </div>
@@ -418,12 +418,12 @@
         data-testid="comments-drawer"
       >
         <div class="comments-drawer-header">
-          <h3>Comments</h3>
+          <h3>{{ t('noteEditor.comments') }}</h3>
           <button
             type="button"
             class="drawer-close-btn"
             data-testid="comments-drawer-close-btn"
-            aria-label="Close comments"
+            :aria-label="t('noteEditor.closeComments')"
             @click="isCommentsDrawerOpen = false"
           >&times;</button>
         </div>
@@ -447,12 +447,12 @@
         data-testid="checklist-drawer"
       >
         <div class="comments-drawer-header">
-          <h3>Checklist</h3>
+          <h3>{{ t('noteEditor.checklist') }}</h3>
           <button
             type="button"
             class="drawer-close-btn"
             data-testid="checklist-drawer-close-btn"
-            aria-label="Close checklist"
+            :aria-label="t('noteEditor.closeChecklist')"
             @click="isChecklistDrawerOpen = false"
           >&times;</button>
         </div>
@@ -476,12 +476,12 @@
         data-testid="activity-drawer"
       >
         <div class="comments-drawer-header">
-          <h3>Activity</h3>
+          <h3>{{ t('noteEditor.activity') }}</h3>
           <button
             type="button"
             class="drawer-close-btn"
             data-testid="activity-drawer-close-btn"
-            aria-label="Close activity"
+            :aria-label="t('noteEditor.closeActivity')"
             @click="isActivityDrawerOpen = false"
           >&times;</button>
         </div>
@@ -499,12 +499,12 @@
         data-testid="outline-drawer"
       >
         <div class="outline-drawer-header">
-          <h3>Outline</h3>
+          <h3>{{ t('noteEditor.outline') }}</h3>
           <button
             type="button"
             class="drawer-close-btn"
             data-testid="outline-drawer-close-btn"
-            aria-label="Close outline"
+            :aria-label="t('noteEditor.closeOutline')"
             @click="isOutlineDrawerOpen = false"
           >&times;</button>
         </div>
@@ -522,12 +522,12 @@
         data-testid="local-graph-drawer"
       >
         <div class="local-graph-drawer-header">
-          <h3>Local Graph</h3>
+          <h3>{{ t('noteEditor.localGraph') }}</h3>
           <button
             type="button"
             class="drawer-close-btn"
             data-testid="local-graph-drawer-close-btn"
-            aria-label="Close local graph"
+            :aria-label="t('noteEditor.closeLocalGraph')"
             @click="isLocalGraphDrawerOpen = false"
           >&times;</button>
         </div>
@@ -580,7 +580,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink } from '../services/types'
+
+const { t } = useI18n()
 import {
   uploadAttachment,
   getNoteRevisions, getNoteRevision, restoreNoteRevision,
@@ -1454,7 +1457,7 @@ async function handleSelectRevision(revisionId: number) {
 
 async function handleRestoreRevision(revisionId: number) {
   if (!props.workspaceId) return
-  if (!confirm('Restore this version? Any unsaved changes in the editor will be lost.')) return
+  if (!confirm(t('noteEditor.restoreVersionConfirm'))) return
   try {
     await restoreNoteRevision(props.workspaceId, props.note.id, revisionId)
     showHistory.value = false

@@ -7,9 +7,9 @@
     <div
       class="slash-menu-container"
       role="menu"
-      aria-label="Slash commands"
+      :aria-label="t('slashMenu.ariaLabel')"
     >
-      <div class="slash-menu-header">Insert Block</div>
+      <div class="slash-menu-header">{{ t('slashMenu.insertBlock') }}</div>
       <ul class="slash-menu-list">
         <li
           v-for="(block, index) in filteredBlocks"
@@ -26,7 +26,7 @@
           </div>
         </li>
         <li v-if="filteredBlocks.length === 0" class="slash-no-results">
-          No matching blocks
+          {{ t('slashMenu.noMatchingBlocks') }}
         </li>
       </ul>
     </div>
@@ -35,8 +35,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { BlockDefinition } from '../services/blockRegistry'
 import { blockDefinitions } from '../services/blockRegistry'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   isOpen: boolean

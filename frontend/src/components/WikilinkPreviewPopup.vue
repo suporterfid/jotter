@@ -6,10 +6,10 @@
     :style="positionStyle"
   >
     <div v-if="unresolvedTarget" class="wikilink-preview-unresolved">
-      No note yet — click to create '{{ unresolvedTarget }}'
+      {{ t('wikilinkPreview.noteNotYet', { target: unresolvedTarget }) }}
     </div>
     <div v-else-if="content === null" class="wikilink-preview-loading">
-      Loading...
+      {{ t('wikilinkPreview.loading') }}
     </div>
     <div v-else class="wikilink-preview-content" v-html="renderedContent"></div>
   </div>
@@ -17,8 +17,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { renderMarkdown } from '../services/markdown'
 import type { NoteMeta } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   rect: DOMRect
@@ -33,7 +36,7 @@ const positionStyle = ref({
   left: `${props.rect.left}px`,
 })
 
-const renderedContent = computed(() => (props.content ? renderMarkdown(props.content) : ''))
+const renderedContent = computed(() => (props.content ? renderMarkdown(props.content, undefined, t('markdownPreview.copy')) : ''))
 
 onMounted(() => {
   const el = popupRef.value
