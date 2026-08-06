@@ -14,7 +14,7 @@
               v-model="query"
               type="text"
               class="palette-input"
-              placeholder="Type a command or search notes... (Esc to close)"
+              :placeholder="t('commandPalette.inputPlaceholder')"
               @keydown.down.prevent="navigate(1)"
               @keydown.up.prevent="navigate(-1)"
               @keydown.enter.prevent="selectActive"
@@ -27,7 +27,7 @@
           <div class="palette-results">
             <!-- Quick Actions Group -->
             <div v-if="filteredActions.length > 0" class="group-section">
-              <div class="group-label">Quick Actions</div>
+              <div class="group-label">{{ t('commandPalette.quickActions') }}</div>
               <div
                 v-for="(action, index) in filteredActions"
                 :key="action.id"
@@ -43,7 +43,7 @@
 
             <!-- Notes Matching Group -->
             <div v-if="filteredNotes.length > 0" class="group-section">
-              <div class="group-label">Notes ({{ filteredNotes.length }})</div>
+              <div class="group-label">{{ t('commandPalette.notesCount', { count: filteredNotes.length }) }}</div>
               <div
                 v-for="(note, nIndex) in filteredNotes"
                 :key="note.id"
@@ -62,15 +62,15 @@
 
             <!-- Empty Results State -->
             <div v-if="filteredActions.length === 0 && filteredNotes.length === 0" class="no-results">
-              No matching commands or notes found for "{{ query }}"
+              {{ t('commandPalette.noResults', { query }) }}
             </div>
           </div>
 
           <!-- Footer Hints -->
           <div class="palette-footer">
-            <span class="hint-item"><kbd>↑</kbd> <kbd>↓</kbd> Navigate</span>
-            <span class="hint-item"><kbd>↵</kbd> Select</span>
-            <span class="hint-item"><kbd>esc</kbd> Dismiss</span>
+            <span class="hint-item"><kbd>↑</kbd> <kbd>↓</kbd> {{ t('commandPalette.navigate') }}</span>
+            <span class="hint-item"><kbd>↵</kbd> {{ t('commandPalette.select') }}</span>
+            <span class="hint-item"><kbd>esc</kbd> {{ t('commandPalette.dismiss') }}</span>
           </div>
         </div>
       </div>
@@ -80,7 +80,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { NoteMeta } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   notes: NoteMeta[]
@@ -107,39 +110,39 @@ interface ActionItem {
   action: () => void
 }
 
-const actions: ActionItem[] = [
+const actions = computed<ActionItem[]>(() => [
   {
     id: 'create',
-    title: 'Create New Note',
+    title: t('commandPalette.createNewNote'),
     icon: '📝',
     shortcut: 'N',
     action: () => emit('create-note')
   },
   {
     id: 'graph',
-    title: 'Open Relationship Graph View',
+    title: t('commandPalette.openGraphView'),
     icon: '🕸️',
     shortcut: 'G',
     action: () => emit('toggle-graph')
   },
   {
     id: 'search',
-    title: 'Fulltext Search Notes',
+    title: t('commandPalette.fulltextSearch'),
     icon: '🔍',
     action: () => emit('search')
   },
   {
     id: 'logout',
-    title: 'Log Out',
+    title: t('commandPalette.logOut'),
     icon: '🚪',
     action: () => emit('logout')
   }
-]
+])
 
 const filteredActions = computed(() => {
-  if (!query.value.trim()) return actions
+  if (!query.value.trim()) return actions.value
   const q = query.value.toLowerCase()
-  return actions.filter(a => a.title.toLowerCase().includes(q))
+  return actions.value.filter(a => a.title.toLowerCase().includes(q))
 })
 
 const filteredNotes = computed(() => {

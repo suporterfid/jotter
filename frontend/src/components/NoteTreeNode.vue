@@ -35,8 +35,8 @@
         type="button"
         class="btn-create-in-folder"
         data-testid="folder-create-note-btn"
-        title="Create note in this folder"
-        aria-label="Create note in this folder"
+        :title="t('noteTree.createNoteInFolder')"
+        :aria-label="t('noteTree.createNoteInFolder')"
         @click.stop="createNoteInFolder"
       >
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -81,7 +81,7 @@
     </div>
     <button
       class="btn-delete"
-      title="Delete note"
+      :title="t('noteTree.deleteNote')"
       @click.stop="$emit('delete-note', node.note.id)"
     >
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -94,7 +94,10 @@
 
 <script setup lang="ts">
 import { computed, ref, inject, onMounted, onBeforeUnmount, watch, useTemplateRef, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { NoteMeta } from '../services/types'
+
+const { t } = useI18n()
 import {
   createNoteTreeSortable,
   type NoteTreeSortableCallbacks,

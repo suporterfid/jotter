@@ -1,8 +1,8 @@
 <template>
   <div class="search-results-panel">
     <div class="search-header">
-      <span>Search Results for "{{ query }}"</span>
-      <span class="count">{{ results.length }} matches</span>
+      <span>{{ t('searchResults.headingFor', { query }) }}</span>
+      <span class="count">{{ t('searchResults.matches', { count: results.length }) }}</span>
     </div>
 
     <div class="filter-bar">
@@ -10,8 +10,8 @@
         v-model="titleDraft"
         type="text"
         class="filter-input"
-        placeholder="Filter by title..."
-        aria-label="Filter by title"
+        :placeholder="t('searchResults.filterByTitlePlaceholder')"
+        :aria-label="t('searchResults.filterByTitle')"
         data-testid="search-filter-title"
         @change="emitFilters"
       />
@@ -20,7 +20,7 @@
         v-model="modifiedAfterDraft"
         type="date"
         class="filter-input"
-        aria-label="Modified after"
+        :aria-label="t('searchResults.modifiedAfter')"
         data-testid="search-filter-modified-after"
         @change="emitFilters"
       />
@@ -29,7 +29,7 @@
         v-model="modifiedBeforeDraft"
         type="date"
         class="filter-input"
-        aria-label="Modified before"
+        :aria-label="t('searchResults.modifiedBefore')"
         data-testid="search-filter-modified-before"
         @change="emitFilters"
       />
@@ -55,12 +55,12 @@
         data-testid="search-filter-clear"
         @click="clearFilters"
       >
-        Clear filters
+        {{ t('searchResults.clearFilters') }}
       </button>
     </div>
 
     <div v-if="results.length === 0" class="no-results">
-      No notes found matching your search.
+      {{ t('searchResults.noResults') }}
     </div>
 
     <div v-else class="results-list">
@@ -80,7 +80,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { SearchResult, SearchFilters } from '../services/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   query: string

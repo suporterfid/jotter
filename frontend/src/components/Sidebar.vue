@@ -7,7 +7,7 @@
       v-if="sidebarCollapsed"
       type="button"
       class="sidebar-expand-btn"
-      aria-label="Expand sidebar"
+      :aria-label="t('sidebar.expandSidebar')"
       data-testid="sidebar-expand-btn"
       @click="toggleSidebarCollapsed"
     >
@@ -44,7 +44,7 @@
           <button
             class="btn-icon"
             data-testid="notifications-btn"
-            title="Notifications"
+            :title="t('sidebar.notifications')"
             :aria-expanded="showNotifications"
             aria-haspopup="true"
             @click="showNotifications = !showNotifications"
@@ -58,8 +58,8 @@
             </span>
           </button>
           <div v-if="showNotifications" class="more-menu-backdrop" @click="showNotifications = false"></div>
-          <div v-if="showNotifications" class="more-menu notifications-menu" role="region" aria-label="Notifications">
-            <p v-if="notifications.length === 0" class="notifications-empty">No notifications yet.</p>
+          <div v-if="showNotifications" class="more-menu notifications-menu" role="region" :aria-label="t('sidebar.notifications')">
+            <p v-if="notifications.length === 0" class="notifications-empty">{{ t('sidebar.noNotificationsYet') }}</p>
             <div
               v-for="notification in notifications"
               :key="notification.id"
@@ -75,8 +75,8 @@
               <button
                 class="btn-delete-notification"
                 data-testid="notification-delete-btn"
-                :aria-label="`Dismiss notification: ${notification.title}`"
-                title="Dismiss"
+                :aria-label="t('sidebar.dismissNotification', { title: notification.title })"
+                :title="t('sidebar.dismiss')"
                 @click="$emit('delete-notification', notification.id)"
               >
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -91,7 +91,7 @@
           <button
             class="btn-icon"
             data-testid="more-actions-btn"
-            title="More actions"
+            :title="t('sidebar.moreActions')"
             :aria-expanded="showMoreMenu"
             aria-haspopup="true"
             @click="showMoreMenu = !showMoreMenu"
@@ -113,7 +113,7 @@
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
               </svg>
-              <span>Attachments</span>
+              <span>{{ t('sidebar.attachments') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -127,7 +127,7 @@
                 <line x1="8" y1="2" x2="8" y2="6"></line>
                 <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
-              <span>Today's Daily Note</span>
+              <span>{{ t('sidebar.todaysDailyNote') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -141,7 +141,7 @@
                 <line x1="9" y1="13" x2="15" y2="13"></line>
                 <line x1="9" y1="17" x2="13" y2="17"></line>
               </svg>
-              <span>Audit Log</span>
+              <span>{{ t('sidebar.auditLog') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -154,7 +154,7 @@
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
-              <span>Import Workspace…</span>
+              <span>{{ t('sidebar.importWorkspaceEllipsis') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -167,7 +167,7 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span>Export Workspace</span>
+              <span>{{ t('sidebar.exportWorkspace') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -180,7 +180,7 @@
                 <line x1="12" y1="9" x2="12" y2="13"></line>
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
               </svg>
-              <span>Broken Links &amp; Orphans</span>
+              <span>{{ t('sidebar.brokenLinksOrphans') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -193,7 +193,7 @@
                 <line x1="2" y1="12" x2="22" y2="12"></line>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
               </svg>
-              <span>Publish Static Site</span>
+              <span>{{ t('sidebar.publishStaticSite') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -206,7 +206,7 @@
                 <line x1="3" y1="9" x2="21" y2="9"></line>
                 <line x1="9" y1="9" x2="9" y2="21"></line>
               </svg>
-              <span>Table View</span>
+              <span>{{ t('sidebar.tableView') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -218,7 +218,7 @@
                 <rect x="3" y="3" width="7" height="18" rx="1"></rect>
                 <rect x="14" y="3" width="7" height="10" rx="1"></rect>
               </svg>
-              <span>Board View</span>
+              <span>{{ t('sidebar.boardView') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -232,7 +232,7 @@
                 <line x1="8" y1="2" x2="8" y2="6"></line>
                 <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
-              <span>Calendar View</span>
+              <span>{{ t('sidebar.calendarView') }}</span>
             </button>
             <button
               class="more-menu-item"
@@ -243,7 +243,7 @@
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
-              <span>Collapse Sidebar</span>
+              <span>{{ t('sidebar.collapseSidebar') }}</span>
             </button>
             <button
               v-if="currentUser?.is_admin"
@@ -256,11 +256,11 @@
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
-              <span>Admin Panel</span>
+              <span>{{ t('sidebar.adminPanel') }}</span>
             </button>
           </div>
         </div>
-        <button class="btn-icon" data-testid="new-note-btn" title="New Note" @click="showNewNoteModal = true">
+        <button class="btn-icon" data-testid="new-note-btn" :title="t('sidebar.newNote')" @click="showNewNoteModal = true">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -278,7 +278,7 @@
       <input 
         v-model="searchQuery" 
         type="text" 
-        placeholder="Search notes or filter..." 
+        :placeholder="t('sidebar.searchPlaceholder')" 
         class="search-input"
         @input="onSearchInput"
         @keydown.esc="clearSearch"
@@ -293,7 +293,7 @@
         :class="{ active: activeTag === null }"
         @click="activeTag = null"
       >
-        All
+        {{ t('sidebar.allTag') }}
       </button>
       <button 
         v-for="tag in availableTags" 
@@ -308,12 +308,12 @@
 
     <!-- Controls Bar: Sort Selector -->
     <div class="sidebar-sort-bar">
-      <label for="sidebar-sort-select" class="sort-label">Sort:</label>
-      <select id="sidebar-sort-select" v-model="sortBy" class="sort-select" aria-label="Sort notes by">
-        <option value="recent">Recently Modified</option>
-        <option value="name">Alphabetical</option>
-        <option value="path">Vault Path</option>
-        <option value="manual">Manual</option>
+      <label for="sidebar-sort-select" class="sort-label">{{ t('sidebar.sortLabel') }}</label>
+      <select id="sidebar-sort-select" v-model="sortBy" class="sort-select" :aria-label="t('sidebar.sortNotesBy')">
+        <option value="recent">{{ t('sidebar.recentlyModified') }}</option>
+        <option value="name">{{ t('sidebar.alphabetical') }}</option>
+        <option value="path">{{ t('sidebar.vaultPath') }}</option>
+        <option value="manual">{{ t('sidebar.manual') }}</option>
       </select>
     </div>
 
@@ -325,8 +325,8 @@
       </div>
 
       <div v-if="filteredAndSortedNotes.length === 0" class="notes-empty">
-        <p>No notes found.</p>
-        <button class="btn-create-inline" @click="showNewNoteModal = true">Create a note</button>
+        <p>{{ t('sidebar.noNotesFound') }}</p>
+        <button class="btn-create-inline" @click="showNewNoteModal = true">{{ t('sidebar.createANote') }}</button>
       </div>
 
       <div v-else class="notes-list" ref="rootList" data-folder-path="">
@@ -347,8 +347,8 @@
     <!-- New Note Dialog -->
     <div v-if="showNewNoteModal" class="modal-overlay" @click.self="showNewNoteModal = false">
       <form class="modal-card" @submit.prevent="handleCreateNote">
-        <h3>Create New Note</h3>
-        <p class="modal-desc">Enter the relative vault path (e.g. <code>inbox/my-note.md</code>):</p>
+        <h3>{{ t('sidebar.createNewNote') }}</h3>
+        <p class="modal-desc" v-html="t('sidebar.createNoteDesc')"></p>
         <input
           v-model="newNotePath"
           data-testid="create-note-input"
@@ -358,22 +358,22 @@
           required
         />
         <template v-if="availableTemplates.length > 0">
-          <label for="new-note-template-select" class="modal-label">Start from a template (optional):</label>
+          <label for="new-note-template-select" class="modal-label">{{ t('sidebar.startFromTemplate') }}</label>
           <select
             id="new-note-template-select"
             v-model="newNoteTemplatePath"
             data-testid="create-note-template-select"
             class="modal-input"
           >
-            <option value="">Blank note</option>
+            <option value="">{{ t('sidebar.blankNote') }}</option>
             <option v-for="tpl in availableTemplates" :key="tpl.id" :value="tpl.path">
               {{ tpl.title || tpl.path }}
             </option>
           </select>
         </template>
         <div class="modal-actions">
-          <button type="button" class="btn-secondary" @click="showNewNoteModal = false">Cancel</button>
-          <button type="submit" class="btn-primary" data-testid="create-note-submit" :disabled="!newNotePath.trim()">Create</button>
+          <button type="button" class="btn-secondary" @click="showNewNoteModal = false">{{ t('sidebar.cancel') }}</button>
+          <button type="submit" class="btn-primary" data-testid="create-note-submit" :disabled="!newNotePath.trim()">{{ t('sidebar.create') }}</button>
         </div>
       </form>
     </div>
@@ -381,8 +381,8 @@
     <!-- Import Workspace Dialog -->
     <div v-if="showImportModal" class="modal-overlay" @click.self="closeImportModal">
       <form class="modal-card" @submit.prevent="handleImportSubmit">
-        <h3>Import Workspace Archive</h3>
-        <p class="modal-desc">Upload a <code>.zip</code> export (Markdown notes + attachments) to import into this workspace.</p>
+        <h3>{{ t('sidebar.importWorkspaceArchive') }}</h3>
+        <p class="modal-desc" v-html="t('sidebar.importDesc')"></p>
         <input
           ref="importFileInputRef"
           data-testid="import-file-input"
@@ -394,11 +394,11 @@
         />
         <label class="modal-checkbox-label">
           <input v-model="importOverwrite" type="checkbox" data-testid="import-overwrite-checkbox" />
-          <span>Overwrite existing notes with the same path</span>
+          <span>{{ t('sidebar.overwriteExisting') }}</span>
         </label>
         <div class="modal-actions">
-          <button type="button" class="btn-secondary" @click="closeImportModal">Cancel</button>
-          <button type="submit" class="btn-primary" data-testid="import-submit-btn" :disabled="!importFile">Import</button>
+          <button type="button" class="btn-secondary" @click="closeImportModal">{{ t('sidebar.cancel') }}</button>
+          <button type="submit" class="btn-primary" data-testid="import-submit-btn" :disabled="!importFile">{{ t('sidebar.import') }}</button>
         </div>
       </form>
     </div>
@@ -416,7 +416,7 @@
           v-if="authProvider === 'local'"
           class="btn-icon"
           data-testid="change-password-btn"
-          title="Change Password"
+          :title="t('sidebar.changePasswordTooltip')"
           @click="$emit('open-change-password')"
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -424,7 +424,7 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
         </button>
-        <button class="btn-logout" data-testid="logout-btn" title="Sign Out" @click="$emit('logout')">
+        <button class="btn-logout" data-testid="logout-btn" :title="t('sidebar.signOut')" @click="$emit('logout')">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
@@ -449,7 +449,10 @@
 
 <script setup lang="ts">
 import { ref, computed, provide, onMounted, onBeforeUnmount, watch, useTemplateRef, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem, Workspace, Tenant } from '../services/types'
+
+const { t } = useI18n()
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 import ThemeToggle from './ThemeToggle.vue'

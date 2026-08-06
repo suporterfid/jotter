@@ -10,7 +10,7 @@
         type="button"
         class="panel-collapse-toggle"
         data-testid="panel-collapse-toggle"
-        :aria-label="collapsed ? `Expand ${title}` : `Collapse ${title}`"
+        :aria-label="collapsed ? t('panelHeader.expand', { title }) : t('panelHeader.collapse', { title })"
         :aria-expanded="!collapsed"
         @click="$emit('toggle')"
       >
@@ -32,6 +32,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps<{
   title: string
   count?: number
