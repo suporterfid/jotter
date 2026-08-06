@@ -20,6 +20,7 @@ Route::post('/auth/logout', [AuthController::class, 'logout']);
 Route::get('/auth/me', [AuthController::class, 'me']);
 Route::get('/auth/config', [AuthController::class, 'config']);
 Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);
+Route::post('/user/locale', [\App\Http\Controllers\UserLocaleController::class, 'update']);
 Route::post('/mcp', [\App\Http\Controllers\McpController::class, 'handle']);
 
 Route::middleware('workspace.authorization')->group(function (): void {
