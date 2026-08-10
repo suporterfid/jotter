@@ -29,8 +29,10 @@ export default {
     genericError: 'Failed to change password.',
   },
   theme: {
-    switchToLight: 'Switch to light theme',
-    switchToDark: 'Switch to dark theme',
+    label: 'Theme',
+    system: 'System',
+    light: 'Light',
+    dark: 'Dark',
   },
   tenantSwitcher: {
     switchTenant: 'Switch tenant',

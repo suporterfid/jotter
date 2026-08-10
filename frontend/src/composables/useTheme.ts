@@ -1,21 +1,39 @@
-import { useColorMode } from '@vueuse/core'
+import { computed, ref, watch } from 'vue'
+
+export type ThemePreference = 'system' | 'light' | 'dark'
+type ResolvedTheme = Exclude<ThemePreference, 'system'>
+
+const storageKey = 'jotter-theme'
+
+function storedPreference(): ThemePreference {
+  const value = localStorage.getItem(storageKey)
+  return value === 'light' || value === 'dark' || value === 'system' ? value : 'system'
+}
+
+function systemTheme(): ResolvedTheme {
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
 
 /**
- * Wraps @vueuse/core's useColorMode with Jotter's storage key and attribute
- * strategy. Resolution order: localStorage['jotter-theme'] (explicit user
- * choice) -> prefers-color-scheme -> 'light'.
+ * Keeps an explicit user preference separate from the resolved DOM theme.
+ * `system` follows the OS, while light and dark always win over it.
  */
 export function useTheme() {
-  const mode = useColorMode({
-    selector: 'html',
-    attribute: 'data-theme',
-    storageKey: 'jotter-theme',
-    modes: {
-      light: 'light',
-      dark: 'dark',
-    },
-    initialValue: 'auto',
+  const preference = ref<ThemePreference>(storedPreference())
+  const resolvedTheme = computed<ResolvedTheme>(() => preference.value === 'system' ? systemTheme() : preference.value)
+
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', resolvedTheme.value)
+  }
+
+  watch(preference, () => {
+    localStorage.setItem(storageKey, preference.value)
+    applyTheme()
+  }, { immediate: true })
+
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
+    if (preference.value === 'system') applyTheme()
   })
 
-  return { mode }
+  return { preference, resolvedTheme }
 }

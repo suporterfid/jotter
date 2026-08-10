@@ -29,8 +29,10 @@ export default {
     genericError: 'Falha ao alterar a senha.',
   },
   theme: {
-    switchToLight: 'Mudar para tema claro',
-    switchToDark: 'Mudar para tema escuro',
+    label: 'Tema',
+    system: 'Sistema',
+    light: 'Claro',
+    dark: 'Escuro',
   },
   tenantSwitcher: {
     switchTenant: 'Trocar tenant',

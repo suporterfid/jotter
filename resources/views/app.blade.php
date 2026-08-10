@@ -28,8 +28,9 @@
     <script>
       (function () {
         var stored = localStorage.getItem('jotter-theme');
-        var theme = stored === 'light' || stored === 'dark'
-          ? stored
+        var preference = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+        var theme = preference === 'light' || preference === 'dark'
+          ? preference
           : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.setAttribute('data-theme', theme);
       })();
