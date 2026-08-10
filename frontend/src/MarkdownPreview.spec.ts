@@ -1,6 +1,17 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
 import MarkdownPreview from './components/MarkdownPreview.vue'
+
+const source = readFileSync('src/components/MarkdownPreview.vue', 'utf8')
+
+describe('MarkdownPreview identity layout', () => {
+  it('uses the canonical reading measure and logical inline properties', () => {
+    expect(source).toContain('max-inline-size: 720px')
+    expect(source).toContain('padding-inline-start: var(--space-6)')
+    expect(source).toContain('inset-inline-end: var(--space-2)')
+  })
+})
 
 describe('MarkdownPreview wikilink hover', () => {
   afterEach(() => {

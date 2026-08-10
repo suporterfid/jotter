@@ -115,13 +115,15 @@ onBeforeUnmount(clearHoverTimer)
 .markdown-preview {
   /* Centered reading column (Notion-style ~640-760px page), not full pane
      width — see docs/visual-identity.md §11, previously an open item. */
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 1.5rem;
-  overflow-y: auto;
+  max-inline-size: 720px;
+  margin-block: 0;
+  margin-inline: auto;
+  padding-block: 1.5rem;
+  padding-inline: 1.5rem;
+  overflow-block: auto;
   color: var(--color-text);
   line-height: 1.6;
-  height: 100%;
+  block-size: 100%;
 }
 
 :deep(.wikilink) {
@@ -144,44 +146,44 @@ onBeforeUnmount(clearHoverTimer)
 :deep(h1) {
   font-size: 1.75rem;
   font-weight: 700;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--space-2);
-  margin-top: var(--space-4);
-  margin-bottom: var(--space-4);
+  border-block-end: 1px solid var(--color-border);
+  padding-block-end: var(--space-2);
+  margin-block-start: var(--space-4);
+  margin-block-end: var(--space-4);
   color: var(--color-text);
 }
 
 :deep(h2) {
   font-size: 1.35rem;
   font-weight: 600;
-  margin-top: var(--space-6);
-  margin-bottom: var(--space-3);
+  margin-block-start: var(--space-6);
+  margin-block-end: var(--space-3);
   color: var(--color-text);
 }
 
 :deep(p) {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 :deep(ul), :deep(ol) {
-  padding-left: var(--space-6);
-  margin-bottom: var(--space-4);
+  padding-inline-start: var(--space-6);
+  margin-block-end: var(--space-4);
 }
 
 :deep(li) {
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
 
 :deep(input[type="checkbox"]) {
   appearance: none;
-  width: 1.1rem;
-  height: 1.1rem;
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
   background: var(--color-canvas);
   cursor: pointer;
   vertical-align: middle;
-  margin-right: var(--space-2);
+  margin-inline-end: var(--space-2);
   position: relative;
   transition: background-color var(--duration-fast) var(--ease-standard),
               border-color var(--duration-fast) var(--ease-standard);
@@ -195,8 +197,8 @@ onBeforeUnmount(clearHoverTimer)
 :deep(input[type="checkbox"]:checked::after) {
   content: '✓';
   position: absolute;
-  top: 50%;
-  left: 50%;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
   transform: translate(-50%, -50%);
   color: var(--color-neutral-0);
   font-size: 0.75rem;
@@ -213,13 +215,13 @@ onBeforeUnmount(clearHoverTimer)
 
 :deep(.code-block-wrapper) {
   position: relative;
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 :deep(.copy-code-btn) {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
   background: var(--color-surface-emphasis);
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
@@ -242,13 +244,13 @@ onBeforeUnmount(clearHoverTimer)
 
 :deep(pre) {
   background: var(--color-surface);
-  padding: var(--space-4) var(--space-6);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-6);
   border-radius: var(--radius-md);
-  overflow-x: auto;
+  overflow-inline: auto;
   margin: 0;
   border: 1px solid var(--color-border);
   color: var(--color-text);
   font-family: var(--font-mono);
 }
 </style>
-
