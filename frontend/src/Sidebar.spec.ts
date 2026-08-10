@@ -1,7 +1,21 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import Sidebar from './components/Sidebar.vue'
 import type { NoteMeta, FolderPosition, Workspace } from './services/types'
+
+const source = readFileSync('src/components/Sidebar.vue', 'utf8')
+
+describe('Sidebar identity localization', () => {
+  it('uses locale-aware notification timestamps and logical menu positioning', () => {
+    expect(source).toContain('new Intl.DateTimeFormat(locale.value')
+    expect(source).toContain('inset-inline-end: 0')
+    expect(source).toContain('inset-inline-start: 0')
+    expect(source).toContain('text-align: start')
+    expect(source).toContain('inset-inline-start: var(--space-3)')
+    expect(source).toContain('inset-inline-end: var(--space-2)')
+  })
+})
 
 vi.mock('./services/api', () => ({
   moveNote: vi.fn(),

@@ -452,7 +452,7 @@ import { ref, computed, provide, onMounted, onBeforeUnmount, watch, useTemplateR
 import { useI18n } from 'vue-i18n'
 import type { NoteMeta, AuthUser, NotificationItem, FolderPosition, SortItem, Workspace, Tenant } from '../services/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 import NoteTreeNode from './NoteTreeNode.vue'
 import type { TreeFolder, TreeNode } from './NoteTreeNode.vue'
 import ThemeToggle from './ThemeToggle.vue'
@@ -529,9 +529,9 @@ const unreadNotificationCount = computed(() => notifications.value.filter(n => !
 
 function formatNotificationTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Intl.DateTimeFormat(locale.value, {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    })
+    }).format(new Date(iso))
   } catch {
     return iso
   }
@@ -884,8 +884,8 @@ function handleImportSubmit() {
 
 .more-menu {
   position: absolute;
-  top: calc(100% + var(--space-1));
-  right: 0;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: 0;
   min-width: 200px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -908,7 +908,7 @@ function handleImportSubmit() {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.8125rem;
-  text-align: left;
+  text-align: start;
   min-height: 40px;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
@@ -919,8 +919,8 @@ function handleImportSubmit() {
 
 .notification-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
   background: var(--color-status-danger);
   color: var(--color-text-inverse);
   font-size: 0.625rem;
@@ -933,8 +933,8 @@ function handleImportSubmit() {
 }
 
 .notifications-menu {
-  left: 0;
-  right: auto;
+  inset-inline-start: 0;
+  inset-inline-end: auto;
   min-width: 280px;
   max-width: 340px;
   max-height: 400px;
@@ -1044,8 +1044,8 @@ function handleImportSubmit() {
 
 .search-icon {
   position: absolute;
-  left: var(--space-3);
-  top: 50%;
+  inset-inline-start: var(--space-3);
+  inset-block-start: 50%;
   transform: translateY(-50%);
   color: var(--color-text-muted);
   pointer-events: none;
@@ -1069,8 +1069,8 @@ function handleImportSubmit() {
 
 .clear-btn {
   position: absolute;
-  right: var(--space-2);
-  top: 50%;
+  inset-inline-end: var(--space-2);
+  inset-block-start: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
