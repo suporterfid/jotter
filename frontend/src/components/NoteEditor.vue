@@ -1568,8 +1568,8 @@ onUnmounted(() => {
 
 .editor-icon-clear {
   position: absolute;
-  top: 0;
-  right: 0;
+  inset-block-start: 0;
+  inset-inline-end: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1685,8 +1685,8 @@ onUnmounted(() => {
 
 .editor-cover-actions {
   position: absolute;
-  bottom: var(--space-3);
-  right: var(--space-3);
+  inset-block-end: var(--space-3);
+  inset-inline-end: var(--space-3);
   display: flex;
   gap: var(--space-2);
   opacity: 0;
@@ -1833,7 +1833,7 @@ onUnmounted(() => {
 .textarea-wrapper {
   position: relative;
   height: 100%;
-  border-right: 1px solid var(--color-border);
+  border-inline-end: 1px solid var(--color-border);
 }
 
 .markdown-textarea {
@@ -2071,8 +2071,8 @@ onUnmounted(() => {
 
 .stats-popover {
   position: absolute;
-  top: 100%;
-  right: 0;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
   margin-top: var(--space-1);
   display: flex;
   flex-direction: column;
@@ -2094,12 +2094,12 @@ onUnmounted(() => {
 
 .comments-drawer {
   position: fixed;
-  top: 0;
-  right: 0;
+  inset-block-start: 0;
+  inset-inline-end: 0;
   height: 100vh;
   width: min(360px, 100vw);
   background: var(--color-surface);
-  border-left: 1px solid var(--color-border);
+  border-inline-start: 1px solid var(--color-border);
   box-shadow: var(--shadow-float);
   /* Above App.vue's mobile sidebar backdrop (z-index: 30) so the drawer
      stays reachable if it's opened while the mobile sidebar is up. */
@@ -2148,12 +2148,12 @@ onUnmounted(() => {
 
 .outline-drawer {
   position: fixed;
-  top: 0;
-  right: 0;
+  inset-block-start: 0;
+  inset-inline-end: 0;
   height: 100vh;
   width: min(360px, 100vw);
   background: var(--color-surface);
-  border-left: 1px solid var(--color-border);
+  border-inline-start: 1px solid var(--color-border);
   box-shadow: var(--shadow-float);
   z-index: 40;
   display: flex;
@@ -2184,12 +2184,12 @@ onUnmounted(() => {
 
 .local-graph-drawer {
   position: fixed;
-  top: 0;
-  right: 0;
+  inset-block-start: 0;
+  inset-inline-end: 0;
   height: 100vh;
   width: min(360px, 100vw);
   background: var(--color-surface);
-  border-left: 1px solid var(--color-border);
+  border-inline-start: 1px solid var(--color-border);
   box-shadow: var(--shadow-float);
   z-index: 40;
   display: flex;

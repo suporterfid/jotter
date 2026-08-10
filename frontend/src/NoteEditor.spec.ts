@@ -1,7 +1,18 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
 import NoteEditor from './components/NoteEditor.vue'
 import type { NoteDetail } from './services/types'
+
+const noteEditorSource = readFileSync('src/components/NoteEditor.vue', 'utf8')
+
+describe('NoteEditor identity layout', () => {
+  it('anchors CSS panels with logical properties', () => {
+    expect(noteEditorSource).toContain('inset-inline-end: 0')
+    expect(noteEditorSource).toContain('border-inline-start: 1px solid var(--color-border)')
+    expect(noteEditorSource).toContain('border-inline-end: 1px solid var(--color-border)')
+  })
+})
 
 // WY.5 (#325) made 'live' the default viewMode, so every mount() below now
 // mounts a real Milkdown instance unless told otherwise — an async,
@@ -28,6 +39,9 @@ vi.mock('./services/api', () => ({
   }),
   getNote: vi.fn(),
   getNoteRevisions: vi.fn().mockResolvedValue([]),
+  getNoteActivity: vi.fn().mockResolvedValue([]),
+  getChecklistItems: vi.fn().mockResolvedValue([]),
+  getWorkspaceProperties: vi.fn().mockResolvedValue([]),
   restoreNoteRevision: vi.fn().mockResolvedValue(undefined),
 }))
 
