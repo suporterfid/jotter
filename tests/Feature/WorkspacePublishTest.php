@@ -122,4 +122,41 @@ final class WorkspacePublishTest extends TestCase
         $this->assertStringContainsString('goodbye.html', $indexHtml);
         $this->assertStringContainsString('Hello World', $indexHtml);
     }
+
+    public function test_workspace_publish_falls_back_when_a_font_source_is_unavailable(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
+        $slug = 'fallback-font-'.bin2hex(random_bytes(4));
+        $vaultDir = storage_path('app/vaults/'.$slug);
+        mkdir($vaultDir, 0755, true);
+        file_put_contents($vaultDir.'/index.md', '# Fallback font');
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => $slug,
+            'name' => 'Fallback font',
+            'vault_path' => $vaultDir,
+        ]);
+
+        $this->artisan('vault:reindex', ['--workspace' => $workspace->id]);
+
+        $source = base_path('frontend/src/assets/fonts/ibm-plex-mono-400.woff2');
+        $temporarySource = $source.'.missing-for-test';
+        $this->assertFileExists($source);
+        $this->assertTrue(rename($source, $temporarySource));
+
+        try {
+            $response = $this->actingAs($admin)
+                ->postJson("/api/workspaces/{$workspace->id}/publish");
+
+            $response->assertOk();
+            $this->assertFileExists(storage_path("app/public/sites/{$slug}/index.html"));
+            $this->assertFileDoesNotExist(
+                storage_path("app/public/sites/{$slug}/fonts/ibm-plex-mono-400.woff2")
+            );
+        } finally {
+            $this->assertTrue(rename($temporarySource, $source));
+        }
+    }
 }
