@@ -228,6 +228,7 @@ export default {
     placeholder: "Escreva um comentário... use {'@'}nome para mencionar alguém",
     newComment: 'Novo comentário',
     comment: 'Comentar',
+    line: 'linha {line}',
   },
   attachmentsPanel: {
     title: 'Anexos',

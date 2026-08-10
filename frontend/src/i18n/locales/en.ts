@@ -228,6 +228,7 @@ export default {
     placeholder: "Write a comment... use {'@'}name to mention someone",
     newComment: 'New comment',
     comment: 'Comment',
+    line: 'line {line}',
   },
   attachmentsPanel: {
     title: 'Attachments',

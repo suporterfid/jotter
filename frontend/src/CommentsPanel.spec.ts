@@ -1,6 +1,18 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, beforeEach } from 'vitest'
 import CommentsPanel from './components/CommentsPanel.vue'
+
+const source = readFileSync('src/components/CommentsPanel.vue', 'utf8')
+
+describe('CommentsPanel identity localization', () => {
+  it('uses semantic direction-safe styles and the selected locale for displayed data', () => {
+    expect(source).toContain("t('commentsPanel.line', { line: comment.anchor_line })")
+    expect(source).toContain('new Intl.DateTimeFormat(locale.value')
+    expect(source).toContain('padding-inline-end: var(--space-8)')
+    expect(source).toContain('inset-inline-end: var(--space-2)')
+  })
+})
 
 const comment = {
   id: 1,

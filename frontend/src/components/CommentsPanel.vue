@@ -19,7 +19,7 @@
       <li v-for="comment in comments" :key="comment.id" class="comment-item" data-testid="comment-item">
         <div class="comment-meta">
           <span class="comment-author">{{ comment.actor_name }}</span>
-          <span v-if="comment.anchor_line" class="comment-anchor">line {{ comment.anchor_line }}</span>
+          <span v-if="comment.anchor_line" class="comment-anchor">{{ t('commentsPanel.line', { line: comment.anchor_line }) }}</span>
           <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
         </div>
         <p class="comment-content">{{ comment.content }}</p>
@@ -62,7 +62,7 @@ import PanelHeader from './PanelHeader.vue'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 import type { NoteComment } from '../services/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 defineProps<{
   comments: NoteComment[]
@@ -80,9 +80,9 @@ const newContent = ref('')
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Intl.DateTimeFormat(locale.value, {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    })
+    }).format(new Date(iso))
   } catch {
     return iso
   }
@@ -133,7 +133,7 @@ function handleSubmit() {
   position: relative;
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
-  padding-right: var(--space-8);
+  padding-inline-end: var(--space-8);
 }
 
 .comment-meta {
@@ -169,8 +169,8 @@ function handleSubmit() {
 
 .btn-delete-comment {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
   background: transparent;
   border: none;
   color: var(--color-text-muted);
