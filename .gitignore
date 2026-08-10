@@ -7,6 +7,7 @@
 /.fleet
 /.idea
 /.phpunit.cache
+/.playwright-cli
 /.vscode
 /.worktrees
 /auth.json
