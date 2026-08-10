@@ -770,10 +770,10 @@ function handleImportSubmit() {
 
 <style scoped>
 .sidebar {
-  width: 280px;
-  min-width: 280px;
+  inline-size: 280px;
+  min-inline-size: 280px;
   background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
+  border-inline-end: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -791,17 +791,17 @@ function handleImportSubmit() {
    reworking the expand button's positioning. */
 @media (min-width: 769px) {
   .sidebar.sidebar-collapsed {
-    width: 0;
-    min-width: 0;
-    border-right: none;
+    inline-size: 0;
+    min-inline-size: 0;
+    border-inline-end: none;
     overflow: hidden;
   }
 }
 
 .sidebar-expand-btn {
   position: fixed;
-  top: var(--space-3);
-  left: var(--space-3);
+  inset-block-start: var(--space-3);
+  inset-inline-start: var(--space-3);
   z-index: 20;
   display: flex;
   align-items: center;
@@ -831,7 +831,8 @@ function handleImportSubmit() {
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
-    inset: 0 auto 0 0;
+    inset-block: 0;
+    inset-inline-start: 0;
     z-index: 40;
     width: min(85vw, 320px);
     min-width: 0;
@@ -1470,4 +1471,3 @@ function handleImportSubmit() {
   background: color-mix(in srgb, var(--color-status-danger) 12%, transparent);
 }
 </style>
-

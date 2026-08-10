@@ -1190,7 +1190,7 @@ async function handleWikilinkNavigation(target: string) {
 
 /* Global focus ring — Issue #103 */
 :focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
@@ -1215,7 +1215,7 @@ body {
 .app-layout {
   display: flex;
   height: 100vh;
-  width: 100vw;
+  inline-size: 100vw;
   overflow: hidden;
 }
 
@@ -1233,8 +1233,8 @@ body {
     align-items: center;
     justify-content: center;
     position: fixed;
-    top: var(--space-3);
-    left: var(--space-3);
+    inset-block-start: var(--space-3);
+    inset-inline-start: var(--space-3);
     z-index: 50;
     min-width: 44px;
     min-height: 44px;

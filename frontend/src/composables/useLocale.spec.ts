@@ -33,6 +33,8 @@ describe('useLocale', () => {
     const vm = wrapper.vm as unknown as { setLocale: (l: string) => Promise<void> }
     await vm.setLocale('en')
     expect(i18n.global.locale.value).toBe('en')
+    expect(document.documentElement.lang).toBe('en')
+    expect(document.documentElement.dir).toBe('ltr')
   })
 
   it('setLocale persists the change via the API', async () => {
