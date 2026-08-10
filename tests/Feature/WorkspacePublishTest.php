@@ -61,6 +61,15 @@ final class WorkspacePublishTest extends TestCase
 
         $this->assertFileExists(storage_path('app/public/sites/main/publish.css'));
         $this->assertFileExists(storage_path('app/public/sites/main/publish-theme.js'));
+        foreach ([
+            'inter-400.woff2',
+            'inter-600.woff2',
+            'inter-700.woff2',
+            'source-serif-4-700.woff2',
+            'ibm-plex-mono-400.woff2',
+        ] as $font) {
+            $this->assertFileExists(storage_path("app/public/sites/main/fonts/{$font}"));
+        }
         $themeScript = file_get_contents(storage_path('app/public/sites/main/publish-theme.js'));
         $this->assertStringContainsString("setAttribute('data-theme', theme)", $themeScript);
         $css = file_get_contents(storage_path('app/public/sites/main/publish.css'));
