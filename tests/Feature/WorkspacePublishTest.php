@@ -74,6 +74,10 @@ final class WorkspacePublishTest extends TestCase
         $this->assertStringContainsString("setAttribute('data-theme', theme)", $themeScript);
         $css = file_get_contents(storage_path('app/public/sites/main/publish.css'));
         $this->assertStringContainsString('--color-action-primary: #1A6DC1', $css);
+        $this->assertStringContainsString("font-family: 'Source Serif 4'", $css);
+        $this->assertStringContainsString("url('fonts/source-serif-4-700.woff2')", $css);
+        $this->assertStringContainsString("font-family: 'IBM Plex Mono'", $css);
+        $this->assertStringContainsString("url('fonts/ibm-plex-mono-400.woff2')", $css);
         $this->assertStringContainsString('Source Serif 4', $css);
         $this->assertStringContainsString('IBM Plex Mono', $css);
         $this->assertStringNotContainsString('Open Sans', $css);
