@@ -61,7 +61,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AuditLogEntry } from '../services/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 defineProps<{
   entries: AuditLogEntry[]
@@ -73,9 +73,9 @@ const expandedId = ref<number | null>(null)
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Intl.DateTimeFormat(locale.value, {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
-    })
+    }).format(new Date(iso))
   } catch {
     return iso
   }
@@ -138,7 +138,7 @@ function formatDate(iso: string | null): string {
 }
 
 .audit-table th {
-  text-align: left;
+  text-align: start;
   padding: var(--space-2) var(--space-3);
   color: var(--color-text-muted);
   font-weight: 600;

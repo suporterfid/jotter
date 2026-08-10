@@ -1,7 +1,16 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import ActivityPanel from './components/ActivityPanel.vue'
 import type { NoteActivityEntry } from './services/types'
+
+const source = readFileSync('src/components/ActivityPanel.vue', 'utf8')
+
+describe('ActivityPanel identity localization', () => {
+  it('formats activity timestamps using the selected locale', () => {
+    expect(source).toContain('new Intl.DateTimeFormat(locale.value')
+  })
+})
 
 const entries: NoteActivityEntry[] = [
   { id: 1, event: 'note.updated', metadata: { action: 'property_set', name: 'status', value: 'done' }, actor_subject_id: '1', created_at: '2026-08-04T12:00:00Z' },

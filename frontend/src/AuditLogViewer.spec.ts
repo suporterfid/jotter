@@ -1,6 +1,16 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import AuditLogViewer from './components/AuditLogViewer.vue'
+
+const source = readFileSync('src/components/AuditLogViewer.vue', 'utf8')
+
+describe('AuditLogViewer identity localization', () => {
+  it('formats timestamps by locale and aligns tabular labels logically', () => {
+    expect(source).toContain('new Intl.DateTimeFormat(locale.value')
+    expect(source).toContain('text-align: start')
+  })
+})
 
 const entries = [
   { id: 1, actor_subject_id: 'user:1', event: 'note.created', metadata: { path: 'a.md' }, ip_address: '127.0.0.1', created_at: '2026-07-01T00:00:00Z' },
