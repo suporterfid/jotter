@@ -45,12 +45,7 @@ final class WorkspacePublishController extends Controller
         if (! is_dir($fontsDir)) {
             mkdir($fontsDir, 0755, true);
         }
-        $fontSourceDir = base_path('frontend/src/assets/fonts');
-        if (is_dir($fontSourceDir)) {
-            foreach (glob($fontSourceDir.'/*.woff2') as $fontFile) {
-                $this->copyPublishAsset($fontFile, $fontsDir.'/'.basename($fontFile));
-            }
-        }
+        $this->publishFontAssets($siteDir);
 
         $locale = $subject->locale;
         $direction = $this->publicDirection($locale);
@@ -133,6 +128,21 @@ final class WorkspacePublishController extends Controller
         }
 
         copy($source, $destination);
+    }
+
+    private function publishFontAssets(string $siteDir): void
+    {
+        $fontSourceDir = base_path('frontend/src/assets/fonts');
+
+        foreach ([
+            'inter-400.woff2',
+            'inter-600.woff2',
+            'inter-700.woff2',
+            'source-serif-4-700.woff2',
+            'ibm-plex-mono-400.woff2',
+        ] as $fontFile) {
+            $this->copyPublishAsset($fontSourceDir.'/'.$fontFile, $siteDir.'/fonts/'.$fontFile);
+        }
     }
 
     private function publicDirection(string $locale): string

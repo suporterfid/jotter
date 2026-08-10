@@ -61,10 +61,23 @@ final class WorkspacePublishTest extends TestCase
 
         $this->assertFileExists(storage_path('app/public/sites/main/publish.css'));
         $this->assertFileExists(storage_path('app/public/sites/main/publish-theme.js'));
+        foreach ([
+            'inter-400.woff2',
+            'inter-600.woff2',
+            'inter-700.woff2',
+            'source-serif-4-700.woff2',
+            'ibm-plex-mono-400.woff2',
+        ] as $font) {
+            $this->assertFileExists(storage_path("app/public/sites/main/fonts/{$font}"));
+        }
         $themeScript = file_get_contents(storage_path('app/public/sites/main/publish-theme.js'));
         $this->assertStringContainsString("setAttribute('data-theme', theme)", $themeScript);
         $css = file_get_contents(storage_path('app/public/sites/main/publish.css'));
         $this->assertStringContainsString('--color-action-primary: #1A6DC1', $css);
+        $this->assertStringContainsString("font-family: 'Source Serif 4'", $css);
+        $this->assertStringContainsString("url('fonts/source-serif-4-700.woff2')", $css);
+        $this->assertStringContainsString("font-family: 'IBM Plex Mono'", $css);
+        $this->assertStringContainsString("url('fonts/ibm-plex-mono-400.woff2')", $css);
         $this->assertStringContainsString('Source Serif 4', $css);
         $this->assertStringContainsString('IBM Plex Mono', $css);
         $this->assertStringNotContainsString('Open Sans', $css);
@@ -108,5 +121,42 @@ final class WorkspacePublishTest extends TestCase
         $this->assertStringContainsString('hello.html', $indexHtml);
         $this->assertStringContainsString('goodbye.html', $indexHtml);
         $this->assertStringContainsString('Hello World', $indexHtml);
+    }
+
+    public function test_workspace_publish_falls_back_when_a_font_source_is_unavailable(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
+        $slug = 'fallback-font-'.bin2hex(random_bytes(4));
+        $vaultDir = storage_path('app/vaults/'.$slug);
+        mkdir($vaultDir, 0755, true);
+        file_put_contents($vaultDir.'/index.md', '# Fallback font');
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => $slug,
+            'name' => 'Fallback font',
+            'vault_path' => $vaultDir,
+        ]);
+
+        $this->artisan('vault:reindex', ['--workspace' => $workspace->id]);
+
+        $source = base_path('frontend/src/assets/fonts/ibm-plex-mono-400.woff2');
+        $temporarySource = $source.'.missing-for-test';
+        $this->assertFileExists($source);
+        $this->assertTrue(rename($source, $temporarySource));
+
+        try {
+            $response = $this->actingAs($admin)
+                ->postJson("/api/workspaces/{$workspace->id}/publish");
+
+            $response->assertOk();
+            $this->assertFileExists(storage_path("app/public/sites/{$slug}/index.html"));
+            $this->assertFileDoesNotExist(
+                storage_path("app/public/sites/{$slug}/fonts/ibm-plex-mono-400.woff2")
+            );
+        } finally {
+            $this->assertTrue(rename($temporarySource, $source));
+        }
     }
 }
