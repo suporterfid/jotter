@@ -135,7 +135,7 @@ Jotter Docker toolchain
 
 Usage: .\scripts\jt.ps1 <verb> [args...]
 
-Verbs: up, down, test, e2e, artisan, composer, npm, release
+Verbs: up, down, test, e2e, artisan, composer, npm, release, release:verify
 '@ | Write-Output
 }
 
@@ -206,6 +206,20 @@ switch ($Verb) {
             throw 'Release checksum validation failed.'
         }
         Write-Output 'Release written to dist/jotter-release.zip'
+    }
+    'release:verify' {
+        $zipPath = 'dist/jotter-release.zip'
+        if (-not (Test-Path $zipPath -PathType Leaf) -or (Get-Item $zipPath).Length -eq 0) {
+            throw "Release zip is missing or empty: $zipPath. Run .\scripts\jt.ps1 release first."
+        }
+
+        Initialize-Env
+        Invoke-Compose -Arguments @(
+            'run', '--rm',
+            '-e', 'JOTTER_RELEASE_ZIP=/var/www/html/dist/jotter-release.zip',
+            'app', 'php', 'artisan', 'test', '--filter=ReleaseZipSecurityTest'
+        )
+        Write-Output 'Release ZIP security verification passed.'
     }
     { $_ -in @('help', '-h', '--help') } { Show-Usage }
     default { Write-Error "Unknown verb: $Verb"; Show-Usage; exit 1 }

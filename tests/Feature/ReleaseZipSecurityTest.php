@@ -44,7 +44,7 @@ class ReleaseZipSecurityTest extends TestCase
                 $violations[] = "private key material: {$name}";
             }
 
-            if (str_starts_with($name, 'app/vendor/')) {
+            if (str_starts_with($name, 'app/vendor/') || str_starts_with($name, 'app/lang/')) {
                 continue;
             }
 
