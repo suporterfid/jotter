@@ -1,6 +1,15 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import TabStrip from './components/TabStrip.vue'
+
+const source = readFileSync('src/components/TabStrip.vue', 'utf8')
+
+describe('TabStrip identity layout', () => {
+  it('uses a logical divider for its vertical navigation edge', () => {
+    expect(source).toContain('border-inline-end: 1px solid var(--color-border)')
+  })
+})
 
 const tabs = [
   { id: 1, title: 'First Note' },

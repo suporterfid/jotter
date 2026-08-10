@@ -1,6 +1,16 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import HistoryPanel from './components/HistoryPanel.vue'
+
+const source = readFileSync('src/components/HistoryPanel.vue', 'utf8')
+
+describe('HistoryPanel identity layout', () => {
+  it('uses a logical divider between revision list and preview', () => {
+    expect(source).toContain('border-inline-end: 1px solid var(--color-border)')
+    expect(source).toContain('new Intl.DateTimeFormat(locale.value')
+  })
+})
 
 const revisions = [
   { id: 2, note_id: 1, content_hash: 'abc123def456', actor_id: null, created_at: '2026-07-02T00:00:00Z' },

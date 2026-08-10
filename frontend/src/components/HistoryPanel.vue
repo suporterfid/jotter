@@ -53,7 +53,7 @@
 import { useI18n } from 'vue-i18n'
 import type { NoteRevisionMeta } from '../services/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 defineProps<{
   revisions: NoteRevisionMeta[]
@@ -71,9 +71,9 @@ defineEmits<{
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Intl.DateTimeFormat(locale.value, {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    })
+    }).format(new Date(iso))
   } catch {
     return iso
   }
@@ -140,7 +140,7 @@ function formatDate(iso: string): string {
 .revision-list-pane {
   width: 240px;
   min-width: 240px;
-  border-right: 1px solid var(--color-border);
+  border-inline-end: 1px solid var(--color-border);
   overflow-y: auto;
 }
 

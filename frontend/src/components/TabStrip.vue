@@ -51,7 +51,7 @@ defineEmits<{
   padding: var(--space-2);
   gap: 2px;
   background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
+  border-inline-end: 1px solid var(--color-border);
   overflow-y: auto;
   height: 100%;
 }
