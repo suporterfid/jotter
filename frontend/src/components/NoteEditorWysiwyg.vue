@@ -208,7 +208,7 @@ function handleMouseUp(event: MouseEvent) {
 
 .format-btn.active {
   background: var(--color-action);
-  color: var(--color-on-action, #fff);
+  color: var(--color-action-primary-content);
 }
 
 .wysiwyg-editor {
@@ -220,10 +220,6 @@ function handleMouseUp(event: MouseEvent) {
   font-size: 0.95rem;
   line-height: 1.6;
   color: var(--color-text);
-}
-
-.wysiwyg-editor :deep(.milkdown) {
-  outline: none;
 }
 
 .wysiwyg-editor :deep(h1),

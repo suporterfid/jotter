@@ -10,8 +10,8 @@ echo "🔍 Running Visual Identity CI Guards..."
 
 # 1. Ban raw color literals in components (*.vue in frontend/src/components and frontend/src/App.vue)
 echo "  [1/5] Checking for raw color literals in components..."
-COLOR_MATCHES=$(grep -rnE '#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)|oklch\([^)]+\)' \
-  frontend/src/App.vue frontend/src/components/*.vue 2>/dev/null | grep -v '/* token-ok:' | grep -v '/\*' | grep -v 'transparent' | grep -v 'currentColor' || true)
+COLOR_MATCHES=$(grep -rnE '(background|color|border|outline|fill|stroke|box-shadow|text-decoration-color)[[:space:]]*:[^;]*(#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)|oklch\([^)]+\))' \
+  frontend/src/App.vue frontend/src/components/*.vue 2>/dev/null | grep -v 'token-ok:' | grep -v 'transparent' | grep -v 'currentColor' || true)
 
 if [ -n "$COLOR_MATCHES" ]; then
   echo "❌ Error: Found raw color literals in Vue components. Use semantic design tokens (--color-*):"

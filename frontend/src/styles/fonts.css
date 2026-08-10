@@ -1,3 +1,10 @@
+/* Self-hosted, SIL OFL 1.1 font packages. No runtime font CDN is used. */
+@import '@fontsource-variable/source-serif-4/wght.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource/ibm-plex-mono/700.css';
+
 /* Inter Self-Hosted Font Declarations (SIL OFL 1.1) */
 
 @font-face {

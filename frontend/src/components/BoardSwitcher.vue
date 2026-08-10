@@ -177,7 +177,7 @@ function submitRename() {
 }
 
 .btn-board-delete:hover {
-  background: var(--color-danger, #d33);
+  background: var(--color-danger-fg);
   color: var(--color-neutral-0);
 }
 </style>

@@ -1,128 +1,198 @@
 /*
- * Semantic Design Tokens for Jotter SPA.
- * Specification Rule: Components must reference semantic tokens ONLY.
- * Palette tokens (--color-purple-*, --color-neutral-*) are for theme
- * construction only.
- *
- * Theme selection: `data-theme="light"|"dark"` on <html>, set by
- * useColorMode() (frontend/src/composables/useTheme.ts) before first
- * paint. See frontend/index.html / resources/views/app.blade.php for the
- * blocking bootstrap script.
+ * Canonical semantic design tokens for Jotter.
+ * Components must consume --color-* semantic tokens only; literal colors and
+ * component-specific palette values are intentionally prohibited.
  */
 
 :root {
-  /* Typography (theme-independent) */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono",
-    monospace;
+  /* Typography: script-aware fallbacks keep every supported locale readable. */
+  --font-ui: "Inter", "Noto Sans", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", "Noto Sans Thai", "Noto Sans Devanagari", Arial, sans-serif;
+  --font-editorial: "Source Serif 4", "Noto Serif", "Noto Naskh Arabic", "Noto Serif Hebrew", "Noto Serif SC", "Noto Serif TC", "Noto Serif JP", "Noto Serif KR", Georgia, serif;
+  --font-code: "IBM Plex Mono", "Noto Sans Mono", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR", monospace;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
 
-  /* Type scale — §4.2 desktop (Jotter product UI uses body/small, not lead) */
-  --text-display: 3.2rem;    /* H1 display: 51.2px, weight 700, lh 1.2 */
-  --text-section: 2.5rem;    /* H2 section: 40px, weight 700, lh 1.2, UC */
-  --text-subsection: 1.5rem; /* H3 subsection: 24px, weight 700, lh 1.3 */
-  --text-lead: 1.2rem;       /* Lead body: 19.2px — marketing / landing only */
-  --text-body: 1rem;         /* Body: 16px (minimum for running prose) */
-  --text-small: 0.875rem;    /* Metadata / labels: 14px */
+  /* Type scale: size / line-height. */
+  --text-caption: 0.75rem;
+  --leading-caption: 1rem;
+  --text-small: 0.875rem;
+  --leading-small: 1.25rem;
+  --text-body: 1rem;
+  --leading-body: 1.5rem;
+  --text-section: 1.25rem;
+  --leading-section: 1.75rem;
+  --text-subheading: 1.5rem;
+  --leading-subheading: 2rem;
+  --text-title: 2rem;
+  --leading-title: 2.5rem;
+  --text-display: 2.75rem;
+  --leading-display: 3.25rem;
+  --text-h1: clamp(2rem, 1.6rem + 2vw, 2.75rem);
+  --text-h2: clamp(1.5rem, 1.25rem + 1.4vw, 2rem);
+  --text-subsection: var(--text-section);
+  --text-lead: var(--text-body);
 
-  /* Responsive heading sizes via clamp() — §4.3 */
-  --text-h1: clamp(2.25rem, 1.7rem + 2.4vw, 3.2rem);
-  --text-h2: clamp(1.75rem, 1.35rem + 1.75vw, 2.5rem);
+  /* Spacing. */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
 
-  /* Spacing (theme-independent, unchanged) */
-  --space-1: 0.25rem;  --space-2: 0.5rem;   --space-3: 0.75rem;
-  --space-4: 1rem;     --space-6: 1.5rem;   --space-8: 2rem;
-  --space-12: 3rem;    --space-16: 4rem;    --space-24: 6rem;
+  --radius-inline: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-pill: 999px;
+  --border-width-default: 1px;
+  --border-width-emphasis: 2px;
 
-  /* Border Radius — shrunk for Notion-style minimal shape */
-  --radius-sm: 0.1875rem;  /* 3px */
-  --radius-md: 0.375rem;   /* 6px */
-  --radius-lg: 0.5rem;     /* 8px */
-  --radius-pill: 9999px;
+  --shadow-0: none;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 8%);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 14%);
+  --shadow-3: 0 12px 28px rgb(0 0 0 / 18%);
+  --shadow-float: var(--shadow-2);
 
-  /* Elevation — reserved for floating/overlay elements ONLY (modals,
-     popovers, dropdowns, context menus). Cards/panels use border + tint. */
-  --shadow-float: 0 4px 16px rgb(0 0 0 / 16%), 0 1px 2px rgb(0 0 0 / 8%);
-
-  /* Motion (theme-independent, unchanged) */
-  --duration-fast: 120ms; --duration-standard: 180ms; --duration-slow: 240ms;
+  --duration-fast: 120ms;
+  --duration-standard: 180ms;
+  --duration-slow: 240ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* Breakpoint reference (not a real CSS custom property consumer —
-     documented here since CSS can't @media on a var(); every
-     `@media (max-width: ...)` in this codebase must use 768px). */
+  --layer-base: 0;
+  --layer-sticky: 10;
+  --layer-sidebar: 20;
+  --layer-menu: 30;
+  --layer-toast: 40;
+  --layer-modal: 50;
+  --layer-critical: 60;
+
+  --safe-inline-start: env(safe-area-inset-left);
+  --safe-inline-end: env(safe-area-inset-right);
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
+  --color-bg-canvas: #FFFFFF;
+  --color-bg-surface: #F7F6F3;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-hover: #EFEDEA;
+  --color-bg-selected: #E7F0FA;
+  --color-text-primary: #252525;
+  --color-text-secondary: #5F5F5F;
+  --color-text-disabled: #929292;
+  --color-text-inverse: #FFFFFF;
+  --color-text-link: #0F5EAB;
+  --color-border-default: #D9D7D3;
+  --color-border-strong: #8A8882;
+  --color-action-primary: #1A6DC1;
+  --color-action-primary-hover: #14599E;
+  --color-action-primary-active: #104B86;
+  --color-action-primary-content: #FFFFFF;
+  --color-action-primary-subtle: #E7F0FA;
+  --color-focus-ring: #1A6DC1;
+  --color-success-fg: #126B3A;
+  --color-success-bg: #F1FAF4;
+  --color-success-border: #7CCB98;
+  --color-warning-fg: #7A4A00;
+  --color-warning-bg: #FFF7E6;
+  --color-warning-border: #F0B35A;
+  --color-danger-fg: #B42318;
+  --color-danger-bg: #FFF1F0;
+  --color-danger-border: #F29A93;
+  --color-info-fg: #0F5EAB;
+  --color-info-bg: #EDF5FE;
+  --color-info-border: #85BCEB;
 
-  /* Palette — theme construction only. Components must not reference these. */
-  --color-neutral-0: #ffffff;
-
-  /* Semantic — the only tokens components may use. */
-  --color-canvas: #ffffff;
-  --color-surface: #f7f6f3;
-  --color-surface-emphasis: #edece9;
-  --color-text: #37352f;
-  --color-text-muted: #6b6963;
-  --color-text-inverse: #ffffff;
-  --color-border: rgb(55 53 47 / 9%);
-  --color-border-strong: rgb(55 53 47 / 16%);
-  --color-action: #37352f;
-  --color-action-hover: #000000;
-  --color-focus: #37352f;
-  --color-hover: rgb(55 53 47 / 6%);
-
-  /* Status extension tokens (verified ≥ 4.5:1 against canvas & surface) */
-  --color-status-danger: #c0392b;
-  --color-status-warning: #8f640f;
-  --color-status-success: #2e7d32;
-  --color-status-info: #1b6fa8;
-
-  /* Overlay tokens (modal backdrop) */
-  --color-overlay: rgb(55 53 47 / 45%);
-  --color-overlay-dark: rgb(55 53 47 / 60%);
+  /* Deprecated compatibility aliases; new UI must use the canonical names. */
+  --color-neutral-0: var(--color-action-primary-content);
+  --color-canvas: var(--color-bg-canvas);
+  --color-surface: var(--color-bg-surface);
+  --color-surface-emphasis: var(--color-bg-hover);
+  --color-text: var(--color-text-primary);
+  --color-text-muted: var(--color-text-secondary);
+  --color-border: var(--color-border-default);
+  --color-action: var(--color-action-primary);
+  --color-action-hover: var(--color-action-primary-hover);
+  --color-focus: var(--color-focus-ring);
+  --color-hover: var(--color-bg-hover);
+  --color-status-danger: var(--color-danger-fg);
+  --color-status-warning: var(--color-warning-fg);
+  --color-status-success: var(--color-success-fg);
+  --color-status-info: var(--color-info-fg);
+  --color-overlay: rgb(37 37 37 / 45%);
+  --color-overlay-dark: rgb(37 37 37 / 60%);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-
-  /* Palette — theme construction only. Components must not reference these. */
-  --color-neutral-0: #ffffff;
-
-  /* Semantic — the only tokens components may use. */
-  --color-canvas: #191919;
-  --color-surface: #202020;
-  --color-surface-emphasis: #2f2f2f;
-  --color-text: #d4d4d4;
-  --color-text-muted: #9b9b9b;
+  --color-bg-canvas: #191919;
+  --color-bg-surface: #202020;
+  --color-bg-elevated: #252525;
+  --color-bg-hover: #2C2C2C;
+  --color-bg-selected: #123B60;
+  --color-text-primary: #F1F1EF;
+  --color-text-secondary: #C6C6C2;
+  --color-text-disabled: #888884;
   --color-text-inverse: #191919;
-  --color-border: rgb(255 255 255 / 9%);
-  --color-border-strong: rgb(255 255 255 / 16%);
-  --color-action: #d4d4d4;
-  --color-action-hover: #ffffff;
-  --color-focus: #d4d4d4;
-  --color-hover: rgb(255 255 255 / 6%);
+  --color-text-link: #79B8E8;
+  --color-border-default: #4A4A4A;
+  --color-border-strong: #6E6E6E;
+  --color-action-primary: #529CCA;
+  --color-action-primary-hover: #70B4DE;
+  --color-action-primary-active: #3E83B5;
+  --color-action-primary-content: #111111;
+  --color-action-primary-subtle: #173755;
+  --color-focus-ring: #79B8E8;
+  --color-success-fg: #7CDA9A;
+  --color-success-bg: #13291C;
+  --color-success-border: #34794C;
+  --color-warning-fg: #F5C775;
+  --color-warning-bg: #33250D;
+  --color-warning-border: #8D6418;
+  --color-danger-fg: #F4A49E;
+  --color-danger-bg: #381B1B;
+  --color-danger-border: #8E4540;
+  --color-info-fg: #9DCCF2;
+  --color-info-bg: #102B45;
+  --color-info-border: #3D78AA;
 
-  /* Status extension tokens (verified ≥ 4.5:1 against canvas & surface) */
-  --color-status-danger: #ff5252;
-  --color-status-warning: #ffb74d;
-  --color-status-success: #66bb6a;
-  --color-status-info: #4fc3f7;
-
-  /* Overlay tokens (modal backdrop) */
+  /* Deprecated compatibility aliases; new UI must use the canonical names. */
+  --color-neutral-0: var(--color-action-primary-content);
+  --color-canvas: var(--color-bg-canvas);
+  --color-surface: var(--color-bg-surface);
+  --color-surface-emphasis: var(--color-bg-hover);
+  --color-text: var(--color-text-primary);
+  --color-text-muted: var(--color-text-secondary);
+  --color-border: var(--color-border-default);
+  --color-action: var(--color-action-primary);
+  --color-action-hover: var(--color-action-primary-hover);
+  --color-focus: var(--color-focus-ring);
+  --color-hover: var(--color-bg-hover);
+  --color-status-danger: var(--color-danger-fg);
+  --color-status-warning: var(--color-warning-fg);
+  --color-status-success: var(--color-success-fg);
+  --color-status-info: var(--color-info-fg);
   --color-overlay: rgb(0 0 0 / 72%);
   --color-overlay-dark: rgb(0 0 0 / 85%);
 }
 
-/* Reduced motion preference (Issue #104 / Spec §9 / WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+@media (forced-colors: active) {
+  :root { forced-color-adjust: auto; }
+  :focus-visible { outline: 2px solid CanvasText; outline-offset: 2px; }
 }

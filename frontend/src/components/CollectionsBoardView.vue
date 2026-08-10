@@ -647,7 +647,7 @@ function submitAddCard(rowKey: string, columnKey: string) {
 }
 
 .count-badge-over-limit {
-  background: var(--color-danger, #d33);
+  background: var(--color-danger-fg);
   color: var(--color-neutral-0);
 }
 
