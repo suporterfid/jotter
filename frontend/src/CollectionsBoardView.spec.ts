@@ -1,6 +1,16 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import CollectionsBoardView from './components/CollectionsBoardView.vue'
+
+const source = readFileSync('src/components/CollectionsBoardView.vue', 'utf8')
+
+describe('CollectionsBoardView identity layout', () => {
+  it('places per-card archive actions at the logical inline end', () => {
+    expect(source).toContain('inset-inline-end: var(--space-1)')
+    expect(source).toContain('text-align: start')
+  })
+})
 import type { CollectionPage } from './services/types'
 
 const emptyPage: CollectionPage = { data: [], current_page: 1, last_page: 1, per_page: 50, total: 0 }

@@ -61,7 +61,7 @@
 import { useI18n } from 'vue-i18n'
 import type { AttachmentItem } from '../services/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 defineProps<{
   attachments: AttachmentItem[]
@@ -77,14 +77,21 @@ function filename(path: string): string {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  const [value, unit] = bytes < 1024
+    ? [bytes, 'B']
+    : bytes < 1024 * 1024
+      ? [bytes / 1024, 'KB']
+      : [bytes / (1024 * 1024), 'MB']
+
+  return `${new Intl.NumberFormat(locale.value, {
+    minimumFractionDigits: value < 1024 && unit !== 'B' ? 1 : 0,
+    maximumFractionDigits: 1,
+  }).format(value)} ${unit}`
 }
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    return new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(iso))
   } catch {
     return iso
   }
@@ -192,8 +199,8 @@ function formatDate(iso: string): string {
 
 .btn-delete-attachment {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
   background: color-mix(in srgb, var(--color-surface) 85%, transparent);
   border: none;
   color: var(--color-text-muted);

@@ -695,7 +695,7 @@ function submitAddCard(rowKey: string, columnKey: string) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-2);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   font: inherit;
   color: inherit;
@@ -720,7 +720,7 @@ function submitAddCard(rowKey: string, columnKey: string) {
   margin: 0 var(--space-3) var(--space-3);
   cursor: pointer;
   font-size: 0.8125rem;
-  text-align: left;
+  text-align: start;
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
@@ -790,8 +790,8 @@ function submitAddCard(rowKey: string, columnKey: string) {
 
 .board-card-archive-toggle {
   position: absolute;
-  top: var(--space-1);
-  right: var(--space-1);
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
   background: none;
   border: none;
   cursor: pointer;

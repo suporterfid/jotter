@@ -1,6 +1,17 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
+
+const source = readFileSync('src/components/AttachmentsPanel.vue', 'utf8')
+
+describe('AttachmentsPanel identity layout', () => {
+  it('places per-card destructive actions at the logical inline end', () => {
+    expect(source).toContain('inset-inline-end: var(--space-2)')
+    expect(source).toContain('new Intl.NumberFormat(locale.value')
+    expect(source).toContain('new Intl.DateTimeFormat(locale.value')
+  })
+})
 
 const attachment = {
   id: 1,
