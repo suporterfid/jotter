@@ -9,6 +9,7 @@ const noteEditorSource = readFileSync('src/components/NoteEditor.vue', 'utf8')
 describe('NoteEditor identity layout', () => {
   it('anchors CSS panels with logical properties', () => {
     expect(noteEditorSource).toContain('inset-inline-end: 0')
+    expect(noteEditorSource).toContain('inset-inline-start: max(2rem, calc(50% - 348px))')
     expect(noteEditorSource).toContain('border-inline-start: 1px solid var(--color-border)')
     expect(noteEditorSource).toContain('border-inline-end: 1px solid var(--color-border)')
   })

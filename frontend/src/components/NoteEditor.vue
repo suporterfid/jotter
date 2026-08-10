@@ -270,7 +270,6 @@
         <div 
           v-if="showAutocomplete && autocompleteSuggestions.length > 0" 
           class="autocomplete-dropdown"
-          :style="autocompleteStyle"
         >
           <div class="autocomplete-header">{{ t('noteEditor.linkToNote') }}</div>
           <div 
@@ -985,7 +984,6 @@ const showAutocomplete = ref(false)
 const autocompleteQuery = ref('')
 const autocompleteStartIndex = ref(-1)
 const selectedSuggestionIndex = ref(0)
-const autocompleteStyle = ref({ top: '40px', left: '20px' })
 
 // Slash-command menu state, mirroring the wikilink autocomplete above.
 const showSlashMenu = ref(false)
@@ -1870,11 +1868,11 @@ onUnmounted(() => {
 .autocomplete-dropdown {
   position: absolute;
   top: 3.5rem;
-  /* Stays near the left edge of the centered 760px reading column
+  /* Stays near the inline-start edge of the centered reading column
      (#255) instead of the wrapper's full-width edge; falls back to the
      pre-#255 fixed 2rem once the column stops being centered (viewport
      narrower than the column + its margins). */
-  left: max(2rem, calc(50% - 348px));
+  inset-inline-start: max(2rem, calc(50% - 348px));
   background: var(--color-surface);
   border: 1px solid var(--color-action);
   border-radius: var(--radius-md);
