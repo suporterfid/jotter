@@ -74,7 +74,8 @@ Verbs:
   artisan   Run an Artisan command
   composer  Run Composer
   npm       Run npm in frontend/
-  release   Build dist/jotter-release.zip and checksum
+  release         Build dist/jotter-release.zip and checksum
+  release:verify  Scan an existing release ZIP for secrets and private keys
 EOF
 }
 
@@ -114,6 +115,21 @@ cmd_release() {
   echo "Release written to dist/jotter-release.zip (version: ${GIT_SHA} · ${BUILD_TIME})"
 }
 
+cmd_release_verify() {
+  local zip_path='dist/jotter-release.zip'
+
+  if [[ ! -s "$zip_path" ]]; then
+    echo "Release zip is missing or empty: $zip_path. Run ./scripts/jt.sh release first." >&2
+    return 1
+  fi
+
+  ensure_env
+  compose run --rm \
+    -e JOTTER_RELEASE_ZIP=/var/www/html/dist/jotter-release.zip \
+    app php artisan test --filter=ReleaseZipSecurityTest
+  echo "Release ZIP security verification passed."
+}
+
 main() {
   local verb="${1:-help}"
   shift || true
@@ -127,6 +143,7 @@ main() {
     composer) ensure_env; compose run --rm --no-deps app composer "$@" ;;
     npm) ensure_env; compose --profile dev run --rm --no-deps node npm "$@" ;;
     release) cmd_release ;;
+    release:verify) cmd_release_verify ;;
     help|-h|--help) usage ;;
     *) echo "Unknown verb: $verb" >&2; usage >&2; return 1 ;;
   esac

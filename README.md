@@ -52,6 +52,8 @@ Use `scripts/jt.sh` or `scripts/jt.ps1` with:
 - `artisan`, `composer`, `npm` — run the corresponding tool in a container
 - `release` — create `dist/jotter-release.zip` and its SHA-256 checksum
 
+- `release:verify` — scan an existing release ZIP for secrets and private keys
+
 Bootstrap the first local administrator after startup:
 
 ```sh

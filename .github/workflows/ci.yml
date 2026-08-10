@@ -46,10 +46,8 @@ jobs:
       - name: Build shared-hosting release
         run: ./scripts/jt.sh release
 
-      - name: Inspect release artifact for secrets
-        env:
-          JOTTER_RELEASE_ZIP: /var/www/html/dist/jotter-release.zip
-        run: ./scripts/jt.sh artisan test --filter=ReleaseZipSecurityTest
+      - name: Verify release artifact for secrets
+        run: ./scripts/jt.sh release:verify
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4

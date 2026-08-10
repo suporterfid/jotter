@@ -4,15 +4,17 @@ Build the artifact with Docker:
 
 ```sh
 ./scripts/jt.sh release
+./scripts/jt.sh release:verify
 ```
 
 On PowerShell:
 
 ```powershell
 .\scripts\jt.ps1 release
+.\scripts\jt.ps1 release:verify
 ```
 
-The command writes `dist/jotter-release.zip` and `dist/jotter-release.zip.sha256`.
+The release command writes `dist/jotter-release.zip` and `dist/jotter-release.zip.sha256`. The verification command must pass before the ZIP is deployed or shared.
 
 ## Deploy
 
