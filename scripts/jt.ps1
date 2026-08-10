@@ -162,6 +162,10 @@ switch ($Verb) {
     }
     'e2e' {
         Invoke-Bootstrap
+        Invoke-Compose -Arguments @(
+            'run', '--rm', 'app',
+            'php', 'artisan', 'migrate:fresh', '--seed', '--force'
+        )
         Invoke-Compose -Arguments @('up', '-d', '--build', '--wait', 'app')
         try { Invoke-Compose -Arguments @('run', '--rm', 'app', 'php', 'artisan', 'platform:bootstrap-admin', 'admin@example.com', 'password12345') } catch {}
         Invoke-Compose -Arguments (@('--profile', 'dev', 'run', '--rm', 'node', 'npm', 'run', 'e2e', '--') + $VerbArgs)

@@ -103,9 +103,6 @@ test.describe('Admin workspace edit and property-name autocomplete (#282)', () =
     await page.locator('[data-testid="property-name-input"]').focus()
     await propertiesRefetch
 
-    const optionValues = await page.locator('#known-property-names option').evaluateAll(
-      (opts) => opts.map((o) => (o as HTMLOptionElement).value)
-    )
-    expect(optionValues).toContain('priority')
+    await expect(page.locator('#known-property-names option[value="priority"]')).toHaveCount(1)
   })
 })
