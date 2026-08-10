@@ -1,136 +1,26 @@
-/* Published Site Styles — Jotter Visual Identity (§4 / Issue #106) */
-@font-face {
-  font-family: 'Open Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/open-sans-400.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Open Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('fonts/open-sans-600.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Open Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('fonts/open-sans-700.woff2') format('woff2');
-}
+/* Canonical static publishing surface. Self-contained and token-only. */
+@font-face { font-family: Inter; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/inter-400.woff2') format('woff2'); }
+@font-face { font-family: Inter; font-style: normal; font-weight: 600; font-display: swap; src: url('fonts/inter-600.woff2') format('woff2'); }
+@font-face { font-family: Inter; font-style: normal; font-weight: 700; font-display: swap; src: url('fonts/inter-700.woff2') format('woff2'); }
 
-:root {
-  color-scheme: dark;
-  --color-canvas: #000000;
-  --color-surface: #1a0a3e;
-  --color-surface-emphasis: #1f0d69;
-  --color-text: #ebebeb;
-  --color-text-muted: #b0b0b0;
-  --color-border: rgb(208 208 208 / 24%);
-  --color-border-strong: rgb(211 211 211 / 48%);
-  --color-action: #814dde;
-  --color-action-hover: #1f0d69;
-  --color-focus: #814dde;
-
-  --font-sans: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
-}
-
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-}
-
-body {
-  font-family: var(--font-sans);
-  background-color: var(--color-canvas);
-  color: var(--color-text);
-  line-height: 1.6;
-  padding: 2rem 1rem;
-}
-
-.publish-container {
-  display: flex;
-  justify-content: center;
-}
-
-.publish-article {
-  width: 100%;
-  max-width: 720px; /* Spec §4: 640-760px reading column */
-  padding: 0 1rem;
-}
-
-h1 {
-  font-size: clamp(2.25rem, 1.7rem + 2.4vw, 3.2rem);
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-h2 {
-  font-size: clamp(1.75rem, 1.35rem + 1.75vw, 2.5rem);
-  font-weight: 700;
-  line-height: 1.2;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-p {
-  margin-bottom: 1.25rem;
-  font-size: 1rem;
-}
-
-a {
-  color: var(--color-text);
-  text-decoration: underline;
-}
-
-a:hover, a:focus {
-  color: var(--color-action);
-}
-
-a:visited {
-  color: var(--color-text-muted);
-}
-
-code {
-  background: var(--color-surface-emphasis);
-  padding: 0.2rem 0.4rem;
-  border-radius: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.875em;
-}
-
-pre {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  padding: 1rem 1.25rem;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin-bottom: 1.5rem;
-}
-
-pre code {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+:root[data-theme="light"] { color-scheme: light; --color-bg-canvas: #FFFFFF; --color-bg-surface: #F7F6F3; --color-bg-elevated: #FFFFFF; --color-bg-hover: #EFEDEA; --color-text-primary: #252525; --color-text-secondary: #5F5F5F; --color-text-link: #0F5EAB; --color-border-default: #D9D7D3; --color-border-strong: #8A8882; --color-action-primary: #1A6DC1; --color-focus-ring: #1A6DC1; }
+:root[data-theme="dark"] { color-scheme: dark; --color-bg-canvas: #191919; --color-bg-surface: #202020; --color-bg-elevated: #252525; --color-bg-hover: #2C2C2C; --color-text-primary: #F1F1EF; --color-text-secondary: #C6C6C2; --color-text-link: #79B8E8; --color-border-default: #4A4A4A; --color-border-strong: #6E6E6E; --color-action-primary: #529CCA; --color-focus-ring: #79B8E8; }
+* { box-sizing: border-box; }
+html { background: var(--color-bg-canvas); }
+body { margin: 0; padding: clamp(1rem, 4vw, 4rem) max(1rem, env(safe-area-inset-left)); background: var(--color-bg-canvas); color: var(--color-text-primary); font: 400 1rem/1.5 Inter, "Noto Sans", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans SC", Arial, sans-serif; }
+:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.publish-container { display: flex; justify-content: center; }
+.publish-article { inline-size: 100%; max-inline-size: 720px; overflow-wrap: anywhere; }
+h1, h2, h3 { color: var(--color-text-primary); line-height: 1.25; }
+h1 { margin: 0 0 1.5rem; padding-block-end: .75rem; border-block-end: 1px solid var(--color-border-default); font: 700 clamp(2rem, 1.6rem + 2vw, 2.75rem)/1.25 "Source Serif 4", Georgia, serif; }
+h2 { margin: 2.5rem 0 1rem; font-size: clamp(1.5rem, 1.25rem + 1.4vw, 2rem); }
+h3 { margin: 2rem 0 .75rem; font-size: 1.25rem; }
+p, ul, ol, pre, blockquote { margin: 0 0 1.25rem; }
+a { color: var(--color-text-link); text-decoration: underline; text-underline-offset: 2px; }
+a:hover, a:focus-visible { color: var(--color-action-primary); text-decoration-thickness: 2px; }
+code { padding: .125rem .375rem; border-radius: 2px; background: var(--color-bg-hover); font-family: "IBM Plex Mono", "Noto Sans Mono", monospace; font-size: .875em; }
+pre { overflow-x: auto; padding: 1rem; border: 1px solid var(--color-border-default); border-radius: 6px; background: var(--color-bg-surface); }
+pre code { padding: 0; background: transparent; }
+.publish-index { padding-inline-start: 1.25rem; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; } }
+@media (forced-colors: active) { :focus-visible { outline-color: CanvasText; } }

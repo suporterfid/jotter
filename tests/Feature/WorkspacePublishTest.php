@@ -51,11 +51,15 @@ final class WorkspacePublishTest extends TestCase
         $this->assertStringContainsString('<html lang="en">', $html);
         $this->assertStringContainsString('<meta charset="utf-8">', $html);
         $this->assertStringContainsString('<meta name="viewport" content="width=device-width, initial-scale=1">', $html);
-        $this->assertStringContainsString('<meta name="theme-color" content="#000000">', $html);
-        $this->assertStringContainsString('<meta name="color-scheme" content="dark">', $html);
+        $this->assertStringContainsString('<meta name="theme-color" content="#FFFFFF">', $html);
+        $this->assertStringContainsString('<meta name="color-scheme" content="light dark">', $html);
+        $this->assertStringContainsString("data-theme', theme", $html);
         $this->assertStringContainsString('publish.css', $html);
 
         $this->assertFileExists(storage_path('app/public/sites/main/publish.css'));
+        $css = file_get_contents(storage_path('app/public/sites/main/publish.css'));
+        $this->assertStringContainsString('--color-action-primary: #1A6DC1', $css);
+        $this->assertStringNotContainsString('Open Sans', $css);
     }
 
     public function test_index_page_is_generated_even_when_no_note_is_at_that_path(): void
