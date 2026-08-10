@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import axe from 'axe-core'
 import Sidebar from './components/Sidebar.vue'
@@ -16,6 +16,12 @@ import LinkReportViewer from './components/LinkReportViewer.vue'
 import CollectionsTableView from './components/CollectionsTableView.vue'
 import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
+import ThemeToggle from './components/ThemeToggle.vue'
+
+vi.mock('./services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./services/api')>()),
+  getAuthConfig: vi.fn().mockResolvedValue({ provider: 'local' }),
+}))
 
 /*
  * Accessibility Audit Spec (Issue #109 / Spec §10 / WCAG 2.2 AA)
@@ -29,6 +35,18 @@ import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
  */
 
 describe('Accessibility Audit (axe-core)', () => {
+  it('ThemeToggle has no serious or critical structural accessibility violations', async () => {
+    const wrapper = mount(ThemeToggle, { attachTo: document.body })
+    const results = await axe.run(wrapper.element, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    wrapper.unmount()
+    const seriousOrCritical = results.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''))
+    expect(seriousOrCritical).toEqual([])
+  })
+
   it('Sidebar has no serious or critical structural accessibility violations', async () => {
     const wrapper = mount(Sidebar, {
       attachTo: document.body,
