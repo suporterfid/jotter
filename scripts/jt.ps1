@@ -48,20 +48,26 @@ function Initialize-Env {
         return
     }
 
-    Invoke-Compose -Arguments @('build', 'app')
-    $script = @'
-echo "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;
-echo "DB_PASSWORD=".bin2hex(random_bytes(24)).PHP_EOL;
-echo "MYSQL_ROOT_PASSWORD=".bin2hex(random_bytes(24)).PHP_EOL;
-'@
-    $generated = & docker compose @ComposeFiles run --rm --no-deps -T app php -r $script
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Unable to generate development credentials.'
-    }
+    # Generate development-only secrets in PowerShell rather than passing a
+    # quoted PHP program through `docker compose run`. Windows PowerShell can
+    # strip the inner quotes from `php -r`, yielding invalid PHP before the
+    # Docker toolchain can bootstrap.
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        [byte[]]$appKeyBytes = New-Object byte[] 32
+        [byte[]]$databasePasswordBytes = New-Object byte[] 24
+        [byte[]]$mysqlRootPasswordBytes = New-Object byte[] 24
+        $rng.GetBytes($appKeyBytes)
+        $rng.GetBytes($databasePasswordBytes)
+        $rng.GetBytes($mysqlRootPasswordBytes)
 
-    $replacements = @{}
-    $generated | Where-Object { $_ -match '^(APP_KEY|DB_PASSWORD|MYSQL_ROOT_PASSWORD)=(.+)$' } | ForEach-Object {
-        $replacements[$Matches[1]] = $Matches[2]
+        $replacements = @{
+            APP_KEY = "base64:$([Convert]::ToBase64String($appKeyBytes))"
+            DB_PASSWORD = ([BitConverter]::ToString($databasePasswordBytes)).Replace('-', '').ToLowerInvariant()
+            MYSQL_ROOT_PASSWORD = ([BitConverter]::ToString($mysqlRootPasswordBytes)).Replace('-', '').ToLowerInvariant()
+        }
+    } finally {
+        $rng.Dispose()
     }
 
     $updated = Get-Content '.env' | ForEach-Object {
