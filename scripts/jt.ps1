@@ -2,6 +2,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'jt-compose.ps1')
+
 $RootDir = Split-Path -Parent $PSScriptRoot
 Set-Location $RootDir
 
@@ -151,17 +153,19 @@ switch ($Verb) {
         Invoke-Compose -Arguments (@('down') + $VerbArgs)
     }
     'test' {
-        Invoke-Bootstrap
-        Initialize-TestDatabase
-        Invoke-Compose -Arguments @(
-            'run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app',
-            'php', 'artisan', 'migrate:fresh', '--seed', '--force'
-        )
-        Invoke-Compose -Arguments (@('run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app', 'php', 'artisan', 'test') + $VerbArgs)
-        # Test arguments target Laravel's test runner. Frontend tests use their
-        # own Vitest invocation through the `npm` verb and must not receive
-        # PHPUnit-only flags such as `--filter`.
-        Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test')
+        Invoke-WithTestComposeProject -RepositoryPath $RootDir -Action {
+            Invoke-Bootstrap
+            Initialize-TestDatabase
+            Invoke-Compose -Arguments @(
+                'run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app',
+                'php', 'artisan', 'migrate:fresh', '--seed', '--force'
+            )
+            Invoke-Compose -Arguments (@('run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app', 'php', 'artisan', 'test') + $VerbArgs)
+            # Test arguments target Laravel's test runner. Frontend tests use their
+            # own Vitest invocation through the `npm` verb and must not receive
+            # PHPUnit-only flags such as `--filter`.
+            Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test')
+        }
     }
     'e2e' {
         Invoke-Bootstrap
