@@ -16,8 +16,8 @@ do
     chown -R www-data:www-data "$directory" 2>/dev/null || chmod -R 775 "$directory"
 done
 
-if [ ! -e public/storage ]; then
-    php artisan storage:link
+if [ -f vendor/autoload.php ] && [ ! -e public/storage ]; then
+  php artisan storage:link
 fi
 
 exec "$@"
