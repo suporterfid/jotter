@@ -14,7 +14,7 @@ final class WorkspacePublishTest extends TestCase
 
     public function test_workspace_publish_compiles_static_html_pages(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['is_admin' => true, 'locale' => 'en']);
         $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
         
         $vaultDir = storage_path('app/vaults/publish_test');
@@ -48,17 +48,25 @@ final class WorkspacePublishTest extends TestCase
         $this->assertFileExists($publishedFile);
 
         $html = file_get_contents($publishedFile);
-        $this->assertStringContainsString('<html lang="en">', $html);
+        $this->assertStringContainsString('<html lang="en" dir="ltr">', $html);
         $this->assertStringContainsString('<meta charset="utf-8">', $html);
         $this->assertStringContainsString('<meta name="viewport" content="width=device-width, initial-scale=1">', $html);
         $this->assertStringContainsString('<meta name="theme-color" content="#FFFFFF">', $html);
         $this->assertStringContainsString('<meta name="color-scheme" content="light dark">', $html);
-        $this->assertStringContainsString("data-theme', theme", $html);
         $this->assertStringContainsString('publish.css', $html);
+        $this->assertStringContainsString('publish-theme.js', $html);
+        $this->assertStringContainsString('id="publish-theme-preference"', $html);
+        $this->assertStringContainsString('value="system"', $html);
+        $this->assertStringContainsString('Theme preference', $html);
 
         $this->assertFileExists(storage_path('app/public/sites/main/publish.css'));
+        $this->assertFileExists(storage_path('app/public/sites/main/publish-theme.js'));
+        $themeScript = file_get_contents(storage_path('app/public/sites/main/publish-theme.js'));
+        $this->assertStringContainsString("setAttribute('data-theme', theme)", $themeScript);
         $css = file_get_contents(storage_path('app/public/sites/main/publish.css'));
         $this->assertStringContainsString('--color-action-primary: #1A6DC1', $css);
+        $this->assertStringContainsString('Source Serif 4', $css);
+        $this->assertStringContainsString('IBM Plex Mono', $css);
         $this->assertStringNotContainsString('Open Sans', $css);
     }
 

@@ -37,13 +37,10 @@ final class WorkspacePublishController extends Controller
             mkdir($siteDir, 0755, true);
         }
 
-        // Copy publish.css asset
-        $publishCssSource = resource_path('views/publish/publish.css');
-        if (file_exists($publishCssSource)) {
-            copy($publishCssSource, $siteDir.'/publish.css');
-        }
+        $this->copyPublishAsset(resource_path('views/publish/publish.css'), $siteDir.'/publish.css');
+        $this->copyPublishAsset(resource_path('views/publish/publish-theme.js'), $siteDir.'/publish-theme.js');
 
-        // Copy self-hosted Open Sans font assets for offline rendering
+        // Copy self-hosted UI font assets for offline rendering.
         $fontsDir = $siteDir.'/fonts';
         if (! is_dir($fontsDir)) {
             mkdir($fontsDir, 0755, true);
@@ -51,9 +48,18 @@ final class WorkspacePublishController extends Controller
         $fontSourceDir = base_path('frontend/src/assets/fonts');
         if (is_dir($fontSourceDir)) {
             foreach (glob($fontSourceDir.'/*.woff2') as $fontFile) {
-                copy($fontFile, $fontsDir.'/'.basename($fontFile));
+                $this->copyPublishAsset($fontFile, $fontsDir.'/'.basename($fontFile));
             }
         }
+
+        $locale = $subject->locale;
+        $direction = $this->publicDirection($locale);
+        $themeLabels = [
+            'preference' => __('messages.theme_preference'),
+            'system' => __('messages.theme_system'),
+            'light' => __('messages.theme_light'),
+            'dark' => __('messages.theme_dark'),
+        ];
 
         $notes = Note::query()->where('workspace_id', $workspaceId)->orderBy('path')->get();
         $publishedCount = 0;
@@ -73,6 +79,9 @@ final class WorkspacePublishController extends Controller
                     'title' => $note->title,
                     'html' => $html,
                     'assetPrefix' => $assetPrefix,
+                    'locale' => $locale,
+                    'direction' => $direction,
+                    'themeLabels' => $themeLabels,
                 ])->render();
 
                 $outPath = $siteDir.'/'.$relPath;
@@ -96,6 +105,9 @@ final class WorkspacePublishController extends Controller
             'title' => $workspace->name,
             'html' => '<ul class="publish-index">'.$indexLinks.'</ul>',
             'assetPrefix' => '',
+            'locale' => $locale,
+            'direction' => $direction,
+            'themeLabels' => $themeLabels,
         ])->render();
         file_put_contents($siteDir.'/index.html', $indexHtml);
 
@@ -107,5 +119,26 @@ final class WorkspacePublishController extends Controller
             'notes_published' => $publishedCount,
             'site_url' => $publishedUrl,
         ]);
+    }
+
+    private function copyPublishAsset(string $source, string $destination): void
+    {
+        if (! is_file($source)) {
+            return;
+        }
+
+        $directory = dirname($destination);
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        copy($source, $destination);
+    }
+
+    private function publicDirection(string $locale): string
+    {
+        $language = strtolower(strtok(str_replace('_', '-', $locale), '-'));
+
+        return in_array($language, ['ar', 'he'], true) ? 'rtl' : 'ltr';
     }
 }

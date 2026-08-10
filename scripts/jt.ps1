@@ -158,7 +158,10 @@ switch ($Verb) {
             'php', 'artisan', 'migrate:fresh', '--seed', '--force'
         )
         Invoke-Compose -Arguments (@('run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app', 'php', 'artisan', 'test') + $VerbArgs)
-        Invoke-Compose -Arguments (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test', '--') + $VerbArgs)
+        # Test arguments target Laravel's test runner. Frontend tests use their
+        # own Vitest invocation through the `npm` verb and must not receive
+        # PHPUnit-only flags such as `--filter`.
+        Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test')
     }
     'e2e' {
         Invoke-Bootstrap

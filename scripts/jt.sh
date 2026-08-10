@@ -88,11 +88,15 @@ cmd_test() {
   bootstrap
   prepare_test_database
   compose run --rm -e DB_DATABASE=jotter_testing app php artisan test "$@"
-  compose --profile dev run --rm --no-deps node npm test -- "$@"
+  # Arguments target Laravel's test runner. Frontend tests use their own
+  # Vitest invocation through the `npm` verb and must not receive PHPUnit-only
+  # flags such as `--filter`.
+  compose --profile dev run --rm --no-deps node npm test
 }
 
 cmd_e2e() {
   bootstrap
+  compose run --rm app php artisan migrate:fresh --seed --force
   compose up -d --build --wait app
   compose run --rm app php artisan platform:bootstrap-admin admin@example.com password12345 || true
   compose --profile dev run --rm node npm run e2e -- "$@"
