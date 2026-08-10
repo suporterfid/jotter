@@ -163,7 +163,7 @@ defineEmits<{
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding-left: var(--space-4);
+  padding-inline-start: var(--space-4);
 }
 
 .source-link {

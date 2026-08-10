@@ -1,6 +1,15 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import LinkReportViewer from './components/LinkReportViewer.vue'
+
+const source = readFileSync('src/components/LinkReportViewer.vue', 'utf8')
+
+describe('LinkReportViewer identity layout', () => {
+  it('uses logical list indentation for linked source notes', () => {
+    expect(source).toContain('padding-inline-start: var(--space-4)')
+  })
+})
 
 const emptyReport = { broken_links: [], orphans: [] }
 

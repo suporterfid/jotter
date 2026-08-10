@@ -9,7 +9,7 @@
       <button
         type="button"
         class="folder-row"
-        :style="{ paddingLeft: `${depth * 14 + 8}px` }"
+        :style="{ paddingInlineStart: `${depth * 14 + 8}px` }"
         :aria-expanded="expanded"
         @click="expanded = !expanded"
       >
@@ -64,7 +64,7 @@
     v-else
     class="note-item"
     :class="{ active: selectedNoteId === node.note.id }"
-    :style="{ paddingLeft: `${depth * 14 + 8}px` }"
+    :style="{ paddingInlineStart: `${depth * 14 + 8}px` }"
     data-item-type="note"
     :data-item-id="node.note.id"
     :data-item-note-path="node.note.path"
@@ -201,13 +201,14 @@ onBeforeUnmount(() => {
   background: transparent;
   border: none;
   color: var(--color-text-muted);
-  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  padding-block: var(--space-2);
+  padding-inline: 0 var(--space-2);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 600;
   min-height: 32px;
-  text-align: left;
+  text-align: start;
   transition: background-color var(--duration-fast) var(--ease-standard),
               color var(--duration-fast) var(--ease-standard);
 }
@@ -224,6 +225,10 @@ onBeforeUnmount(() => {
 
 .chevron.collapsed {
   transform: rotate(-90deg);
+}
+
+:global([dir="rtl"]) .chevron.collapsed {
+  transform: rotate(90deg);
 }
 
 .folder-icon {
@@ -256,7 +261,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   opacity: 0;
   flex-shrink: 0;
-  margin-right: var(--space-1);
+  margin-inline-end: var(--space-1);
   transition: color var(--duration-fast) var(--ease-standard),
               background-color var(--duration-fast) var(--ease-standard),
               opacity var(--duration-fast) var(--ease-standard);
@@ -290,7 +295,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   padding-top: var(--space-2);
   padding-bottom: var(--space-2);
-  padding-right: var(--space-3);
+  padding-inline-end: var(--space-3);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease-standard),

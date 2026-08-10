@@ -1,7 +1,19 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import NoteTreeNode from './components/NoteTreeNode.vue'
 import type { TreeNode } from './components/NoteTreeNode.vue'
+
+const source = readFileSync('src/components/NoteTreeNode.vue', 'utf8')
+
+describe('NoteTreeNode identity layout', () => {
+  it('uses logical indentation and mirrors its collapsed directional cue in RTL', () => {
+    expect(source).toContain('paddingInlineStart')
+    expect(source).toContain('margin-inline-end: var(--space-1)')
+    expect(source).toContain('padding-inline-end: var(--space-3)')
+    expect(source).toContain(':global([dir="rtl"]) .chevron.collapsed')
+  })
+})
 
 describe('NoteTreeNode drag attributes', () => {
   it('marks a note row with its type and id', () => {
