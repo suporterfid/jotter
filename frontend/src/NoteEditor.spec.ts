@@ -769,11 +769,6 @@ describe('NoteEditor comments drawer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(getNoteComments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([])
-    document.body.insertAdjacentHTML('beforeend', '<div id="app-right-drawer"></div>')
-  })
-
-  afterEach(() => {
-    document.getElementById('app-right-drawer')?.remove()
   })
 
   it('does not render the drawer until toggled open', async () => {
@@ -839,11 +834,6 @@ describe('NoteEditor comments drawer', () => {
 describe('NoteEditor outline drawer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    document.body.insertAdjacentHTML('beforeend', '<div id="app-right-drawer"></div>')
-  })
-
-  afterEach(() => {
-    document.getElementById('app-right-drawer')?.remove()
   })
 
   it('does not render the drawer until toggled open', async () => {
@@ -1050,11 +1040,6 @@ describe('NoteEditor wikilink embeds', () => {
 describe('NoteEditor local graph', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    document.body.insertAdjacentHTML('beforeend', '<div id="app-right-drawer"></div>')
-  })
-
-  afterEach(() => {
-    document.getElementById('app-right-drawer')?.remove()
   })
 
   it('does not render the drawer until toggled open', async () => {

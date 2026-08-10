@@ -1,4 +1,5 @@
 import { config } from '@vue/test-utils'
+import { afterEach, beforeEach } from 'vitest'
 import i18n from './i18n'
 
 // Reuse the app's actual i18n singleton (not a separate instance) so tests that
@@ -8,3 +9,19 @@ import i18n from './i18n'
 i18n.global.locale.value = 'en'
 
 config.global.plugins.push(i18n)
+
+function removeRightDrawerTarget() {
+  document.getElementById('app-right-drawer')?.remove()
+}
+
+beforeEach(() => {
+  removeRightDrawerTarget()
+
+  const target = document.createElement('div')
+  target.id = 'app-right-drawer'
+  document.body.append(target)
+})
+
+afterEach(() => {
+  removeRightDrawerTarget()
+})

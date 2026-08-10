@@ -1,7 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote } from './services/api'
+import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote, getNotifications } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -39,7 +39,14 @@ vi.mock('./services/api', () => ({
   logout: vi.fn(),
   getCsrfCookie: vi.fn().mockResolvedValue(undefined),
   setUnauthenticatedHandler: vi.fn(),
-  getAuthConfig: vi.fn().mockResolvedValue({ provider: 'local', sso_login_url: null, version: null })
+  getAuthConfig: vi.fn().mockResolvedValue({ provider: 'local', sso_login_url: null, version: null }),
+  getNoteComments: vi.fn().mockResolvedValue([]),
+  getChecklistItems: vi.fn().mockResolvedValue([]),
+  getNoteActivity: vi.fn().mockResolvedValue([]),
+  getUnlinkedMentions: vi.fn().mockResolvedValue([]),
+  getOutgoingLinks: vi.fn().mockResolvedValue([]),
+  getWorkspaceProperties: vi.fn().mockResolvedValue([]),
+  getNotifications: vi.fn().mockResolvedValue([]),
 }))
 
 beforeEach(() => {
@@ -50,6 +57,19 @@ describe('App Component', () => {
   it('renders the Jotter sidebar brand title', () => {
     const wrapper = mount(App)
     expect(wrapper.find('.brand-title').text()).toBe('Jotter')
+  })
+
+  it('loads an empty notification list without reporting a mock error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrapper = mount(App)
+
+    await flushPromises()
+
+    expect(getNotifications).toHaveBeenCalledWith(1)
+    expect(errorSpy).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+    errorSpy.mockRestore()
   })
 })
 
