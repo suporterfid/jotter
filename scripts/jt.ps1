@@ -153,6 +153,10 @@ switch ($Verb) {
     'test' {
         Invoke-Bootstrap
         Initialize-TestDatabase
+        Invoke-Compose -Arguments @(
+            'run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app',
+            'php', 'artisan', 'migrate:fresh', '--seed', '--force'
+        )
         Invoke-Compose -Arguments (@('run', '--rm', '-e', 'DB_DATABASE=jotter_testing', 'app', 'php', 'artisan', 'test') + $VerbArgs)
         Invoke-Compose -Arguments (@('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test', '--') + $VerbArgs)
     }
