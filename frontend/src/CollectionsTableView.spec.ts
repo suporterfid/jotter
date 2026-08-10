@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import CollectionsTableView from './components/CollectionsTableView.vue'
 import type { CollectionPage } from './services/types'
@@ -28,6 +29,11 @@ const page: CollectionPage = {
 }
 
 describe('CollectionsTableView', () => {
+  it('uses logical alignment for table headers', () => {
+    const source = readFileSync('src/components/CollectionsTableView.vue', 'utf8')
+    expect(source).toMatch(/\.collections-table th\s*\{[\s\S]*?text-align: start/)
+  })
+
   it('shows the empty state when there are no notes', () => {
     const wrapper = mount(CollectionsTableView, { props: { page: emptyPage } })
     expect(wrapper.text()).toContain('No notes match this view.')

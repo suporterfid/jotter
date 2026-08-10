@@ -269,7 +269,7 @@ const days = computed(() => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: var(--space-2);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   font: inherit;
   color: inherit;

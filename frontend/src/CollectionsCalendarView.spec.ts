@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import type { CollectionPage } from './services/types'
@@ -37,6 +38,11 @@ const page: CollectionPage = {
 }
 
 describe('CollectionsCalendarView', () => {
+  it('uses logical alignment for note cards', () => {
+    const source = readFileSync('src/components/CollectionsCalendarView.vue', 'utf8')
+    expect(source).toMatch(/\.calendar-card\s*\{[\s\S]*?text-align: start/)
+  })
+
   it('shows the empty state when there are no notes', () => {
     const wrapper = mount(CollectionsCalendarView, { props: { page: emptyPage } })
     expect(wrapper.text()).toContain('No notes match this view.')

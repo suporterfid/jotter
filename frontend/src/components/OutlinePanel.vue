@@ -9,7 +9,7 @@
         :key="`${heading.line}-${heading.id}`"
         class="outline-item"
         data-testid="outline-item"
-        :style="{ paddingLeft: `${(heading.level - 1) * 12}px` }"
+        :style="{ paddingInlineStart: `${(heading.level - 1) * 12}px` }"
       >
         <button
           type="button"
@@ -56,7 +56,7 @@ defineEmits<{
 .outline-item-btn {
   display: block;
   width: 100%;
-  text-align: left;
+  text-align: start;
   background: transparent;
   border: none;
   padding: var(--space-1) var(--space-2);

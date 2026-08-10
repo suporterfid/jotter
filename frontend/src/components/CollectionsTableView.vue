@@ -264,7 +264,7 @@ const sortedNotes = computed(() => {
 }
 
 .collections-table th {
-  text-align: left;
+  text-align: start;
   padding: 0;
   color: var(--color-text-muted);
   font-weight: 600;
