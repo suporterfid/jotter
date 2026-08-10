@@ -250,7 +250,7 @@ function handleMouseUp(event: MouseEvent) {
   background: var(--color-surface-emphasis);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
-  overflow-x: auto;
+  overflow-inline: auto;
 }
 
 .wysiwyg-editor :deep(pre code) {
@@ -271,9 +271,9 @@ function handleMouseUp(event: MouseEvent) {
 }
 
 .wysiwyg-editor :deep(blockquote) {
-  border-left: 3px solid var(--color-border);
-  margin-left: 0;
-  padding-left: var(--space-3);
+  border-inline-start: 3px solid var(--color-border);
+  margin-inline-start: 0;
+  padding-inline-start: var(--space-3);
   color: var(--color-text-muted);
 }
 </style>
