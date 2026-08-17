@@ -83,6 +83,13 @@ final class VaultReindexer
                 continue;
             }
 
+            $rootNormalized = rtrim(str_replace('\\', '/', $root), '/');
+            $fileNormalized = str_replace('\\', '/', $file->getPathname());
+            $relative = ltrim(substr($fileNormalized, strlen($rootNormalized)), '/');
+            if ($relative === '.trash' || str_starts_with($relative, '.trash/')) {
+                continue;
+            }
+
             $name = strtolower($file->getFilename());
             if (! str_ends_with($name, '.md')) {
                 continue;
