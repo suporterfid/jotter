@@ -14,6 +14,11 @@ return [
         'reindex_batch_size' => (int) env('JOTTER_VAULT_REINDEX_BATCH', 50),
     ],
 
+    'trash' => [
+        'retention_days' => (int) env('JOTTER_TRASH_RETENTION_DAYS', 30),
+        'purge_batch_size' => (int) env('JOTTER_TRASH_PURGE_BATCH', 100),
+    ],
+
     'rendering' => [
         // Off by default: emits <span class="jotter-math">/<pre class="mermaid">
         // markup for $$LaTeX$$ and ```mermaid blocks instead of plain code, for a

@@ -94,6 +94,26 @@ final class NoteTrash
         $note->forceDelete();
     }
 
+    public function purgeExpired(int $days, int $batchSize = 100): int
+    {
+        if ($days < 1 || $batchSize < 1) {
+            throw new \InvalidArgumentException('Trash retention days and batch size must be positive.');
+        }
+
+        $expired = Note::onlyTrashed()
+            ->with('workspace')
+            ->where('deleted_at', '<', now()->subDays($days))
+            ->orderBy('id')
+            ->limit($batchSize)
+            ->get();
+
+        foreach ($expired as $note) {
+            $this->permanentlyDelete($note->workspace, $note);
+        }
+
+        return $expired->count();
+    }
+
     private function assertWorkspace(Workspace $workspace, Note $note): void
     {
         if ((int) $note->workspace_id !== (int) $workspace->id) {
