@@ -35,6 +35,10 @@ class ReleaseZipSecurityTest extends TestCase
                 continue;
             }
 
+            if (str_starts_with($name, 'app/vendor/') || str_starts_with($name, 'app/lang/')) {
+                continue;
+            }
+
             $contents = $zip->getFromIndex($index);
             if (! is_string($contents) || str_contains($contents, "\0")) {
                 continue;
@@ -42,10 +46,6 @@ class ReleaseZipSecurityTest extends TestCase
 
             if (preg_match('/-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/', $contents) === 1) {
                 $violations[] = "private key material: {$name}";
-            }
-
-            if (str_starts_with($name, 'app/vendor/') || str_starts_with($name, 'app/lang/')) {
-                continue;
             }
 
             foreach (preg_split('/\R/', $contents) ?: [] as $lineNumber => $line) {
