@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
+use App\Domain\Search\WorkspaceSearch;
+use App\Models\Note;
+use App\Models\NoteLink;
+use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,6 +17,7 @@ final class McpController extends Controller
 {
     public function __construct(
         private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
         private readonly AuditRecorder $auditRecorder = new AuditRecorder,
     ) {}
 
@@ -93,8 +99,7 @@ final class McpController extends Controller
 
             if ($name === 'list_notes') {
                 $limit = min((int) ($args['limit'] ?? 50), 100);
-                $notes = \App\Models\Note::query()
-                    ->where('workspace_id', $workspaceId)
+                $notes = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)
                     ->select(['id', 'workspace_id', 'path', 'title', 'updated_at'])
                     ->orderBy('id')
                     ->limit($limit)
@@ -122,6 +127,8 @@ final class McpController extends Controller
                     ], 404);
                 }
 
+                $this->noteAccess->assertView($subject, $note);
+
                 $vaultStorage = new \App\Domain\Vault\VaultStorage();
                 $content = $vaultStorage->readContents($workspace, $path);
 
@@ -134,8 +141,7 @@ final class McpController extends Controller
 
             if ($name === 'search_notes') {
                 $query = (string) ($args['query'] ?? '');
-                $searcher = new \App\Domain\Vault\WorkspaceSearch();
-                $results = $searcher->search($workspace, $query);
+                $results = app(WorkspaceSearch::class)->search($workspace, $query, $subject);
 
                 return response()->json([
                     'jsonrpc' => '2.0',
@@ -146,10 +152,23 @@ final class McpController extends Controller
 
             if ($name === 'get_backlinks') {
                 $target = (string) ($args['target'] ?? '');
-                $backlinks = \App\Models\NoteLink::query()
+                $targetNote = Note::query()
                     ->where('workspace_id', $workspaceId)
-                    ->where('target_note_title', $target)
-                    ->get();
+                    ->where(function ($query) use ($target): void {
+                        $query->where('path', $target)->orWhere('title', $target);
+                    })
+                    ->first();
+                if (! $targetNote) {
+                    $backlinks = [];
+                } else {
+                    $this->noteAccess->assertView($subject, $targetNote);
+                    $sourceIds = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)->pluck('id');
+                    $backlinks = NoteLink::query()
+                        ->where('target_note_id', $targetNote->id)
+                        ->whereIn('source_note_id', $sourceIds)
+                        ->with('sourceNote:id,path,title')
+                        ->get();
+                }
 
                 return response()->json([
                     'jsonrpc' => '2.0',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Domain\Events\WorkspaceEventEmitter;
 use App\Models\Note;
 use App\Models\NoteComment;
@@ -15,7 +16,8 @@ final class WorkspaceCommentController extends Controller
 {
     public function __construct(
         private readonly IdentityProvider $identityProvider,
-        private readonly WorkspaceEventEmitter $eventEmitter
+        private readonly WorkspaceEventEmitter $eventEmitter,
+        private readonly NoteAccess $noteAccess,
     ) {}
 
     public function index(Request $request, int $workspaceId, int $noteId): JsonResponse
@@ -33,6 +35,7 @@ final class WorkspaceCommentController extends Controller
         if (! $note) {
             return response()->json(['message' => __('messages.note_not_found')], 404);
         }
+        $this->noteAccess->assertView($subject, $note);
 
         $comments = NoteComment::query()
             ->where('workspace_id', $workspaceId)
@@ -58,6 +61,7 @@ final class WorkspaceCommentController extends Controller
         if (! $note) {
             return response()->json(['message' => __('messages.note_not_found')], 404);
         }
+        $this->noteAccess->assertEdit($subject, $note);
 
         $request->validate([
             'content' => ['required', 'string', 'max:2000'],
@@ -110,6 +114,12 @@ final class WorkspaceCommentController extends Controller
         if (! $this->identityProvider->isAuthorizedForWorkspace($subject, $workspaceId)) {
             return response()->json(['message' => __('messages.forbidden')], 403);
         }
+
+        $note = Note::query()->where('workspace_id', $workspaceId)->where('id', $noteId)->first();
+        if (! $note) {
+            return response()->json(['message' => __('messages.note_not_found')], 404);
+        }
+        $this->noteAccess->assertEdit($subject, $note);
 
         $comment = NoteComment::query()
             ->where('workspace_id', $workspaceId)

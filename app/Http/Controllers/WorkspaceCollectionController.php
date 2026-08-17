@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
 use App\Models\NoteProperty;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +12,8 @@ use Illuminate\Http\Request;
 final class WorkspaceCollectionController extends Controller
 {
     public function __construct(
-        private readonly IdentityProvider $identityProvider
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
     ) {}
 
     public function index(Request $request, int $workspaceId): JsonResponse
@@ -28,8 +30,7 @@ final class WorkspaceCollectionController extends Controller
         $propertyKey = $request->query('property');
         $propertyValue = $request->query('value');
 
-        $query = Note::query()
-            ->where('workspace_id', $workspaceId)
+        $query = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)
             ->with(['properties', 'tags'])
             ->withCount('comments')
             ->withCount('checklistItems as checklist_total')

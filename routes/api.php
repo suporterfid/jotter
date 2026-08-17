@@ -8,6 +8,8 @@ use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebDavController;
 use App\Http\Controllers\WorkspaceExportController;
 use App\Http\Controllers\WorkspaceNoteController;
+use App\Http\Controllers\WorkspaceNoteAclController;
+use App\Http\Controllers\WorkspaceGroupController;
 use App\Http\Controllers\WorkspaceNoteTreeController;
 use App\Http\Controllers\WorkspacePublishController;
 use App\Http\Controllers\WorkspaceSearchController;
@@ -56,6 +58,10 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/notes/{note}/unlinked-mentions', [\App\Http\Controllers\WorkspaceUnlinkedMentionsController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'index']);
     Route::get('/workspaces/{workspace}/trash', [WorkspaceTrashController::class, 'index']);
+    Route::get('/workspaces/{workspace}/groups', [WorkspaceGroupController::class, 'index']);
+    Route::post('/workspaces/{workspace}/groups', [WorkspaceGroupController::class, 'store']);
+    Route::put('/workspaces/{workspace}/groups/{group}', [WorkspaceGroupController::class, 'update']);
+    Route::delete('/workspaces/{workspace}/groups/{group}', [WorkspaceGroupController::class, 'destroy']);
     Route::get('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'index']);
     Route::post('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'store'])->middleware('workspace.write');
     Route::delete('/workspaces/{workspace}/notes/{note}/comments/{comment}', [\App\Http\Controllers\WorkspaceCommentController::class, 'destroy'])->middleware('workspace.write');
@@ -78,6 +84,8 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/workspaces/{workspace}/notes/from-template', [\App\Http\Controllers\WorkspaceTemplateController::class, 'createFromTemplate'])->middleware('workspace.write');
     Route::match(['get', 'post'], '/workspaces/{workspace}/daily/{date?}', [\App\Http\Controllers\WorkspaceTemplateController::class, 'dailyNote'])->middleware('workspace.write');
     Route::get('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'show']);
+    Route::get('/workspaces/{workspace}/notes/{note}/acl', [WorkspaceNoteAclController::class, 'show']);
+    Route::put('/workspaces/{workspace}/notes/{note}/acl', [WorkspaceNoteAclController::class, 'replace']);
     Route::get('/workspaces/{workspace}/notes/{note}/outgoing-links', [WorkspaceNoteController::class, 'outgoingLinks']);
     Route::put('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'update'])->middleware('workspace.write');
     Route::post('/workspaces/{workspace}/notes/{note}/move', [WorkspaceNoteController::class, 'move'])->middleware('workspace.write');

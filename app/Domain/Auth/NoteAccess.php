@@ -64,6 +64,10 @@ final class NoteAccess
 
     public function assertEdit(AuthenticatedSubject $subject, Note $note): void
     {
+        if (! $this->canView($subject, $note)) {
+            throw (new ModelNotFoundException())->setModel(Note::class, [$note->id]);
+        }
+
         if ($this->canEdit($subject, $note)) {
             return;
         }
@@ -108,6 +112,11 @@ final class NoteAccess
     public function isRestricted(Note $note): bool
     {
         return $note->aclEntries()->exists();
+    }
+
+    public function canManage(AuthenticatedSubject $subject, int $workspaceId): bool
+    {
+        return $this->bypassesRestrictions($subject, $workspaceId);
     }
 
     private function matchingGrantExists(AuthenticatedSubject $subject, Note $note, string $permission): bool

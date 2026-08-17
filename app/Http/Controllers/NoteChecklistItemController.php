@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
 use App\Models\NoteChecklistItem;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,7 @@ final class NoteChecklistItemController extends Controller
 {
     public function __construct(
         private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
         private readonly AuditRecorder $auditRecorder = new AuditRecorder
     ) {}
 
@@ -109,6 +111,12 @@ final class NoteChecklistItemController extends Controller
         $note = Note::query()->where('workspace_id', $workspaceId)->where('id', $noteId)->first();
         if (! $note) {
             return response()->json(['message' => __('messages.note_not_found')], 404);
+        }
+
+        if ($request->isMethod('get')) {
+            $this->noteAccess->assertView($subject, $note);
+        } else {
+            $this->noteAccess->assertEdit($subject, $note);
         }
 
         return $note;

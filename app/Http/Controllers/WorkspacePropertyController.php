@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Auth\NoteAccess;
 use App\Domain\Vault\MarkdownDocument;
 use App\Domain\Vault\NotePropertyType;
 use App\Domain\Vault\VaultStorage;
@@ -15,10 +16,19 @@ use Illuminate\Http\Request;
 
 final class WorkspacePropertyController extends Controller
 {
-    public function index(Workspace $workspace): JsonResponse
+    public function index(Request $request, Workspace $workspace): JsonResponse
     {
+        $subject = $request->attributes->get('authenticated_subject');
+        if (! $subject) {
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
+        }
+
+        $visibleNoteIds = app(NoteAccess::class)
+            ->scopeVisible(Note::query(), $subject, $workspace->id)
+            ->pluck('notes.id');
+
         $properties = NoteProperty::query()
-            ->whereHas('note', fn ($q) => $q->where('workspace_id', $workspace->id))
+            ->whereIn('note_id', $visibleNoteIds)
             ->select(['name', 'type'])
             ->distinct()
             ->orderBy('name')
@@ -36,6 +46,7 @@ final class WorkspacePropertyController extends Controller
     public function setProperty(Request $request, Workspace $workspace, Note $note, VaultStorage $storage, AuditRecorder $auditRecorder): JsonResponse
     {
         $this->ensureScopedNote($workspace, $note);
+        app(NoteAccess::class)->assertEdit($request->attributes->get('authenticated_subject'), $note);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
@@ -68,6 +79,7 @@ final class WorkspacePropertyController extends Controller
     public function deleteProperty(Workspace $workspace, Note $note, string $key, VaultStorage $storage): JsonResponse
     {
         $this->ensureScopedNote($workspace, $note);
+        app(NoteAccess::class)->assertEdit(request()->attributes->get('authenticated_subject'), $note);
 
         $content = $storage->readContents($workspace, $note->path);
         $fallbackTitle = pathinfo($note->path, PATHINFO_FILENAME);

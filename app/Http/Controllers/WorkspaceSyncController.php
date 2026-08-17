@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +12,8 @@ use Illuminate\Http\Request;
 final class WorkspaceSyncController extends Controller
 {
     public function __construct(
-        private readonly IdentityProvider $identityProvider
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
     ) {}
 
     public function sync(Request $request, int $workspaceId): JsonResponse
@@ -31,7 +33,7 @@ final class WorkspaceSyncController extends Controller
         }
 
         $since = $request->query('since');
-        $query = Note::query()->where('workspace_id', $workspaceId);
+        $query = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId);
 
         if ($since) {
             $query->where('updated_at', '>=', $since);
