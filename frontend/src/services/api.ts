@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -114,6 +114,39 @@ export async function updateNote(workspaceId: number, noteId: number, content: s
     content
   })
   return response.data.data
+}
+
+export async function getNoteAcl(workspaceId: number, noteId: number): Promise<NoteAccessPayload> {
+  const response = await api.get<{ data: NoteAccessPayload }>(`/workspaces/${workspaceId}/notes/${noteId}/acl`)
+  return response.data.data
+}
+
+export async function replaceNoteAcl(
+  workspaceId: number,
+  noteId: number,
+  entries: NoteAclEntry[]
+): Promise<NoteAccessPayload> {
+  const response = await api.put<{ data: NoteAccessPayload }>(`/workspaces/${workspaceId}/notes/${noteId}/acl`, { entries })
+  return response.data.data
+}
+
+export async function getWorkspaceGroups(workspaceId: number): Promise<WorkspaceGroup[]> {
+  const response = await api.get<{ data: WorkspaceGroup[] }>(`/workspaces/${workspaceId}/groups`)
+  return response.data.data
+}
+
+export async function createWorkspaceGroup(workspaceId: number, name: string, memberIds: number[] = []): Promise<WorkspaceGroup> {
+  const response = await api.post<{ data: WorkspaceGroup }>(`/workspaces/${workspaceId}/groups`, { name, member_ids: memberIds })
+  return response.data.data
+}
+
+export async function updateWorkspaceGroup(workspaceId: number, groupId: number, attrs: { name?: string; member_ids?: number[] }): Promise<WorkspaceGroup> {
+  const response = await api.put<{ data: WorkspaceGroup }>(`/workspaces/${workspaceId}/groups/${groupId}`, attrs)
+  return response.data.data
+}
+
+export async function deleteWorkspaceGroup(workspaceId: number, groupId: number): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/groups/${groupId}`)
 }
 
 export async function deleteNote(workspaceId: number, noteId: number): Promise<void> {

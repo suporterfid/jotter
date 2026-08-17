@@ -18,6 +18,35 @@ export interface NoteMeta {
   frontmatter: Record<string, unknown> | null
   sort_position: number | null
   updated_at: string
+  access?: NoteAccessMeta | null
+}
+
+export interface NoteAccessMeta {
+  restricted: boolean
+  can_view: boolean
+  can_edit: boolean
+  can_manage?: boolean
+}
+
+export type NoteAclPrincipalType = 'user' | 'group'
+export type NoteAclPermission = 'view' | 'edit'
+
+export interface NoteAclEntry {
+  id?: number
+  principal_type: NoteAclPrincipalType
+  principal_id: number
+  permission: NoteAclPermission
+  principal?: { id: number; name: string; email?: string | null } | null
+}
+
+export interface WorkspaceGroup {
+  id: number
+  name: string
+  members: Array<{ id: number; name: string; email: string }>
+}
+
+export interface NoteAccessPayload extends NoteAccessMeta {
+  entries: NoteAclEntry[]
 }
 
 export interface TrashNoteMeta {

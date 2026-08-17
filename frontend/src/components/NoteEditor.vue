@@ -167,6 +167,17 @@
         </button>
 
         <button
+          v-if="note.access?.restricted || note.access?.can_manage"
+          class="btn-attach"
+          data-testid="note-access-drawer-btn"
+          :title="t('noteEditor.access')"
+          :aria-expanded="isAccessDrawerOpen"
+          @click="isAccessDrawerOpen = !isAccessDrawerOpen"
+        >
+          <span>🔒</span>
+        </button>
+
+        <button
           class="btn-attach"
           data-testid="attach-file-btn"
           :disabled="isUploading"
@@ -239,6 +250,7 @@
         data-testid="editor-title"
         rows="1"
         :placeholder="t('noteEditor.untitledPlaceholder')"
+        :disabled="!canEdit"
         @input="handleTitleInput"
         @blur="saveTitle"
         @keydown.enter.prevent="focusContentFromTitle"
@@ -259,6 +271,7 @@
           v-model="editableContent"
           data-testid="markdown-textarea"
           class="markdown-textarea"
+          :disabled="!canEdit"
           :placeholder="t('noteEditor.markdownPlaceholder')"
           @input="handleInput"
           @keydown="handleKeyDown"
@@ -291,6 +304,7 @@
         <NoteEditorWysiwyg
           ref="wysiwygRef"
           v-model:content="editableContent"
+          :readonly="!canEdit"
           @slash-query="handleWysiwygSlashQuery"
           @comment-trigger="handleWysiwygCommentTrigger"
         />
@@ -488,6 +502,33 @@
       </aside>
     </Teleport>
 
+    <!-- Note access drawer: ACL state is visible in the note UI while writes
+         remain atomic on the server. -->
+    <Teleport to="#app-right-drawer">
+      <aside
+        v-if="isAccessDrawerOpen"
+        class="comments-drawer"
+        data-testid="note-access-drawer"
+      >
+        <div class="comments-drawer-header">
+          <h3>{{ t('noteEditor.access') }}</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            :aria-label="t('noteEditor.access')"
+            @click="isAccessDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <NoteAccessPanel
+          v-if="workspaceId"
+          :workspace-id="workspaceId"
+          :note-id="note.id"
+          :access="note.access"
+          @updated="handleAccessUpdated"
+        />
+      </aside>
+    </Teleport>
+
     <!-- Outline Drawer: teleported to the same right-drawer mount point as
          Comments (#262), listing the note's headings for quick navigation
          (G.1, #286). -->
@@ -607,6 +648,7 @@ import SlashMenu from './SlashMenu.vue'
 import NoteEditorWysiwyg from './NoteEditorWysiwyg.vue'
 import OutlinePanel from './OutlinePanel.vue'
 import LocalGraphPanel from './LocalGraphPanel.vue'
+import NoteAccessPanel from './NoteAccessPanel.vue'
 import type { LocalGraphNeighbor } from '../services/types'
 import { parseHeadings, type HeadingEntry } from '../services/outline'
 import WikilinkPreviewPopup from './WikilinkPreviewPopup.vue'
@@ -811,6 +853,8 @@ const checklistItems = ref<NoteChecklistItem[]>([])
 const isChecklistDrawerOpen = ref(false)
 const activityEntries = ref<NoteActivityEntry[]>([])
 const isActivityDrawerOpen = ref(false)
+const isAccessDrawerOpen = ref(false)
+const canEdit = computed(() => props.note.access?.can_edit !== false)
 // Deliberately NOT reset on note switch (see the watcher below) — like a
 // sidebar, staying open while browsing between notes is the expected
 // drawer behavior, not per-note ephemeral UI state.
@@ -819,6 +863,10 @@ const isOutlineDrawerOpen = ref(false)
 const headings = computed<HeadingEntry[]>(() => parseHeadings(editableContent.value))
 
 const isLocalGraphDrawerOpen = ref(false)
+
+function handleAccessUpdated() {
+  emit('select-note', props.note.id)
+}
 
 const localGraphNeighbors = computed<LocalGraphNeighbor[]>(() => {
   const seen = new Set<number>()

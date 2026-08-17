@@ -83,6 +83,7 @@ const { t } = useI18n()
 
 const props = defineProps<{
   content: string
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -109,6 +110,7 @@ onMounted(async () => {
     rootEl.value,
     body,
     (markdown) => {
+      if (props.readonly) return
       const full = joinFrontMatter(frontMatter, markdown)
       lastEmitted = full
       emit('update:content', full)
@@ -116,6 +118,7 @@ onMounted(async () => {
     (state) => emit('slash-query', state),
     (state) => { selectionFormat.value = state }
   )
+  if (props.readonly) rootEl.value.setAttribute('contenteditable', 'false')
 })
 
 watch(() => props.content, (newContent) => {
