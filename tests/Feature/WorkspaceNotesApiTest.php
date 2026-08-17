@@ -119,7 +119,10 @@ class WorkspaceNotesApiTest extends TestCase
             ->assertNoContent();
 
         $this->assertFileDoesNotExist($this->vaultRoot.'/mutate/nested/note.md');
-        $this->assertDatabaseMissing('notes', ['id' => $note->id]);
+        $trashed = Note::withTrashed()->findOrFail($note->id);
+        $this->assertTrue($trashed->trashed());
+        $this->assertFileExists($this->vaultRoot.'/mutate/'.$trashed->path);
+        $this->assertDatabaseHas('notes', ['id' => $note->id]);
     }
 
     public function test_create_and_update_allow_an_explicitly_empty_markdown_document(): void

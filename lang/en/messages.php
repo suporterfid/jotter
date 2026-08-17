@@ -21,6 +21,7 @@ return [
     'revision_not_found' => 'Revision not found.',
     'resource_not_found' => 'Resource not found.',
     'revision_restored_successfully' => 'Revision restored successfully.',
+    'trash_restore_conflict' => 'The original note path is already occupied.',
     'invalid_path_traversal' => 'Invalid path traversal detected.',
     'failed_to_create_export_zip' => 'Failed to create export zip archive.',
     'archive_file_required' => 'Archive file is required.',

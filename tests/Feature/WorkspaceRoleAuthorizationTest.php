@@ -110,6 +110,26 @@ class WorkspaceRoleAuthorizationTest extends TestCase
         }
     }
 
+    public function test_viewer_cannot_restore_or_permanently_delete_trash_entries(): void
+    {
+        [$user, $workspace, $note] = $this->workspaceNoteForRole('viewer');
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->deleteJson("/api/workspaces/{$workspace->id}/notes/{$note->id}")
+            ->assertNoContent();
+
+        $client = $this->actingAs($user);
+        $client
+            ->postJson("/api/workspaces/{$workspace->id}/trash/{$note->id}/restore")
+            ->assertForbidden();
+        $client
+            ->deleteJson("/api/workspaces/{$workspace->id}/trash/{$note->id}")
+            ->assertForbidden();
+
+        $this->assertTrue(Note::withTrashed()->findOrFail($note->id)->trashed());
+    }
+
     /**
      * @return array{0: User, 1: Workspace, 2: Note}
      */

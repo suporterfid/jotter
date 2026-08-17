@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\Exceptions\VaultNoteNotFound;
+use App\Domain\Vault\NoteTrash;
 use App\Domain\Vault\VaultStorage;
 use App\Models\Note;
 use App\Models\Workspace;
@@ -85,12 +86,12 @@ final class WorkspaceNoteController extends Controller
         ]);
     }
 
-    public function destroy(Workspace $workspace, int $note, VaultStorage $storage): JsonResponse
+    public function destroy(Workspace $workspace, int $note, NoteTrash $trash): JsonResponse
     {
         $note = $this->scopedNote($workspace, $note);
 
         try {
-            $storage->delete($workspace, $note->path);
+            $trash->trash($workspace, $note);
         } catch (VaultNoteNotFound) {
             abort(404);
         }
