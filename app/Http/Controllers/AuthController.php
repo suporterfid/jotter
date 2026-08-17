@@ -63,6 +63,8 @@ final class AuthController extends Controller
                     'state' => bin2hex(random_bytes(16)),
                 ]);
             }
+        } elseif ($provider === 'oidc' && config('jotter.oidc.configured', false)) {
+            $ssoLoginUrl = url('/api/auth/oidc/redirect');
         }
 
         $versionFile = base_path('VERSION');

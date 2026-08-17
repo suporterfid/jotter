@@ -42,6 +42,23 @@ describe('LoginModal', () => {
     expect(wrapper.find('[data-testid="login-email"]').exists()).toBe(true)
   })
 
+  it('shows a generic SSO link for the OIDC provider', async () => {
+    vi.mocked(getAuthConfig).mockResolvedValue({
+      provider: 'oidc',
+      sso_login_url: '/api/auth/oidc/redirect',
+      version: null,
+    })
+
+    const wrapper = mount(LoginModal, { props: { show: true } })
+    await flushPromises()
+
+    const ssoLink = wrapper.find('[data-testid="sso-login-link"]')
+    expect(ssoLink.exists()).toBe(true)
+    expect(ssoLink.attributes('href')).toBe('/api/auth/oidc/redirect')
+    expect(ssoLink.text()).toContain('Sign in with SSO')
+    expect(wrapper.find('[data-testid="login-email"]').exists()).toBe(true)
+  })
+
   it('does not fetch auth config when the modal is not shown', () => {
     mount(LoginModal, { props: { show: false } })
     expect(getAuthConfig).not.toHaveBeenCalled()

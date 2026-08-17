@@ -69,7 +69,7 @@ export async function getMe(): Promise<AuthUser | null> {
 }
 
 export interface AuthConfig {
-  provider: 'local' | 'grandpasson'
+  provider: 'local' | 'grandpasson' | 'oidc'
   sso_login_url: string | null
   version: string | null
 }

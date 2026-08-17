@@ -11,11 +11,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(\App\Domain\Auth\Oidc\OidcClientInterface::class, function (): \App\Domain\Auth\Oidc\OidcClientInterface {
+            return new \App\Domain\Auth\Oidc\JumbojettOidcClient;
+        });
+
         $this->app->singleton(\App\Domain\Auth\Contracts\IdentityProvider::class, function (): \App\Domain\Auth\Contracts\IdentityProvider {
             $provider = config('jotter.auth_provider', 'local');
 
             return match ($provider) {
                 'grandpasson' => new \App\Domain\Auth\Providers\GrandpaSSOnIdentityProvider,
+                'oidc' => new \App\Domain\Auth\Providers\OidcIdentityProvider(
+                    app(\App\Domain\Auth\Oidc\OidcAuthenticationService::class),
+                ),
                 default => new \App\Domain\Auth\Providers\LocalIdentityProvider,
             };
         });

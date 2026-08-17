@@ -17,7 +17,7 @@
 
       <div v-if="ssoLoginUrl" class="sso-section">
         <a :href="ssoLoginUrl" class="btn-sso" data-testid="sso-login-link">
-          {{ t('login.ssoButton') }}
+          {{ t(authProvider === 'oidc' ? 'login.ssoGenericButton' : 'login.ssoButton') }}
         </a>
         <div class="sso-divider"><span>{{ t('login.or') }}</span></div>
       </div>
@@ -71,6 +71,7 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { login, getAuthConfig } from '../services/api'
+import type { AuthConfig } from '../services/api'
 import type { AuthUser } from '../services/types'
 
 const { t } = useI18n()
@@ -88,6 +89,7 @@ const password = ref('')
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 const ssoLoginUrl = ref<string | null>(null)
+const authProvider = ref<AuthConfig['provider']>('local')
 
 watch(
   () => props.show,
@@ -96,6 +98,7 @@ watch(
     try {
       const config = await getAuthConfig()
       ssoLoginUrl.value = config.sso_login_url
+      authProvider.value = config.provider
     } catch (err) {
       console.error('Failed to load auth config:', err)
     }

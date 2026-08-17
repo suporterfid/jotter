@@ -45,6 +45,7 @@ Sequenced from `docs/20260727-jotter-roadmap-ai-agent.md` within `docs/jotter-in
 
 - Laravel 12 and Vue 3/Vite scaffold
 - Workspace membership role enforcement (#347): `viewer` memberships are read-only across API mutation routes and WebDAV writes; GrandpaSSOn service tokens require the `kb:write` scope and workspace audience.
+- Generic, opt-in OIDC SSO (#348): discovery-backed authorization-code + PKCE S256 login, state/nonce validation, stable `iss|sub` identities, and just-in-time non-admin users without implicit memberships. Local and GrandpaSSOn providers remain unchanged.
 
 ### Removed
 

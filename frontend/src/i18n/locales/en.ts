@@ -6,6 +6,7 @@ export default {
     heading: 'Jotter Sign In',
     subtitle: 'Enter your administrator credentials to access your notes vault.',
     ssoButton: 'Sign in with GrandpaSSOn',
+    ssoGenericButton: 'Sign in with SSO',
     or: 'or',
     emailLabel: 'Email Address',
     emailPlaceholder: "admin{'@'}example.com",
