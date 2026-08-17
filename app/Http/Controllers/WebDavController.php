@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Audit\AuditEvent;
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\VaultPathGuard;
@@ -16,7 +18,8 @@ final class WebDavController extends Controller
     public function __construct(
         private readonly IdentityProvider $identityProvider,
         private readonly VaultPathGuard $pathGuard,
-        private readonly VaultStorage $storage
+        private readonly VaultStorage $storage,
+        private readonly AuditRecorder $auditRecorder = new AuditRecorder,
     ) {}
 
     public function handle(Request $request, int $workspaceId, ?string $path = null): Response|JsonResponse
@@ -35,6 +38,24 @@ final class WebDavController extends Controller
             return response()->json(['message' => __('messages.workspace_not_found')], 404);
         }
 
+        $method = strtoupper($request->method());
+        if (in_array($method, ['PUT', 'MKCOL', 'DELETE'], true)
+            && ! $this->identityProvider->canWriteWorkspace($subject, $workspaceId)) {
+            $this->auditRecorder->record(
+                event: AuditEvent::AUTH_FORBIDDEN,
+                tenantId: $workspace->tenant_id,
+                workspaceId: $workspace->id,
+                actorId: $subject->subjectId,
+                metadata: [
+                    'reason' => 'insufficient_workspace_role',
+                    'path' => $request->path(),
+                    'method' => $method,
+                ],
+            );
+
+            return response()->json(['message' => __('messages.forbidden')], 403);
+        }
+
         $targetPath = trim($path ?? '', '/');
 
         try {
@@ -45,7 +66,7 @@ final class WebDavController extends Controller
             return response()->json(['message' => __('messages.invalid_path_traversal')], 400);
         }
 
-        return match (strtoupper($request->method())) {
+        return match ($method) {
             'PROPFIND' => $this->handlePropfind($fullPath, $targetPath),
             'GET' => $this->handleGet($fullPath),
             'PUT' => $this->handlePut($workspace, $targetPath, $request->getContent()),

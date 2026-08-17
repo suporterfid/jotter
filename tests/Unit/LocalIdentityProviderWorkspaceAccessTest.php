@@ -104,4 +104,131 @@ class LocalIdentityProviderWorkspaceAccessTest extends TestCase
 
         $this->assertSame([], $provider->accessibleWorkspaceIds($subject));
     }
+
+    public function test_viewer_can_read_but_cannot_write_workspace(): void
+    {
+        $user = User::factory()->create(['is_admin' => false]);
+        $tenant = Tenant::create(['slug' => 'viewer-tenant', 'name' => 'Viewer Tenant']);
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'viewer-workspace',
+            'name' => 'Viewer Workspace',
+            'vault_path' => storage_path('app/vaults/viewer-workspace'),
+        ]);
+
+        Membership::create([
+            'subject_id' => (string) $user->id,
+            'tenant_id' => $tenant->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'viewer',
+        ]);
+
+        $subject = new AuthenticatedSubject(
+            subjectId: (string) $user->id,
+            email: $user->email,
+            name: $user->name,
+            isAdmin: false,
+            user: $user,
+        );
+
+        $provider = new LocalIdentityProvider();
+
+        $this->assertTrue($provider->isAuthorizedForWorkspace($subject, $workspace->id));
+        $this->assertFalse($provider->canWriteWorkspace($subject, $workspace->id));
+    }
+
+    public function test_owner_admin_and_editor_can_write_workspace(): void
+    {
+        foreach (['owner', 'admin', 'editor'] as $role) {
+            $user = User::factory()->create(['is_admin' => false]);
+            $tenant = Tenant::create(['slug' => "{$role}-tenant", 'name' => "{$role} Tenant"]);
+            $workspace = Workspace::create([
+                'tenant_id' => $tenant->id,
+                'slug' => "{$role}-workspace",
+                'name' => "{$role} Workspace",
+                'vault_path' => storage_path("app/vaults/{$role}-workspace"),
+            ]);
+
+            Membership::create([
+                'subject_id' => (string) $user->id,
+                'tenant_id' => $tenant->id,
+                'workspace_id' => $workspace->id,
+                'role' => $role,
+            ]);
+
+            $subject = new AuthenticatedSubject(
+                subjectId: (string) $user->id,
+                email: $user->email,
+                name: $user->name,
+                isAdmin: false,
+                user: $user,
+            );
+
+            $this->assertTrue(
+                (new LocalIdentityProvider())->canWriteWorkspace($subject, $workspace->id),
+                "Expected {$role} to be able to write the workspace."
+            );
+        }
+    }
+
+    public function test_tenant_wide_viewer_membership_is_read_only_in_every_workspace(): void
+    {
+        $user = User::factory()->create(['is_admin' => false]);
+        $tenant = Tenant::create(['slug' => 'tenant-wide-viewer', 'name' => 'Tenant-wide Viewer']);
+        $workspaceA = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'workspace-a',
+            'name' => 'Workspace A',
+            'vault_path' => storage_path('app/vaults/tenant-wide-a'),
+        ]);
+        $workspaceB = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'workspace-b',
+            'name' => 'Workspace B',
+            'vault_path' => storage_path('app/vaults/tenant-wide-b'),
+        ]);
+
+        Membership::create([
+            'subject_id' => (string) $user->id,
+            'tenant_id' => $tenant->id,
+            'workspace_id' => null,
+            'role' => 'viewer',
+        ]);
+
+        $subject = new AuthenticatedSubject(
+            subjectId: (string) $user->id,
+            email: $user->email,
+            name: $user->name,
+            isAdmin: false,
+            user: $user,
+        );
+
+        $provider = new LocalIdentityProvider();
+
+        $this->assertTrue($provider->isAuthorizedForWorkspace($subject, $workspaceA->id));
+        $this->assertTrue($provider->isAuthorizedForWorkspace($subject, $workspaceB->id));
+        $this->assertFalse($provider->canWriteWorkspace($subject, $workspaceA->id));
+        $this->assertFalse($provider->canWriteWorkspace($subject, $workspaceB->id));
+    }
+
+    public function test_global_admin_can_write_without_membership(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'global-admin', 'name' => 'Global Admin']);
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'admin-workspace',
+            'name' => 'Admin Workspace',
+            'vault_path' => storage_path('app/vaults/admin-workspace'),
+        ]);
+        $subject = new AuthenticatedSubject(
+            subjectId: (string) $admin->id,
+            email: $admin->email,
+            name: $admin->name,
+            isAdmin: true,
+            user: $admin,
+        );
+
+        $this->assertTrue((new LocalIdentityProvider())->canWriteWorkspace($subject, $workspace->id));
+    }
 }

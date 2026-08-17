@@ -96,7 +96,7 @@ final class WorkspaceCommentAuthorizationTest extends TestCase
                 'tenant_id' => $tenant->id,
                 'subject_id' => (string) $member->id,
                 'user_id' => $member->id,
-                'role' => 'member',
+                'role' => 'editor',
             ]);
         }
 

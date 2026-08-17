@@ -31,19 +31,19 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/admin/users/{user}/reset-password', [\App\Http\Controllers\AdminUserController::class, 'resetPassword']);
     Route::get('/workspaces/{workspace}/llms.txt', [LlmsTxtController::class, 'workspaceLlmsTxt']);
     Route::match(['PROPFIND', 'GET', 'PUT', 'MKCOL', 'DELETE', 'OPTIONS'], '/webdav/{workspace}/{path?}', [WebDavController::class, 'handle'])->where('path', '.*');
-    Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish']);
-    Route::post('/workspaces/{workspace}/import', [\App\Http\Controllers\WorkspaceImportController::class, 'import']);
+    Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish'])->middleware('workspace.write');
+    Route::post('/workspaces/{workspace}/import', [\App\Http\Controllers\WorkspaceImportController::class, 'import'])->middleware('workspace.write');
     Route::get('/workspaces', [\App\Http\Controllers\WorkspaceController::class, 'index']);
     Route::get('/tenants', [TenantController::class, 'index']);
 
     Route::post('/admin/workspaces', [\App\Http\Controllers\AdminWorkspaceController::class, 'store']);
-    Route::put('/admin/workspaces/{workspace}', [\App\Http\Controllers\AdminWorkspaceController::class, 'update']);
-    Route::post('/admin/workspaces/{workspace}/archive', [\App\Http\Controllers\AdminWorkspaceController::class, 'archive']);
+    Route::put('/admin/workspaces/{workspace}', [\App\Http\Controllers\AdminWorkspaceController::class, 'update'])->middleware('workspace.write');
+    Route::post('/admin/workspaces/{workspace}/archive', [\App\Http\Controllers\AdminWorkspaceController::class, 'archive'])->middleware('workspace.write');
 
     Route::get('/admin/workspaces/{workspace}/members', [\App\Http\Controllers\AdminMembershipController::class, 'index']);
-    Route::post('/admin/workspaces/{workspace}/members', [\App\Http\Controllers\AdminMembershipController::class, 'store']);
-    Route::put('/admin/workspaces/{workspace}/members/{member}', [\App\Http\Controllers\AdminMembershipController::class, 'update']);
-    Route::delete('/admin/workspaces/{workspace}/members/{member}', [\App\Http\Controllers\AdminMembershipController::class, 'destroy']);
+    Route::post('/admin/workspaces/{workspace}/members', [\App\Http\Controllers\AdminMembershipController::class, 'store'])->middleware('workspace.write');
+    Route::put('/admin/workspaces/{workspace}/members/{member}', [\App\Http\Controllers\AdminMembershipController::class, 'update'])->middleware('workspace.write');
+    Route::delete('/admin/workspaces/{workspace}/members/{member}', [\App\Http\Controllers\AdminMembershipController::class, 'destroy'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/audit-logs', [AuditLogQueryController::class, 'index']);
     Route::get('/workspaces/{workspace}/export', [WorkspaceExportController::class, 'export']);
@@ -53,12 +53,12 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/notes/{note}/unlinked-mentions', [\App\Http\Controllers\WorkspaceUnlinkedMentionsController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'index']);
-    Route::post('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'store']);
-    Route::delete('/workspaces/{workspace}/notes/{note}/comments/{comment}', [\App\Http\Controllers\WorkspaceCommentController::class, 'destroy']);
+    Route::post('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'store'])->middleware('workspace.write');
+    Route::delete('/workspaces/{workspace}/notes/{note}/comments/{comment}', [\App\Http\Controllers\WorkspaceCommentController::class, 'destroy'])->middleware('workspace.write');
     Route::get('/workspaces/{workspace}/notes/{note}/checklist-items', [\App\Http\Controllers\NoteChecklistItemController::class, 'index']);
-    Route::post('/workspaces/{workspace}/notes/{note}/checklist-items', [\App\Http\Controllers\NoteChecklistItemController::class, 'store']);
-    Route::put('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'update']);
-    Route::delete('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'destroy']);
+    Route::post('/workspaces/{workspace}/notes/{note}/checklist-items', [\App\Http\Controllers\NoteChecklistItemController::class, 'store'])->middleware('workspace.write');
+    Route::put('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'update'])->middleware('workspace.write');
+    Route::delete('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'destroy'])->middleware('workspace.write');
     Route::get('/workspaces/{workspace}/notes/{note}/activity', [\App\Http\Controllers\WorkspaceNoteActivityController::class, 'index']);
 
     Route::get('/workspaces/{workspace}/notifications', [\App\Http\Controllers\WorkspaceNotificationController::class, 'index']);
@@ -67,30 +67,30 @@ Route::middleware('workspace.authorization')->group(function (): void {
 
     Route::get('/workspaces/{workspace}/collections', [\App\Http\Controllers\WorkspaceCollectionController::class, 'index']);
     Route::get('/workspaces/{workspace}/boards', [\App\Http\Controllers\BoardController::class, 'index']);
-    Route::post('/workspaces/{workspace}/boards', [\App\Http\Controllers\BoardController::class, 'store']);
-    Route::put('/workspaces/{workspace}/boards/{board}', [\App\Http\Controllers\BoardController::class, 'update']);
-    Route::delete('/workspaces/{workspace}/boards/{board}', [\App\Http\Controllers\BoardController::class, 'destroy']);
-    Route::post('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'store']);
-    Route::post('/workspaces/{workspace}/notes/from-template', [\App\Http\Controllers\WorkspaceTemplateController::class, 'createFromTemplate']);
-    Route::match(['get', 'post'], '/workspaces/{workspace}/daily/{date?}', [\App\Http\Controllers\WorkspaceTemplateController::class, 'dailyNote']);
+    Route::post('/workspaces/{workspace}/boards', [\App\Http\Controllers\BoardController::class, 'store'])->middleware('workspace.write');
+    Route::put('/workspaces/{workspace}/boards/{board}', [\App\Http\Controllers\BoardController::class, 'update'])->middleware('workspace.write');
+    Route::delete('/workspaces/{workspace}/boards/{board}', [\App\Http\Controllers\BoardController::class, 'destroy'])->middleware('workspace.write');
+    Route::post('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'store'])->middleware('workspace.write');
+    Route::post('/workspaces/{workspace}/notes/from-template', [\App\Http\Controllers\WorkspaceTemplateController::class, 'createFromTemplate'])->middleware('workspace.write');
+    Route::match(['get', 'post'], '/workspaces/{workspace}/daily/{date?}', [\App\Http\Controllers\WorkspaceTemplateController::class, 'dailyNote'])->middleware('workspace.write');
     Route::get('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'show']);
     Route::get('/workspaces/{workspace}/notes/{note}/outgoing-links', [WorkspaceNoteController::class, 'outgoingLinks']);
-    Route::put('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'update']);
-    Route::post('/workspaces/{workspace}/notes/{note}/move', [WorkspaceNoteController::class, 'move']);
+    Route::put('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'update'])->middleware('workspace.write');
+    Route::post('/workspaces/{workspace}/notes/{note}/move', [WorkspaceNoteController::class, 'move'])->middleware('workspace.write');
     Route::get('/workspaces/{workspace}/note-tree/order', [WorkspaceNoteTreeController::class, 'index']);
-    Route::put('/workspaces/{workspace}/note-tree/order', [WorkspaceNoteTreeController::class, 'update']);
-    Route::delete('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'destroy']);
+    Route::put('/workspaces/{workspace}/note-tree/order', [WorkspaceNoteTreeController::class, 'update'])->middleware('workspace.write');
+    Route::delete('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'destroy'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/notes/{note}/revisions', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes/{note}/revisions/{revision}', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'show']);
-    Route::post('/workspaces/{workspace}/notes/{note}/revisions/{revision}/restore', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'restore']);
+    Route::post('/workspaces/{workspace}/notes/{note}/revisions/{revision}/restore', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'restore'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/properties', [\App\Http\Controllers\WorkspacePropertyController::class, 'index']);
-    Route::post('/workspaces/{workspace}/notes/{note}/properties', [\App\Http\Controllers\WorkspacePropertyController::class, 'setProperty']);
-    Route::delete('/workspaces/{workspace}/notes/{note}/properties/{key}', [\App\Http\Controllers\WorkspacePropertyController::class, 'deleteProperty']);
+    Route::post('/workspaces/{workspace}/notes/{note}/properties', [\App\Http\Controllers\WorkspacePropertyController::class, 'setProperty'])->middleware('workspace.write');
+    Route::delete('/workspaces/{workspace}/notes/{note}/properties/{key}', [\App\Http\Controllers\WorkspacePropertyController::class, 'deleteProperty'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/attachments', [AttachmentController::class, 'index']);
-    Route::post('/workspaces/{workspace}/attachments', [AttachmentController::class, 'store']);
+    Route::post('/workspaces/{workspace}/attachments', [AttachmentController::class, 'store'])->middleware('workspace.write');
     Route::get('/workspaces/{workspace}/attachments/{path}', [AttachmentController::class, 'show'])->where('path', '.*');
-    Route::delete('/workspaces/{workspace}/attachments/{attachment}', [AttachmentController::class, 'destroy'])->where('attachment', '.*');
+    Route::delete('/workspaces/{workspace}/attachments/{attachment}', [AttachmentController::class, 'destroy'])->where('attachment', '.*')->middleware('workspace.write');
 });

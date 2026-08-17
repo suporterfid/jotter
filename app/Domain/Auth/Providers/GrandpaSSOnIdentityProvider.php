@@ -183,6 +183,20 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
         return $this->localProvider->isAuthorizedForWorkspace($subject, $workspaceId);
     }
 
+    public function canWriteWorkspace(AuthenticatedSubject $subject, int $workspaceId): bool
+    {
+        if ($this->isServiceToken($subject)) {
+            return in_array("workspace/{$workspaceId}", $subject->attributes['audiences'], true)
+                && in_array('kb:write', $subject->attributes['scopes'], true);
+        }
+
+        if ($subject->isAdmin) {
+            return true;
+        }
+
+        return $this->localProvider->canWriteWorkspace($subject, $workspaceId);
+    }
+
     public function accessibleWorkspaceIds(AuthenticatedSubject $subject): ?array
     {
         if ($this->isServiceToken($subject)) {

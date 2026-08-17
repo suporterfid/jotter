@@ -15,6 +15,8 @@ use Illuminate\Support\Str;
 
 final class LocalIdentityProvider implements IdentityProvider
 {
+    private const WRITE_ROLES = ['owner', 'admin', 'editor'];
+
     public function resolveIdentity(Request $request): ?AuthenticatedSubject
     {
         // 1. Check Bearer MachineToken header
@@ -189,6 +191,30 @@ final class LocalIdentityProvider implements IdentityProvider
                 $query->where('workspace_id', $workspaceId)
                     ->orWhereNull('workspace_id');
             })
+            ->exists();
+    }
+
+    public function canWriteWorkspace(AuthenticatedSubject $subject, int $workspaceId): bool
+    {
+        if ($subject->isAdmin) {
+            return true;
+        }
+
+        /** @var Workspace|null $workspace */
+        $workspace = Workspace::query()->find($workspaceId);
+
+        if (! $workspace) {
+            return false;
+        }
+
+        return Membership::query()
+            ->where('tenant_id', $workspace->tenant_id)
+            ->whereIn('subject_id', $this->resolveSubjectIds($subject))
+            ->where(function ($query) use ($workspaceId) {
+                $query->where('workspace_id', $workspaceId)
+                    ->orWhereNull('workspace_id');
+            })
+            ->whereIn('role', self::WRITE_ROLES)
             ->exists();
     }
 
