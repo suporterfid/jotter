@@ -49,4 +49,9 @@ class Workspace extends Model
     {
         return $this->hasMany(Board::class);
     }
+
+    public function groups(): HasMany
+    {
+        return $this->hasMany(WorkspaceGroup::class);
+    }
 }
