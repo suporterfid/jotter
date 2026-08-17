@@ -1,8 +1,10 @@
 # Jotter vs. Confluence — Auditoria de Paridade
 
 Data: 2026-08-17
-Status: **Diagnóstico apenas.** Nada aqui está aprovado, planejado ou
-implementado. Nenhuma issue foi criada por este documento.
+Status: **Diagnóstico.** Nada aqui está implementado. As lacunas foram
+filadas como **#347–#360** e registradas em `BACKLOG.md` →
+"Confluence-parity gaps"; a lacuna nº 12 (tempo real) deliberadamente
+**não** virou issue — ver §2 e a seção "Not adopted" do backlog.
 Base: `main` @ `dcda766` (2026-08-10).
 Trigger: revisão de um comparativo anterior ("Estado atual do Jotter vs.
 Confluence"), que foi auditado contra o código e corrigido — as
@@ -100,6 +102,28 @@ Ordenadas por prioridade recomendada (§4), não por tema.
 | 12 | **Edição colaborativa em tempo real** | Decisão **resolvida**, não pendente: `docs/decisions.md` C1 registra "strictly async-first per §4". Spec §3 N1 e §4 proíbem websockets e processos longos; `AGENTS.md` repete a proibição. | Se o mercado exigir, o caminho é uma **entrada de decisão que supersede C1** (o formato do arquivo exige isso explicitamente), não uma implementação incremental. Tecnicamente, só polling cabe na restrição — presença "quem está editando agora" é viável; cursores ao vivo e OT/CRDT não são. | XL |
 | 13 | **Sem aprovação / revisão de conteúdo** | Não há workflow de aprovação, estado de rascunho/publicado por página, nem revisor designado. | Baixa prioridade para times pequenos/médios; relevante apenas em cenários regulados. | L |
 | 14 | **Proveniência do roadmap (decisão em aberto)** | Único item aberto em `BACKLOG.md` → "Needs a decision". Spec §14.5 já documenta a evidência (o baseline do roadmap descreve um produto offline-first/Material You/realtime — provavelmente outro produto homônimo). | Registrar a confirmação em `docs/decisions.md` e fechar o roadmap original. É trabalho de documentação, não de produto. | XS |
+
+**Issues correspondentes** (filadas 2026-08-17, prefixo `CF`):
+
+| Lacuna | Issue | Lacuna | Issue |
+| :-- | :-- | :-- | :-- |
+| 1 Papéis não aplicados | [#347](https://github.com/suporterfid/jotter/issues/347) `CF.1` | 8 Compartilhamento por página | [#355](https://github.com/suporterfid/jotter/issues/355) `CF.9` |
+| 2 SSO OIDC | [#348](https://github.com/suporterfid/jotter/issues/348) `CF.2` | 9 PWA | [#356](https://github.com/suporterfid/jotter/issues/356) `CF.10` |
+| 3 ACL por página | [#349](https://github.com/suporterfid/jotter/issues/349) `CF.3` | 10 Analytics | [#357](https://github.com/suporterfid/jotter/issues/357) `CF.11` |
+| 4 Lixeira | [#350](https://github.com/suporterfid/jotter/issues/350) `CF.4` | 11 Split-screen | [#358](https://github.com/suporterfid/jotter/issues/358) `CF.12` |
+| 5 Eventos de notificação | [#351](https://github.com/suporterfid/jotter/issues/351) `CF.5` | 12 Tempo real | **não filada** — decisão C1 |
+| 5 Canal de e-mail | [#352](https://github.com/suporterfid/jotter/issues/352) `CF.6` | 13 Aprovação | [#359](https://github.com/suporterfid/jotter/issues/359) `CF.13` |
+| 6 Embeds externos | [#353](https://github.com/suporterfid/jotter/issues/353) `CF.7` | 14 Proveniência | [#360](https://github.com/suporterfid/jotter/issues/360) `CF.14` |
+| 7 Exportação PDF | [#354](https://github.com/suporterfid/jotter/issues/354) `CF.8` | | |
+
+A lacuna 5 virou duas issues porque (a) precede (b). A numeração `CF.n`
+não acompanha a numeração das lacunas a partir da 6 por causa desse
+desdobramento — cada issue declara no corpo de qual lacuna veio.
+
+A lacuna 12 não virou issue: tempo real é a decisão **C1, resolvida**.
+Abri-la exigiria uma entrada superseding em `docs/decisions.md`, não um
+PR — filar uma issue de implementação para algo que uma decisão registrada
+exclui seria criar trabalho que o próprio repositório proíbe começar.
 
 ---
 
