@@ -1,7 +1,7 @@
 # Jotter — Project Status
 
 - **Current Version:** v0.9.0 (v0 spec contracts complete; v1 work in progress)
-- **Last Updated:** 2026-08-17 (localization/RTL, canonical visual identity, and release-artifact verification recorded — see §1.1)
+- **Last Updated:** 2026-08-17 (issue #349 implementation completed on `codex/cf3-note-acls`; integration pending)
 - **Repo:** https://github.com/suporterfid/jotter
 - **Production Site:** https://hub.taskconnect.com.br/
 - **CI Status:** 🟢 Green on `main`. #140 and #142 fixed via PR #144, merged and confirmed on two green GitHub Actions runs, both issues closed. **`main` is now branch-protected** (#148): the `test` CI job is a required status check, `enforce_admins` is on, force-pushes and deletions are disabled — direct pushes and merges without green CI are rejected by GitHub. Verified live: an empty direct-push commit was rejected with `Required status check "test" is expected`. This is the mechanism that was missing when #140 regressed silently after #49.
@@ -116,7 +116,7 @@ Six roadmap items conflict with hard constraints and are parked pending decision
 
 ## 3. Known issues
 
-- **Confluence-parity audit, 2026-08-17: 14 gaps, 4 of them previously unreported. Filed as #347–#360; #347, #348, and #350 are shipped.** `docs/20260817-jotter-confluence-parity-audit.md`, tracked in `BACKLOG.md` → "Confluence-parity gaps". Thirteen gaps became issues; realtime editing did not, because it is decision C1 resolved (`docs/decisions.md`) and reopening it needs a superseding entry rather than a PR. **#347 membership role enforcement** makes `viewer` read-only across API mutation routes and WebDAV writes, while `owner`/`admin`/`editor` retain write access; GrandpaSSOn service tokens additionally require the `kb:write` scope and workspace audience. **#348 generic OIDC SSO** is shipped as an opt-in authorization-code + PKCE provider with stable `iss|sub` identities and no implicit membership. **#350 note trash is shipped in PR #363; #349 and #359 remain unblocked.** Also unreported before: no PDF/Word export and public sharing only at whole-workspace granularity.
+- **Confluence-parity audit, 2026-08-17: 14 gaps, 4 of them previously unreported. Filed as #347–#360; #347, #348, and #350 are shipped.** `docs/20260817-jotter-confluence-parity-audit.md`, tracked in `BACKLOG.md` → "Confluence-parity gaps". Thirteen gaps became issues; realtime editing did not, because it is decision C1 resolved (`docs/decisions.md`) and reopening it needs a superseding entry rather than a PR. **#347 membership role enforcement** makes `viewer` read-only across API mutation routes and WebDAV writes, while `owner`/`admin`/`editor` retain write access; GrandpaSSOn service tokens additionally require the `kb:write` scope and workspace audience. **#348 generic OIDC SSO** is shipped as an opt-in authorization-code + PKCE provider with stable `iss|sub` identities and no implicit membership. **#350 note trash is shipped in PR #363; #349 implementation is complete on the isolated branch and awaits integration.** Also unreported before: no PDF/Word export and public sharing only at whole-workspace granularity.
 
 **As of 2026-07-30: zero open issues.** Three audit passes ran back-to-back and every finding across all three is closed and merged to `main`. (Superseded by the 2026-08-17 audit above — that line describes the state on its own date, not today's.)
 

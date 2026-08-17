@@ -56,7 +56,18 @@ final class WorkspacePublishController extends Controller
             'dark' => __('messages.theme_dark'),
         ];
 
-        $notes = Note::query()->where('workspace_id', $workspaceId)->orderBy('path')->get();
+        // Public output is deliberately stricter than an authenticated admin view:
+        // restricted notes never become public by accident. Explicit public sharing
+        // is reserved for the separate per-note publishing contract.
+        $notes = Note::query()
+            ->where('workspace_id', $workspaceId)
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('note_acl_entries')
+                    ->whereColumn('note_acl_entries.note_id', 'notes.id');
+            })
+            ->orderBy('path')
+            ->get();
         $publishedCount = 0;
         $publishedPages = [];
 

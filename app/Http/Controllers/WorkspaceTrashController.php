@@ -2,20 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Domain\Vault\Exceptions\TrashRestoreConflict;
 use App\Domain\Vault\NoteTrash;
 use App\Models\Note;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 final class WorkspaceTrashController extends Controller
 {
-    public function __construct(private readonly NoteTrash $trash) {}
+    public function __construct(
+        private readonly NoteTrash $trash,
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
+    ) {}
 
-    public function index(Workspace $workspace): JsonResponse
+    public function index(Request $request, Workspace $workspace): JsonResponse
     {
-        $data = $workspace->notes()
-            ->onlyTrashed()
+        $subject = $request->attributes->get('authenticated_subject')
+            ?? $this->identityProvider->resolveIdentity($request);
+        if (! $subject) {
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
+        }
+        $data = $this->noteAccess->scopeVisible($workspace->notes()->onlyTrashed()->getQuery(), $subject, $workspace->id)
             ->orderByDesc('deleted_at')
             ->get()
             ->map(fn (Note $note): array => $this->trashMetadata($note))
@@ -24,9 +35,10 @@ final class WorkspaceTrashController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    public function restore(Workspace $workspace, int $note): JsonResponse
+    public function restore(Request $request, Workspace $workspace, int $note): JsonResponse
     {
         $note = $this->trashedNote($workspace, $note);
+        $this->noteAccess->assertEdit($this->subject($request), $note);
 
         try {
             $restored = $this->trash->restore($workspace, $note);
@@ -47,9 +59,10 @@ final class WorkspaceTrashController extends Controller
         ]);
     }
 
-    public function destroy(Workspace $workspace, int $note): JsonResponse
+    public function destroy(Request $request, Workspace $workspace, int $note): JsonResponse
     {
         $note = $this->trashedNote($workspace, $note);
+        $this->noteAccess->assertEdit($this->subject($request), $note);
         $this->trash->permanentlyDelete($workspace, $note);
 
         return response()->json(status: 204);
@@ -60,6 +73,12 @@ final class WorkspaceTrashController extends Controller
         return Note::onlyTrashed()
             ->where('workspace_id', $workspace->id)
             ->findOrFail($noteId);
+    }
+
+    private function subject(Request $request): \App\Domain\Auth\AuthenticatedSubject
+    {
+        return $request->attributes->get('authenticated_subject')
+            ?? $this->identityProvider->resolveIdentity($request);
     }
 
     /**

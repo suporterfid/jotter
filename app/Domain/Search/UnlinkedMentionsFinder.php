@@ -2,6 +2,8 @@
 
 namespace App\Domain\Search;
 
+use App\Domain\Auth\AuthenticatedSubject;
+use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
 use App\Models\NoteLink;
 use App\Models\Workspace;
@@ -21,8 +23,11 @@ final class UnlinkedMentionsFinder
     /**
      * @return list<array{id: int, path: string, title: string, matched_phrase: string, snippet: string}>
      */
-    public function find(Workspace $workspace, Note $target): array
+    public function find(Workspace $workspace, Note $target, ?AuthenticatedSubject $subject = null): array
     {
+        if ($subject !== null) {
+            app(NoteAccess::class)->assertView($subject, $target);
+        }
         $phrases = $this->candidatePhrases($target);
         if ($phrases === []) {
             return [];
@@ -43,7 +48,13 @@ final class UnlinkedMentionsFinder
                     $query->orWhere('title', 'LIKE', '%'.$this->escapeLike($phrase).'%')
                         ->orWhere('search_content', 'LIKE', '%'.$this->escapeLike($phrase).'%');
                 }
-            })
+            });
+
+        if ($subject !== null) {
+            app(NoteAccess::class)->scopeVisible($candidates, $subject, $workspace->id);
+        }
+
+        $candidates = $candidates
             ->limit(self::RESULT_LIMIT)
             ->get(['id', 'path', 'title', 'search_content']);
 

@@ -2,6 +2,8 @@
 
 namespace App\Domain\Search;
 
+use App\Domain\Auth\AuthenticatedSubject;
+use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
 use App\Models\Workspace;
 
@@ -14,13 +16,16 @@ final class WorkspaceSearch
     /**
      * @return list<array{id: int, path: string, title: string, snippet: string, relevance: float}>
      */
-    public function search(Workspace $workspace, SearchCriteria|string $criteria): array
+    public function search(Workspace $workspace, SearchCriteria|string $criteria, ?AuthenticatedSubject $subject = null): array
     {
         if (is_string($criteria)) {
             $criteria = new SearchCriteria(query: $criteria);
         }
 
         $builder = Note::query()->where('notes.workspace_id', $workspace->id);
+        if ($subject !== null) {
+            $builder = app(NoteAccess::class)->scopeVisible($builder, $subject, $workspace->id);
+        }
 
         if ($criteria->query !== null && $criteria->query !== '') {
             $match = 'MATCH(notes.title, notes.search_content) AGAINST (? IN NATURAL LANGUAGE MODE)';

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
 use App\Models\NoteLink;
 use App\Models\Workspace;
@@ -12,7 +13,8 @@ use Illuminate\Http\Request;
 final class WorkspaceLinkReportController extends Controller
 {
     public function __construct(
-        private readonly IdentityProvider $identityProvider
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
     ) {}
 
     public function report(Request $request, int $workspaceId): JsonResponse
@@ -32,7 +34,7 @@ final class WorkspaceLinkReportController extends Controller
         }
 
         // 1. Broken Links: note_links with target_note_id IS NULL
-        $workspaceNoteIds = Note::query()->where('workspace_id', $workspaceId)->pluck('id');
+        $workspaceNoteIds = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)->pluck('id');
 
         $brokenLinkRows = NoteLink::query()
             ->whereIn('source_note_id', $workspaceNoteIds)
@@ -68,8 +70,7 @@ final class WorkspaceLinkReportController extends Controller
             ->pluck('target_note_id')
             ->unique();
 
-        $orphans = Note::query()
-            ->where('workspace_id', $workspaceId)
+        $orphans = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)
             ->whereNotIn('id', $linkedTargetNoteIds)
             ->get(['id', 'path', 'title']);
 

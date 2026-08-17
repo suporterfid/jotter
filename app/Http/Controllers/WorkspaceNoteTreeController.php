@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Auth\AuthenticatedSubject;
+use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Models\FolderPosition;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +14,11 @@ use Illuminate\Validation\ValidationException;
 
 final class WorkspaceNoteTreeController extends Controller
 {
+    public function __construct(
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
+    ) {}
+
     public function index(Workspace $workspace): JsonResponse
     {
         return response()->json([
@@ -35,7 +43,11 @@ final class WorkspaceNoteTreeController extends Controller
         ]);
 
         $folderPath = trim($validated['folder_path'], '/');
-        $children = $this->directChildren($workspace, $folderPath);
+        $subject = $this->subject($request);
+        if (! $subject) {
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
+        }
+        $children = $this->directChildren($workspace, $folderPath, $subject);
 
         $submittedNoteIds = collect($validated['items'])
             ->where('type', 'note')->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
@@ -72,13 +84,13 @@ final class WorkspaceNoteTreeController extends Controller
     /**
      * @return array{note_ids: array<int>, folder_paths: array<string>}
      */
-    private function directChildren(Workspace $workspace, string $folderPath): array
+    private function directChildren(Workspace $workspace, string $folderPath, AuthenticatedSubject $subject): array
     {
         $prefix = $folderPath === '' ? '' : $folderPath.'/';
         $noteIds = [];
         $folderPaths = [];
 
-        foreach ($workspace->notes()->get(['id', 'path']) as $note) {
+        foreach ($this->visibleNotes($workspace, $subject)->get(['id', 'path']) as $note) {
             if ($prefix !== '' && ! str_starts_with($note->path, $prefix)) {
                 continue;
             }
@@ -94,5 +106,16 @@ final class WorkspaceNoteTreeController extends Controller
         }
 
         return ['note_ids' => $noteIds, 'folder_paths' => array_keys($folderPaths)];
+    }
+
+    private function visibleNotes(Workspace $workspace, AuthenticatedSubject $subject)
+    {
+        return $this->noteAccess->scopeVisible($workspace->notes()->getQuery(), $subject, $workspace->id);
+    }
+
+    private function subject(Request $request): ?AuthenticatedSubject
+    {
+        return $request->attributes->get('authenticated_subject')
+            ?? $this->identityProvider->resolveIdentity($request);
     }
 }

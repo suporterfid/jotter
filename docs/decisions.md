@@ -69,6 +69,23 @@ Full phased breakdown, risks, and non-goals: `docs/20260805-jotter-wysiwyg-edito
 
 ---
 
-## Adding a new decision
+## Decision — Note-level ACL inheritance and application boundary (Issue #349)
+
+**Decided 2026-08-17:** add Confluence-style restrictions as MySQL application state. A note with no ACL entries inherits the workspace authorization; adding the first entry restricts the note to matching principals. The first release applies the rule to the note itself only: folder ancestry does not implicitly grant or revoke access, including after a note is moved or restored from trash.
+
+### Selected contract
+
+- ACL entries grant `view` or `edit` to a local user or a workspace-scoped group. `edit` implies `view`.
+- Global administrators and workspace `owner`/`admin` members bypass note restrictions. Workspace `editor` and `viewer` members do not bypass a restriction without a matching grant.
+- ACL and group-management operations are limited to global administrators and workspace `owner`/`admin` members. Hidden notes use not-found behavior so their existence is not disclosed.
+- Service tokens have no local user principal and can read only unrestricted notes within their existing workspace audience until a service-principal ACL contract exists.
+- Public publishing excludes all restricted notes by default. Explicit public sharing remains a separate decision and issue (#355).
+- ACLs are never serialized into front matter, Markdown, exports, or vault filenames.
+
+### Rejected alternatives and boundary
+
+Front-matter ACLs were rejected because permissions are application state and must not alter the Markdown-on-disk source of truth. Folder-descendant inheritance was rejected for this release because path moves and raw filesystem edits would make the effective policy ambiguous; a future hierarchy decision can supersede this entry. Letting every workspace editor bypass restrictions was rejected because it defeats the purpose of per-note restriction. Publishing restricted notes was rejected because a public projection cannot safely infer a viewer's grants.
+
+These controls protect Jotter application surfaces backed by the MySQL index. A user with direct filesystem access to the vault can bypass them, as can a raw WebDAV/filesystem client that bypasses Jotter's authorized endpoints; deployment and hosting permissions must protect the vault root separately.
 
 Append a new dated `##` section below this line, in the same format: the question being decided, the options considered, and the choice made with its rationale. Do not edit a resolved decision's original entry — supersede it with a new one that references the old.

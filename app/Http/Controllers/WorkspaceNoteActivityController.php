@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Models\AuditLog;
 use App\Models\Note;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +12,8 @@ use Illuminate\Http\Request;
 final class WorkspaceNoteActivityController extends Controller
 {
     public function __construct(
-        private readonly IdentityProvider $identityProvider
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
     ) {}
 
     public function index(Request $request, int $workspaceId, int $noteId): JsonResponse
@@ -29,6 +31,7 @@ final class WorkspaceNoteActivityController extends Controller
         if (! $note) {
             return response()->json(['message' => __('messages.note_not_found')], 404);
         }
+        $this->noteAccess->assertView($subject, $note);
 
         $logs = AuditLog::query()
             ->where('note_id', $noteId)

@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\VaultPathGuard;
 use App\Domain\Vault\VaultStorage;
 use App\Models\Workspace;
+use App\Models\Note;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,6 +21,7 @@ final class WebDavController extends Controller
         private readonly IdentityProvider $identityProvider,
         private readonly VaultPathGuard $pathGuard,
         private readonly VaultStorage $storage,
+        private readonly NoteAccess $noteAccess,
         private readonly AuditRecorder $auditRecorder = new AuditRecorder,
     ) {}
 
@@ -57,6 +60,18 @@ final class WebDavController extends Controller
         }
 
         $targetPath = trim($path ?? '', '/');
+
+        $note = $targetPath === '' ? null : Note::query()
+            ->where('workspace_id', $workspaceId)
+            ->where('path', $targetPath)
+            ->first();
+        if ($note !== null) {
+            if (in_array($method, ['GET', 'PROPFIND'], true)) {
+                $this->noteAccess->assertView($subject, $note);
+            } elseif (in_array($method, ['PUT', 'DELETE'], true)) {
+                $this->noteAccess->assertEdit($subject, $note);
+            }
+        }
 
         try {
             $fullPath = $targetPath === ''

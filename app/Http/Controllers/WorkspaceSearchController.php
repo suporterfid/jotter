@@ -48,7 +48,7 @@ final class WorkspaceSearchController extends Controller
         }
 
         return response()->json([
-            'data' => $search->search($workspace, $criteria),
+            'data' => $search->search($workspace, $criteria, $request->attributes->get('authenticated_subject')),
         ]);
     }
 }

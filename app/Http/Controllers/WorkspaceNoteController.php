@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Auth\AuthenticatedSubject;
+use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\Exceptions\VaultNoteNotFound;
 use App\Domain\Vault\NoteTrash;
@@ -14,13 +17,23 @@ use Illuminate\Validation\ValidationException;
 
 final class WorkspaceNoteController extends Controller
 {
-    public function index(Workspace $workspace): JsonResponse
+    public function __construct(
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
+    ) {}
+
+    public function index(Request $request, Workspace $workspace): JsonResponse
     {
+        $subject = $this->subject($request);
+        if (! $subject) {
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
+        }
+
         return response()->json([
-            'data' => $workspace->notes()
+            'data' => $this->noteAccess->scopeVisible($workspace->notes()->getQuery(), $subject, $workspace->id)
                 ->orderBy('path')
                 ->get()
-                ->map(fn (Note $note): array => $this->metadata($note))
+                ->map(fn (Note $note): array => $this->metadata($note, $subject))
                 ->all(),
         ]);
     }
@@ -38,12 +51,14 @@ final class WorkspaceNoteController extends Controller
             throw ValidationException::withMessages(['path' => [$exception->getMessage()]]);
         }
 
-        return response()->json(['data' => $this->metadata($note)], 201);
+        return response()->json(['data' => $this->metadata($note, $this->subject($request))], 201);
     }
 
-    public function show(Workspace $workspace, int $note, VaultStorage $storage, \App\Domain\Vault\MarkdownServerRenderer $renderer): JsonResponse
+    public function show(Request $request, Workspace $workspace, int $note, VaultStorage $storage, \App\Domain\Vault\MarkdownServerRenderer $renderer): JsonResponse
     {
+        $subject = $this->subject($request);
         $note = $this->scopedNote($workspace, $note);
+        $this->noteAccess->assertView($subject, $note);
 
         try {
             $content = $storage->readContents($workspace, $note->path);
@@ -54,7 +69,7 @@ final class WorkspaceNoteController extends Controller
         $backlinks = $note->incomingLinks()
             ->with('sourceNote')
             ->get()
-            ->filter(fn ($link) => $link->sourceNote !== null)
+            ->filter(fn ($link) => $link->sourceNote !== null && $this->noteAccess->canView($subject, $link->sourceNote))
             ->map(fn ($link) => [
                 'id' => $link->sourceNote->id,
                 'path' => $link->sourceNote->path,
@@ -66,7 +81,7 @@ final class WorkspaceNoteController extends Controller
             ->all();
 
         return response()->json([
-            'data' => array_merge($this->metadata($note), [
+            'data' => array_merge($this->metadata($note, $subject), [
                 'content' => $content,
                 'html_rendered' => $renderer->render($content),
                 'backlinks' => $backlinks,
@@ -80,15 +95,17 @@ final class WorkspaceNoteController extends Controller
             'content' => ['present', 'string'],
         ]);
         $note = $this->scopedNote($workspace, $note);
+        $this->noteAccess->assertEdit($this->subject($request), $note);
 
         return response()->json([
-            'data' => $this->metadata($storage->write($workspace, $note->path, $validated['content'])),
+            'data' => $this->metadata($storage->write($workspace, $note->path, $validated['content']), $this->subject($request)),
         ]);
     }
 
-    public function destroy(Workspace $workspace, int $note, NoteTrash $trash): JsonResponse
+    public function destroy(Request $request, Workspace $workspace, int $note, NoteTrash $trash): JsonResponse
     {
         $note = $this->scopedNote($workspace, $note);
+        $this->noteAccess->assertEdit($this->subject($request), $note);
 
         try {
             $trash->trash($workspace, $note);
@@ -106,6 +123,7 @@ final class WorkspaceNoteController extends Controller
         ]);
 
         $note = $this->scopedNote($workspace, $note);
+        $this->noteAccess->assertEdit($this->subject($request), $note);
 
         try {
             $movedNote = $storage->move($workspace, $note->path, $validated['new_path']);
@@ -114,18 +132,21 @@ final class WorkspaceNoteController extends Controller
         }
 
         return response()->json([
-            'data' => $this->metadata($movedNote),
+            'data' => $this->metadata($movedNote, $this->subject($request)),
         ]);
     }
 
-    public function outgoingLinks(Workspace $workspace, int $note): JsonResponse
+    public function outgoingLinks(Request $request, Workspace $workspace, int $note): JsonResponse
     {
+        $subject = $this->subject($request);
         $note = $this->scopedNote($workspace, $note);
+        $this->noteAccess->assertView($subject, $note);
 
         $links = $note->outgoingLinks()
             ->where('type', 'wikilink')
             ->with('targetNote')
             ->get()
+            ->filter(fn ($link) => $link->targetNote === null || $this->noteAccess->canView($subject, $link->targetNote))
             ->map(fn ($link) => [
                 'id' => $link->targetNote?->id,
                 'path' => $link->targetNote?->path,
@@ -145,10 +166,16 @@ final class WorkspaceNoteController extends Controller
         return $workspace->notes()->findOrFail($noteId);
     }
 
+    private function subject(Request $request): AuthenticatedSubject
+    {
+        return $request->attributes->get('authenticated_subject')
+            ?? $this->identityProvider->resolveIdentity($request);
+    }
+
     /**
      * @return array{id: int, path: string, title: string, frontmatter: array<string, mixed>|null, updated_at: string}
      */
-    private function metadata(Note $note): array
+    private function metadata(Note $note, ?AuthenticatedSubject $subject = null): array
     {
         $note->loadMissing('properties');
         $properties = $note->properties->map(fn ($p) => [
@@ -171,6 +198,11 @@ final class WorkspaceNoteController extends Controller
             'properties' => $properties,
             'sort_position' => $note->sort_position,
             'updated_at' => $note->updated_at->toISOString(),
+            'access' => $subject === null ? null : [
+                'restricted' => $this->noteAccess->isRestricted($note),
+                'can_view' => $this->noteAccess->canView($subject, $note),
+                'can_edit' => $this->noteAccess->canEdit($subject, $note),
+            ],
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,8 @@ use ZipArchive;
 final class WorkspaceExportController extends Controller
 {
     public function __construct(
-        private readonly IdentityProvider $identityProvider
+        private readonly IdentityProvider $identityProvider,
+        private readonly NoteAccess $noteAccess,
     ) {}
 
     public function export(Request $request, int $workspaceId): JsonResponse|BinaryFileResponse
@@ -38,7 +40,7 @@ final class WorkspaceExportController extends Controller
         }
 
         if ($request->query('format') === 'json') {
-            $notes = Note::query()->where('workspace_id', $workspaceId)->get();
+            $notes = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)->get();
             $pathGuard = new \App\Domain\Vault\VaultPathGuard();
             $exportedNotes = [];
             foreach ($notes as $note) {
@@ -68,7 +70,7 @@ final class WorkspaceExportController extends Controller
             return response()->json(['message' => __('messages.failed_to_create_export_zip')], 500);
         }
 
-        $notes = Note::query()->where('workspace_id', $workspaceId)->get();
+        $notes = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)->get();
         $hasFiles = false;
 
         $pathGuard = new \App\Domain\Vault\VaultPathGuard();

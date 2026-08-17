@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\NoteAccess;
 use App\Domain\Templates\TemplateEngine;
 use App\Domain\Vault\VaultPathGuard;
 use App\Domain\Vault\VaultStorage;
@@ -18,7 +19,8 @@ final class WorkspaceTemplateController extends Controller
         private readonly IdentityProvider $identityProvider,
         private readonly VaultStorage $vaultStorage,
         private readonly VaultPathGuard $pathGuard,
-        private readonly TemplateEngine $templateEngine
+        private readonly TemplateEngine $templateEngine,
+        private readonly NoteAccess $noteAccess,
     ) {}
 
     public function createFromTemplate(Request $request, int $workspaceId): JsonResponse
@@ -48,6 +50,14 @@ final class WorkspaceTemplateController extends Controller
 
         if (! $this->vaultStorage->exists($workspace, $templatePath)) {
             return response()->json(['message' => __('messages.template_note_not_found', ['path' => $templatePath])], 404);
+        }
+
+        $templateNote = Note::query()
+            ->where('workspace_id', $workspaceId)
+            ->where('path', $templatePath)
+            ->first();
+        if ($templateNote) {
+            $this->noteAccess->assertView($subject, $templateNote);
         }
 
         $rawTemplate = $this->vaultStorage->readContents($workspace, $templatePath);
@@ -99,6 +109,7 @@ final class WorkspaceTemplateController extends Controller
         // If daily note already exists, return existing note
         $existing = Note::query()->where('workspace_id', $workspaceId)->where('path', $relativePath)->first();
         if ($existing) {
+            $this->noteAccess->assertView($subject, $existing);
             return response()->json(['data' => $existing]);
         }
 
