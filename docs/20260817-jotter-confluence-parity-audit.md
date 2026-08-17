@@ -46,26 +46,37 @@ recursos "essenciais" de um Confluence:
 - Paridade de UI com Obsidian: outline, hover preview, transclusão,
   grafo local, abas
 
-**Entregue depois da última atualização de `STATUS.md` (2026-08-05) e
-ausente do comparativo original** — 65 commits até `dcda766`:
+**Entregue depois da última atualização de `STATUS.md` e ausente do
+comparativo original** — 65 commits entre `cfa0667` e `dcda766`:
 
 - **i18n completo** com locales `en` e `pt-BR`, preferência de idioma
-  persistida por usuário (`2026_08_06_000000_add_locale_to_users_table.php`,
-  `UserLocaleController`, `frontend/src/i18n/`)
+  persistida por usuário e propagada por toda a SPA e pelas mensagens de
+  resposta dos controllers (`2026_08_06_000000_add_locale_to_users_table.php`,
+  `UserLocaleController`, `SetLocaleFromSubject`, `frontend/src/i18n/`)
 - **Suporte a RTL** com layout lógico em editor, painéis, árvore de
-  notas e coleções
-- Controles de tema no site publicado e fontes empacotadas no output
-  estático (`WorkspacePublishController`)
-- Verificação de segurança do artefato de release (scan de segredos no
-  ZIP antes do upload)
+  notas, navegação e coleções, coberto por testes de pseudo-locale
+- **Identidade visual canônica** com contrato de tokens semânticos e
+  preferência `light`/`dark`/`system`, aplicada à SPA e a todas as
+  páginas públicas geradas
+  (`docs/superpowers/specs/2026-08-10-jotter-canonical-identity-design.md`)
+- Fontes empacotadas no output estático com manifesto e fallback
+  (`WorkspacePublishController`)
+- Verificação de segurança do artefato de release — scan de segredos e
+  chaves privadas no ZIP antes do upload (`jt release:verify`,
+  `scripts/jt.sh:118`)
+- Isolamento de testes por worktree e limpeza dos warnings da suíte
+  frontend
 
-> Nota de processo: `STATUS.md` se declara "authoritative current state"
-> mas está 65 commits atrás do `main`. `AGENTS.md` ainda diz "Do not
-> begin v1 work" enquanto `README.md` e `STATUS.md` dizem que v1 está em
-> andamento. O `README.md` também aponta três links de documentação para
-> `file:///home/ubuntu/...`, caminhos da máquina de quem escreveu. Esse
+> Nota de processo (**corrigida neste mesmo PR**): `STATUS.md` se declarava
+> "authoritative current state" mas estava 65 commits atrás do `main` — seu
+> cabeçalho "Last Updated" dizia 2026-08-05 e o último commit que tocou o
+> arquivo é de 2026-08-06 (`cfa0667`). `AGENTS.md` ainda dizia "Do not
+> begin v1 work" enquanto `README.md` e `STATUS.md` diziam que v1 está em
+> andamento. `README.md` e `docs/architecture.md` também apontavam cinco
+> links de documentação para `file:///home/ubuntu/...`, caminhos da
+> máquina de quem escreveu, quebrados para qualquer outro leitor. Esse
 > descompasso é a razão pela qual o comparativo original subestimou o
-> produto — vale corrigir antes da próxima avaliação externa.
+> produto.
 
 ---
 
@@ -75,7 +86,7 @@ Ordenadas por prioridade recomendada (§4), não por tema.
 
 | # | Lacuna | Situação atual (evidência) | O que precisa ser feito | Esforço |
 | :-- | :-- | :-- | :-- | :-- |
-| 1 | **Papéis de membership não são aplicados** | `AdminMembershipController::ALLOWED_ROLES` define `owner`/`admin`/`editor`/`viewer`, mas `LocalIdentityProvider::isAuthorizedForWorkspace()` (`:170`) só verifica *se existe* membership — o campo `role` não é lido em lugar nenhum fora do controller de administração. Na prática um `viewer` escreve e apaga como um `owner`. | Aplicar o papel nos endpoints mutantes: ou uma verificação de capacidade no `AuthorizeWorkspaceAccess`, ou estender o contrato `IdentityProvider` com algo como `canWriteWorkspace()`. Sem isso, "somente leitura" não existe. | M |
+| 1 | **Papéis de membership não são aplicados** | `AdminMembershipController::ALLOWED_ROLES` (`:16`) define `owner`/`admin`/`editor`/`viewer`, mas `LocalIdentityProvider::isAuthorizedForWorkspace()` (`:170`) só verifica *se existe* membership. Em todo o `app/`, a string `role` aparece exatamente em dois lugares: o `$fillable` de `Membership.php:14` e o próprio `AdminMembershipController` — ou seja, o papel é gravado e editado, e nunca lido para decidir uma autorização. Na prática um `viewer` escreve e apaga como um `owner`. | Aplicar o papel nos endpoints mutantes: ou uma verificação de capacidade no `AuthorizeWorkspaceAccess`, ou estender o contrato `IdentityProvider` com algo como `canWriteWorkspace()`. Sem isso, "somente leitura" não existe. | M |
 | 2 | **SSO corporativo padrão** | Só há `LocalIdentityProvider` e `GrandpaSSOnIdentityProvider` (adaptador específico que consulta as tabelas do GrandpaSSOn por PDO cru). Não há SAML2 nem OIDC. | Implementar um `IdentityProvider` OIDC genérico (Google Workspace, Entra ID, Okta). A abstração já existe e é boa; falta o adaptador. OIDC antes de SAML: fluxo redirect-based cabe em hosting compartilhado sem daemon. | L |
 | 3 | **Permissões por página** | A autorização é por workspace (`AuthorizeWorkspaceAccess`); não há equivalente ao "Restrict" do Confluence. O próprio contrato `IdentityProvider` só expõe granularidade de workspace/tenant. | ACL por nota (leitura/edição restrita a usuários ou grupos). Depende de #1 — restringir uma página não significa nada enquanto todo membro tem acesso total. | L |
 | 4 | **Sem lixeira / restauração de exclusão** | Nenhuma tabela usa `deleted_at`; não há `SoftDeletes` em `app/Models/`. A exclusão de nota é imediata e definitiva. `note_revisions` guarda versões, não notas apagadas. | Soft delete com lixeira por workspace e expurgo programado (o comando `audit:prune` já é um precedente de retenção rodável por cron). | S–M |

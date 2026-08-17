@@ -1,7 +1,7 @@
 # Jotter — Project Status
 
 - **Current Version:** v0.9.0 (v0 spec contracts complete; v1 work in progress)
-- **Last Updated:** 2026-08-05 (Live surface selection formatting toolbar — Bold/Italic/Strike/Code)
+- **Last Updated:** 2026-08-17 (localization/RTL, canonical visual identity, and release-artifact verification recorded — see §1.1)
 - **Repo:** https://github.com/suporterfid/jotter
 - **Production Site:** https://hub.taskconnect.com.br/
 - **CI Status:** 🟢 Green on `main`. #140 and #142 fixed via PR #144, merged and confirmed on two green GitHub Actions runs, both issues closed. **`main` is now branch-protected** (#148): the `test` CI job is a required status check, `enforce_admins` is on, force-pushes and deletions are disabled — direct pushes and merges without green CI are rejected by GitHub. Verified live: an empty direct-push commit was rejected with `Required status check "test" is expected`. This is the mechanism that was missing when #140 regressed silently after #49.
@@ -84,6 +84,21 @@
 
 ---
 
+## 1.1 Delivered 2026-08-06 → 2026-08-10
+
+This file previously ended at the 2026-08-05 formatting toolbar while 65 commits had landed on `main` (`cfa0667..dcda766`). Recorded here after the 2026-08-17 Confluence-parity audit found the gap (`docs/20260817-jotter-confluence-parity-audit.md` §1).
+
+- **Localization (i18n) — `en` and `pt-BR`, end to end.** `locale` column on `users` (`2026_08_06_000000`), `SetLocaleFromSubject` middleware applying the authenticated subject's locale per request, `POST /api/user/locale` (`UserLocaleController`) proxying GrandpaSSOn for SSO subjects, `/auth/me` returning the locale, `lang/` scaffolded with every controller response message localized, and `vue-i18n` bootstrapped in the SPA with a `LocaleToggle` and `useLocale` composable. Every SPA component was converted — no hardcoded user-facing strings remain.
+- **RTL support.** Logical-property layout across the editor, both editing surfaces, metadata panels, navigation, note tree, collections, and Markdown preview; direction-safe comment/activity/card metadata. Covered by direction and pseudo-locale tests.
+- **Canonical visual identity.** Shared semantic token contract with exact light/dark values and `light`/`dark`/`system` preference behavior, applied to the SPA shell and to every generated public publishing/share page, replacing the legacy black/purple public theme. Spec: `docs/superpowers/specs/2026-08-10-jotter-canonical-identity-design.md`. Brand assets under `assets/brand/` are unchanged and remain Jotter-owned. Includes an a11y test for the theme preference control.
+- **Published-site fonts.** Editorial and mono fonts bundled into the static output behind a font manifest, with a covered fallback path when a font is missing.
+- **Release artifact verification.** `jt release:verify` scans an existing release ZIP for secrets and private keys; CI verifies the artifact before upload, and the release target validates the ZIP before publishing.
+- **Developer loop.** Test Compose projects isolated per worktree (so parallel worktrees no longer collide), testing schema reset before the suite, PowerShell bootstrap secret generation, dependency bootstrap ordered before the storage link, and a stabilized authenticated Playwright suite.
+- **Test hygiene.** Frontend suite runs warning-free — shared drawer teleport target, mocked mounted panel data, and Teleport/notification mock warnings removed.
+- **Fixes.** Wikilinks anchored at inline start in the editor; collection and outline content aligned under RTL.
+
+---
+
 ## 2. Position against the product roadmap
 
 `docs/20260727-jotter-roadmap-ai-agent.md` ranks twelve near-term priorities. **Five of its top six already ship here** — search, nested folders, tags, backlinks, and attachments. Its gap analysis says otherwise because its baseline describes a different product (offline-first, Material You, realtime collaboration); spec §14.1 records this and §14.3 carries the authoritative delivered-state table.
@@ -101,7 +116,9 @@ Six roadmap items conflict with hard constraints and are parked pending decision
 
 ## 3. Known issues
 
-**As of 2026-07-30: zero open issues.** Three audit passes ran back-to-back and every finding across all three is closed and merged to `main`:
+- **Confluence-parity audit, 2026-08-17: 14 gaps, 4 of them previously unreported.** `docs/20260817-jotter-confluence-parity-audit.md` — diagnosis only, no issues filed yet. The finding that outranks the rest: **membership roles are stored but never enforced.** `AdminMembershipController::ALLOWED_ROLES` defines `owner`/`admin`/`editor`/`viewer`, but `LocalIdentityProvider::isAuthorizedForWorkspace()` (`:170`) only checks that a membership row exists — across all of `app/`, `role` appears solely in `Membership.php`'s `$fillable` and in the admin controller that writes it. A `viewer` can write and delete like an `owner`, so workspace read-only access does not exist in enforcement. The audit ranks this ahead of SSO and treats it as a prerequisite for page-level ACLs. Also unreported before: no soft delete/trash (note deletion is immediate and unrecoverable), no PDF/Word export, and public sharing only at whole-workspace granularity.
+
+**As of 2026-07-30: zero open issues.** Three audit passes ran back-to-back and every finding across all three is closed and merged to `main`. (Superseded by the 2026-08-17 audit above — that line describes the state on its own date, not today's.)
 
 - ~~**Full audit, 2026-07-29** — document coherence, spec-vs-code gaps, Obsidian compatibility.~~ **Closed.** 15 findings (2 critical, 2 high, 1 medium, 2 low), 9 issues filed and fixed: **#201** README stale (claimed PR5 when PR200+ was merged), **#202** `%%comment%%` leaked into rendered SPA/published output, **#203** `.excalidraw.md` files indexed as broken notes, **#204** front-matter `aliases:` not resolved for wikilinks, **#205** `^block-id`/`[[note#^block]]` block references unsupported, **#206** LaTeX/Mermaid unsupported (shipped as an opt-in, off-by-default hydration flag), **#207** dataview/Tasks-plugin degradation unverified (verified safe; surfaced #216 rather than being folded into the verification task), **#216** server-rendered HTML missing GFM task-list checkboxes, **#208** `BACKLOG.md` overloaded with six roles (split into `CHANGELOG.md`, `docs/decisions.md`, `docs/security-audit-2026.md`, `docs/visual-identity.md`). Report: `docs/20260729-jotter-audit.md`.
 - ~~**Follow-up audit, 2026-07-29** — independently re-verified all 9 findings above were actually fixed in code, not just closed on GitHub.~~ **Closed.** All 9 confirmed fixed; no regressions. Surfaced 3 new low-priority gaps, all fixed: **#220** note rename/move didn't rewrite inbound `[[wikilinks]]` on disk in other notes, **#221** no "unlinked mentions" feature (notes mentioning a title/alias without an explicit link), **#222** no outgoing-links API/UI (only backlinks were exposed). Report: `docs/20260729-jotter-audit-followup.md`.
