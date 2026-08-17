@@ -15,6 +15,11 @@ final class GrandpaSSOnServiceTokenAuthorizationTest extends TestCase
 
     private function serviceSubject(array $audiences): AuthenticatedSubject
     {
+        return $this->serviceSubjectWithScopes($audiences, ['kb:read', 'kb:write']);
+    }
+
+    private function serviceSubjectWithScopes(array $audiences, array $scopes): AuthenticatedSubject
+    {
         return new AuthenticatedSubject(
             subjectId: 'service:svc-acme-integration',
             email: '',
@@ -23,7 +28,7 @@ final class GrandpaSSOnServiceTokenAuthorizationTest extends TestCase
             user: null,
             attributes: [
                 'auth_method' => 'grandpasson_service_token',
-                'scopes' => ['kb:read', 'kb:write'],
+                'scopes' => $scopes,
                 'audiences' => $audiences,
             ],
         );
@@ -43,6 +48,30 @@ final class GrandpaSSOnServiceTokenAuthorizationTest extends TestCase
         $subject = $this->serviceSubject(['workspace/7']);
 
         $this->assertFalse($provider->isAuthorizedForWorkspace($subject, 8));
+    }
+
+    public function test_read_only_service_token_cannot_write_a_workspace(): void
+    {
+        $provider = new GrandpaSSOnIdentityProvider();
+        $subject = $this->serviceSubjectWithScopes(['workspace/7'], ['kb:read']);
+
+        $this->assertFalse($provider->canWriteWorkspace($subject, 7));
+    }
+
+    public function test_write_service_token_can_write_a_workspace_in_the_audience(): void
+    {
+        $provider = new GrandpaSSOnIdentityProvider();
+        $subject = $this->serviceSubject(['workspace/7']);
+
+        $this->assertTrue($provider->canWriteWorkspace($subject, 7));
+    }
+
+    public function test_write_service_token_cannot_write_a_workspace_outside_the_audience(): void
+    {
+        $provider = new GrandpaSSOnIdentityProvider();
+        $subject = $this->serviceSubject(['workspace/7']);
+
+        $this->assertFalse($provider->canWriteWorkspace($subject, 8));
     }
 
     public function test_accessible_workspace_ids_are_parsed_from_every_audience(): void

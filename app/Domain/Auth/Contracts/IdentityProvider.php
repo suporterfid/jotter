@@ -31,6 +31,11 @@ interface IdentityProvider
     public function isAuthorizedForWorkspace(AuthenticatedSubject $subject, int $workspaceId): bool;
 
     /**
+     * Determine whether the given subject may mutate shared workspace content.
+     */
+    public function canWriteWorkspace(AuthenticatedSubject $subject, int $workspaceId): bool;
+
+    /**
      * Return the workspace ids the subject may access, or null if unrestricted (e.g. an admin).
      *
      * @return array<int>|null

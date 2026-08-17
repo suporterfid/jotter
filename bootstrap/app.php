@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'workspace.authorization' => \App\Http\Middleware\AuthorizeWorkspaceAccess::class,
+            'workspace.write' => \App\Http\Middleware\AuthorizeWorkspaceWrite::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

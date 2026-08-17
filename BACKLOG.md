@@ -11,7 +11,7 @@ This file previously also carried the shipped-item changelog, decision records, 
 - **Security/correctness audit findings** → `docs/security-audit-2026.md`
 - **Visual-identity design-system tracking** (#96–#110) → `docs/visual-identity.md`
 
-As of 2026-07-29, every previously-tracked Milestone is delivered (backend and UI) and closed. The open work in this file is the Confluence-parity section (#347–#360, filed 2026-08-17) plus the one item under "Needs a decision".
+As of 2026-07-29, every previously-tracked Milestone is delivered (backend and UI) and closed. The open work in this file is the remaining Confluence-parity section (#348–#360, filed 2026-08-17) plus the one item under "Needs a decision".
 
 ---
 
@@ -72,15 +72,15 @@ feature set. All ten shipped:
 comparison against Confluence's feature set, verified against `app/`,
 `frontend/src/`, `database/migrations/` and `routes/api.php` at
 `dcda766`. Fourteen gaps, four of them never reported before. Filed as
-#347–#360. Nothing here is started.
+#347–#360. #347 is shipped; the remaining items are open.
 
 Ordered by recommended priority, not by theme. The audit's §4 argues the
-sequence; the short version is that role enforcement is a security gap
-and outranks SSO, and that page-level ACLs mean nothing until it lands.
+sequence; the short version is that role enforcement was the security
+prerequisite and is now shipped, unblocking page-level ACLs.
 
-- **Membership roles are stored but never enforced (#347, M, P1).** `ALLOWED_ROLES` defines owner/admin/editor/viewer; `isAuthorizedForWorkspace()` (`:170`) only checks a membership row exists. Across all of `app/`, `role` appears solely in `Membership.php`'s `$fillable` and in the admin controller that writes it — a `viewer` can write and delete. Blocks #349 and #359.
-- **No standard corporate SSO (#348, L, P1).** Only `LocalIdentityProvider` and the site-specific `GrandpaSSOnIdentityProvider`. Generic OIDC adapter over the existing seam; OIDC before SAML because a redirect flow fits shared hosting. Land #347 first so JIT-provisioned users default to `viewer`.
-- **No per-page permissions (#349, L, P2).** Authorization is workspace-granular and the `IdentityProvider` contract has no note-level concept. Must suppress restricted notes across every projection — search, links, graph, collections, tree, export, publish, MCP. **Blocked on #347.**
+- ~~**Membership roles are stored but never enforced (#347, M, P1).**~~ **Shipped.** `IdentityProvider::canWriteWorkspace()` now distinguishes `owner`/`admin`/`editor` from read-only `viewer` memberships; `workspace.write` protects every API mutation route, WebDAV write verbs enforce the same policy, and GrandpaSSOn service tokens require both the workspace audience and `kb:write`. Regression coverage covers local roles, service-token scopes, API writes, and WebDAV. Unblocks #349 and #359.
+- **No standard corporate SSO (#348, L, P1).** Only `LocalIdentityProvider` and the site-specific `GrandpaSSOnIdentityProvider`. Generic OIDC adapter over the existing seam; OIDC before SAML because a redirect flow fits shared hosting. JIT-provisioned users should default to `viewer`.
+- **No per-page permissions (#349, L, P2).** Authorization is workspace-granular and the `IdentityProvider` contract has no note-level concept. Must suppress restricted notes across every projection — search, links, graph, collections, tree, export, publish, MCP. **Unblocked by #347.**
 - **Note deletion is immediate and unrecoverable (#350, S–M, P2).** No `deleted_at` or `SoftDeletes` anywhere; `note_revisions` doesn't help once the note is gone. Soft delete + trash + bounded cron purge, with `vault:reindex` taught not to resurrect trashed notes.
 - **Notifications only ever fire for `@mentions` (#351, M, P2).** `WorkspaceEventEmitter` has one method and writes only `'type' => 'mention'`; there is no watch/subscribe concept. Event vocabulary + page watching. Gates #352.
 - **No email delivery or digest (#352, M, P2).** No `Mailable` in `app/`; `config/mail.php` is stock. Mail channel + preferences + cron digest via `JobDispatcher`. **Gated on #351** — shipping first would email mentions and nothing else.
@@ -90,7 +90,7 @@ and outranks SSO, and that page-level ACLs mean nothing until it lands.
 - **No installable PWA (#356, S, P3).** No manifest or service worker. Note that §3 N3 excludes PWA **from v0**, not permanently — unlike N1. Shell caching only; decision C5 (WebDAV + Obsidian is the offline story) still stands.
 - **No usage analytics (#357, M, P3).** Only raw `audit_log` in a table. Needs a separate rollup table fed by a bounded cron command — aggregating live over `audit_log` loses everything at the 90-day prune.
 - **Split-screen blocked by document-global DOM lookups (#358, L, P3).** G.4 scope A shipped (#297). The blocker is not that G.1/G.5 are unresolved — both shipped — but that G.1's implementation scrolls via `document.getElementById` (`NoteEditor.vue:845`), which resolves to the wrong pane once two are mounted. Pane-scope the lookups first; that stage stands alone.
-- **No content approval workflow (#359, L, P3).** Lowest value for this product's audience; filed for completeness. Closing it as not-planned is a legitimate outcome if no demand appears. Needs #347.
+- **No content approval workflow (#359, L, P3).** Lowest value for this product's audience; filed for completeness. Closing it as not-planned is a legitimate outcome if no demand appears. **Unblocked by #347.**
 - **Roadmap baseline provenance (#360, XS, P3).** Docs only — see "Needs a decision" below.
 
 ## Not adopted
