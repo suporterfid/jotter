@@ -6,6 +6,7 @@ export default {
     heading: 'Entrar no Jotter',
     subtitle: 'Digite suas credenciais de administrador para acessar seu cofre de notas.',
     ssoButton: 'Entrar com GrandpaSSOn',
+    ssoGenericButton: 'Entrar com SSO',
     or: 'ou',
     emailLabel: 'Endereço de e-mail',
     emailPlaceholder: "admin{'@'}example.com",
