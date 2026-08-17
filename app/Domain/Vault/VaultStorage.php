@@ -84,6 +84,22 @@ final class VaultStorage
         return is_file($absolute);
     }
 
+    public function moveFile(Workspace $workspace, string $oldPath, string $newPath): void
+    {
+        $oldAbsolute = $this->paths->resolve($workspace, $oldPath, mustExist: true);
+        $newAbsolute = $this->paths->resolve($workspace, $newPath, mustExist: false);
+
+        if ($this->exists($workspace, $newPath)) {
+            throw new \RuntimeException("Vault destination [{$newPath}] already exists.");
+        }
+
+        $this->ensureParentDirectory($workspace, $newAbsolute);
+
+        if (! rename($oldAbsolute, $newAbsolute)) {
+            throw new \RuntimeException("Unable to move vault note from [{$oldPath}] to [{$newPath}].");
+        }
+    }
+
     public function delete(Workspace $workspace, string $relativePath): void
     {
         $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: true);

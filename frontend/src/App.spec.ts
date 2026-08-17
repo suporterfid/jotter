@@ -1,7 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote, getNotifications } from './services/api'
+import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -13,6 +13,11 @@ vi.mock('./services/api', () => ({
   getNotes: vi.fn().mockResolvedValue([
     { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' }
   ]),
+  getTrash: vi.fn().mockResolvedValue([
+    { id: 20, title: 'Deleted note', original_path: 'deleted.md', frontmatter: null, deleted_at: '2026-08-17T15:30:00Z' }
+  ]),
+  restoreTrashNote: vi.fn().mockResolvedValue({ id: 20, path: 'deleted.md', title: 'Deleted note', frontmatter: null, sort_position: null, updated_at: '2026-08-17T15:30:00Z' }),
+  permanentlyDeleteTrashNote: vi.fn().mockResolvedValue(undefined),
   getFolderPositions: vi.fn().mockResolvedValue([]),
   getNote: vi.fn().mockResolvedValue({
     id: 10,
@@ -70,6 +75,45 @@ describe('App Component', () => {
 
     wrapper.unmount()
     errorSpy.mockRestore()
+  })
+
+  it('opens the trash panel and loads deleted notes when Sidebar requests it', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('toggle-trash')
+    await flushPromises()
+
+    expect(getTrash).toHaveBeenCalledWith(1)
+    expect(wrapper.findComponent({ name: 'TrashPanel' }).exists()).toBe(true)
+    expect(wrapper.find('[data-testid="trash-note-row"]').text()).toContain('deleted.md')
+  })
+
+  it('restores a trash note and refreshes the notes list', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('toggle-trash')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="trash-restore-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(restoreTrashNote).toHaveBeenCalledWith(1, 20)
+    expect(getNotes).toHaveBeenCalled()
+  })
+
+  it('permanently deletes a trash note after panel confirmation', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const wrapper = mount(App)
+    await flushPromises()
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('toggle-trash')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="trash-permanent-delete-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(permanentlyDeleteTrashNote).toHaveBeenCalledWith(1, 20)
+    confirm.mockRestore()
   })
 })
 

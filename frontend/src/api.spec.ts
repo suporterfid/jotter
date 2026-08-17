@@ -15,7 +15,17 @@ vi.mock('axios', () => {
   }
 })
 
-import { moveNote, reorderNoteTree, getFolderPositions, createBoard, updateBoard, deleteBoard } from './services/api'
+import {
+  moveNote,
+  reorderNoteTree,
+  getFolderPositions,
+  createBoard,
+  updateBoard,
+  deleteBoard,
+  getTrash,
+  restoreTrashNote,
+  permanentlyDeleteTrashNote,
+} from './services/api'
 import axios from 'axios'
 
 const instance = (axios.create as ReturnType<typeof vi.fn>).mock.results[0].value
@@ -58,5 +68,29 @@ describe('note-tree API functions', () => {
   it('deleteBoard deletes the board endpoint', async () => {
     await deleteBoard(1, 5)
     expect(instance.delete).toHaveBeenCalledWith('/workspaces/1/boards/5')
+  })
+
+  it('getTrash gets the workspace trash endpoint and returns the data array', async () => {
+    instance.get.mockResolvedValueOnce({ data: { data: [{ id: 7, title: 'Deleted', original_path: 'deleted.md' }] } })
+
+    const result = await getTrash(1)
+
+    expect(instance.get).toHaveBeenCalledWith('/workspaces/1/trash')
+    expect(result).toEqual([{ id: 7, title: 'Deleted', original_path: 'deleted.md' }])
+  })
+
+  it('restoreTrashNote posts to the restore endpoint and returns the restored note', async () => {
+    instance.post.mockResolvedValueOnce({ data: { data: { id: 7, path: 'deleted.md' } } })
+
+    const result = await restoreTrashNote(1, 7)
+
+    expect(instance.post).toHaveBeenCalledWith('/workspaces/1/trash/7/restore')
+    expect(result).toEqual({ id: 7, path: 'deleted.md' })
+  })
+
+  it('permanentlyDeleteTrashNote deletes the trash endpoint', async () => {
+    await permanentlyDeleteTrashNote(1, 7)
+
+    expect(instance.delete).toHaveBeenCalledWith('/workspaces/1/trash/7')
   })
 })

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Vault\NoteTrash;
+use App\Domain\Vault\VaultStorage;
 use App\Domain\Vault\VaultReindexer;
 use App\Models\Note;
 use App\Models\Tenant;
@@ -48,5 +50,58 @@ final class VaultReindexerTest extends TestCase
 
         // The file itself must be preserved on disk, never deleted by reindex.
         $this->assertFileExists($vaultPath.'/diagram.excalidraw.md');
+    }
+
+    public function test_reindex_does_not_resurrect_a_trashed_note(): void
+    {
+        $tenant = Tenant::create(['slug' => 'trash-reindex-'.uniqid(), 'name' => 'Trash Reindex']);
+        $vaultPath = storage_path('app/vaults/trash_reindex_'.uniqid());
+        mkdir($vaultPath, 0755, true);
+
+        try {
+            $workspace = Workspace::create([
+                'tenant_id' => $tenant->id,
+                'slug' => 'trash-reindex',
+                'name' => 'Trash Reindex',
+                'vault_path' => $vaultPath,
+            ]);
+            $note = app(VaultStorage::class)->write($workspace, 'deleted.md', "# Deleted\n");
+            $trashed = app(NoteTrash::class)->trash($workspace, $note);
+
+            app(VaultReindexer::class)->reindex($workspace);
+
+            $this->assertTrue($trashed->fresh()->trashed());
+            $this->assertDatabaseCount('notes', 1);
+            $this->assertDatabaseMissing('notes', [
+                'workspace_id' => $workspace->id,
+                'path' => $trashed->path,
+                'deleted_at' => null,
+            ]);
+        } finally {
+            $this->deleteTree($vaultPath);
+        }
+    }
+
+    private function deleteTree(string $path): void
+    {
+        if (! is_dir($path) && ! is_file($path)) {
+            return;
+        }
+
+        if (is_file($path)) {
+            @unlink($path);
+
+            return;
+        }
+
+        foreach (scandir($path) ?: [] as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $this->deleteTree($path.DIRECTORY_SEPARATOR.$item);
+        }
+
+        @rmdir($path);
     }
 }

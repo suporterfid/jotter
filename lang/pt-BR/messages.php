@@ -21,6 +21,7 @@ return [
     'revision_not_found' => 'Revisão não encontrada.',
     'resource_not_found' => 'Recurso não encontrado.',
     'revision_restored_successfully' => 'Revisão restaurada com sucesso.',
+    'trash_restore_conflict' => 'O caminho original da nota já está ocupado.',
     'invalid_path_traversal' => 'Tentativa de path traversal inválida detectada.',
     'failed_to_create_export_zip' => 'Falha ao criar o arquivo zip de exportação.',
     'archive_file_required' => 'Arquivo zip é obrigatório.',

@@ -297,6 +297,19 @@ describe('Sidebar admin panel entry', () => {
   })
 })
 
+describe('Sidebar trash entry', () => {
+  it('emits toggle-trash from the More actions menu', async () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+
+    await wrapper.find('[data-testid="more-actions-btn"]').trigger('click')
+    await wrapper.find('[data-testid="trash-btn"]').trigger('click')
+
+    expect(wrapper.emitted('toggle-trash')).toBeTruthy()
+  })
+})
+
 describe('Sidebar change password entry', () => {
   it('hides the Change Password button for a non-local auth provider', () => {
     const wrapper = mount(Sidebar, {

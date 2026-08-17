@@ -12,6 +12,7 @@ use App\Http\Controllers\WorkspaceNoteTreeController;
 use App\Http\Controllers\WorkspacePublishController;
 use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceSyncController;
+use App\Http\Controllers\WorkspaceTrashController;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Route;
 
@@ -54,6 +55,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/link-report', [\App\Http\Controllers\WorkspaceLinkReportController::class, 'report']);
     Route::get('/workspaces/{workspace}/notes/{note}/unlinked-mentions', [\App\Http\Controllers\WorkspaceUnlinkedMentionsController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes', [WorkspaceNoteController::class, 'index']);
+    Route::get('/workspaces/{workspace}/trash', [WorkspaceTrashController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'index']);
     Route::post('/workspaces/{workspace}/notes/{note}/comments', [\App\Http\Controllers\WorkspaceCommentController::class, 'store'])->middleware('workspace.write');
     Route::delete('/workspaces/{workspace}/notes/{note}/comments/{comment}', [\App\Http\Controllers\WorkspaceCommentController::class, 'destroy'])->middleware('workspace.write');
@@ -82,6 +84,8 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/note-tree/order', [WorkspaceNoteTreeController::class, 'index']);
     Route::put('/workspaces/{workspace}/note-tree/order', [WorkspaceNoteTreeController::class, 'update'])->middleware('workspace.write');
     Route::delete('/workspaces/{workspace}/notes/{note}', [WorkspaceNoteController::class, 'destroy'])->middleware('workspace.write');
+    Route::post('/workspaces/{workspace}/trash/{note}/restore', [WorkspaceTrashController::class, 'restore'])->middleware('workspace.write');
+    Route::delete('/workspaces/{workspace}/trash/{note}', [WorkspaceTrashController::class, 'destroy'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/notes/{note}/revisions', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'index']);
     Route::get('/workspaces/{workspace}/notes/{note}/revisions/{revision}', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'show']);

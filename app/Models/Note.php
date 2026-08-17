@@ -6,12 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Note extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'workspace_id',
         'path',
+        'original_path',
         'title',
         'frontmatter',
         'content_hash',
@@ -23,6 +27,7 @@ class Note extends Model
     {
         return [
             'frontmatter' => 'array',
+            'deleted_at' => 'datetime',
         ];
     }
 

@@ -65,6 +65,15 @@ Schedule a bounded reconcile for each workspace vault (adjust the id and frequen
 php artisan vault:reindex --workspace=1
 ```
 
+Schedule a bounded daily purge for notes that have exceeded the trash retention
+period (the default is 30 days; override it with `JOTTER_TRASH_RETENTION_DAYS`):
+
+```sh
+php artisan vault:purge-trash
+```
+
+Use `--days=N` or `--batch=N` for a one-off retention or batch-size override.
+
 Schedule a daily audit log prune to enforce retention limits (adjust days as needed):
 
 ```sh

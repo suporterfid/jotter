@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -118,6 +118,20 @@ export async function updateNote(workspaceId: number, noteId: number, content: s
 
 export async function deleteNote(workspaceId: number, noteId: number): Promise<void> {
   await api.delete(`/workspaces/${workspaceId}/notes/${noteId}`)
+}
+
+export async function getTrash(workspaceId: number): Promise<TrashNoteMeta[]> {
+  const response = await api.get<{ data: TrashNoteMeta[] }>(`/workspaces/${workspaceId}/trash`)
+  return response.data.data
+}
+
+export async function restoreTrashNote(workspaceId: number, noteId: number): Promise<NoteMeta> {
+  const response = await api.post<{ data: NoteMeta }>(`/workspaces/${workspaceId}/trash/${noteId}/restore`)
+  return response.data.data
+}
+
+export async function permanentlyDeleteTrashNote(workspaceId: number, noteId: number): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/trash/${noteId}`)
 }
 
 export async function moveNote(workspaceId: number, noteId: number, newPath: string): Promise<NoteMeta> {
