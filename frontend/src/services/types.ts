@@ -20,6 +20,14 @@ export interface NoteMeta {
   updated_at: string
 }
 
+export interface TrashNoteMeta {
+  id: number
+  title: string
+  original_path: string | null
+  frontmatter: Record<string, unknown> | null
+  deleted_at: string | null
+}
+
 export interface FolderPosition {
   folder_path: string
   sort_position: number

@@ -46,6 +46,7 @@
       @toggle-attachments="handleToggleAttachments"
       @daily-note="handleDailyNote"
       @toggle-audit-log="handleToggleAuditLog"
+      @toggle-trash="handleToggleTrash"
       @import-workspace="handleImportWorkspace"
       @export-workspace="handleExportWorkspace"
       @toggle-link-report="handleToggleLinkReport"
@@ -95,6 +96,15 @@
         v-else-if="isAuditLogActive"
         :entries="auditLogEntries"
         :loading="auditLogLoading"
+      />
+
+      <!-- Trash View Mode -->
+      <TrashPanel
+        v-else-if="isTrashActive"
+        :notes="trashNotes"
+        :loading="trashLoading"
+        @restore-note="handleRestoreTrashNote"
+        @permanently-delete-note="handlePermanentlyDeleteTrashNote"
       />
 
       <!-- Link Report View Mode -->
@@ -264,6 +274,7 @@ import CommandPalette from './components/CommandPalette.vue'
 import GraphView from './components/GraphView.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
+import TrashPanel from './components/TrashPanel.vue'
 import LinkReportViewer from './components/LinkReportViewer.vue'
 import CollectionsTableView from './components/CollectionsTableView.vue'
 import CollectionsBoardView from './components/CollectionsBoardView.vue'
@@ -279,6 +290,9 @@ import {
   createNote,
   updateNote,
   deleteNote,
+  getTrash,
+  restoreTrashNote,
+  permanentlyDeleteTrashNote,
   searchNotes,
   getMe,
   logout,
@@ -302,7 +316,7 @@ import {
   updateBoard,
   deleteBoard
 } from './services/api'
-import type { Workspace, Tenant, NoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig } from './services/types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig } from './services/types'
 import BoardSwitcher from './components/BoardSwitcher.vue'
 import { isArchived } from './services/collectionUtils'
 import { APP_VERSION } from './version'
@@ -337,6 +351,7 @@ const showTabStrip = computed(() =>
   !isGraphViewActive.value &&
   !isAttachmentsActive.value &&
   !isAuditLogActive.value &&
+  !isTrashActive.value &&
   !isLinkReportActive.value &&
   !isTableViewActive.value &&
   !isBoardViewActive.value &&
@@ -381,6 +396,10 @@ const attachmentsLoading = ref(false)
 const isAuditLogActive = ref(false)
 const auditLogEntries = ref<AuditLogEntry[]>([])
 const auditLogLoading = ref(false)
+
+const isTrashActive = ref(false)
+const trashNotes = ref<TrashNoteMeta[]>([])
+const trashLoading = ref(false)
 
 const isLinkReportActive = ref(false)
 const linkReport = ref<LinkReport>({ broken_links: [], orphans: [] })
@@ -651,6 +670,7 @@ async function handleSelectNote(noteId: number) {
   isSearchActive.value = false
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
+  isTrashActive.value = false
   isLinkReportActive.value = false
   isTableViewActive.value = false
   isBoardViewActive.value = false
@@ -663,6 +683,7 @@ async function handleToggleAttachments() {
   if (isAttachmentsActive.value) {
     isSearchActive.value = false
     isAuditLogActive.value = false
+    isTrashActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
     isBoardViewActive.value = false
@@ -676,11 +697,26 @@ async function handleToggleAuditLog() {
   if (isAuditLogActive.value) {
     isSearchActive.value = false
     isAttachmentsActive.value = false
+    isTrashActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
     isBoardViewActive.value = false
     isCalendarViewActive.value = false
     await refreshAuditLog()
+  }
+}
+
+async function handleToggleTrash() {
+  isTrashActive.value = !isTrashActive.value
+  if (isTrashActive.value) {
+    isSearchActive.value = false
+    isAttachmentsActive.value = false
+    isAuditLogActive.value = false
+    isLinkReportActive.value = false
+    isTableViewActive.value = false
+    isBoardViewActive.value = false
+    isCalendarViewActive.value = false
+    await refreshTrash()
   }
 }
 
@@ -690,6 +726,7 @@ async function handleToggleLinkReport() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
+    isTrashActive.value = false
     isTableViewActive.value = false
     isBoardViewActive.value = false
     isCalendarViewActive.value = false
@@ -704,6 +741,7 @@ async function handleToggleTableView() {
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
     isLinkReportActive.value = false
+    isTrashActive.value = false
     isBoardViewActive.value = false
     isCalendarViewActive.value = false
     await refreshCollection()
@@ -718,6 +756,7 @@ async function handleToggleBoardView() {
     isAuditLogActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
+    isTrashActive.value = false
     isCalendarViewActive.value = false
     await refreshCollection()
     await refreshBoards()
@@ -835,6 +874,7 @@ async function handleToggleCalendarView() {
     isLinkReportActive.value = false
     isTableViewActive.value = false
     isBoardViewActive.value = false
+    isTrashActive.value = false
     await refreshCollection()
   }
 }
@@ -1012,6 +1052,42 @@ async function refreshAuditLog() {
   }
 }
 
+async function refreshTrash() {
+  if (!activeWorkspaceId.value) return
+  trashLoading.value = true
+  try {
+    trashNotes.value = await getTrash(activeWorkspaceId.value)
+  } catch (err) {
+    console.error('Failed to load trash:', err)
+  } finally {
+    trashLoading.value = false
+  }
+}
+
+async function handleRestoreTrashNote(noteId: number) {
+  if (!activeWorkspaceId.value) return
+  try {
+    const restored = await restoreTrashNote(activeWorkspaceId.value, noteId)
+    await refreshNotesList()
+    await refreshTrash()
+    await handleSelectNote(restored.id)
+  } catch (err: any) {
+    console.error('Failed to restore note:', err)
+    errorMessage.value = err.response?.data?.message || t('app.failedRestoreNote')
+  }
+}
+
+async function handlePermanentlyDeleteTrashNote(noteId: number) {
+  if (!activeWorkspaceId.value) return
+  try {
+    await permanentlyDeleteTrashNote(activeWorkspaceId.value, noteId)
+    trashNotes.value = trashNotes.value.filter(note => note.id !== noteId)
+  } catch (err) {
+    console.error('Failed to permanently delete note:', err)
+    errorMessage.value = t('app.failedPermanentlyDeleteNote')
+  }
+}
+
 async function refreshAttachments() {
   if (!activeWorkspaceId.value) return
   attachmentsLoading.value = true
@@ -1146,6 +1222,7 @@ async function handleSearch(query: string) {
   isTableViewActive.value = false
   isBoardViewActive.value = false
   isCalendarViewActive.value = false
+  isTrashActive.value = false
   searchQuery.value = query
   await runSearch(query, searchFilters.value)
 }
