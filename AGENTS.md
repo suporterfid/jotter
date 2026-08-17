@@ -7,4 +7,5 @@
 - Keep Markdown files on disk as the future source of truth and MySQL as a rebuildable index.
 - Respect shared-hosting limits: no daemons, websockets, or shelling out from application code.
 - Keep GrandpaSSOn and TaskConnect optional seams. Do not implement either neighboring system here.
-- Do not begin v1 work.
+- v0 (PR0–PR9) is complete and v1 is in progress. Sequence new work from `STATUS.md` §4 and `BACKLOG.md`, within spec §14 — not from the roadmap's gap analysis, whose baseline describes a different product (spec §14.1).
+- Do not re-litigate a resolved entry in `docs/decisions.md`. Superseding one requires a new dated entry that references the old.

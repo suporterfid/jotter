@@ -9,14 +9,29 @@
 
 Self-hosted, Markdown knowledge base for the cPanel your grandpa never gave up. Plain `.md` files, PHP + MySQL, your notes stay yours.
 
-Jotter's v0 spec is complete (PR0–PR9) and v1 work is in progress: Laravel 12, a Vue 3 SPA with a Markdown editor and `[[wikilink]]` autocomplete, MySQL 8, a Docker-only development loop, the multi-workspace data model, path-safe vault storage, rebuildable wikilink/backlink projection, workspace-scoped search, workspace-scoped note CRUD, attachment uploads, and an `IdentityProvider` auth seam (`LocalIdentityProvider` plus a `GrandpaSSOnIdentityProvider` adapter) with workspace-scoped authorization enforced by default. Post-v0 additions include WebDAV sync, static site publishing, an MCP server, typed properties, admin workspace/member/user management, and a full visual identity system. See [STATUS.md](STATUS.md) for the authoritative current state.
+Jotter's v0 spec is complete (PR0–PR9) and v1 work is in progress. The foundation is Laravel 12, a Vue 3 SPA, MySQL 8 as a rebuildable index, and a Docker-only development loop, on a multi-workspace data model with path-safe vault storage and an `IdentityProvider` auth seam (`LocalIdentityProvider` plus a `GrandpaSSOnIdentityProvider` adapter) with workspace-scoped authorization enforced by default.
+
+What ships on top of that today:
+
+- **Editing** — inline WYSIWYG over Markdown (Milkdown) with a slash-command menu, selection formatting toolbar, `[[wikilink]]` autocomplete, and raw-source/split/preview modes still available
+- **Knowledge graph** — backlinks, outgoing links, unlinked mentions, transclusion, per-note local graph, hover preview, outline pane, tabs, and a broken-link/orphan report
+- **Collaboration** — comments with `@mentions` anchored to a text selection, in-app notifications, version history with restore, and an append-only audit log with redaction and retention
+- **Structure** — typed properties projected from YAML front matter, plus table, kanban (drag-and-drop, swimlanes, checklists), and calendar views over them
+- **Content operations** — full-text search with title/tag/date filters, templates and daily notes, attachments, ZIP/JSON export and import, static site publishing, and WebDAV sync
+- **Platform** — admin workspace/member/user management, an MCP server with machine-token auth, `en`/`pt-BR` localization with RTL support, and a light/dark/system visual identity across the app and published pages
+
+See [STATUS.md](STATUS.md) for the authoritative current state and [BACKLOG.md](BACKLOG.md) for what is deferred.
 
 ## Documentation
 
 - [Project Status](STATUS.md) — authoritative current state
-- [Architecture Specification](file:///home/ubuntu/projects/web/iroh/jotter/docs/architecture.md)
-- [Visual Identity Specification](file:///home/ubuntu/projects/web/iroh/jotter/docs/visual-identity.md)
-- [Model Context Protocol (MCP)](file:///home/ubuntu/projects/web/iroh/jotter/docs/mcp.md)
+- [Backlog](BACKLOG.md) — deferred work and open decisions
+- [Architecture Specification](docs/architecture.md)
+- [Initial Spec & Build Plan](docs/jotter-initial-spec-and-build-plan.md) — planning authority
+- [Decision Record](docs/decisions.md)
+- [Visual Identity Specification](docs/visual-identity.md)
+- [Model Context Protocol (MCP)](docs/mcp.md)
+- [Deployment](docs/deployment.md)
 
 ## Requirements
 
@@ -51,7 +66,6 @@ Use `scripts/jt.sh` or `scripts/jt.ps1` with:
 - `e2e` — run the Playwright smoke test
 - `artisan`, `composer`, `npm` — run the corresponding tool in a container
 - `release` — create `dist/jotter-release.zip` and its SHA-256 checksum
-
 - `release:verify` — scan an existing release ZIP for secrets and private keys
 
 Bootstrap the first local administrator after startup:
