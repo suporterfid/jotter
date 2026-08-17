@@ -26,6 +26,24 @@ return [
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 
+    'oidc' => [
+        'issuer_url' => env('JOTTER_OIDC_ISSUER_URL'),
+        'client_id' => env('JOTTER_OIDC_CLIENT_ID'),
+        'client_secret' => env('JOTTER_OIDC_CLIENT_SECRET'),
+        'redirect_uri' => env('JOTTER_OIDC_REDIRECT_URI'),
+        'scopes' => array_values(array_filter(array_map(
+            static fn (string $scope): string => trim($scope),
+            explode(' ', (string) env('JOTTER_OIDC_SCOPES', 'openid profile email')),
+        ))),
+        'post_login_redirect_uri' => env('JOTTER_OIDC_POST_LOGIN_REDIRECT_URI', env('APP_URL')),
+        'allow_insecure_http' => (bool) env('JOTTER_OIDC_ALLOW_INSECURE_HTTP', false),
+        'trusted_email_claim' => (bool) env('JOTTER_OIDC_TRUSTED_EMAIL_CLAIM', false),
+        'configured' => filled(env('JOTTER_OIDC_ISSUER_URL'))
+            && filled(env('JOTTER_OIDC_CLIENT_ID'))
+            && filled(env('JOTTER_OIDC_CLIENT_SECRET'))
+            && filled(env('JOTTER_OIDC_REDIRECT_URI')),
+    ],
+
     // GrandpaSSOnIdentityProvider's AUTHSESSID cookie path reads GrandpaSSOn's own
     // `sessions`/`users` tables directly. On shared hosting they share one MySQL
     // database/schema with this app, distinguished only by table-name prefix — this
