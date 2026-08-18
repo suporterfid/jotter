@@ -19,6 +19,12 @@ return [
         'purge_batch_size' => (int) env('JOTTER_TRASH_PURGE_BATCH', 100),
     ],
 
+    'pdf' => [
+        'storage_path' => env('JOTTER_PDF_STORAGE_PATH') ?: storage_path('app/private/pdf-exports'),
+        'retention_hours' => (int) env('JOTTER_PDF_RETENTION_HOURS', 24),
+        'process_batch_size' => (int) env('JOTTER_PDF_PROCESS_BATCH', 10),
+    ],
+
     'rendering' => [
         // Off by default: emits <span class="jotter-math">/<pre class="mermaid">
         // markup for $$LaTeX$$ and ```mermaid blocks instead of plain code, for a
