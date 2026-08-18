@@ -6,8 +6,10 @@ use App\Domain\Jobs\Contracts\JobDispatcher;
 use App\Domain\Notifications\NotificationEmailPreference;
 use App\Domain\Notifications\NotificationType;
 use App\Mail\NotificationEmail;
+use App\Mail\NotificationDigestEmail;
 use App\Models\Notification;
 use App\Models\NotificationDelivery;
+use App\Models\NotificationDeliveryItem;
 use App\Models\NotificationPreference;
 use App\Models\Tenant;
 use App\Models\User;
@@ -80,6 +82,39 @@ final class NotificationEmailServiceTest extends TestCase
 
         $this->assertCount(0, $dispatcher->jobs);
         $this->assertDatabaseCount('notification_deliveries', 0);
+    }
+
+    public function test_digest_delivery_sends_one_localized_mailable_for_all_items(): void
+    {
+        Mail::fake();
+        config(['mail.default' => 'array']);
+        $recipient = User::factory()->create(['locale' => 'en']);
+        $first = $this->makeNotification($recipient, NotificationType::NOTE_EDITED);
+        $second = $this->makeNotification($recipient, NotificationType::NOTE_MOVED);
+        $delivery = NotificationDelivery::create([
+            'user_id' => $recipient->id,
+            'channel' => 'email',
+            'kind' => 'digest',
+            'dedupe_key' => 'digest:'.$recipient->id.':2026-08-18T09:00:00Z',
+            'status' => 'pending',
+        ]);
+        NotificationDeliveryItem::create([
+            'delivery_id' => $delivery->id,
+            'notification_id' => $first->id,
+            'channel' => 'email',
+        ]);
+        NotificationDeliveryItem::create([
+            'delivery_id' => $delivery->id,
+            'notification_id' => $second->id,
+            'channel' => 'email',
+        ]);
+
+        $service = new \App\Domain\Notifications\NotificationEmailService(new RecordingJobDispatcher);
+        $service->sendDelivery($delivery);
+
+        Mail::assertSent(NotificationDigestEmail::class, fn (NotificationDigestEmail $mail): bool => $mail->locale === 'en'
+            && count($mail->notifications) === 2);
+        $this->assertSame('sent', $delivery->refresh()->status);
     }
 
     private function makeNotification(User $recipient, NotificationType $type): Notification

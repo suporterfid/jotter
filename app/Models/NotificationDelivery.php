@@ -20,6 +20,7 @@ final class NotificationDelivery extends Model
         'status',
         'payload',
         'claimed_at',
+        'dispatched_at',
         'sent_at',
         'failed_at',
         'error',
@@ -28,6 +29,7 @@ final class NotificationDelivery extends Model
     protected $casts = [
         'payload' => 'array',
         'claimed_at' => 'datetime',
+        'dispatched_at' => 'datetime',
         'sent_at' => 'datetime',
         'failed_at' => 'datetime',
     ];

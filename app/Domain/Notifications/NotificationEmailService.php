@@ -3,6 +3,8 @@
 namespace App\Domain\Notifications;
 
 use App\Domain\Jobs\Contracts\JobDispatcher;
+use App\Mail\NotificationDigestEmail;
+use App\Mail\NotificationEmail;
 use App\Jobs\SendNotificationEmail;
 use App\Models\Notification;
 use App\Models\NotificationDelivery;
@@ -41,6 +43,7 @@ final class NotificationEmailService
                 ['delivery_id' => $delivery->id],
                 $notification->workspace_id,
             );
+            $delivery->update(['dispatched_at' => now()]);
         }
 
         return $delivery;
@@ -68,10 +71,21 @@ final class NotificationEmailService
         }
 
         try {
-            $notification = $delivery->notification()->firstOrFail();
             $recipient = $delivery->user()->firstOrFail();
 
-            Mail::to($recipient->email)->send(new \App\Mail\NotificationEmail($recipient, $notification));
+            if ($delivery->kind === 'digest') {
+                $notifications = $delivery->items()
+                    ->with('notification')
+                    ->get()
+                    ->pluck('notification')
+                    ->filter()
+                    ->values()
+                    ->all();
+                Mail::to($recipient->email)->send(new NotificationDigestEmail($recipient, $notifications));
+            } else {
+                $notification = $delivery->notification()->firstOrFail();
+                Mail::to($recipient->email)->send(new NotificationEmail($recipient, $notification));
+            }
 
             $delivery->update(['status' => 'sent', 'sent_at' => now()]);
         } catch (\Throwable $exception) {

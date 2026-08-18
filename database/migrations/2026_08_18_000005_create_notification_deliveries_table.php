@@ -19,6 +19,7 @@ return new class extends Migration
                 $table->string('status', 32)->default('pending');
                 $table->json('payload')->nullable();
                 $table->timestamp('claimed_at')->nullable();
+                $table->timestamp('dispatched_at')->nullable();
                 $table->timestamp('sent_at')->nullable();
                 $table->timestamp('failed_at')->nullable();
                 $table->text('error')->nullable();

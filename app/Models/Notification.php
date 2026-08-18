@@ -40,4 +40,9 @@ final class Notification extends Model
     {
         return $this->hasMany(NotificationDelivery::class);
     }
+
+    public function deliveryItems(): HasMany
+    {
+        return $this->hasMany(NotificationDeliveryItem::class);
+    }
 }

@@ -80,4 +80,17 @@ Schedule a daily audit log prune to enforce retention limits (adjust days as nee
 php artisan audit:prune --days=90
 ```
 
+Schedule the notification digest every minute. The command is bounded by the
+per-recipient `--limit`, uses an idempotent delivery ledger, and is safe to run
+repeatedly. It dispatches mail work through `JobDispatcher`; it does not send
+SMTP mail inline in the cron process.
+
+```cron
+* * * * * cd /var/www/jotter && php artisan notifications:send-digest --limit=100 >> storage/logs/notification-digest.log 2>&1
+```
+
+Configure a Laravel mail transport for external delivery. With the default
+`log` mailer, Jotter records a structured skip event and preserves request
+behavior without attempting external delivery.
+
 Keep vault directories outside the web root. Notes are never served as static files from `public/`.
