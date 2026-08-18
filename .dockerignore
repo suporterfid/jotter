@@ -9,5 +9,6 @@ node_modules
 public/build
 public/storage
 storage/logs/*
+storage/app/private/*
 vendor
 bootstrap/cache/*.php
