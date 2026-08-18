@@ -48,4 +48,5 @@ return [
     'notification_email_open' => 'Open Jotter',
     'notification_email_unsubscribe' => 'Change or unsubscribe from these notifications',
     'notification_email_preferences' => 'Manage notification preferences',
+    'notification_type_unsupported' => 'Unsupported notification type.',
 ];

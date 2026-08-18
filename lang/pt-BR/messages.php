@@ -48,4 +48,5 @@ return [
     'notification_email_open' => 'Abrir o Jotter',
     'notification_email_unsubscribe' => 'Alterar ou cancelar estas notificações',
     'notification_email_preferences' => 'Gerenciar preferências de notificações',
+    'notification_type_unsupported' => 'Tipo de notificação não suportado.',
 ];

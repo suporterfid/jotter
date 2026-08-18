@@ -434,6 +434,17 @@
         <ThemeToggle />
         <LocaleToggle />
         <button
+          class="btn-icon"
+          data-testid="notification-preferences-btn"
+          :title="t('sidebar.notificationPreferences')"
+          @click="$emit('open-notification-preferences')"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.5 1.5-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.12v-.4a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.5-1.5.06-.06A1.7 1.7 0 0 0 9.2 15a1.7 1.7 0 0 0-1.56-1.03H7.2v-2.12h.44A1.7 1.7 0 0 0 9.2 10.8a1.7 1.7 0 0 0-.34-1.88L8.8 8.86l1.5-1.5.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56V5.8h2.12v.4a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.5 1.5-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.44v2.12h-.44A1.7 1.7 0 0 0 19.4 15z"></path>
+          </svg>
+        </button>
+        <button
           v-if="authProvider === 'local'"
           class="btn-icon"
           data-testid="change-password-btn"
@@ -528,6 +539,7 @@ const emit = defineEmits<{
   (e: 'switch-tenant', tenantId: number): void
   (e: 'toggle-admin-panel'): void
   (e: 'open-change-password'): void
+  (e: 'open-notification-preferences'): void
 }>()
 
 // Desktop sidebar collapse (#259): hands the full window to the page,
