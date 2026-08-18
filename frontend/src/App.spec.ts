@@ -1,7 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote } from './services/api'
+import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote, queueWorkspacePdfExport, getWorkspacePdfExport, downloadWorkspacePdfExport } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -52,6 +52,9 @@ vi.mock('./services/api', () => ({
   getOutgoingLinks: vi.fn().mockResolvedValue([]),
   getWorkspaceProperties: vi.fn().mockResolvedValue([]),
   getNotifications: vi.fn().mockResolvedValue([]),
+  queueWorkspacePdfExport: vi.fn().mockResolvedValue({ id: 'export-1', status: 'queued', scope: 'workspace' }),
+  getWorkspacePdfExport: vi.fn().mockResolvedValue({ id: 'export-1', status: 'ready', scope: 'workspace' }),
+  downloadWorkspacePdfExport: vi.fn(),
 }))
 
 beforeEach(() => {
@@ -59,6 +62,18 @@ beforeEach(() => {
 })
 
 describe('App Component', () => {
+  it('queues a workspace PDF export and downloads it when ready', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.findComponent({ name: 'Sidebar' }).vm.$emit('export-workspace-pdf')
+    await flushPromises()
+
+    expect(queueWorkspacePdfExport).toHaveBeenCalledWith(1)
+    expect(getWorkspacePdfExport).toHaveBeenCalledWith(1, 'export-1')
+    expect(downloadWorkspacePdfExport).toHaveBeenCalledWith(1, 'export-1')
+  })
+
   it('renders the Jotter sidebar brand title', () => {
     const wrapper = mount(App)
     expect(wrapper.find('.brand-title').text()).toBe('Jotter')

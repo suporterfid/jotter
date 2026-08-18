@@ -50,6 +50,7 @@
       @toggle-trash="handleToggleTrash"
       @import-workspace="handleImportWorkspace"
       @export-workspace="handleExportWorkspace"
+      @export-workspace-pdf="handleExportWorkspacePdf"
       @toggle-link-report="handleToggleLinkReport"
       @publish-workspace="handlePublishWorkspace"
       @toggle-table-view="handleToggleTableView"
@@ -197,6 +198,7 @@
         :all-notes="notes"
         :workspace-id="activeWorkspaceId || undefined"
         @update-note="handleUpdateNote"
+        @export-pdf="handleExportNotePdf"
         @select-note="handleSelectNote"
         @navigate-wikilink="handleWikilinkNavigation"
         @reveal-folder="handleRevealFolder"
@@ -314,6 +316,9 @@ import {
   importWorkspaceArchive,
   getLinkReport,
   publishWorkspace,
+  queueWorkspacePdfExport,
+  getWorkspacePdfExport,
+  downloadWorkspacePdfExport,
   getCollection,
   setNoteProperty,
   getNotifications,
@@ -1071,6 +1076,40 @@ async function handleImportWorkspace(archive: File, overwrite: boolean) {
 function handleExportWorkspace() {
   if (!activeWorkspaceId.value) return
   window.location.href = `/api/workspaces/${activeWorkspaceId.value}/export`
+}
+
+function handleExportNotePdf() {
+  if (!activeWorkspaceId.value || !activeNoteId.value) return
+  window.location.href = `/api/workspaces/${activeWorkspaceId.value}/notes/${activeNoteId.value}/export.pdf`
+}
+
+async function handleExportWorkspacePdf() {
+  if (!activeWorkspaceId.value) return
+
+  try {
+    const queued = await queueWorkspacePdfExport(activeWorkspaceId.value)
+    successMessage.value = t('app.pdfExportQueued')
+
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      if (attempt > 0) await new Promise(resolve => window.setTimeout(resolve, 500))
+      const status = await getWorkspacePdfExport(activeWorkspaceId.value, queued.id)
+
+      if (status.status === 'ready') {
+        downloadWorkspacePdfExport(activeWorkspaceId.value, queued.id)
+        successMessage.value = t('app.pdfExportReady')
+        return
+      }
+
+      if (status.status === 'failed' || status.status === 'expired') {
+        throw new Error(status.failure_reason || t('app.pdfExportUnavailable'))
+      }
+    }
+
+    throw new Error(t('app.pdfExportTimedOut'))
+  } catch (err: any) {
+    console.error('Failed to export workspace as PDF:', err)
+    errorMessage.value = t('app.failedPdfExport', { message: err.response?.data?.message || err.message || t('app.unknownError') })
+  }
 }
 
 async function handlePublishWorkspace() {

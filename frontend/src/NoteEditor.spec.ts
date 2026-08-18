@@ -162,6 +162,18 @@ describe('NoteEditor page watching', () => {
   })
 })
 
+describe('NoteEditor PDF export', () => {
+  it('emits export-pdf when the note export control is clicked', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.get('[data-testid="note-export-pdf-btn"]').trigger('click')
+
+    expect(wrapper.emitted('export-pdf')).toEqual([[]])
+  })
+})
+
 describe('NoteEditor breadcrumb', () => {
   it('renders a clickable segment per folder and a plain-text file name', () => {
     const wrapper = mount(NoteEditor, {

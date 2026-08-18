@@ -26,6 +26,8 @@ import {
   restoreTrashNote,
   permanentlyDeleteTrashNote,
   getAuthConfig,
+  queueWorkspacePdfExport,
+  getWorkspacePdfExport,
 } from './services/api'
 import axios from 'axios'
 
@@ -105,5 +107,19 @@ describe('note-tree API functions', () => {
 
     await expect(getAuthConfig()).resolves.toMatchObject({ external_embed_domains: ['youtube.com'] })
     expect(instance.get).toHaveBeenCalledWith('/auth/config')
+  })
+
+  it('queues a workspace PDF export', async () => {
+    instance.post.mockResolvedValueOnce({ data: { id: 'export-1', status: 'queued', scope: 'workspace' } })
+
+    await expect(queueWorkspacePdfExport(1)).resolves.toEqual({ id: 'export-1', status: 'queued', scope: 'workspace' })
+    expect(instance.post).toHaveBeenCalledWith('/workspaces/1/pdf-exports')
+  })
+
+  it('reads workspace PDF export status', async () => {
+    instance.get.mockResolvedValueOnce({ data: { id: 'export-1', status: 'ready', scope: 'workspace' } })
+
+    await expect(getWorkspacePdfExport(1, 'export-1')).resolves.toEqual({ id: 'export-1', status: 'ready', scope: 'workspace' })
+    expect(instance.get).toHaveBeenCalledWith('/workspaces/1/pdf-exports/export-1')
   })
 })

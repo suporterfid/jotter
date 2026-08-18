@@ -33,3 +33,24 @@ All delegated jobs must supply a JSON payload matching the following schema:
 - `App\Domain\Jobs\TaskConnectJobDispatcher` is the seam implementation.
 - Jotter operates 100% self-contained when TaskConnect is absent (`JOB_DISPATCHER=local`).
 - Delegated tasks degrade gracefully to unavailable without breaking core Markdown vault functionality.
+
+## PDF export action (#354)
+
+Workspace PDF generation uses the same dispatcher seam. The canonical payload is:
+
+```json
+{
+  "workspace_id": 1,
+  "action": "generate_pdf",
+  "payload": {
+    "export_id": "uuid-v4",
+    "note_ids": [12, 18]
+  },
+  "idempotency_key": "pdf_export_uuid-v4"
+}
+```
+
+The `note_ids` snapshot is produced after workspace and note ACL filtering. A
+worker must update the export record through the application boundary and never
+publish the private output path to clients. Local mode remains self-contained;
+TaskConnect is an optional dispatcher implementation.

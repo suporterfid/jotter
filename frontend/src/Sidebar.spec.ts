@@ -59,6 +59,19 @@ describe('Sidebar manual sort mode', () => {
   })
 })
 
+describe('Sidebar PDF export', () => {
+  it('emits workspace PDF export from the more-actions menu', async () => {
+    const wrapper = mount(Sidebar, {
+      props: { notes: [], selectedNoteId: null, workspaceId: 1, folderPositions: [], workspaces: [], frontendVersion: 'dev' },
+    })
+
+    await wrapper.get('[data-testid="more-actions-btn"]').trigger('click')
+    await wrapper.get('[data-testid="export-workspace-pdf-btn"]').trigger('click')
+
+    expect(wrapper.emitted('export-workspace-pdf')).toEqual([[]])
+  })
+})
+
 describe('Sidebar folder quick-create', () => {
   it('bubbles create-note-in-folder from a root-level folder up to its own emit', async () => {
     const notes: NoteMeta[] = [

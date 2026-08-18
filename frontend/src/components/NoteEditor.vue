@@ -98,6 +98,15 @@
           <span>{{ note.watching === true ? '🔔' : '🔕' }}</span>
           <span>{{ note.watching === true ? t('noteEditor.watching') : t('noteEditor.watch') }}</span>
         </button>
+        <button
+          type="button"
+          class="btn-attach"
+          data-testid="note-export-pdf-btn"
+          :title="t('noteEditor.exportPdf')"
+          @click="emit('export-pdf')"
+        >
+          <span>PDF</span>
+        </button>
         <span v-if="watchError" class="watch-error" role="alert">{{ t('noteEditor.watchError') }}</span>
 
         <div class="stats-toggle-wrapper">
@@ -678,6 +687,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update-note', noteId: number, content: string): void
+  (e: 'export-pdf'): void
   (e: 'select-note', noteId: number): void
   (e: 'navigate-wikilink', target: string): void
   (e: 'reveal-folder', folderPath: string): void

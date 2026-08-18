@@ -192,6 +192,19 @@
             </button>
             <button
               class="more-menu-item"
+              data-testid="export-workspace-pdf-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => emit('export-workspace-pdf'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M8 13h3a2 2 0 0 1 0 4H8v-4zm0 4v3M15 20v-7h3"></path>
+              </svg>
+              <span>{{ t('sidebar.exportWorkspacePdf') }}</span>
+            </button>
+            <button
+              class="more-menu-item"
               data-testid="link-report-btn"
               role="menuitem"
               @click="closeMoreMenuAnd(() => $emit('toggle-link-report'))"
@@ -528,6 +541,7 @@ const emit = defineEmits<{
   (e: 'toggle-trash'): void
   (e: 'import-workspace', archive: File, overwrite: boolean): void
   (e: 'export-workspace'): void
+  (e: 'export-workspace-pdf'): void
   (e: 'toggle-link-report'): void
   (e: 'publish-workspace'): void
   (e: 'toggle-table-view'): void
