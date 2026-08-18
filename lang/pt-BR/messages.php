@@ -41,4 +41,11 @@ return [
     'password_changed_successfully' => 'Senha alterada com sucesso.',
     'locale_unsupported' => 'o idioma deve ser um dos seguintes: :locales',
     'locale_grandpasson_sync_failed' => 'Falha ao atualizar o idioma no GrandpaSSOn.',
+    'notification_email_subject' => 'Notificação do Jotter: :title',
+    'notification_digest_subject' => 'Seu resumo de notificações do Jotter',
+    'notification_digest_heading' => 'Suas notificações recentes do Jotter',
+    'notification_email_greeting' => 'Olá, :name.',
+    'notification_email_open' => 'Abrir o Jotter',
+    'notification_email_unsubscribe' => 'Alterar ou cancelar estas notificações',
+    'notification_email_preferences' => 'Gerenciar preferências de notificações',
 ];

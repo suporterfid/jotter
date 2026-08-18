@@ -41,4 +41,11 @@ return [
     'password_changed_successfully' => 'Password changed successfully.',
     'locale_unsupported' => 'locale must be one of: :locales',
     'locale_grandpasson_sync_failed' => 'Failed to update locale on GrandpaSSOn.',
+    'notification_email_subject' => 'Jotter notification: :title',
+    'notification_digest_subject' => 'Your Jotter notification digest',
+    'notification_digest_heading' => 'Your recent Jotter notifications',
+    'notification_email_greeting' => 'Hello, :name.',
+    'notification_email_open' => 'Open Jotter',
+    'notification_email_unsubscribe' => 'Change or unsubscribe from these notifications',
+    'notification_email_preferences' => 'Manage notification preferences',
 ];
