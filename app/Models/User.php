@@ -69,4 +69,9 @@ class User extends Authenticatable
         return $this->belongsToMany(WorkspaceGroup::class, 'workspace_group_members')
             ->withTimestamps();
     }
+
+    public function noteWatchers(): HasMany
+    {
+        return $this->hasMany(NoteWatcher::class);
+    }
 }

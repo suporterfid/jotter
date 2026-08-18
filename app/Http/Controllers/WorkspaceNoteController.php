@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
+use App\Domain\Events\WorkspaceEventEmitter;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\Exceptions\VaultNoteNotFound;
 use App\Domain\Vault\NoteTrash;
@@ -20,6 +21,7 @@ final class WorkspaceNoteController extends Controller
     public function __construct(
         private readonly IdentityProvider $identityProvider,
         private readonly NoteAccess $noteAccess,
+        private readonly WorkspaceEventEmitter $eventEmitter,
     ) {}
 
     public function index(Request $request, Workspace $workspace): JsonResponse
@@ -97,21 +99,27 @@ final class WorkspaceNoteController extends Controller
         $note = $this->scopedNote($workspace, $note);
         $this->noteAccess->assertEdit($this->subject($request), $note);
 
-        return response()->json([
-            'data' => $this->metadata($storage->write($workspace, $note->path, $validated['content']), $this->subject($request)),
-        ]);
+        $updatedNote = $storage->write($workspace, $note->path, $validated['content']);
+        $subject = $this->subject($request);
+        $this->eventEmitter->ensureAutoWatch($updatedNote, $subject->user?->id);
+        $this->eventEmitter->emitNoteEdited($updatedNote, $subject);
+
+        return response()->json(['data' => $this->metadata($updatedNote, $subject)]);
     }
 
     public function destroy(Request $request, Workspace $workspace, int $note, NoteTrash $trash): JsonResponse
     {
         $note = $this->scopedNote($workspace, $note);
-        $this->noteAccess->assertEdit($this->subject($request), $note);
+        $subject = $this->subject($request);
+        $this->noteAccess->assertEdit($subject, $note);
 
         try {
-            $trash->trash($workspace, $note);
+            $deletedNote = $trash->trash($workspace, $note);
         } catch (VaultNoteNotFound) {
             abort(404);
         }
+
+        $this->eventEmitter->emitNoteDeleted($deletedNote, $subject);
 
         return response()->json(status: 204);
     }
@@ -123,7 +131,9 @@ final class WorkspaceNoteController extends Controller
         ]);
 
         $note = $this->scopedNote($workspace, $note);
-        $this->noteAccess->assertEdit($this->subject($request), $note);
+        $subject = $this->subject($request);
+        $this->noteAccess->assertEdit($subject, $note);
+        $oldPath = $note->path;
 
         try {
             $movedNote = $storage->move($workspace, $note->path, $validated['new_path']);
@@ -131,8 +141,11 @@ final class WorkspaceNoteController extends Controller
             throw ValidationException::withMessages(['new_path' => [$exception->getMessage()]]);
         }
 
+        $this->eventEmitter->transferWatchers($note, $movedNote);
+        $this->eventEmitter->emitNoteMoved($movedNote, $subject, $oldPath);
+
         return response()->json([
-            'data' => $this->metadata($movedNote, $this->subject($request)),
+            'data' => $this->metadata($movedNote, $subject),
         ]);
     }
 
@@ -198,6 +211,7 @@ final class WorkspaceNoteController extends Controller
             'properties' => $properties,
             'sort_position' => $note->sort_position,
             'updated_at' => $note->updated_at->toISOString(),
+            'watching' => $subject?->user === null ? false : $this->eventEmitter->isWatching($note, $subject->user->id),
             'access' => $subject === null ? null : [
                 'restricted' => $this->noteAccess->isRestricted($note),
                 'can_view' => $this->noteAccess->canView($subject, $note),
