@@ -67,15 +67,24 @@
               :class="{ unread: !notification.read_at }"
               data-testid="notification-item"
             >
-              <div class="notification-body" @click="!notification.read_at && $emit('mark-notification-read', notification.id)">
-                <span class="notification-title">{{ notification.title }}</span>
+              <div class="notification-body" @click="!notification.read_at && emit('mark-notification-read', notification.id)">
+                <button
+                  v-if="notification.data?.note_id"
+                  type="button"
+                  class="notification-target"
+                  data-testid="notification-target"
+                  @click.stop="openNotificationTarget(notification)"
+                >
+                  {{ notificationDisplayTitle(notification) }}
+                </button>
+                <span v-else class="notification-title">{{ notificationDisplayTitle(notification) }}</span>
                 <span v-if="notification.data?.comment_snippet" class="notification-snippet">{{ notification.data.comment_snippet }}</span>
                 <span class="notification-time">{{ formatNotificationTime(notification.created_at) }}</span>
               </div>
               <button
                 class="btn-delete-notification"
                 data-testid="notification-delete-btn"
-                :aria-label="t('sidebar.dismissNotification', { title: notification.title })"
+                :aria-label="t('sidebar.dismissNotification', { title: notificationDisplayTitle(notification) })"
                 :title="t('sidebar.dismiss')"
                 @click="$emit('delete-notification', notification.id)"
               >
@@ -501,6 +510,7 @@ const emit = defineEmits<{
   (e: 'logout'): void
   (e: 'mark-notification-read', notificationId: number): void
   (e: 'delete-notification', notificationId: number): void
+  (e: 'open-notification-target', target: { noteId: number; targetKind: 'note' | 'trash' }): void
   (e: 'toggle-attachments'): void
   (e: 'daily-note'): void
   (e: 'toggle-audit-log'): void
@@ -539,6 +549,22 @@ const showMoreMenu = ref(false)
 const showNotifications = ref(false)
 const notifications = computed(() => props.notifications ?? [])
 const unreadNotificationCount = computed(() => notifications.value.filter(n => !n.read_at).length)
+
+function openNotificationTarget(notification: NotificationItem): void {
+  const noteId = notification.data?.note_id
+  if (typeof noteId !== 'number') return
+  emit('open-notification-target', {
+    noteId,
+    targetKind: notification.data?.target_kind === 'trash' ? 'trash' : 'note',
+  })
+}
+
+function notificationDisplayTitle(notification: NotificationItem): string {
+  const noteTitle = notification.data?.note_title ?? notification.title
+  const key = `sidebar.notificationTypes.${notification.type}`
+  const translated = t(key, { title: noteTitle })
+  return translated === key ? notification.title : translated
+}
 
 function formatNotificationTime(iso: string): string {
   try {
@@ -991,6 +1017,20 @@ function handleImportSubmit() {
   font-size: 0.8125rem;
   color: var(--color-text);
   font-weight: 500;
+}
+
+.notification-target {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-action);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.notification-target:hover {
+  text-decoration: underline;
 }
 
 .notification-snippet {

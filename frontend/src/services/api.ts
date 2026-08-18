@@ -384,6 +384,14 @@ export async function deleteNotification(workspaceId: number, notificationId: nu
   await api.delete(`/workspaces/${workspaceId}/notifications/${notificationId}`)
 }
 
+export async function setNoteWatching(workspaceId: number, noteId: number, watching: boolean): Promise<boolean> {
+  const response = await api.put<{ data: { watching: boolean } }>(
+    `/workspaces/${workspaceId}/notes/${noteId}/watch`,
+    { watching },
+  )
+  return response.data.data.watching
+}
+
 export async function getCollection(
   workspaceId: number,
   filters: { property?: string; value?: string; page?: number; includeArchived?: boolean } = {}

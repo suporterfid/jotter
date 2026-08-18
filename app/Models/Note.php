@@ -66,6 +66,11 @@ class Note extends Model
         return $this->hasMany(NoteComment::class);
     }
 
+    public function watchers(): HasMany
+    {
+        return $this->hasMany(NoteWatcher::class);
+    }
+
     public function checklistItems(): HasMany
     {
         return $this->hasMany(NoteChecklistItem::class)->orderBy('sort_position')->orderBy('id');

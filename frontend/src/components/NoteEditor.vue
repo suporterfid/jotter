@@ -86,6 +86,20 @@
           </button>
         </div>
 
+        <button
+          type="button"
+          class="btn-attach"
+          data-testid="note-watch-btn"
+          :aria-pressed="note.watching === true"
+          :disabled="isUpdatingWatch"
+          :title="note.watching === true ? t('noteEditor.unwatch') : t('noteEditor.watch')"
+          @click="toggleWatching"
+        >
+          <span>{{ note.watching === true ? '🔔' : '🔕' }}</span>
+          <span>{{ note.watching === true ? t('noteEditor.watching') : t('noteEditor.watch') }}</span>
+        </button>
+        <span v-if="watchError" class="watch-error" role="alert">{{ t('noteEditor.watchError') }}</span>
+
         <div class="stats-toggle-wrapper">
           <button
             type="button"
@@ -632,7 +646,7 @@ import {
   getChecklistItems, createChecklistItem, updateChecklistItem, deleteChecklistItem,
   getNoteActivity,
   getUnlinkedMentions, getNote, updateNote,
-  getOutgoingLinks
+  getOutgoingLinks, setNoteWatching
 } from '../services/api'
 import MarkdownPreview from './MarkdownPreview.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
@@ -829,6 +843,8 @@ const viewMode = ref<'edit' | 'split' | 'preview' | 'live'>('live')
 const editableContent = ref(props.note.content)
 const isDirty = ref(false)
 const isSaving = ref(false)
+const isUpdatingWatch = ref(false)
+const watchError = ref(false)
 const showSavedIndicator = ref(false)
 const showStats = ref(false)
 const AUTOSAVE_DEBOUNCE_MS = 1000
@@ -839,6 +855,21 @@ const isUploading = ref(false)
 const isDraggingOver = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+async function toggleWatching() {
+  if (!props.workspaceId || isUpdatingWatch.value) return
+  isUpdatingWatch.value = true
+  watchError.value = false
+  try {
+    await setNoteWatching(props.workspaceId, props.note.id, props.note.watching !== true)
+    emit('select-note', props.note.id)
+  } catch (err) {
+    watchError.value = true
+    console.error('Failed to update note watch state:', err)
+  } finally {
+    isUpdatingWatch.value = false
+  }
+}
 
 const showHistory = ref(false)
 const revisions = ref<NoteRevisionMeta[]>([])
@@ -1790,6 +1821,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-4);
+}
+
+.watch-error {
+  color: var(--color-status-danger);
+  font-size: 0.75rem;
 }
 
 .view-mode-toggle {

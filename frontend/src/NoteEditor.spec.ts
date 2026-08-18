@@ -44,9 +44,10 @@ vi.mock('./services/api', () => ({
   getChecklistItems: vi.fn().mockResolvedValue([]),
   getWorkspaceProperties: vi.fn().mockResolvedValue([]),
   restoreNoteRevision: vi.fn().mockResolvedValue(undefined),
+  setNoteWatching: vi.fn().mockResolvedValue(true),
 }))
 
-import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, restoreNoteRevision } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, restoreNoteRevision, setNoteWatching } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -140,6 +141,24 @@ describe('NoteEditor page icon', () => {
     expect(setNoteProperty).not.toHaveBeenCalled()
     expect(deleteNoteProperty).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="editor-icon-input"]').exists()).toBe(false)
+  })
+})
+
+describe('NoteEditor page watching', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('toggles the watch state through the API and refreshes the note', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ watching: false }), allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.get('[data-testid="note-watch-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(setNoteWatching).toHaveBeenCalledWith(1, 1, true)
+    expect(wrapper.emitted('select-note')![0]).toEqual([1])
   })
 })
 

@@ -18,6 +18,7 @@ export interface NoteMeta {
   frontmatter: Record<string, unknown> | null
   sort_position: number | null
   updated_at: string
+  watching?: boolean
   access?: NoteAccessMeta | null
 }
 
@@ -150,6 +151,7 @@ export interface NoteComment {
   workspace_id: number
   note_id: number
   user_id: number | null
+  parent_comment_id?: number | null
   actor_name: string
   content: string
   anchor_line: number | null
@@ -188,13 +190,28 @@ export interface LinkReport {
   orphans: OrphanNote[]
 }
 
+export type NotificationType = 'mention' | 'note_commented' | 'comment_reply' | 'note_edited' | 'note_moved' | 'note_deleted'
+
+export interface NotificationData {
+  actor_id?: string
+  actor_name?: string
+  comment_snippet?: string
+  note_id?: number
+  note_path?: string
+  note_title?: string
+  comment_id?: number
+  parent_comment_id?: number
+  target_kind?: 'note' | 'trash'
+  [key: string]: unknown
+}
+
 export interface NotificationItem {
   id: number
   workspace_id: number
   user_id: number
-  type: string
+  type: NotificationType
   title: string
-  data: { actor_id?: string; comment_snippet?: string; [key: string]: unknown } | null
+  data: NotificationData | null
   read_at: string | null
   created_at: string
 }

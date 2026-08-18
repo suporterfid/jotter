@@ -43,6 +43,7 @@
       @logout="handleLogout"
       @mark-notification-read="handleMarkNotificationRead"
       @delete-notification="handleDeleteNotification"
+      @open-notification-target="handleOpenNotificationTarget"
       @toggle-attachments="handleToggleAttachments"
       @daily-note="handleDailyNote"
       @toggle-audit-log="handleToggleAuditLog"
@@ -657,6 +658,7 @@ async function loadActiveNote(noteId: number) {
         frontmatter: detail.frontmatter,
         sort_position: detail.sort_position,
         updated_at: detail.updated_at,
+        watching: detail.watching,
       }
     }
   } catch (err) {
@@ -676,6 +678,14 @@ async function handleSelectNote(noteId: number) {
   isBoardViewActive.value = false
   isCalendarViewActive.value = false
   await loadActiveNote(noteId)
+}
+
+async function handleOpenNotificationTarget(target: { noteId: number; targetKind: 'note' | 'trash' }) {
+  if (target.targetKind === 'trash') {
+    if (!isTrashActive.value) await handleToggleTrash()
+    return
+  }
+  await handleSelectNote(target.noteId)
 }
 
 async function handleToggleAttachments() {

@@ -66,19 +66,35 @@ final class WorkspaceCommentController extends Controller
         $request->validate([
             'content' => ['required', 'string', 'max:2000'],
             'anchor_line' => ['nullable', 'integer', 'min:1'],
+            'parent_comment_id' => ['nullable', 'integer'],
         ]);
 
         $content = $request->string('content')->trim()->toString();
         $anchorLine = $request->input('anchor_line');
+        $parentComment = null;
+        if ($request->filled('parent_comment_id')) {
+            $parentComment = NoteComment::query()
+                ->where('workspace_id', $workspaceId)
+                ->where('note_id', $noteId)
+                ->findOrFail((int) $request->input('parent_comment_id'));
+        }
 
         $comment = NoteComment::query()->create([
             'workspace_id' => $workspaceId,
             'note_id' => $noteId,
+            'parent_comment_id' => $parentComment?->id,
             'user_id' => $subject->user?->id,
             'actor_name' => $subject->name ?: 'Anonymous',
             'content' => $content,
             'anchor_line' => $anchorLine,
         ]);
+
+        $this->eventEmitter->ensureAutoWatch($note, $subject->user?->id);
+        if ($parentComment) {
+            $this->eventEmitter->emitCommentReply($note, $comment, $parentComment, $subject);
+        } else {
+            $this->eventEmitter->emitCommentAdded($note, $comment, $subject);
+        }
 
         // Parse mentions (e.g. @username or @email)
         preg_match_all('/@([a-zA-Z0-9._-]+)/', $content, $matches);

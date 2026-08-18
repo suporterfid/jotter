@@ -6,28 +6,29 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class Notification extends Model
+final class NoteWatcher extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'workspace_id',
+        'note_id',
         'user_id',
-        'type',
-        'title',
-        'data',
-        'dedupe_key',
-        'read_at',
+        'is_watching',
     ];
 
     protected $casts = [
-        'data' => 'array',
-        'read_at' => 'datetime',
+        'is_watching' => 'boolean',
     ];
 
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    public function note(): BelongsTo
+    {
+        return $this->belongsTo(Note::class);
     }
 
     public function user(): BelongsTo

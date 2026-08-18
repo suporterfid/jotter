@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class NoteComment extends Model
 {
@@ -13,6 +14,7 @@ final class NoteComment extends Model
     protected $fillable = [
         'workspace_id',
         'note_id',
+        'parent_comment_id',
         'user_id',
         'actor_name',
         'content',
@@ -32,5 +34,15 @@ final class NoteComment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_comment_id');
+    }
+
+    public function replies(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_comment_id');
     }
 }

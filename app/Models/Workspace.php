@@ -54,4 +54,9 @@ class Workspace extends Model
     {
         return $this->hasMany(WorkspaceGroup::class);
     }
+
+    public function noteWatchers(): HasMany
+    {
+        return $this->hasMany(NoteWatcher::class);
+    }
 }
