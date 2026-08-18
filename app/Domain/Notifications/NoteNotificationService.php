@@ -15,8 +15,9 @@ use Illuminate\Support\Carbon;
 final class NoteNotificationService
 {
     public function __construct(
-        private readonly AuditRecorder $auditRecorder = new AuditRecorder,
-        private readonly NoteAccess $noteAccess = new NoteAccess,
+        private readonly AuditRecorder $auditRecorder,
+        private readonly NoteAccess $noteAccess,
+        private readonly NotificationEmailService $notificationEmailService,
     ) {}
 
     public function watch(Note $note, int $userId): NoteWatcher
@@ -278,7 +279,7 @@ final class NoteNotificationService
             return;
         }
 
-        Notification::query()->create([
+        $notification = Notification::query()->create([
             'workspace_id' => $note->workspace_id,
             'user_id' => $userId,
             'type' => $type->value,
@@ -286,5 +287,6 @@ final class NoteNotificationService
             'data' => $payload,
             'dedupe_key' => $dedupeKey,
         ]);
+        $this->notificationEmailService->enqueueImmediate($notification);
     }
 }
