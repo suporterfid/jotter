@@ -371,6 +371,31 @@ export async function publishWorkspace(workspaceId: number): Promise<PublishResu
   return response.data
 }
 
+export interface PdfExportStatus {
+  id: string
+  status: 'queued' | 'processing' | 'ready' | 'failed' | 'expired'
+  scope: 'workspace' | 'note'
+  queued_at?: string | null
+  started_at?: string | null
+  completed_at?: string | null
+  expires_at?: string | null
+  failure_reason?: string | null
+}
+
+export async function queueWorkspacePdfExport(workspaceId: number): Promise<PdfExportStatus> {
+  const response = await api.post<PdfExportStatus>(`/workspaces/${workspaceId}/pdf-exports`)
+  return response.data
+}
+
+export async function getWorkspacePdfExport(workspaceId: number, exportId: string): Promise<PdfExportStatus> {
+  const response = await api.get<PdfExportStatus>(`/workspaces/${workspaceId}/pdf-exports/${encodeURIComponent(exportId)}`)
+  return response.data
+}
+
+export function downloadWorkspacePdfExport(workspaceId: number, exportId: string): void {
+  window.location.href = `/api/workspaces/${workspaceId}/pdf-exports/${encodeURIComponent(exportId)}/download`
+}
+
 export async function getNotifications(workspaceId: number): Promise<NotificationItem[]> {
   const response = await api.get<{ data: NotificationItem[] }>(`/workspaces/${workspaceId}/notifications`)
   return response.data.data
