@@ -26,6 +26,25 @@ The release command writes `dist/jotter-release.zip` and `dist/jotter-release.zi
 6. Run `php artisan migrate --force` using the host's PHP 8.2+ CLI facility.
 7. Keep debug mode off and use HTTPS.
 
+## External content embeds
+
+External embeds are disabled by default. To enable them, set a comma-separated
+allowlist of HTTPS hostnames in the production `.env`:
+
+```dotenv
+JOTTER_EXTERNAL_EMBED_DOMAINS=youtube.com,miro.com
+```
+
+Matching accepts an exact hostname or a dot-boundary subdomain (for example,
+`www.youtube.com` matches `youtube.com`, while `evil-youtube.com` does not).
+Only standalone HTTPS URLs on their own Markdown line are eligible. Jotter does
+not fetch external content server-side; authenticated previews generate an
+`iframe` with `sandbox="allow-scripts"`, `referrerpolicy="no-referrer"`, and
+`loading="lazy"`, without `allow-same-origin`. URLs in fenced code remain code.
+
+Published static sites and the WYSIWYG editor intentionally render these URLs as
+ordinary links, so publishing never creates an external iframe.
+
 ## Generic OIDC SSO
 
 Jotter keeps local authentication as the default. To enable a standard corporate

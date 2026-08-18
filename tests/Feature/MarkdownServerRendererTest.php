@@ -148,4 +148,52 @@ final class MarkdownServerRendererTest extends TestCase
             $html,
         );
     }
+
+    public function test_renders_allowlisted_standalone_https_url_as_a_sandboxed_iframe(): void
+    {
+        config(['jotter.external_embed_domains' => ['youtube.com']]);
+        $renderer = new MarkdownServerRenderer();
+
+        $html = $renderer->render("https://www.youtube.com/embed/abc\n");
+
+        $this->assertStringContainsString(
+            '<iframe class="external-embed" src="https://www.youtube.com/embed/abc" title="External content" sandbox="allow-scripts" referrerpolicy="no-referrer" loading="lazy"></iframe>',
+            $html,
+        );
+        $this->assertStringNotContainsString('allow-same-origin', $html);
+    }
+
+    public function test_rejected_and_fenced_external_urls_remain_non_iframe_content(): void
+    {
+        config(['jotter.external_embed_domains' => ['youtube.com']]);
+        $renderer = new MarkdownServerRenderer();
+
+        $html = $renderer->render(implode("\n", [
+            'https://evil-youtube.com/embed/abc',
+            '',
+            '```',
+            'https://www.youtube.com/embed/fenced',
+            '```',
+            '',
+            '~~~',
+            'https://www.youtube.com/embed/tilde-fenced',
+            '~~~',
+        ]));
+
+        $this->assertStringNotContainsString('<iframe', $html);
+        $this->assertStringContainsString('https://evil-youtube.com/embed/abc', $html);
+        $this->assertStringContainsString('https://www.youtube.com/embed/fenced', $html);
+        $this->assertStringContainsString('https://www.youtube.com/embed/tilde-fenced', $html);
+    }
+
+    public function test_render_can_explicitly_disable_external_iframes(): void
+    {
+        config(['jotter.external_embed_domains' => ['youtube.com']]);
+        $renderer = new MarkdownServerRenderer();
+
+        $html = $renderer->render('https://www.youtube.com/embed/abc', false);
+
+        $this->assertStringNotContainsString('<iframe', $html);
+        $this->assertStringContainsString('https://www.youtube.com/embed/abc', $html);
+    }
 }

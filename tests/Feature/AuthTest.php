@@ -254,7 +254,20 @@ class AuthTest extends TestCase
     {
         $this->getJson('/api/auth/config')
             ->assertOk()
-            ->assertJson(['data' => ['provider' => 'local', 'sso_login_url' => null]]);
+            ->assertJson(['data' => [
+                'provider' => 'local',
+                'sso_login_url' => null,
+                'external_embed_domains' => [],
+            ]]);
+    }
+
+    public function test_auth_config_endpoint_exposes_normalized_external_embed_domains(): void
+    {
+        config(['jotter.external_embed_domains' => [' YouTube.com ', 'miro.com', '']]);
+
+        $this->getJson('/api/auth/config')
+            ->assertOk()
+            ->assertJsonPath('data.external_embed_domains', ['youtube.com', 'miro.com']);
     }
 
     public function test_auth_config_endpoint_reports_grandpasson_provider_and_builds_sso_login_url(): void

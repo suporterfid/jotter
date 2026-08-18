@@ -1,7 +1,51 @@
 import { describe, expect, it } from 'vitest'
 import { renderMarkdown } from './services/markdown'
+import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
 
 describe('Markdown rendering & XSS security', () => {
+  it('renders an allowlisted standalone HTTPS URL as a sandboxed iframe', () => {
+    setExternalEmbedAllowedHosts(['youtube.com'])
+
+    const html = renderMarkdown('https://www.youtube.com/embed/abc\n')
+
+    expect(html).toContain('<iframe class="external-embed"')
+    expect(html).toContain('src="https://www.youtube.com/embed/abc"')
+    expect(html).toContain('sandbox="allow-scripts"')
+    expect(html).toContain('referrerpolicy="no-referrer"')
+    expect(html).toContain('loading="lazy"')
+    expect(html).not.toContain('allow-same-origin')
+  })
+
+  it('leaves rejected and fenced URLs as links or code, never iframes', () => {
+    setExternalEmbedAllowedHosts(['youtube.com'])
+
+    const html = renderMarkdown([
+      'https://evil-youtube.com/embed/abc',
+      '',
+      '```',
+      'https://www.youtube.com/embed/fenced',
+      '```',
+      '',
+      '~~~',
+      'https://www.youtube.com/embed/tilde-fenced',
+      '~~~',
+    ].join('\n'))
+
+    expect(html).not.toContain('<iframe')
+    expect(html).toContain('https://evil-youtube.com/embed/abc')
+    expect(html).toContain('https://www.youtube.com/embed/fenced')
+    expect(html).toContain('https://www.youtube.com/embed/tilde-fenced')
+  })
+
+  it('does not turn raw user iframe HTML into an external embed', () => {
+    setExternalEmbedAllowedHosts(['youtube.com'])
+
+    const html = renderMarkdown('<iframe src="https://www.youtube.com/embed/raw"></iframe>')
+
+    expect(html).not.toContain('<iframe')
+    expect(html).not.toContain('https://www.youtube.com/embed/raw')
+  })
+
   it('renders standard markdown elements', () => {
     const md = '# Heading\n\nThis is **bold** text and *italic* text.'
     const html = renderMarkdown(md)

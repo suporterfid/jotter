@@ -25,7 +25,7 @@ final class MarkdownServerRenderer
         $this->converter = new MarkdownConverter($environment);
     }
 
-    public function render(string $markdown): string
+    public function render(string $markdown, bool $allowExternalEmbeds = true): string
     {
         if (trim($markdown) === '') {
             return '';
@@ -34,6 +34,11 @@ final class MarkdownServerRenderer
         // Strip Obsidian comments %% ... %% before any further processing;
         // they must never leak into rendered SPA or published output.
         $processed = preg_replace('/%%.*?%%/s', '', $markdown);
+
+        $externalEmbedBlocks = [];
+        if ($allowExternalEmbeds) {
+            $processed = $this->extractExternalEmbeds($processed ?? $markdown, $externalEmbedBlocks);
+        }
 
         // Optional LaTeX/Mermaid hydration markup (off by default). Placeholders
         // survive the CommonMark pass untouched (plain alnum tokens), then get
@@ -80,8 +85,70 @@ final class MarkdownServerRenderer
             $html = strtr($html, $mathMermaidBlocks);
         }
 
+        if ($externalEmbedBlocks !== []) {
+            $html = strtr($html, $externalEmbedBlocks);
+        }
+
         // Server-side XSS sanitization pass
         return $this->sanitizeHtml($html);
+    }
+
+    /**
+     * Replaces allowlisted, standalone HTTPS URLs outside fenced code blocks
+     * with safe placeholders until after CommonMark has rendered the source.
+     *
+     * @param array<string, string> $blocks
+     */
+    private function extractExternalEmbeds(string $markdown, array &$blocks): string
+    {
+        $lines = preg_split('/\r\n|\n|\r/', $markdown);
+        if ($lines === false) {
+            return $markdown;
+        }
+
+        $policy = ExternalEmbedPolicy::configured();
+        $inFence = false;
+        $fenceChar = '';
+        $fenceLength = 0;
+        $index = 0;
+
+        foreach ($lines as &$line) {
+            if (preg_match('/^ {0,3}(`{3,}|~{3,})/', $line, $fenceMatch) === 1) {
+                $marker = $fenceMatch[1];
+                $markerChar = $marker[0];
+                $markerLength = strlen($marker);
+
+                if (! $inFence) {
+                    $inFence = true;
+                    $fenceChar = $markerChar;
+                    $fenceLength = $markerLength;
+                } elseif ($markerChar === $fenceChar && $markerLength >= $fenceLength) {
+                    $inFence = false;
+                }
+
+                continue;
+            }
+
+            if ($inFence || preg_match('/^ {0,3}(https:\/\/[^\s<>]+)\s*$/', $line, $urlMatch) !== 1) {
+                continue;
+            }
+
+            $url = $urlMatch[1];
+            if (! $policy->isAllowed($url)) {
+                continue;
+            }
+
+            $token = sprintf('JOTTEREXTERNALEMBED%dTOKEN', $index++);
+            $escapedUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+            $blocks[$token] = sprintf(
+                '<iframe class="external-embed" src="%s" title="External content" sandbox="allow-scripts" referrerpolicy="no-referrer" loading="lazy"></iframe>',
+                $escapedUrl,
+            );
+            $line = $token;
+        }
+        unset($line);
+
+        return implode("\n", $lines);
     }
 
     /**

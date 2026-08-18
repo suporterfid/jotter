@@ -530,6 +530,21 @@ describe('NoteEditor slash-command menu', () => {
     expect(wrapper.text()).not.toContain('To-do List')
   })
 
+  it('shows and inserts the external embed block syntax from the textarea slash menu', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },
+    })
+    await wrapper.find('[data-testid="view-mode-split"]').trigger('click')
+    const textarea = wrapper.find('[data-testid="markdown-textarea"]')
+    const el = textarea.element as HTMLTextAreaElement
+    typeAndPosition(el, '/external', 9)
+    await textarea.trigger('input')
+
+    expect(wrapper.text()).toContain('External Embed')
+    await wrapper.find('.slash-menu-item').trigger('click')
+    expect(el.value).toBe('https://example.com/embed')
+  })
+
   it('opens the slash menu for "/" right after a space or a newline', async () => {
     const wrapper = mount(NoteEditor, {
       props: { note: makeNote({ content: '' }), allNotes: [], workspaceId: 1 },

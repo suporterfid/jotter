@@ -66,6 +66,13 @@ export const blockDefinitions: Record<string, BlockDefinition> = {
     allowed_attributes: ['class', 'data-embed-status', 'data-embed-target'],
     slash_menu: { label: 'Embed Note', icon: 'layout' },
   },
+  external_embed: {
+    name: 'External Embed',
+    syntax: 'https://example.com/embed',
+    allowed_tags: ['iframe', 'a'],
+    allowed_attributes: ['class', 'src', 'title', 'sandbox', 'referrerpolicy', 'loading', 'href', 'target', 'rel'],
+    slash_menu: { label: 'External Embed', icon: 'globe' },
+  },
 }
 
 export function getClientAllowedTags(): string[] {

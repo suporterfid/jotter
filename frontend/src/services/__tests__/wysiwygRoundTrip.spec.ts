@@ -112,6 +112,10 @@ const LOSSLESS_FIXTURES: LosslessFixture[] = [
     name: 'toggle <details><summary>...</summary>...</details> (native node since WY.3, single-line only)',
     markdown: '<details><summary>Toggle</summary>Content</details>\n',
   },
+  {
+    name: 'standalone external HTTPS embed URL (native node since CF.7)',
+    markdown: 'https://www.youtube.com/embed/abc\n',
+  },
 ]
 
 const KNOWN_GAP_FIXTURES: KnownGapFixture[] = [

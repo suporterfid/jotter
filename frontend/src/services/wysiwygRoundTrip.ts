@@ -5,6 +5,7 @@ import { wikilinkNode } from './wysiwygNodes/wikilink'
 import { embedNode } from './wysiwygNodes/embed'
 import { calloutNode } from './wysiwygNodes/callout'
 import { toggleNode } from './wysiwygNodes/toggle'
+import { externalEmbedNode } from './wysiwygNodes/externalEmbed'
 
 /**
  * Parses markdown through Milkdown's commonmark+gfm presets (plus WY.3's
@@ -26,6 +27,7 @@ export async function roundTripMarkdown(markdown: string): Promise<string> {
     .use(embedNode)
     .use(calloutNode)
     .use(toggleNode)
+    .use(externalEmbedNode)
 
   await editor.create()
 

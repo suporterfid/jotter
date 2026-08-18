@@ -28,6 +28,11 @@ return [
         'katex_mermaid_enabled' => (bool) env('JOTTER_ENABLE_MATH_MERMAID', false),
     ],
 
+    'external_embed_domains' => array_values(array_unique(array_filter(array_map(
+        static fn (string $host): string => strtolower(trim($host)),
+        explode(',', (string) env('JOTTER_EXTERNAL_EMBED_DOMAINS', '')),
+    ), static fn (string $host): bool => $host !== ''))),
+
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 
