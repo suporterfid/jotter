@@ -384,6 +384,22 @@ export async function deleteNotification(workspaceId: number, notificationId: nu
   await api.delete(`/workspaces/${workspaceId}/notifications/${notificationId}`)
 }
 
+export async function getNotificationPreferences(): Promise<import('./types').NotificationPreference[]> {
+  const response = await api.get<{ data: import('./types').NotificationPreference[] }>('/user/notification-preferences')
+  return response.data.data
+}
+
+export async function updateNotificationPreference(
+  type: import('./types').NotificationType,
+  mode: import('./types').NotificationEmailMode,
+): Promise<import('./types').NotificationPreference> {
+  const response = await api.put<{ data: import('./types').NotificationPreference }>(
+    `/user/notification-preferences/${type}`,
+    { mode },
+  )
+  return response.data.data
+}
+
 export async function setNoteWatching(workspaceId: number, noteId: number, watching: boolean): Promise<boolean> {
   const response = await api.put<{ data: { watching: boolean } }>(
     `/workspaces/${workspaceId}/notes/${noteId}/watch`,

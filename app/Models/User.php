@@ -74,4 +74,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(NoteWatcher::class);
     }
+
+    public function notificationPreferences(): HasMany
+    {
+        return $this->hasMany(NotificationPreference::class);
+    }
+
+    public function notificationDeliveries(): HasMany
+    {
+        return $this->hasMany(NotificationDelivery::class);
+    }
 }

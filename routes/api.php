@@ -15,6 +15,7 @@ use App\Http\Controllers\WorkspacePublishController;
 use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceSyncController;
 use App\Http\Controllers\WorkspaceTrashController;
+use App\Http\Controllers\NotificationPreferenceController;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,8 @@ Route::get('/auth/oidc/redirect', [\App\Http\Controllers\OidcController::class, 
 Route::get('/auth/oidc/callback', [\App\Http\Controllers\OidcController::class, 'callback']);
 Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);
 Route::post('/user/locale', [\App\Http\Controllers\UserLocaleController::class, 'update']);
+Route::get('/user/notification-preferences', [NotificationPreferenceController::class, 'index']);
+Route::put('/user/notification-preferences/{type}', [NotificationPreferenceController::class, 'update']);
 Route::post('/mcp', [\App\Http\Controllers\McpController::class, 'handle']);
 
 Route::middleware('workspace.authorization')->group(function (): void {

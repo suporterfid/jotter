@@ -5,6 +5,7 @@ namespace App\Domain\Events;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\AuthenticatedSubject;
+use App\Domain\Notifications\NotificationEmailService;
 use App\Domain\Notifications\NoteNotificationService;
 use App\Models\Note;
 use App\Models\NoteComment;
@@ -13,8 +14,9 @@ use App\Models\Notification;
 final class WorkspaceEventEmitter
 {
     public function __construct(
-        private readonly AuditRecorder $auditRecorder = new AuditRecorder,
-        private readonly NoteNotificationService $notificationService = new NoteNotificationService,
+        private readonly AuditRecorder $auditRecorder,
+        private readonly NoteNotificationService $notificationService,
+        private readonly NotificationEmailService $notificationEmailService,
     ) {}
 
     public function emitMention(int $workspaceId, string $actorId, int $targetUserId, string $noteTitle, string $commentContent): void
@@ -28,7 +30,7 @@ final class WorkspaceEventEmitter
         );
 
         // 2. User notification
-        Notification::query()->create([
+        $notification = Notification::query()->create([
             'workspace_id' => $workspaceId,
             'user_id' => $targetUserId,
             'type' => 'mention',
@@ -38,6 +40,7 @@ final class WorkspaceEventEmitter
                 'comment_snippet' => mb_substr($commentContent, 0, 100),
             ],
         ]);
+        $this->notificationEmailService->enqueueImmediate($notification);
     }
 
     public function watch(Note $note, int $userId): void

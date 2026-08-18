@@ -59,11 +59,18 @@
       @switch-tenant="handleSwitchTenant"
       @toggle-admin-panel="isAdminPanelOpen = true"
       @open-change-password="isChangePasswordOpen = true"
+      @open-notification-preferences="openNotificationPreferences"
     />
 
     <AdminPanel :is-open="isAdminPanelOpen" @close="handleCloseAdminPanel" />
 
     <ChangePasswordModal v-if="isChangePasswordOpen" @close="isChangePasswordOpen = false" />
+
+    <NotificationPreferences
+      :is-open="isNotificationPreferencesOpen"
+      :unsubscribe-type="notificationPreferencesUnsubscribeType"
+      @close="closeNotificationPreferences"
+    />
 
     <TabStrip
       v-if="showTabStrip"
@@ -282,6 +289,7 @@ import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import AdminPanel from './components/AdminPanel.vue'
 import ChangePasswordModal from './components/ChangePasswordModal.vue'
+import NotificationPreferences from './components/NotificationPreferences.vue'
 import {
   getWorkspaces,
   getTenants,
@@ -317,7 +325,7 @@ import {
   updateBoard,
   deleteBoard
 } from './services/api'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig } from './services/types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig, NotificationType } from './services/types'
 import BoardSwitcher from './components/BoardSwitcher.vue'
 import { isArchived } from './services/collectionUtils'
 import { APP_VERSION } from './version'
@@ -380,10 +388,33 @@ const currentUser = ref<AuthUser | null>(null)
 const backendVersion = ref<string | null>(null)
 const authProvider = ref<string | null>(null)
 const isChangePasswordOpen = ref(false)
+const isNotificationPreferencesOpen = ref(false)
+const notificationPreferencesUnsubscribeType = ref<NotificationType | null>(null)
 const showLoginModal = ref(false)
 const isMobileSidebarOpen = ref(false)
 const isGraphViewActive = ref(false)
 const revealFolderRequest = ref<{ path: string; nonce: number } | null>(null)
+
+function openNotificationPreferences(): void {
+  notificationPreferencesUnsubscribeType.value = null
+  isNotificationPreferencesOpen.value = true
+}
+
+function closeNotificationPreferences(): void {
+  isNotificationPreferencesOpen.value = false
+  notificationPreferencesUnsubscribeType.value = null
+}
+
+function openNotificationPreferencesFromUrl(): void {
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('notification-preferences') !== '1') return
+  const unsubscribe = params.get('unsubscribe')
+  const validTypes: NotificationType[] = ['mention', 'note_commented', 'comment_reply', 'note_edited', 'note_moved', 'note_deleted']
+  notificationPreferencesUnsubscribeType.value = validTypes.includes(unsubscribe as NotificationType)
+    ? unsubscribe as NotificationType
+    : null
+  isNotificationPreferencesOpen.value = true
+}
 
 const isSearchActive = ref(false)
 const searchQuery = ref('')
@@ -470,6 +501,7 @@ onMounted(async () => {
     .catch(() => {})
 
   await initWorkspace()
+  openNotificationPreferencesFromUrl()
 })
 
 const WORKSPACE_STORAGE_KEY = 'jotter-active-workspace-id'

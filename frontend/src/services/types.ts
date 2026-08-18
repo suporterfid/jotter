@@ -191,6 +191,13 @@ export interface LinkReport {
 }
 
 export type NotificationType = 'mention' | 'note_commented' | 'comment_reply' | 'note_edited' | 'note_moved' | 'note_deleted'
+export type NotificationEmailMode = 'immediate' | 'digest' | 'off'
+
+export interface NotificationPreference {
+  type: NotificationType
+  mode: NotificationEmailMode
+  explicit: boolean
+}
 
 export interface NotificationData {
   actor_id?: string
