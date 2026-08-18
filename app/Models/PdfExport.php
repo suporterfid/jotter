@@ -8,6 +8,10 @@ use Illuminate\Support\Str;
 
 final class PdfExport extends Model
 {
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     protected $fillable = [
         'workspace_id',
         'note_id',

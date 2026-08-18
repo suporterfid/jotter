@@ -8,6 +8,7 @@ use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebDavController;
 use App\Http\Controllers\WorkspaceExportController;
 use App\Http\Controllers\NotePdfExportController;
+use App\Http\Controllers\WorkspacePdfExportController;
 use App\Http\Controllers\WorkspaceNoteController;
 use App\Http\Controllers\WorkspaceNoteAclController;
 use App\Http\Controllers\WorkspaceGroupController;
@@ -57,6 +58,9 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/workspaces/{workspace}/audit-logs', [AuditLogQueryController::class, 'index']);
     Route::get('/workspaces/{workspace}/export', [WorkspaceExportController::class, 'export']);
     Route::get('/workspaces/{workspace}/notes/{note}/export.pdf', [NotePdfExportController::class, 'export']);
+    Route::post('/workspaces/{workspace}/pdf-exports', [WorkspacePdfExportController::class, 'store']);
+    Route::get('/workspaces/{workspace}/pdf-exports/{export}', [WorkspacePdfExportController::class, 'show']);
+    Route::get('/workspaces/{workspace}/pdf-exports/{export}/download', [WorkspacePdfExportController::class, 'download']);
     Route::get('/workspaces/{workspace}/sync', [WorkspaceSyncController::class, 'sync']);
     Route::get('/workspaces/{workspace}/search', WorkspaceSearchController::class);
     Route::get('/workspaces/{workspace}/link-report', [\App\Http\Controllers\WorkspaceLinkReportController::class, 'report']);
