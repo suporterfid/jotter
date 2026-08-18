@@ -72,6 +72,7 @@ export interface AuthConfig {
   provider: 'local' | 'grandpasson' | 'oidc'
   sso_login_url: string | null
   version: string | null
+  external_embed_domains?: string[]
 }
 
 export async function getAuthConfig(): Promise<AuthConfig> {

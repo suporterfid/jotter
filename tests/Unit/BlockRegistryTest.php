@@ -19,6 +19,15 @@ class BlockRegistryTest extends TestCase
         $this->assertArrayHasKey('table', $defs);
         $this->assertArrayHasKey('divider', $defs);
         $this->assertArrayHasKey('embed', $defs);
+        $this->assertArrayHasKey('external_embed', $defs);
+
+        $this->assertSame('https://example.com/embed', $defs['external_embed']['syntax']);
+        $this->assertSame(['iframe', 'a'], $defs['external_embed']['allowed_tags']);
+        $this->assertSame(
+            ['class', 'src', 'title', 'sandbox', 'referrerpolicy', 'loading', 'href', 'target', 'rel'],
+            $defs['external_embed']['allowed_attributes']
+        );
+        $this->assertSame(['label' => 'External Embed', 'icon' => 'globe'], $defs['external_embed']['slash_menu']);
     }
 
     public function test_allowed_tags_and_attributes_derivation(): void
@@ -35,5 +44,7 @@ class BlockRegistryTest extends TestCase
         $this->assertContains('data-language', $attrs);
         $this->assertContains('class', $attrs);
         $this->assertContains('data-embed-status', $attrs);
+        $this->assertContains('sandbox', $attrs);
+        $this->assertContains('referrerpolicy', $attrs);
     }
 }

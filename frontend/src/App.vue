@@ -332,6 +332,7 @@ import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
 import TabStrip from './components/TabStrip.vue'
 import { useOpenTabs } from './composables/useOpenTabs'
+import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
 
 const { t } = useI18n()
 
@@ -493,12 +494,14 @@ onMounted(async () => {
     showLoginModal.value = true
   }
 
-  getAuthConfig()
-    .then((config) => {
-      backendVersion.value = config.version
-      authProvider.value = config.provider
-    })
-    .catch(() => {})
+  try {
+    const config = await getAuthConfig()
+    backendVersion.value = config.version
+    authProvider.value = config.provider
+    setExternalEmbedAllowedHosts(config.external_embed_domains ?? [])
+  } catch {
+    setExternalEmbedAllowedHosts([])
+  }
 
   await initWorkspace()
   openNotificationPreferencesFromUrl()

@@ -18,6 +18,7 @@ import { wikilinkNode } from './wysiwygNodes/wikilink'
 import { embedNode } from './wysiwygNodes/embed'
 import { calloutNode } from './wysiwygNodes/callout'
 import { toggleNode } from './wysiwygNodes/toggle'
+import { externalEmbedNode } from './wysiwygNodes/externalEmbed'
 
 export type ToggleableMark = 'bold' | 'italic' | 'strike' | 'code'
 
@@ -104,6 +105,7 @@ export async function createWysiwygEditor(
     .use(embedNode)
     .use(calloutNode)
     .use(toggleNode)
+    .use(externalEmbedNode)
 
   await editor.create()
 

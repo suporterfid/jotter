@@ -159,4 +159,32 @@ final class WorkspacePublishTest extends TestCase
             $this->assertTrue(rename($temporarySource, $source));
         }
     }
+
+    public function test_workspace_publish_degrades_external_embed_urls_to_links(): void
+    {
+        config(['jotter.external_embed_domains' => ['youtube.com']]);
+        $admin = User::factory()->create(['is_admin' => true, 'locale' => 'en']);
+        $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);
+        $slug = 'publish-external-'.bin2hex(random_bytes(4));
+        $vaultDir = storage_path('app/vaults/'.$slug);
+        mkdir($vaultDir, 0755, true);
+        file_put_contents($vaultDir.'/external.md', "# External\n\nhttps://www.youtube.com/embed/abc\n");
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => $slug,
+            'name' => 'External',
+            'vault_path' => $vaultDir,
+        ]);
+
+        $this->artisan('vault:reindex', ['--workspace' => $workspace->id]);
+
+        $this->actingAs($admin)
+            ->postJson("/api/workspaces/{$workspace->id}/publish")
+            ->assertOk();
+
+        $html = file_get_contents(storage_path("app/public/sites/{$slug}/external.html"));
+        $this->assertStringNotContainsString('<iframe', $html);
+        $this->assertStringContainsString('https://www.youtube.com/embed/abc', $html);
+    }
 }

@@ -11,6 +11,7 @@ describe('BlockRegistry Service', () => {
     expect(blockDefinitions).toHaveProperty('table')
     expect(blockDefinitions).toHaveProperty('divider')
     expect(blockDefinitions).toHaveProperty('embed')
+    expect(blockDefinitions).toHaveProperty('external_embed')
   })
 
   it('derives client allowed tags and attributes matching server definitions', () => {
@@ -24,5 +25,16 @@ describe('BlockRegistry Service', () => {
     expect(attrs).toContain('data-language')
     expect(attrs).toContain('data-embed-status')
     expect(attrs).toContain('data-embed-target')
+    expect(attrs).toContain('sandbox')
+    expect(attrs).toContain('referrerpolicy')
+  })
+
+  it('describes the external embed slash block', () => {
+    expect(blockDefinitions.external_embed).toMatchObject({
+      name: 'External Embed',
+      syntax: 'https://example.com/embed',
+      allowed_tags: ['iframe', 'a'],
+      slash_menu: { label: 'External Embed', icon: 'globe' },
+    })
   })
 })

@@ -75,7 +75,7 @@ final class WorkspacePublishController extends Controller
             $fullPath = rtrim($workspace->vault_path, '/').'/'.$note->path;
             if (file_exists($fullPath)) {
                 $markdown = file_get_contents($fullPath);
-                $html = $this->renderer->render($markdown);
+                $html = $this->renderer->render($markdown, allowExternalEmbeds: false);
 
                 $relPath = str_replace('.md', '.html', $note->path);
                 $depth = substr_count(trim($relPath, '/'), '/');

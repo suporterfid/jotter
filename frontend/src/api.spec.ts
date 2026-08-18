@@ -25,6 +25,7 @@ import {
   getTrash,
   restoreTrashNote,
   permanentlyDeleteTrashNote,
+  getAuthConfig,
 } from './services/api'
 import axios from 'axios'
 
@@ -92,5 +93,17 @@ describe('note-tree API functions', () => {
     await permanentlyDeleteTrashNote(1, 7)
 
     expect(instance.delete).toHaveBeenCalledWith('/workspaces/1/trash/7')
+  })
+
+  it('getAuthConfig returns the server-provided external embed domains', async () => {
+    instance.get.mockResolvedValueOnce({ data: { data: {
+      provider: 'local',
+      sso_login_url: null,
+      version: null,
+      external_embed_domains: ['youtube.com'],
+    } } })
+
+    await expect(getAuthConfig()).resolves.toMatchObject({ external_embed_domains: ['youtube.com'] })
+    expect(instance.get).toHaveBeenCalledWith('/auth/config')
   })
 })

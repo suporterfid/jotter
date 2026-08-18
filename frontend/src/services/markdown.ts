@@ -2,6 +2,7 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { parseHeadings, type HeadingEntry } from './outline'
 import { EMBED_PATTERN } from './wikilinks'
+import { isExternalEmbedAllowed } from './externalEmbeds'
 
 // Configure marked with GFM (GitHub Flavored Markdown)
 marked.use({
@@ -59,6 +60,57 @@ function renderEmbeds(text: string, resolveEmbed?: (target: string) => EmbedReso
   })
 }
 
+function escapeHtmlAttribute(value: string): string {
+  return value.replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[character]!)
+}
+
+/**
+ * Replaces allowlisted standalone HTTPS URLs outside fenced code blocks with
+ * placeholders until after marked has rendered the surrounding Markdown.
+ */
+function extractExternalEmbeds(text: string): { text: string; blocks: Record<string, string> } {
+  const lines = text.split(/\r\n|\n|\r/)
+  const blocks: Record<string, string> = {}
+  let inFence = false
+  let fenceChar = ''
+  let fenceLength = 0
+  let index = 0
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex]
+    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/)
+    if (fenceMatch) {
+      const marker = fenceMatch[1]
+      if (!inFence) {
+        inFence = true
+        fenceChar = marker[0]
+        fenceLength = marker.length
+      } else if (marker[0] === fenceChar && marker.length >= fenceLength) {
+        inFence = false
+      }
+      continue
+    }
+
+    if (inFence) continue
+
+    const urlMatch = line.match(/^ {0,3}(https:\/\/[^\s<>]+)\s*$/)
+    if (!urlMatch || !isExternalEmbedAllowed(urlMatch[1])) continue
+
+    const token = `JOTTEREXTERNALEMBED${index}TOKEN`
+    blocks[token] = `<iframe class="external-embed" src="${escapeHtmlAttribute(urlMatch[1])}" title="External content" sandbox="allow-scripts" referrerpolicy="no-referrer" loading="lazy"></iframe>`
+    lines[lineIndex] = token
+    index += 1
+  }
+
+  return { text: lines.join('\n'), blocks }
+}
+
 /**
  * Wraps <pre><code> blocks with a container and Copy button.
  */
@@ -111,7 +163,8 @@ export function renderMarkdown(
 
   const headings = parseHeadings(markdownText)
 
-  const withEmbeds = renderEmbeds(markdownText, resolveEmbed)
+  const externalEmbeds = extractExternalEmbeds(markdownText)
+  const withEmbeds = renderEmbeds(externalEmbeds.text, resolveEmbed)
   const withWikilinks = renderWikilinks(withEmbeds)
   const withCallouts = renderCallouts(withWikilinks)
 
@@ -123,6 +176,16 @@ export function renderMarkdown(
 
   // Stamp heading ids for outline navigation
   rawHtml = injectHeadingIds(rawHtml, headings)
+
+  // Raw user HTML must not create iframes. Generated external embeds are
+  // inserted only after this guard, from placeholders we created above.
+  rawHtml = rawHtml
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<iframe\b[^>]*\/?>(?:<\/iframe>)?/gi, '')
+  rawHtml = Object.entries(externalEmbeds.blocks).reduce(
+    (html, [token, iframe]) => html.replaceAll(token, iframe),
+    rawHtml,
+  )
 
   // Sanitize with DOMPurify ensuring derived tags and attributes from block registry are allowed
   return DOMPurify.sanitize(rawHtml, {
