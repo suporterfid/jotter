@@ -79,7 +79,7 @@ final class WorkspacePdfExportController extends Controller
         $pdfExport = $this->authorizedExport($request, $workspace, $export);
         $path = $pdfExport->getRawOriginal('output_path');
 
-        if ($pdfExport->status !== 'ready' || ! is_string($path) || ! is_file($path)) {
+        if ($pdfExport->status !== 'ready' || ! is_string($path) || ! $this->isPrivateFile($path)) {
             abort(404);
         }
 
@@ -110,6 +110,21 @@ final class WorkspacePdfExportController extends Controller
         }
 
         return $export;
+    }
+
+    private function isPrivateFile(string $path): bool
+    {
+        $realPath = realpath($path);
+        $root = realpath((string) config('jotter.pdf.storage_path'));
+
+        if ($realPath === false || $root === false || ! is_file($realPath)) {
+            return false;
+        }
+
+        $root = rtrim(str_replace('\\', '/', $root), '/');
+        $realPath = str_replace('\\', '/', $realPath);
+
+        return str_starts_with($realPath, $root.'/');
     }
 
     private function subject(Request $request): ?AuthenticatedSubject

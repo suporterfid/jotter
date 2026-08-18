@@ -113,3 +113,27 @@ Configure a Laravel mail transport for external delivery. With the default
 behavior without attempting external delivery.
 
 Keep vault directories outside the web root. Notes are never served as static files from `public/`.
+
+## PDF exports (#354)
+
+PDF artifacts are private and must live outside the document root. Configure the
+storage directory and retention in production:
+
+```dotenv
+JOTTER_PDF_STORAGE_PATH=/var/lib/jotter/pdf-exports
+JOTTER_PDF_RETENTION_HOURS=24
+JOTTER_PDF_PROCESS_BATCH=10
+```
+
+Ensure PHP can create and remove files in that directory. Run the bounded worker
+from cron (or invoke the same command from the configured `JobDispatcher` worker):
+
+```cron
+* * * * * cd /var/www/jotter && php artisan pdf:process-exports --limit=10 >> storage/logs/pdf-exports.log 2>&1
+```
+
+`POST /api/workspaces/{workspace}/pdf-exports` snapshots only notes visible to
+the requester and returns an export id. Poll
+`GET /api/workspaces/{workspace}/pdf-exports/{export}`; download only after
+`status=ready` using its `/download` endpoint. Do not expose the storage path or
+mount it under `public/`.

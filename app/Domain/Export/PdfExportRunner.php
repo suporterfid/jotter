@@ -65,7 +65,7 @@ final class PdfExportRunner
 
             $export->forceFill([
                 'status' => 'failed',
-                'failure_reason' => Str::limit($exception->getMessage(), 1000),
+                'failure_reason' => 'PDF generation failed.',
                 'completed_at' => now(),
             ])->save();
 
@@ -104,7 +104,7 @@ final class PdfExportRunner
 
         foreach ($expired as $export) {
             $path = $export->getRawOriginal('output_path');
-            if (is_string($path) && is_file($path)) {
+            if (is_string($path) && $this->isPrivateFile($path)) {
                 @unlink($path);
             }
 
@@ -113,5 +113,20 @@ final class PdfExportRunner
                 'output_path' => null,
             ])->save();
         }
+    }
+
+    private function isPrivateFile(string $path): bool
+    {
+        $realPath = realpath($path);
+        $root = realpath((string) config('jotter.pdf.storage_path'));
+
+        if ($realPath === false || $root === false) {
+            return false;
+        }
+
+        $root = rtrim(str_replace('\\', '/', $root), '/');
+        $realPath = str_replace('\\', '/', $realPath);
+
+        return str_starts_with($realPath, $root.'/');
     }
 }

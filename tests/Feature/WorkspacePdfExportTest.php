@@ -75,6 +75,42 @@ final class WorkspacePdfExportTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_requester_can_poll_and_download_a_ready_workspace_pdf_without_path_leakage(): void
+    {
+        $user = User::factory()->create(['is_admin' => false]);
+        [$workspace] = $this->workspaceWithNotes();
+        Membership::create([
+            'subject_id' => (string) $user->id,
+            'tenant_id' => $workspace->tenant_id,
+            'workspace_id' => $workspace->id,
+            'role' => 'viewer',
+        ]);
+        $directory = (string) config('jotter.pdf.storage_path');
+        if (! is_dir($directory)) {
+            mkdir($directory, 0750, true);
+        }
+        $path = $directory.'/ready-export.pdf';
+        file_put_contents($path, '%PDF-1.7 ready');
+        $export = PdfExport::create([
+            'workspace_id' => $workspace->id,
+            'scope' => 'workspace',
+            'status' => 'ready',
+            'requested_by_subject' => (string) $user->id,
+            'output_path' => $path,
+        ]);
+
+        $this->actingAs($user)
+            ->getJson("/api/workspaces/{$workspace->id}/pdf-exports/{$export->id}")
+            ->assertOk()
+            ->assertJsonPath('status', 'ready')
+            ->assertJsonMissingPath('output_path');
+
+        $this->actingAs($user)
+            ->get("/api/workspaces/{$workspace->id}/pdf-exports/{$export->id}/download")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
     /** @return array{0: Workspace, 1: \Illuminate\Support\Collection<int, Note>} */
     private function workspaceWithNotes(): array
     {

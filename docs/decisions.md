@@ -89,3 +89,20 @@ Front-matter ACLs were rejected because permissions are application state and mu
 These controls protect Jotter application surfaces backed by the MySQL index. A user with direct filesystem access to the vault can bypass them, as can a raw WebDAV/filesystem client that bypasses Jotter's authorized endpoints; deployment and hosting permissions must protect the vault root separately.
 
 Append a new dated `##` section below this line, in the same format: the question being decided, the options considered, and the choice made with its rationale. Do not edit a resolved decision's original entry — supersede it with a new one that references the old.
+
+## Decision — PDF export architecture (Issue #354)
+
+**Decided 2026-08-18:** add private PDF export at note and workspace scope without changing Markdown-on-disk as the source of truth.
+
+### Options considered
+
+- Headless Chromium: rejected for shared hosting because it adds a heavyweight runtime and shell/process dependency.
+- Remote conversion service: rejected because note content and assets would leave the deployment boundary.
+- Pure PHP renderer with synchronous workspace generation: rejected because large workspaces can exceed request limits.
+- Dompdf plus bounded queued workspace processing: selected.
+
+### Selected contract and rationale
+
+Single-note export uses `dompdf/dompdf` with `MarkdownServerRenderer`, published CSS/fonts, remote fetching disabled, and local assets resolved through `VaultPathGuard`. Workspace export stores the ACL-filtered note id snapshot, dispatches `App\Jobs\GeneratePdfExport` through `JobDispatcher`, and is processed by `pdf:process-exports --limit=N`. Artifacts are written below a private configurable directory, exposed only through an authorized status/download endpoint, and expire according to `JOTTER_PDF_RETENTION_HOURS`.
+
+This keeps the implementation compatible with shared hosting, preserves per-request ACL decisions, bounds background work, and prevents server-side fetches of remote URLs.
