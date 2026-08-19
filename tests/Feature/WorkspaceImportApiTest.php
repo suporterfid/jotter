@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Tenant;
+use App\Models\NoteRevision;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,6 +51,7 @@ final class WorkspaceImportApiTest extends TestCase
             'workspace_id' => $workspace->id,
             'path' => 'imported_note.md',
         ]);
+        $this->assertSame((string) $admin->id, NoteRevision::query()->value('actor_id'));
 
         @unlink($zipPath);
     }

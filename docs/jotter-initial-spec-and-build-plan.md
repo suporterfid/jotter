@@ -300,7 +300,7 @@ The roadmap's *Scope and baseline* describes Jotter as "a lightweight notes prod
 That baseline does not describe this repository:
 
 - This Jotter is a **self-hosted PHP 8.2 / Laravel 12 + Vue 3 server application for cPanel-style shared hosting** (§2). It is not offline-first, has no Material You surface, and **does not do realtime collaboration** — §3 N1 excludes it and §4 explains why (no websockets, no long-running processes).
-- **Five of the roadmap's top six near-term priorities already shipped in v0**: full-text search, nested folders, tags, backlinks, and attachments. Only version history is genuinely absent. See §14.3.
+- **The roadmap's top six near-term priorities are delivered in this repository**: full-text search, nested folders, tags, backlinks, attachments, and version history. The roadmap's gap summary is historical context only; see §14.3 for the authoritative state.
 
 The offline-first, Material You, and realtime-collaboration signals suggest the gap analysis was drawn from a different product carrying the same name. Plan from §14.3's delivered-state column, not from the roadmap's gap summary.
 
@@ -314,13 +314,13 @@ The roadmap's recommended direction — "begin as a notes-first and knowledge-fi
 
 | # | Roadmap priority | State in this repo | Notes |
 |---|---|---|---|
-| 1 | Full-text search | **Delivered** (v0 PR4) | MySQL `FULLTEXT(title, search_content)`, ranked, snippets. Roadmap also asks for *filters* (title, tags, modified date) — those are **not** built; natural-language match only. |
+| 1 | Full-text search | **Delivered** (v0 PR4; filters in #52) | MySQL `FULLTEXT(title, search_content)`, ranked snippets, plus title, tag, and modified-date filters through `SearchCriteria`. |
 | 2 | Nested pages/folders | **Delivered** (v0 PR2, Q4) | Nested folders inside each workspace vault, every path canonicalized against the root. Filesystem hierarchy, not a database page-tree. |
 | 3 | Tags and properties | **Partial** | `tags` / `note_tags` plus YAML front-matter projected into `notes.frontmatter`. No typed or schema'd property layer. |
 | 4 | Backlinks | **Delivered** (v0 PR3) | `note_links` with resolved and unresolved refs; backlinks are a query, never a scan. |
 | 5 | Attachments | **Delivered** (v0 PR8) | Type/size allowlist, stored outside `public/`, streamed through authorized routes (§8 S4/S9). |
-| 6 | Version history | **Not delivered** | The single real gap in Phase 1. Promoted from v2 to v1 in §6. Constrained by §4 — see §14.5 C6. |
-| 7 | Templates | **Not delivered** | Already scoped as v1 ("daily notes/templates"). |
+| 6 | Version history | **Delivered** (#51; UI #157) | DB-stored deduplicated Markdown snapshots in `note_revisions`, bounded `vault:prune-revisions`, ACL-scoped list/read/restore endpoints, HistoryPanel UI, and actor propagation across user write paths. Constrained by §4 — see §14.5 C6. |
+| 7 | Templates | **Delivered** (#56; UI #162) | `_templates/` rendering, daily-note creation, and editor entry points are shipped. |
 | 8 | Synced blocks | **Not delivered** | Conflicts with plain-Markdown portability — see §14.5 C3. |
 | 9 | Comments and mentions | **Not delivered** | No data model yet. Needs §8 S5 authorization and §5 schema work. |
 | 10 | Shared workspaces and permissions | **Partial** | `tenants` / `workspaces` / `memberships` with roles exist (§5) and are enforced per request; there is no administration UI, and RBAC-from-claims remains the v1 GrandpaSSOn adapter. |
@@ -331,7 +331,7 @@ The roadmap's recommended direction — "begin as a notes-first and knowledge-fi
 
 | Roadmap | Maps to | Remaining work |
 |---|---|---|
-| Phase 1 / Milestone A — knowledge foundations | v0 (delivered) + v1 | Version history, search filters, Markdown/JSON import. Export already ships. |
+| Phase 1 / Milestone A — knowledge foundations | v0/v1 delivered | Version history, search filters, Markdown/JSON import, and export ship; future work requires a new scoped issue. |
 | Phase 2 / Milestone B — connected knowledge | v1 | Templates, broken-link report, richer block/slash-command surface. Command palette and graph view already shipped post-v0. |
 | Phase 3 / Milestone C — team collaboration | v1 (identity/RBAC) + new scope | GrandpaSSOn adapter covers roles/claims. Comments, mentions, and notifications are new scope. **Presence is excluded** (C1). |
 | Phase 4 / Milestone D — structured work | Beyond current v2 | Blocked on C2. Do not begin without that decision. |

@@ -45,6 +45,6 @@ final class NoteRevisions
             throw new InvalidArgumentException("Revision {$revision->id} does not belong to note {$note->id} in workspace {$workspace->id}");
         }
 
-        return $storage->write($workspace, $note->path, $revision->content);
+        return $storage->write($workspace, $note->path, $revision->content, $actorId);
     }
 }

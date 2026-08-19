@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Vault\VaultExtractor;
 use App\Domain\Vault\VaultReindexer;
+use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,10 +14,12 @@ final class WorkspaceImportController extends Controller
     public function __construct(
         private readonly VaultExtractor $extractor,
         private readonly VaultReindexer $reindexer,
+        private readonly IdentityProvider $identityProvider,
     ) {}
 
     public function import(Request $request, Workspace $workspace): JsonResponse
     {
+        $subject = $this->identityProvider->resolveIdentity($request);
         $request->validate([
             'archive' => ['required', 'file', 'mimes:zip', 'max:51200'],
         ]);
@@ -34,7 +37,7 @@ final class WorkspaceImportController extends Controller
         try {
             $overwrite = $request->boolean('overwrite', false);
             $result = $this->extractor->extract($workspace, $tempPath, $overwrite);
-            $this->reindexer->reindex($workspace);
+            $this->reindexer->reindex($workspace, null, $subject?->subjectId);
         } finally {
             if (file_exists($tempPath)) {
                 @unlink($tempPath);

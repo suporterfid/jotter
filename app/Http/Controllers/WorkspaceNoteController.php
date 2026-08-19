@@ -47,18 +47,19 @@ final class WorkspaceNoteController extends Controller
 
     public function store(Request $request, Workspace $workspace, VaultStorage $storage): JsonResponse
     {
+        $subject = $this->subject($request);
         $validated = $request->validate([
             'path' => ['required', 'string', 'max:700'],
             'content' => ['present', 'string'],
         ]);
 
         try {
-            $note = $storage->write($workspace, $validated['path'], $validated['content']);
+            $note = $storage->write($workspace, $validated['path'], $validated['content'], $subject->subjectId);
         } catch (PathTraversalRejected $exception) {
             throw ValidationException::withMessages(['path' => [$exception->getMessage()]]);
         }
 
-        return response()->json(['data' => $this->metadata($note, $this->subject($request))], 201);
+        return response()->json(['data' => $this->metadata($note, $subject)], 201);
     }
 
     public function show(Request $request, Workspace $workspace, int $note, VaultStorage $storage, \App\Domain\Vault\MarkdownServerRenderer $renderer): JsonResponse
@@ -113,10 +114,10 @@ final class WorkspaceNoteController extends Controller
             'content' => ['present', 'string'],
         ]);
         $note = $this->scopedNote($workspace, $note);
-        $this->noteAccess->assertEdit($this->subject($request), $note);
-
-        $updatedNote = $storage->write($workspace, $note->path, $validated['content']);
         $subject = $this->subject($request);
+        $this->noteAccess->assertEdit($subject, $note);
+
+        $updatedNote = $storage->write($workspace, $note->path, $validated['content'], $subject->subjectId);
         $this->eventEmitter->ensureAutoWatch($updatedNote, $subject->user?->id);
         $this->eventEmitter->emitNoteEdited($updatedNote, $subject);
 

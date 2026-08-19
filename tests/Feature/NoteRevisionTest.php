@@ -67,6 +67,11 @@ final class NoteRevisionTest extends TestCase
 
         // Restore creates a 3rd revision with Version 1 content
         $this->assertDatabaseCount('note_revisions', 3);
+        $this->assertDatabaseHas('note_revisions', [
+            'note_id' => $note->id,
+            'content_hash' => hash('sha256', "# Version 1\nFirst version content."),
+            'actor_id' => (string) $admin->id,
+        ]);
 
         // 6. Test out-of-band disk edit picked up by vault:reindex
         file_put_contents($vaultPath.'/history.md', "# Version 4 Out-of-band\nDisk edit.");

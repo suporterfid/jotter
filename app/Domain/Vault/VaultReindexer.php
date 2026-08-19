@@ -25,7 +25,7 @@ final class VaultReindexer
     /**
      * @return array{scanned: int, upserted: int, removed: int}
      */
-    public function reindex(Workspace $workspace, ?int $batchSize = null): array
+    public function reindex(Workspace $workspace, ?int $batchSize = null, ?string $actorId = null): array
     {
         $batchSize = max(1, $batchSize ?? (int) config('jotter.vault.reindex_batch_size', 50));
         $root = $this->paths->ensureVaultRoot($workspace);
@@ -41,13 +41,13 @@ final class VaultReindexer
             $scanned++;
 
             if (count($batch) >= $batchSize) {
-                $upserted += $this->projectBatch($workspace, $batch);
+                $upserted += $this->projectBatch($workspace, $batch, $actorId);
                 $batch = [];
             }
         }
 
         if ($batch !== []) {
-            $upserted += $this->projectBatch($workspace, $batch);
+            $upserted += $this->projectBatch($workspace, $batch, $actorId);
         }
 
         $removed = $this->removeMissingNotes($workspace, $root, $batchSize);
@@ -120,7 +120,7 @@ final class VaultReindexer
     /**
      * @param  list<array{0: string, 1: string}>  $batch
      */
-    private function projectBatch(Workspace $workspace, array $batch): int
+    private function projectBatch(Workspace $workspace, array $batch, ?string $actorId): int
     {
         $count = 0;
 
@@ -132,7 +132,7 @@ final class VaultReindexer
 
             $document = MarkdownDocument::parse($raw, $this->fallbackTitle($relative));
             $note = $this->projector->project($workspace, $relative, $document);
-            $this->revisions->recordRevision($note, $raw);
+            $this->revisions->recordRevision($note, $raw, $actorId);
             $count++;
 
         }

@@ -38,7 +38,7 @@ final class VaultStorage
         return $raw;
     }
 
-    public function write(Workspace $workspace, string $relativePath, string $contents): Note
+    public function write(Workspace $workspace, string $relativePath, string $contents, ?string $actorId = null): Note
     {
         $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: false);
         $relative = $this->paths->toRelative($workspace, $absolute);
@@ -56,7 +56,7 @@ final class VaultStorage
         $document = MarkdownDocument::parse($contents, $this->fallbackTitle($relative));
 
         $note = $this->projector->project($workspace, $relative, $document);
-        $this->revisions->recordRevision($note, $contents);
+        $this->revisions->recordRevision($note, $contents, $actorId);
 
         return $note;
     }
@@ -64,12 +64,13 @@ final class VaultStorage
     /**
      * @param  array<string, mixed>  $frontmatter
      */
-    public function writeDocument(Workspace $workspace, string $relativePath, array $frontmatter, string $body): Note
+    public function writeDocument(Workspace $workspace, string $relativePath, array $frontmatter, string $body, ?string $actorId = null): Note
     {
         return $this->write(
             $workspace,
             $relativePath,
             MarkdownDocument::compose($frontmatter, $body),
+            $actorId,
         );
     }
 
