@@ -154,6 +154,17 @@
             </button>
             <button
               class="more-menu-item"
+              data-testid="analytics-btn"
+              role="menuitem"
+              @click="closeMoreMenuAnd(() => $emit('toggle-analytics'))"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19V5"></path><path d="M4 19h17"></path><path d="m7 15 3-4 3 2 5-7"></path>
+              </svg>
+              <span>{{ t('sidebar.analytics') }}</span>
+            </button>
+            <button
+              class="more-menu-item"
               data-testid="trash-btn"
               role="menuitem"
               @click="closeMoreMenuAnd(() => $emit('toggle-trash'))"
@@ -538,6 +549,7 @@ const emit = defineEmits<{
   (e: 'toggle-attachments'): void
   (e: 'daily-note'): void
   (e: 'toggle-audit-log'): void
+  (e: 'toggle-analytics'): void
   (e: 'toggle-trash'): void
   (e: 'import-workspace', archive: File, overwrite: boolean): void
   (e: 'export-workspace'): void

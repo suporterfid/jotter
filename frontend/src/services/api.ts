@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -378,6 +378,14 @@ export async function getAuditLogs(workspaceId: number): Promise<AuditLogEntry[]
     `/workspaces/${workspaceId}/audit-logs`
   )
   return response.data.audit_logs
+}
+
+export async function getWorkspaceAnalytics(
+  workspaceId: number,
+  params: { days?: number; limit?: number } = {}
+): Promise<WorkspaceAnalytics> {
+  const response = await api.get<WorkspaceAnalytics>(`/workspaces/${workspaceId}/analytics`, { params })
+  return response.data
 }
 
 export interface PublishResult {

@@ -175,6 +175,37 @@ export interface AuditLogEntry {
   created_at: string | null
 }
 
+export interface WorkspaceAnalytics {
+  workspace_id: number
+  period: {
+    days: number
+    from: string
+    to: string
+  }
+  most_active_notes: Array<{
+    note_id: number
+    path: string
+    title: string
+    count: number
+    last_seen_at: string | null
+  }>
+  activity_over_time: Array<{
+    period_start: string
+    count: number
+  }>
+  activity_by_user: Array<{
+    actor_subject_id: string
+    count: number
+  }>
+  stale_notes: Array<{
+    note_id: number
+    path: string
+    title: string
+    updated_at: string
+    days_stale: number
+  }>
+}
+
 export interface BrokenLinkSource {
   id: number
   path: string
