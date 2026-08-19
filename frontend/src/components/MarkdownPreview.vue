@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="rootEl"
     class="markdown-preview prose prose-invert"
     v-html="renderedContent"
     @click="handlePreviewClick"
@@ -11,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { renderMarkdown, type EmbedResolution } from '../services/markdown'
 
@@ -20,6 +21,7 @@ const { t } = useI18n()
 const props = defineProps<{
   content: string
   resolveEmbed?: (target: string) => EmbedResolution
+  headingIdPrefix?: string
 }>()
 
 const emit = defineEmits<{
@@ -29,7 +31,22 @@ const emit = defineEmits<{
   (e: 'unhover-wikilink'): void
 }>()
 
-const renderedContent = computed(() => renderMarkdown(props.content || '', props.resolveEmbed, t('markdownPreview.copy')))
+const rootEl = ref<HTMLElement | null>(null)
+
+const renderedContent = computed(() => renderMarkdown(
+  props.content || '',
+  props.resolveEmbed,
+  t('markdownPreview.copy'),
+  props.headingIdPrefix,
+))
+
+function scrollToHeading(sourceSlug: string): void {
+  const heading = Array.from(rootEl.value?.querySelectorAll<HTMLElement>('[data-heading-source]') ?? [])
+    .find((element) => element.dataset.headingSource === sourceSlug)
+  heading?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+defineExpose({ scrollToHeading })
 
 function handlePreviewClick(event: MouseEvent) {
   const target = event.target as HTMLElement

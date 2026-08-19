@@ -8,6 +8,9 @@
       role="tab"
       :aria-selected="tab.id === activeId"
       data-testid="tab-strip-item"
+      draggable="true"
+      @dragstart="$emit('drag-tab', tab.id)"
+      @dragend="$emit('drag-end')"
       @click="$emit('select-tab', tab.id)"
     >
       <svg class="tab-strip-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -22,6 +25,14 @@
         :aria-label="t('tabStrip.close', { title: tab.title })"
         @click.stop="$emit('close-tab', tab.id)"
       >&times;</button>
+      <button
+        v-if="showSplitAction && tab.id === activeId"
+        type="button"
+        class="tab-strip-split-btn"
+        data-testid="split-tab-btn"
+        :aria-label="t('tabStrip.split', { title: tab.title })"
+        @click.stop="$emit('split-tab', tab.id)"
+      >↗</button>
     </div>
   </div>
 </template>
@@ -34,11 +45,15 @@ const { t } = useI18n()
 defineProps<{
   tabs: { id: number; title: string }[]
   activeId: number | null
+  showSplitAction?: boolean
 }>()
 
 defineEmits<{
   (e: 'select-tab', noteId: number): void
   (e: 'close-tab', noteId: number): void
+  (e: 'split-tab', noteId: number): void
+  (e: 'drag-tab', noteId: number): void
+  (e: 'drag-end'): void
 }>()
 </script>
 
@@ -102,6 +117,21 @@ defineEmits<{
 }
 
 .tab-strip-close-btn:hover {
+  background: var(--color-surface-emphasis);
+}
+
+.tab-strip-split-btn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 var(--space-1);
+  line-height: 1;
+}
+
+.tab-strip-split-btn:hover {
   background: var(--color-surface-emphasis);
 }
 </style>

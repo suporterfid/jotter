@@ -57,6 +57,8 @@
     @endforeach
 </head>
 <body>
+    <div id="app-right-drawer-primary"></div>
+    <div id="app-right-drawer-secondary"></div>
     <div id="app"></div>
     @if (isset($entry['file']))
         <script type="module" src="{{ asset('build/'.$entry['file']) }}"></script>

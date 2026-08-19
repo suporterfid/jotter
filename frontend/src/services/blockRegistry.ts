@@ -85,7 +85,7 @@ export function getClientAllowedTags(): string[] {
 }
 
 export function getClientAllowedAttributes(): string[] {
-  const base = ['class', 'id']
+  const base = ['class', 'id', 'data-heading-source']
   const attrs = new Set(base)
   Object.values(blockDefinitions).forEach(def => {
     def.allowed_attributes.forEach(a => attrs.add(a))

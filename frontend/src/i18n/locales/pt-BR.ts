@@ -75,6 +75,14 @@ export default {
   },
   tabStrip: {
     close: 'Fechar {title}',
+    split: 'Abrir {title} na visualização dividida',
+  },
+  editorPane: {
+    empty: 'Selecione uma nota para começar a escrever.',
+  },
+  splitPane: {
+    merge: 'Fechar visualização dividida',
+    dropToSplit: 'Solte uma aba aqui para dividir o editor',
   },
   panelHeader: {
     expand: 'Expandir {title}',

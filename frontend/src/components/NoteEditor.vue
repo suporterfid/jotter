@@ -405,7 +405,9 @@
       <!-- Preview Area -->
       <div v-show="viewMode !== 'edit' && viewMode !== 'live'" class="preview-wrapper">
         <MarkdownPreview
+          ref="markdownPreviewRef"
           :content="editableContent"
+          :heading-id-prefix="headingIdPrefix"
           @navigate-wikilink="$emit('navigate-wikilink', $event)"
           @hover-wikilink="handleHoverWikilink"
           @unhover-wikilink="handleUnhoverWikilink"
@@ -455,7 +457,7 @@
          pushing it — the structural mechanism B.10 asks for, with
          Comments as its first occupant. State/data stay owned here since
          they're note-scoped; only the DOM location moves. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isCommentsDrawerOpen"
         class="comments-drawer"
@@ -484,7 +486,7 @@
          Comments. Card-level checklist as a genuinely separate structure
          from the note's own Markdown content (#305) — a note-scoped list of
          checklist_items rows, not derived from `- [ ]` syntax in the body. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isChecklistDrawerOpen"
         class="comments-drawer"
@@ -513,7 +515,7 @@
          Per-card activity feed (#308) — property changes (board moves,
          archive) and checklist changes on this note, sourced from the
          workspace's existing append-only audit log filtered by note_id. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isActivityDrawerOpen"
         class="comments-drawer"
@@ -535,7 +537,7 @@
 
     <!-- Note access drawer: ACL state is visible in the note UI while writes
          remain atomic on the server. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isAccessDrawerOpen"
         class="comments-drawer"
@@ -563,7 +565,7 @@
     <!-- Outline Drawer: teleported to the same right-drawer mount point as
          Comments (#262), listing the note's headings for quick navigation
          (G.1, #286). -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isOutlineDrawerOpen"
         class="outline-drawer"
@@ -586,7 +588,7 @@
     <!-- Local Graph Drawer: teleported to the same right-drawer mount point as
          Outline/Comments, showing the note's immediate neighbors (backlinks +
          resolved outgoing links) as a small radial graph (G.3, #289). -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isLocalGraphDrawerOpen"
         class="local-graph-drawer"
@@ -650,7 +652,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
+import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink, NoteShareState } from '../services/types'
 
@@ -688,11 +690,15 @@ import { resolveWikilinkTarget, parseEmbedTargets } from '../services/wikilinks'
 import { renderMarkdown, type EmbedResolution } from '../services/markdown'
 import type { BlockDefinition } from '../services/blockRegistry'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   note: NoteDetail
   allNotes: NoteMeta[]
   workspaceId?: number
-}>()
+  paneId?: string
+  drawerTarget?: string
+}>(), {
+  drawerTarget: '#app-right-drawer',
+})
 
 const emit = defineEmits<{
   (e: 'update-note', noteId: number, content: string): void
@@ -929,6 +935,9 @@ const isUploading = ref(false)
 const isDraggingOver = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const markdownPreviewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
+const generatedPaneId = useId()
+const headingIdPrefix = computed(() => `${props.paneId ?? generatedPaneId}--`)
 
 async function toggleWatching() {
   if (!props.workspaceId || isUpdatingWatch.value) return
@@ -995,7 +1004,7 @@ const localGraphNeighbors = computed<LocalGraphNeighbor[]>(() => {
 
 function jumpToHeading(heading: HeadingEntry) {
   if (viewMode.value === 'preview') {
-    document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    markdownPreviewRef.value?.scrollToHeading(heading.id)
     return
   }
 
