@@ -137,3 +137,21 @@ the requester and returns an export id. Poll
 `GET /api/workspaces/{workspace}/pdf-exports/{export}`; download only after
 `status=ready` using its `/download` endpoint. Do not expose the storage path or
 mount it under `public/`.
+
+## Per-note public sharing (#355)
+
+Public links are opaque token routes and never contain a workspace slug, workspace
+id, note id, or note path:
+
+- `GET /share/{token}` renders the selected note only.
+- `GET /share/{token}/attachments/{path}` serves only registered attachments from
+  the shared note's workspace and revalidates the active token on every request.
+- `GET /share-assets/publish.css`, `/share-assets/publish-theme.js`, and the
+  allowlisted font routes serve the existing published-page assets.
+
+Invalid, expired, revoked, or deleted-note links return 404 rather than exposing
+authorization state. Shared attachments use `Cache-Control: no-store`. To rotate
+a link, revoke the active share from the note controls and create a new one; the
+plaintext token is returned only by that creation response. Public rendering does
+not enumerate the workspace, show a sidebar/tree/search/backlinks, hydrate external
+embeds, or follow wikilinks into other notes.
