@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Sharing\NoteShareService;
+use App\Models\Attachment;
 use App\Models\AuditLog;
 use App\Models\Note;
 use App\Models\NoteAclEntry;
@@ -142,6 +143,72 @@ final class NoteShareTest extends TestCase
             ->assertNotFound();
 
         $this->assertDatabaseCount('note_shares', 0);
+    }
+
+    public function test_public_share_renders_only_the_selected_note_and_plain_text_wikilinks(): void
+    {
+        $note = $this->noteFixture();
+        $workspace = $note->workspace;
+        file_put_contents($workspace->vault_path.'/'.$note->path, "Selected note content\n\n[[Secret note]]");
+        $secret = Note::create([
+            'workspace_id' => $workspace->id,
+            'path' => 'secret.md',
+            'title' => 'Secret note',
+            'frontmatter' => [],
+            'content_hash' => hash('sha256', 'Secret note body'),
+            'search_content' => 'Secret note body',
+        ]);
+        file_put_contents($workspace->vault_path.'/'.$secret->path, 'Secret note body');
+        $admin = $this->adminSubject();
+        ['token' => $token] = app(NoteShareService::class)->create($note, $admin, null);
+
+        $this->get('/share/'.$token)
+            ->assertOk()
+            ->assertSee('Selected note content')
+            ->assertSee('[[Secret note]]')
+            ->assertDontSee('Secret note body')
+            ->assertDontSee($workspace->slug)
+            ->assertDontSee('sidebar')
+            ->assertDontSee('href="#/note/', false);
+    }
+
+    public function test_invalid_expired_and_revoked_public_links_return_404(): void
+    {
+        $note = $this->noteFixture();
+        $admin = $this->adminSubject();
+        $service = app(NoteShareService::class);
+        ['token' => $expired] = $service->create($note, $admin, now()->subMinute());
+        ['share' => $revokedShare, 'token' => $revoked] = $service->create($note, $admin, null);
+        $service->revoke($revokedShare, $admin);
+
+        $this->get('/share/not-a-token')->assertNotFound();
+        $this->get('/share/'.$expired)->assertNotFound();
+        $this->get('/share/'.$revoked)->assertNotFound();
+    }
+
+    public function test_public_share_rewrites_registered_images_and_attachment_links_to_the_same_token(): void
+    {
+        $note = $this->noteFixture();
+        $workspace = $note->workspace;
+        $markdown = "![diagram](_resources/diagram.png)\n\n[Download](_resources/diagram.png)";
+        file_put_contents($workspace->vault_path.'/'.$note->path, $markdown);
+        Attachment::create([
+            'workspace_id' => $workspace->id,
+            'path' => '_resources/diagram.png',
+            'mime' => 'image/png',
+            'size' => 3,
+        ]);
+        mkdir($workspace->vault_path.'/_resources', 0755, true);
+        file_put_contents($workspace->vault_path.'/_resources/diagram.png', 'PNG');
+        ['token' => $token] = app(NoteShareService::class)->create($note, $this->adminSubject(), null);
+
+        $this->get('/share/'.$token)
+            ->assertOk()
+            ->assertSee('/share/'.$token.'/attachments/_resources/diagram.png', false);
+        $this->get('/share/'.$token.'/attachments/_resources/diagram.png')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+        $this->get('/share/'.$token.'/attachments/../'.$note->path)->assertNotFound();
     }
 
     private function noteShare(): \App\Models\NoteShare
