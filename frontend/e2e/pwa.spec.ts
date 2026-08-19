@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('serves an installable shell and registers the versioned worker', async ({ page }) => {
+test('serves an installable shell and registers the worker in secure contexts', async ({ page }) => {
   await page.goto('/')
 
   const manifest = page.locator('link[rel="manifest"]')
@@ -18,11 +18,16 @@ test('serves an installable shell and registers the versioned worker', async ({ 
 
   await expect(page.locator('.brand-title')).toHaveText('Jotter', { timeout: 10000 })
 
-  const workerScope = await page.evaluate(async () => {
-    if (!('serviceWorker' in navigator)) return null
+  const workerStatus = await page.evaluate(async () => {
+    if (!window.isSecureContext || !('serviceWorker' in navigator)) {
+      return { supported: false, scope: null }
+    }
+
     const registration = await navigator.serviceWorker.ready
-    return registration.scope
+    return { supported: true, scope: registration.scope }
   })
 
-  expect(workerScope).toBe(`${new URL('/', page.url()).origin}/`)
+  expect(workerStatus.scope).toBe(
+    workerStatus.supported ? `${new URL('/', page.url()).origin}/` : null,
+  )
 })
