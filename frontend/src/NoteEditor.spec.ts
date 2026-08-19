@@ -1,4 +1,5 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
+import { defineComponent } from 'vue'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import NoteEditor from './components/NoteEditor.vue'
@@ -66,6 +67,27 @@ function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
     ...overrides,
   }
 }
+
+describe('NoteEditor pane identity', () => {
+  it('gives simultaneously mounted editors unique rendered heading ids', async () => {
+    const host = defineComponent({
+      components: { NoteEditor },
+      setup: () => ({
+        notes: [
+          makeNote({ id: 1, content: '# Shared heading' }),
+          makeNote({ id: 2, content: '# Shared heading' }),
+        ],
+      }),
+      template: '<div><NoteEditor v-for="note in notes" :key="note.id" :note="note" :all-notes="[]" /></div>',
+    })
+
+    const wrapper = mount(host)
+    await flushPromises()
+
+    const headingIds = wrapper.findAll('.markdown-preview h1').map((heading) => heading.attributes('id'))
+    expect(new Set(headingIds).size).toBe(2)
+  })
+})
 
 describe('NoteEditor public sharing', () => {
   beforeEach(() => {

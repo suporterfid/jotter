@@ -405,7 +405,9 @@
       <!-- Preview Area -->
       <div v-show="viewMode !== 'edit' && viewMode !== 'live'" class="preview-wrapper">
         <MarkdownPreview
+          ref="markdownPreviewRef"
           :content="editableContent"
+          :heading-id-prefix="headingIdPrefix"
           @navigate-wikilink="$emit('navigate-wikilink', $event)"
           @hover-wikilink="handleHoverWikilink"
           @unhover-wikilink="handleUnhoverWikilink"
@@ -650,7 +652,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
+import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink, NoteShareState } from '../services/types'
 
@@ -692,6 +694,7 @@ const props = defineProps<{
   note: NoteDetail
   allNotes: NoteMeta[]
   workspaceId?: number
+  paneId?: string
 }>()
 
 const emit = defineEmits<{
@@ -929,6 +932,9 @@ const isUploading = ref(false)
 const isDraggingOver = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const markdownPreviewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
+const generatedPaneId = useId()
+const headingIdPrefix = computed(() => `${props.paneId ?? generatedPaneId}--`)
 
 async function toggleWatching() {
   if (!props.workspaceId || isUpdatingWatch.value) return
@@ -995,7 +1001,7 @@ const localGraphNeighbors = computed<LocalGraphNeighbor[]>(() => {
 
 function jumpToHeading(heading: HeadingEntry) {
   if (viewMode.value === 'preview') {
-    document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    markdownPreviewRef.value?.scrollToHeading(heading.id)
     return
   }
 
