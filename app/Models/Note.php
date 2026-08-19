@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Note extends Model
@@ -84,5 +85,10 @@ class Note extends Model
     public function shares(): HasMany
     {
         return $this->hasMany(NoteShare::class);
+    }
+
+    public function reviewWorkflow(): HasOne
+    {
+        return $this->hasOne(NoteReviewWorkflow::class);
     }
 }
