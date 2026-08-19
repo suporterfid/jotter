@@ -84,7 +84,7 @@ final class WebDavController extends Controller
         return match ($method) {
             'PROPFIND' => $this->handlePropfind($fullPath, $targetPath),
             'GET' => $this->handleGet($fullPath),
-            'PUT' => $this->handlePut($workspace, $targetPath, $request->getContent()),
+            'PUT' => $this->handlePut($workspace, $targetPath, $request->getContent(), $subject->subjectId),
             'MKCOL' => $this->handleMkcol($fullPath),
             'DELETE' => $this->handleDelete($workspace, $targetPath),
             'OPTIONS' => response('', 200, ['Allow' => 'OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, MKCOL', 'DAV' => '1, 2']),
@@ -123,9 +123,9 @@ final class WebDavController extends Controller
         ]);
     }
 
-    private function handlePut(Workspace $workspace, string $relativePath, string $content): Response
+    private function handlePut(Workspace $workspace, string $relativePath, string $content, ?string $actorId = null): Response
     {
-        $this->storage->write($workspace, $relativePath, $content);
+        $this->storage->write($workspace, $relativePath, $content, $actorId);
 
         return response('', 201);
     }

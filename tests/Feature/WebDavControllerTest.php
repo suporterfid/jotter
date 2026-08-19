@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\Membership;
+use App\Models\NoteRevision;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,6 +55,27 @@ final class WebDavControllerTest extends TestCase
 
         $mkcolRes = $this->actingAs($admin)->call('MKCOL', "/api/webdav/{$workspace->id}/subfolder");
         $mkcolRes->assertStatus(201);
+    }
+
+    public function test_webdav_put_records_the_authenticated_actor_on_the_revision(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'webdav-actor', 'name' => 'WebDAV Actor']);
+        $vaultPath = storage_path('app/vaults/webdav_actor_'.uniqid());
+        @mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'webdav-actor',
+            'name' => 'WebDAV Actor',
+            'vault_path' => $vaultPath,
+        ]);
+
+        $this->actingAs($admin)
+            ->call('PUT', "/api/webdav/{$workspace->id}/actor.md", [], [], [], [], '# Actor\n')
+            ->assertStatus(201);
+
+        $this->assertSame((string) $admin->id, NoteRevision::query()->value('actor_id'));
     }
 
     public function test_viewer_can_read_webdav_but_cannot_write_or_delete(): void

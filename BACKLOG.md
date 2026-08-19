@@ -11,13 +11,17 @@ This file previously also carried the shipped-item changelog, decision records, 
 - **Security/correctness audit findings** → `docs/security-audit-2026.md`
 - **Visual-identity design-system tracking** (#96–#110) → `docs/visual-identity.md`
 
-As of 2026-08-19, every previously-tracked Milestone and Confluence-parity issue (#347–#360) is delivered or resolved. #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, #358 shipped in PR #382, and #359 shipped in PR #384; #360 was resolved as a documentation decision.
+As of 2026-08-19, every previously-tracked Milestone and Confluence-parity issue (#347–#360) is delivered or resolved. #51 (version history) is also delivered and verified; #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, #358 shipped in PR #382, and #359 shipped in PR #384; #360 was resolved as a documentation decision.
 
 ---
 
 ## Needs a decision (spec §14.5)
 
 All roadmap/spec decisions are resolved — see `docs/decisions.md`. This section is intentionally empty; new decision work must add a dated decision record before implementation is planned.
+
+## Current implementation queue
+
+The roadmap's historical Phase 1 gaps are already delivered in this repository: search filters (#52), Markdown/JSON import and round-trip backup (#77/#78), templates/daily notes (#56), and version history with restore (#51). Do not create duplicate issues from the roadmap's stale gap summary; select the next new feature from a refreshed issue or audit.
 
 ## WYSIWYG editor epic (decision resolved 2026-08-05 — option (b))
 

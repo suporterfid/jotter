@@ -99,6 +99,21 @@ Schedule a daily audit log prune to enforce retention limits (adjust days as nee
 php artisan audit:prune --days=90
 ```
 
+Schedule a bounded daily prune for derived note revision snapshots. Revision
+history is stored in MySQL; the Markdown files in the vault are never removed
+by this command. The default retention window is 30 days and can be overridden
+per run with `--days=N`:
+
+```cron
+15 2 * * * cd /var/www/jotter && php artisan vault:prune-revisions --days=30 >> storage/logs/revision-prune.log 2>&1
+```
+
+Run it manually with a different window when needed:
+
+```sh
+php artisan vault:prune-revisions --days=90
+```
+
 Schedule the bounded usage-analytics rollup after audit events are written. It
 advances an `audit_log` cursor in batches, is safe to rerun, and keeps the
 workspace rollups when `audit:prune` removes the source rows:
