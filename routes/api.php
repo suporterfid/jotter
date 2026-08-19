@@ -7,6 +7,7 @@ use App\Http\Controllers\LlmsTxtController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebDavController;
 use App\Http\Controllers\WorkspaceExportController;
+use App\Http\Controllers\WorkspaceAnalyticsController;
 use App\Http\Controllers\NotePdfExportController;
 use App\Http\Controllers\WorkspacePdfExportController;
 use App\Http\Controllers\WorkspaceNoteController;
@@ -57,6 +58,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::delete('/admin/workspaces/{workspace}/members/{member}', [\App\Http\Controllers\AdminMembershipController::class, 'destroy'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/audit-logs', [AuditLogQueryController::class, 'index']);
+    Route::get('/workspaces/{workspace}/analytics', [WorkspaceAnalyticsController::class, 'index']);
     Route::get('/workspaces/{workspace}/export', [WorkspaceExportController::class, 'export']);
     Route::get('/workspaces/{workspace}/notes/{note}/export.pdf', [NotePdfExportController::class, 'export']);
     Route::post('/workspaces/{workspace}/pdf-exports', [WorkspacePdfExportController::class, 'store']);
