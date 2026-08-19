@@ -3,8 +3,13 @@
 namespace Tests\Feature;
 
 use App\Domain\Vault\VaultPathGuard;
+use App\Domain\Review\NoteReviewState;
+use App\Domain\Vault\VaultReindexer;
+use App\Models\Membership;
 use App\Models\Note;
+use App\Models\NoteReviewWorkflow;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -215,6 +220,78 @@ class WorkspaceNotesApiTest extends TestCase
         $response->assertOk()
             ->assertJsonStructure(['data' => [['sort_position']]])
             ->assertJsonPath('data.0.sort_position', null);
+    }
+
+    public function test_review_api_supports_assignment_submission_and_approval(): void
+    {
+        $workspace = $this->makeWorkspace('review-api');
+        $note = $this->createNote($workspace, 'review.md', "# Review\n");
+        $reviewer = User::factory()->create();
+        Membership::query()->create([
+            'subject_id' => (string) $reviewer->id,
+            'tenant_id' => $workspace->tenant_id,
+            'workspace_id' => $workspace->id,
+            'role' => 'viewer',
+        ]);
+
+        $this->getJson("/api/workspaces/{$workspace->id}/notes/{$note->id}/review")
+            ->assertOk()
+            ->assertJsonPath('data.state', NoteReviewState::DRAFT->value)
+            ->assertJsonPath('data.stale', false)
+            ->assertJsonPath('data.can_assign', true)
+            ->assertJsonPath('data.can_submit', true);
+
+        $this->putJson("/api/workspaces/{$workspace->id}/notes/{$note->id}/reviewer", [
+            'reviewer_id' => $reviewer->id,
+        ])->assertOk()->assertJsonPath('data.reviewer.id', $reviewer->id);
+
+        $this->postJson("/api/workspaces/{$workspace->id}/notes/{$note->id}/review/submit")
+            ->assertOk()
+            ->assertJsonPath('data.state', NoteReviewState::IN_REVIEW->value);
+
+        $this->actingAs($reviewer);
+        $this->postJson("/api/workspaces/{$workspace->id}/notes/{$note->id}/review/approve")
+            ->assertOk()
+            ->assertJsonPath('data.state', NoteReviewState::APPROVED->value);
+    }
+
+    public function test_webdav_write_keeps_writing_enabled_but_marks_approval_stale(): void
+    {
+        $workspace = $this->makeWorkspace('review-webdav');
+        $note = $this->createNote($workspace, 'review.md', "# Original\n");
+        NoteReviewWorkflow::query()->where('note_id', $note->id)->update([
+            'state' => NoteReviewState::APPROVED->value,
+            'approved_content_hash' => $note->content_hash,
+            'approved_at' => now(),
+        ]);
+
+        $this->actingAs(User::query()->where('is_admin', true)->firstOrFail())
+            ->call('PUT', "/api/webdav/{$workspace->id}/review.md", [], [], [], [], "# Changed externally\n")
+            ->assertCreated();
+
+        $this->getJson("/api/workspaces/{$workspace->id}/notes/{$note->id}/review")
+            ->assertOk()
+            ->assertJsonPath('data.state', NoteReviewState::DRAFT->value)
+            ->assertJsonPath('data.stale', true);
+    }
+
+    public function test_reindex_detects_external_change_and_marks_approval_stale(): void
+    {
+        $workspace = $this->makeWorkspace('review-reindex');
+        $note = $this->createNote($workspace, 'review.md', "# Original\n");
+        NoteReviewWorkflow::query()->where('note_id', $note->id)->update([
+            'state' => NoteReviewState::APPROVED->value,
+            'approved_content_hash' => $note->content_hash,
+            'approved_at' => now(),
+        ]);
+        file_put_contents($this->vaultRoot.'/review-reindex/review.md', "# Reindexed externally\n");
+
+        app(VaultReindexer::class)->reindex($workspace);
+
+        $this->getJson("/api/workspaces/{$workspace->id}/notes/{$note->id}/review")
+            ->assertOk()
+            ->assertJsonPath('data.state', NoteReviewState::DRAFT->value)
+            ->assertJsonPath('data.stale', true);
     }
 
     private function makeWorkspace(string $suffix): Workspace

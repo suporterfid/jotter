@@ -12,6 +12,7 @@ use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\Exceptions\VaultNoteNotFound;
 use App\Domain\Vault\NoteTrash;
 use App\Domain\Vault\VaultStorage;
+use App\Domain\Review\NoteReviewWorkflowService;
 use App\Models\Note;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ final class WorkspaceNoteController extends Controller
         private readonly NoteAccess $noteAccess,
         private readonly WorkspaceEventEmitter $eventEmitter,
         private readonly AuditRecorder $auditRecorder,
+        private readonly NoteReviewWorkflowService $reviewWorkflowService,
     ) {}
 
     public function index(Request $request, Workspace $workspace): JsonResponse
@@ -231,6 +233,7 @@ final class WorkspaceNoteController extends Controller
                 'can_view' => $this->noteAccess->canView($subject, $note),
                 'can_edit' => $this->noteAccess->canEdit($subject, $note),
             ],
+            'review' => $subject === null ? null : $this->reviewWorkflowService->get($note, $subject),
         ];
     }
 }
