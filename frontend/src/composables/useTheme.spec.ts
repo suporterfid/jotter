@@ -6,6 +6,7 @@ describe('useTheme', () => {
   beforeEach(() => {
     localStorage.clear()
     document.documentElement.removeAttribute('data-theme')
+    document.head.innerHTML = '<meta name="theme-color" content="#FFFFFF">'
   })
 
   it('defaults to the persisted system preference and resolves it to a concrete theme', () => {
@@ -26,6 +27,14 @@ describe('useTheme', () => {
     preference.value = 'light'
     await nextTick()
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+
+  it('updates the browser theme color when the resolved theme changes', async () => {
+    const { preference } = useTheme()
+    preference.value = 'dark'
+    await nextTick()
+
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#191919')
   })
 
   it('persists an explicit choice to localStorage', async () => {

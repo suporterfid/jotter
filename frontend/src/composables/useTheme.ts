@@ -1,4 +1,5 @@
 import { computed, ref, watch } from 'vue'
+import { applyThemeColor } from '../pwa/theme'
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 type ResolvedTheme = Exclude<ThemePreference, 'system'>
@@ -23,7 +24,9 @@ export function useTheme() {
   const resolvedTheme = computed<ResolvedTheme>(() => preference.value === 'system' ? systemTheme() : preference.value)
 
   function applyTheme() {
-    document.documentElement.setAttribute('data-theme', resolvedTheme.value)
+    const theme = resolvedTheme.value
+    document.documentElement.setAttribute('data-theme', theme)
+    applyThemeColor(theme)
   }
 
   watch(preference, () => {

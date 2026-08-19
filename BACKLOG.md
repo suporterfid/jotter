@@ -11,7 +11,7 @@ This file previously also carried the shipped-item changelog, decision records, 
 - **Security/correctness audit findings** → `docs/security-audit-2026.md`
 - **Visual-identity design-system tracking** (#96–#110) → `docs/visual-identity.md`
 
-As of 2026-07-29, every previously-tracked Milestone is delivered (backend and UI) and closed. The open work in this file is the remaining Confluence-parity section (#355–#360, filed 2026-08-17) plus the one item under "Needs a decision"; #354 is shipped in PR #373.
+As of 2026-08-19, every previously-tracked Milestone is delivered (backend and UI) and closed. The open work in this file is the remaining Confluence-parity section (#356–#360, filed 2026-08-17) plus the one item under "Needs a decision"; #355 shipped in PR #375 and #356 is the current implementation in progress.
 
 ---
 
@@ -72,7 +72,7 @@ feature set. All ten shipped:
 comparison against Confluence's feature set, verified against `app/`,
 `frontend/src/`, `database/migrations/` and `routes/api.php` at
 `dcda766`. Fourteen gaps, four of them never reported before. Filed as
-#347–#360. #347 is shipped; the remaining items are open.
+#347–#360. #347–#355 are shipped; #356 is in implementation and remains open pending its PR.
 
 Ordered by recommended priority, not by theme. The audit's §4 argues the
 sequence; the short version is that role enforcement was the security
@@ -86,8 +86,8 @@ prerequisite and is now shipped, unblocking page-level ACLs.
 - ~~**No email delivery or digest (#352, M, P2).**~~ **Shipped in PR #368.** Added localized immediate/digest/off email delivery for mentions and all CF.5 events, recipient preferences with unsubscribe flow, bounded idempotent digest dispatch through `JobDispatcher`, deployment cron documentation, and regression coverage. **Unblocks #353.** Plan: `docs/superpowers/plans/2026-08-18-notification-email-channel.md`.
 - ~~**No external content embeds (#353, M, P3).**~~ **Shipped in PR #371.** Added the registered external-embed block, empty-by-default HTTPS domain allowlist, mirrored PHP/TypeScript URL policy, sandboxed iframe rendering in server/SPA previews, link-only published/WYSIWYG output, fence/raw-iframe safety, and slash-menu insertion. Verification passed with 308 PHP tests (1 skipped), 577 Vitest tests, the frontend build, PHP lint, and `git diff --check`. Plan: `docs/superpowers/plans/2026-08-18-external-content-embeds.md`. **#354 follows.**
 - ~~**No PDF export (#354, M, P3).**~~ **Shipped in PR #373.** Added Dompdf/pure-PHP note PDFs, ACL-filtered queued workspace PDFs through `JobDispatcher` and `pdf:process-exports`, private artifacts with status/download endpoints, safe local image handling, frontend controls, deployment/TaskConnect documentation, and regression coverage. Plan: `docs/superpowers/plans/2026-08-18-pdf-export.md`. **#355 follows.**
-- **Public sharing is whole-workspace only (#355, M, P3).** `WorkspacePublishController::publish()` iterates every note in the workspace. Per-note tokenised share links with expiry and revocation, without leaking workspace context.
-- **No installable PWA (#356, S, P3).** No manifest or service worker. Note that §3 N3 excludes PWA **from v0**, not permanently — unlike N1. Shell caching only; decision C5 (WebDAV + Obsidian is the offline story) still stands.
+- ~~**Public sharing is whole-workspace only (#355, M, P3).**~~ **Shipped in PR #375.** Added per-note opaque share tokens with optional expiry and revocation, ACL-protected management, isolated public rendering, token-scoped attachments, plain-text wikilinks, and share/revoke audit events. Plan: `docs/superpowers/plans/2026-08-18-per-note-public-sharing.md`. **#356 follows.**
+- **No installable PWA (#356, S, P3) — implementation in progress; issue remains open pending PR.** Added locally: manifest, standalone install metadata, canonical theme-color handling, versioned static-shell service worker, generic offline fallback, release synchronization, deployment guidance, and regression coverage. Cache only static shell assets; never cache note content, authenticated HTML, API, WebDAV, search, or attachments. The §3 N3 exclusion is **from v0**, not permanent; decision C5 (WebDAV + Obsidian is the offline story) remains unchanged. Plan: `docs/superpowers/plans/2026-08-19-jotter-pwa.md`. Do not mark shipped until the implementation PR is merged and verified.
 - **No usage analytics (#357, M, P3).** Only raw `audit_log` in a table. Needs a separate rollup table fed by a bounded cron command — aggregating live over `audit_log` loses everything at the 90-day prune.
 - **Split-screen blocked by document-global DOM lookups (#358, L, P3).** G.4 scope A shipped (#297). The blocker is not that G.1/G.5 are unresolved — both shipped — but that G.1's implementation scrolls via `document.getElementById` (`NoteEditor.vue:845`), which resolves to the wrong pane once two are mounted. Pane-scope the lookups first; that stage stands alone.
 - **No content approval workflow (#359, L, P3).** Lowest value for this product's audience; filed for completeness. Closing it as not-planned is a legitimate outcome if no demand appears. **Unblocked by #347.**
