@@ -122,3 +122,30 @@ This keeps the implementation compatible with shared hosting, preserves per-requ
 - Share creation and revocation are recorded in the audit log without token or URL values. Token rotation is performed by revoking the old share and creating a new one.
 
 This boundary preserves the Markdown-on-disk source of truth and shared-hosting constraints while making per-note public exposure explicit, revocable, and non-enumerable.
+
+---
+
+## Decision — Advisory content approval workflow (Issue #359)
+
+**Decided 2026-08-19:** add per-note review/sign-off state as MySQL application metadata without changing the Markdown source of truth or treating approval as publication.
+
+### Selected contract
+
+- Workflow state is stored in a one-to-one `note_review_workflows` projection with four states: `draft`, `in_review`, `changes_requested`, and `approved`.
+- Reviewer assignment, submission timestamps, and the last approved `content_hash` are application state. No workflow field is written to Markdown, YAML front matter, exports, or vault filenames.
+- Editors may submit a note. The assigned reviewer, workspace owner, or workspace admin may approve or request changes when they can view the note. Viewers and service tokens cannot mutate review state.
+- An approval is current only while the projected `notes.content_hash` equals the saved approved hash. Any Jotter, Obsidian, WebDAV, MCP, or filesystem edit that changes the hash makes the approval stale and requires another submission.
+- The workflow is advisory rather than a hard write lock. Direct vault writers remain able to edit Markdown because the hosting model cannot enforce an application-only lock over the source-of-truth files.
+- Approval does not automatically publish a page or alter `WorkspacePublishController`; publication remains a separate concern.
+- Review transitions and invalidations are immutable `audit_log` events recorded through `AuditRecorder`, without note bodies, secrets, or approval reasons that exceed the existing metadata boundary.
+
+### Options considered
+
+- Front-matter state: rejected because Obsidian/WebDAV can edit it freely and it would contaminate the portable Markdown source.
+- Hard application write lock: rejected because direct vault access bypasses Jotter's HTTP authorization layer and a false guarantee would be worse than an explicit advisory workflow.
+- Separate approval database with no content hash: rejected because out-of-band edits would leave an approved record attached to a different document.
+- MySQL workflow projection with hash-based staleness: selected because it preserves the source-of-truth invariant, works on shared hosting without a daemon, and exposes the limitation honestly.
+
+This decision resolves the semantics required before implementing #359. A future decision may add publication gating or a stronger deployment-level lock, but that would supersede this entry and require a separate issue.
+
+---
