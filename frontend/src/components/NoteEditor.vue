@@ -233,6 +233,14 @@
     </header>
     </div>
 
+    <NoteSharePanel
+      v-if="workspaceId"
+      :state="noteShareState"
+      :loading="noteShareLoading"
+      @create="handleCreateNoteShare"
+      @revoke="handleRevokeNoteShare"
+    />
+
     <!-- Page Title: real content, not chrome (#257) — icon + editable
          title sit directly in the scrolling canvas, below the cover and
          thin utility bar, matching how a Notion page title behaves.
@@ -644,7 +652,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink } from '../services/types'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink, NoteShareState } from '../services/types'
 
 const { t } = useI18n()
 import {
@@ -655,7 +663,7 @@ import {
   getChecklistItems, createChecklistItem, updateChecklistItem, deleteChecklistItem,
   getNoteActivity,
   getUnlinkedMentions, getNote, updateNote,
-  getOutgoingLinks, setNoteWatching
+  getOutgoingLinks, setNoteWatching, getNoteShare, createNoteShare, revokeNoteShare
 } from '../services/api'
 import MarkdownPreview from './MarkdownPreview.vue'
 import BacklinksPanel from './BacklinksPanel.vue'
@@ -672,6 +680,7 @@ import NoteEditorWysiwyg from './NoteEditorWysiwyg.vue'
 import OutlinePanel from './OutlinePanel.vue'
 import LocalGraphPanel from './LocalGraphPanel.vue'
 import NoteAccessPanel from './NoteAccessPanel.vue'
+import NoteSharePanel from './NoteSharePanel.vue'
 import type { LocalGraphNeighbor } from '../services/types'
 import { parseHeadings, type HeadingEntry } from '../services/outline'
 import WikilinkPreviewPopup from './WikilinkPreviewPopup.vue'
@@ -695,6 +704,61 @@ const emit = defineEmits<{
 
 const isEditingIcon = ref(false)
 const iconDraft = ref('')
+
+const emptyNoteShareState = (): NoteShareState => ({
+  active: false,
+  url: null,
+  expires_at: null,
+  revoked_at: null,
+})
+const noteShareState = ref<NoteShareState>(emptyNoteShareState())
+const noteShareLoading = ref(false)
+let noteShareRequestId = 0
+
+async function loadNoteShare(): Promise<void> {
+  if (!props.workspaceId) {
+    noteShareState.value = emptyNoteShareState()
+    return
+  }
+
+  const requestId = ++noteShareRequestId
+  try {
+    const state = await getNoteShare(props.workspaceId, props.note.id)
+    if (requestId === noteShareRequestId) noteShareState.value = state
+  } catch (err) {
+    if (requestId === noteShareRequestId) noteShareState.value = emptyNoteShareState()
+    console.error('Failed to load note share:', err)
+  }
+}
+
+async function handleCreateNoteShare(expiresAt: string | null): Promise<void> {
+  if (!props.workspaceId) return
+  noteShareLoading.value = true
+  try {
+    noteShareState.value = await createNoteShare(props.workspaceId, props.note.id, expiresAt)
+  } catch (err) {
+    console.error('Failed to create note share:', err)
+  } finally {
+    noteShareLoading.value = false
+  }
+}
+
+async function handleRevokeNoteShare(): Promise<void> {
+  if (!props.workspaceId) return
+  noteShareLoading.value = true
+  try {
+    await revokeNoteShare(props.workspaceId, props.note.id)
+    noteShareState.value = { ...noteShareState.value, active: false, url: null, revoked_at: new Date().toISOString() }
+  } catch (err) {
+    console.error('Failed to revoke note share:', err)
+  } finally {
+    noteShareLoading.value = false
+  }
+}
+
+watch(() => [props.workspaceId, props.note.id], () => {
+  void loadNoteShare()
+}, { immediate: true })
 
 const noteIcon = computed(() => {
   const icon = props.note.frontmatter?.icon

@@ -50,6 +50,14 @@ export interface NoteAccessPayload extends NoteAccessMeta {
   entries: NoteAclEntry[]
 }
 
+export interface NoteShareState {
+  active: boolean
+  url: string | null
+  token?: string
+  expires_at: string | null
+  revoked_at: string | null
+}
+
 export interface TrashNoteMeta {
   id: number
   title: string

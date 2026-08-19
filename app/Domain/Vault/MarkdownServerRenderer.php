@@ -25,7 +25,7 @@ final class MarkdownServerRenderer
         $this->converter = new MarkdownConverter($environment);
     }
 
-    public function render(string $markdown, bool $allowExternalEmbeds = true): string
+    public function render(string $markdown, bool $allowExternalEmbeds = true, string $wikilinkMode = 'links'): string
     {
         if (trim($markdown) === '') {
             return '';
@@ -50,11 +50,19 @@ final class MarkdownServerRenderer
         }
 
         // Convert Wikilinks [[target|alias]] into safe anchor tags
+        $plainWikilinkBlocks = [];
         $processed = preg_replace_callback(
             '/\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/',
-            function (array $matches): string {
+            function (array $matches) use ($wikilinkMode, &$plainWikilinkBlocks): string {
                 $target = htmlspecialchars(trim($matches[1]), ENT_QUOTES, 'UTF-8');
                 $label = htmlspecialchars(trim($matches[2] ?? $matches[1]), ENT_QUOTES, 'UTF-8');
+
+                if ($wikilinkMode === 'plain') {
+                    $token = sprintf('JOTTERPLAINWIKILINK%dTOKEN', count($plainWikilinkBlocks));
+                    $plainWikilinkBlocks[$token] = '[['.$label.']]';
+
+                    return $token;
+                }
 
                 return sprintf('<a class="wikilink" data-target="%s" href="#/note/%s">%s</a>', $target, urlencode($target), $label);
             },
@@ -73,6 +81,10 @@ final class MarkdownServerRenderer
         );
 
         $html = (string) $this->converter->convert($processed ?? $markdown);
+
+        if ($plainWikilinkBlocks !== []) {
+            $html = strtr($html, $plainWikilinkBlocks);
+        }
 
         // Unescape safe html details and summary tags
         $html = str_replace(

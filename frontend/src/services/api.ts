@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -129,6 +129,27 @@ export async function replaceNoteAcl(
 ): Promise<NoteAccessPayload> {
   const response = await api.put<{ data: NoteAccessPayload }>(`/workspaces/${workspaceId}/notes/${noteId}/acl`, { entries })
   return response.data.data
+}
+
+export async function getNoteShare(workspaceId: number, noteId: number): Promise<NoteShareState> {
+  const response = await api.get<{ data: NoteShareState }>(`/workspaces/${workspaceId}/notes/${noteId}/share`)
+  return response.data.data
+}
+
+export async function createNoteShare(
+  workspaceId: number,
+  noteId: number,
+  expiresAt: string | null,
+): Promise<NoteShareState> {
+  const response = await api.post<{ data: NoteShareState }>(
+    `/workspaces/${workspaceId}/notes/${noteId}/share`,
+    { expires_at: expiresAt },
+  )
+  return response.data.data
+}
+
+export async function revokeNoteShare(workspaceId: number, noteId: number): Promise<void> {
+  await api.delete(`/workspaces/${workspaceId}/notes/${noteId}/share`)
 }
 
 export async function getWorkspaceGroups(workspaceId: number): Promise<WorkspaceGroup[]> {
