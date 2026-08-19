@@ -11,7 +11,7 @@ This file previously also carried the shipped-item changelog, decision records, 
 - **Security/correctness audit findings** → `docs/security-audit-2026.md`
 - **Visual-identity design-system tracking** (#96–#110) → `docs/visual-identity.md`
 
-As of 2026-08-19, every previously-tracked Milestone is delivered (backend and UI) and closed. The remaining Confluence-parity work is #360 plus the PR/merge handoff for the completed #359 implementation; #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, and #358 shipped in PR #382.
+As of 2026-08-19, every previously-tracked Milestone is delivered (backend and UI) and closed. The remaining Confluence-parity work is #360 plus the merge handoff for #359 in draft PR #384; #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, and #358 shipped in PR #382.
 
 ---
 
@@ -72,7 +72,7 @@ feature set. All ten shipped:
 comparison against Confluence's feature set, verified against `app/`,
 `frontend/src/`, `database/migrations/` and `routes/api.php` at
 `dcda766`. Fourteen gaps, four of them never reported before. Filed as
-#347–#360. #347–#358 are shipped; #359 is implemented pending PR/merge, and #360 remains sequenced behind it.
+#347–#360. #347–#358 are shipped; #359 is implemented in draft PR #384 pending merge, and #360 remains sequenced behind it.
 
 Ordered by recommended priority, not by theme. The audit's §4 argues the
 sequence; the short version is that role enforcement was the security
@@ -90,7 +90,7 @@ prerequisite and is now shipped, unblocking page-level ACLs.
 - ~~**No installable PWA (#356, S, P3).**~~ **Shipped in PR #377.** Added manifest and standalone install metadata, canonical theme-color handling, production-only versioned service-worker registration, static-shell caching with a generic offline fallback, release synchronization, deployment guidance, and regression coverage. The worker never caches note content, authenticated HTML, APIs, WebDAV, search, or attachments. Plan: `docs/superpowers/plans/2026-08-19-jotter-pwa.md`.
 - ~~**No usage analytics (#357, M, P3).**~~ **Shipped in PR #380.** Added durable daily audit rollups, a bounded idempotent `analytics:rollup` command, ACL-safe workspace analytics API/dashboard, and opt-in/off-by-default `NOTE_VIEWED`; dashboards never aggregate live over `audit_log`, whose source rows remain prunable after 90 days. Plan: `docs/superpowers/plans/2026-08-19-jotter-usage-analytics.md`.
 - ~~**Split-screen blocked by document-global DOM lookups (#358, L, P3).**~~ **Shipped in PR #382.** Renderer heading IDs are pane-unique, outline navigation is local to `MarkdownPreview`, `NoteEditor` no longer performs editor-global DOM lookups, and the true split view now persists independent tabs/active notes with keyboard and drag-to-split controls, isolated drawers, responsive layout, and a Playwright regression. Verification: 608 Vitest tests, frontend build, existing notes E2E, and split-screen E2E passed.
-- ~~**No content approval workflow (#359, L, P3).**~~ **Implementation complete on `codex/cf13-content-approval`; PR/merge pending.** Added the advisory per-note review workflow (`draft`, `in_review`, `changes_requested`, `approved`), reviewer assignment, audit events, stale detection after direct/WebDAV/reindex edits, API endpoints, editor review drawer, and Playwright coverage. It intentionally does not lock files, write front matter state, or gate publication. **Unblocked by #347.** Plan: `docs/superpowers/plans/2026-08-19-jotter-content-approval.md`.
+- ~~**No content approval workflow (#359, L, P3).**~~ **Implementation complete in draft PR #384; merge pending.** Added the advisory per-note review workflow (`draft`, `in_review`, `changes_requested`, `approved`), reviewer assignment, audit events, stale detection after direct/WebDAV/reindex edits, API endpoints, editor review drawer, and Playwright coverage. It intentionally does not lock files, write front matter state, or gate publication. **Unblocked by #347.** Plan: `docs/superpowers/plans/2026-08-19-jotter-content-approval.md`.
 - **Roadmap baseline provenance (#360, XS, P3).** Docs only — see "Needs a decision" below.
 
 ## Not adopted
