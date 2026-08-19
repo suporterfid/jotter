@@ -41,6 +41,9 @@ WORKDIR /release
 
 COPY --from=vendor /app /release/app
 COPY --from=frontend /app/public/build /release/app/public/build
+COPY --from=frontend /app/public/manifest.webmanifest /release/app/public/manifest.webmanifest
+COPY --from=frontend /app/public/offline.html /release/app/public/offline.html
+COPY --from=frontend /app/public/service-worker.js /release/app/public/service-worker.js
 
 RUN echo "${GIT_SHA} · ${BUILD_TIME}" > /release/app/VERSION
 

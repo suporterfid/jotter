@@ -114,6 +114,24 @@ behavior without attempting external delivery.
 
 Keep vault directories outside the web root. Notes are never served as static files from `public/`.
 
+## Installable PWA shell (#356)
+
+The release includes `public/manifest.webmanifest`, `public/service-worker.js`, and
+`public/offline.html` at the document root. The frontend build synchronizes these
+files from `frontend/public/` before compiling the hashed assets.
+
+The service worker is intentionally a shell cache, not offline note storage. It
+does not cache authenticated HTML, note content, attachments, API responses,
+search results, WebDAV responses, or Sanctum endpoints. Navigations use the
+network first and show the generic offline page only when the network is
+unavailable.
+
+When shell behavior or static asset delivery changes, bump the `CACHE_NAME`
+version in `frontend/public/service-worker.js` before running the release build.
+The activation handler removes older shell caches. Service workers require
+HTTPS in production; `localhost` is the only intended insecure development
+exception.
+
 ## PDF exports (#354)
 
 PDF artifacts are private and must live outside the document root. Configure the
