@@ -123,20 +123,21 @@ function wrapCodeBlocks(html: string, copyLabel: string): string {
 import { getClientAllowedAttributes, getClientAllowedTags } from './blockRegistry'
 
 /**
- * Stamps id="<slug>" onto each rendered <h1>-<h6> tag, in document order,
- * using the same parseHeadings() ids the outline panel lists — so a
- * drawer click can scroll the preview to a matching element via
- * document.getElementById. headings must come from parseHeadings() run
- * against the *same* raw markdown passed to renderMarkdown, so counts
- * and order line up with marked's own heading output.
+ * Stamps a pane-unique id and the source slug onto each rendered <h1>-<h6>
+ * tag, in document order, using the same parseHeadings() ids the outline
+ * panel lists. headings must come from parseHeadings() run against the
+ * *same* raw markdown passed to renderMarkdown, so counts and order line up
+ * with marked's own heading output.
  */
-function injectHeadingIds(html: string, headings: HeadingEntry[]): string {
+function injectHeadingIds(html: string, headings: HeadingEntry[], headingIdPrefix = ''): string {
   let index = 0
   return html.replace(/<h([1-6])>/g, (match, level) => {
     const heading = headings[index]
     index += 1
     if (!heading) return match
-    return `<h${level} id="${heading.id}">`
+    const sourceSlug = escapeHtmlAttribute(heading.id)
+    const uniqueId = escapeHtmlAttribute(`${headingIdPrefix}${heading.id}`)
+    return `<h${level} id="${uniqueId}" data-heading-source="${sourceSlug}">`
   })
 }
 
@@ -158,6 +159,7 @@ export function renderMarkdown(
   markdownText: string,
   resolveEmbed?: (target: string) => EmbedResolution,
   copyLabel = 'Copy',
+  headingIdPrefix = '',
 ): string {
   if (!markdownText) return ''
 
@@ -175,7 +177,7 @@ export function renderMarkdown(
   rawHtml = wrapCodeBlocks(rawHtml, copyLabel)
 
   // Stamp heading ids for outline navigation
-  rawHtml = injectHeadingIds(rawHtml, headings)
+  rawHtml = injectHeadingIds(rawHtml, headings, headingIdPrefix)
 
   // Raw user HTML must not create iframes. Generated external embeds are
   // inserted only after this guard, from placeholders we created above.

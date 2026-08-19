@@ -57,8 +57,15 @@ describe('Markdown rendering & XSS security', () => {
   it('stamps matching ids on rendered headings for outline navigation', () => {
     const md = '# Notes\n\nSome text.\n\n## Notes'
     const html = renderMarkdown(md)
-    expect(html).toContain('<h1 id="notes">')
-    expect(html).toContain('<h2 id="notes-2">')
+    expect(html).toContain('<h1 id="notes" data-heading-source="notes">')
+    expect(html).toContain('<h2 id="notes-2" data-heading-source="notes-2">')
+  })
+
+  it('prefixes heading ids while retaining the outline source slug', () => {
+    const html = renderMarkdown('# Notes\n\n## Notes', undefined, 'Copy', 'pane-secondary--')
+
+    expect(html).toContain('<h1 id="pane-secondary--notes" data-heading-source="notes">')
+    expect(html).toContain('<h2 id="pane-secondary--notes-2" data-heading-source="notes-2">')
   })
 
   it('parses wikilinks into data-target anchor elements', () => {
