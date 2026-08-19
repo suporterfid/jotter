@@ -74,14 +74,6 @@
       @close="closeNotificationPreferences"
     />
 
-    <TabStrip
-      v-if="showTabStrip"
-      :tabs="openTabsList"
-      :active-id="activeNoteId"
-      @select-tab="handleSelectNote"
-      @close-tab="handleCloseTab"
-    />
-
     <!-- Main Content Area -->
     <main class="main-content">
       <!-- Graph View Mode -->
@@ -201,17 +193,82 @@
       />
 
       <!-- Active Note Editor -->
-      <NoteEditor
-        v-else-if="activeNoteDetail"
-        :note="activeNoteDetail"
-        :all-notes="notes"
-        :workspace-id="activeWorkspaceId || undefined"
-        @update-note="handleUpdateNote"
-        @export-pdf="handleExportNotePdf"
-        @select-note="handleSelectNote"
-        @navigate-wikilink="handleWikilinkNavigation"
-        @reveal-folder="handleRevealFolder"
-      />
+      <div v-else-if="showTabStrip" class="editor-layout-shell">
+        <div
+          v-if="!splitLayout.enabled && draggedNoteId !== null"
+          class="split-drop-zone"
+          data-testid="split-drop-zone"
+          role="button"
+          tabindex="0"
+          :aria-label="t('splitPane.dropToSplit')"
+          @dragover.prevent
+          @drop.prevent="handleDropToSplit"
+          @keydown.enter.prevent="handleDropToSplit"
+          @keydown.space.prevent="handleDropToSplit"
+        >{{ t('splitPane.dropToSplit') }}</div>
+        <div
+          v-if="splitLayout.enabled"
+          class="split-editor-layout"
+          :style="{ '--primary-ratio': `${splitLayout.primaryRatio * 100}%` }"
+        >
+          <button
+            type="button"
+            class="split-merge-btn"
+            data-testid="merge-pane-btn"
+            :aria-label="t('splitPane.merge')"
+            @click="handleMergeSecondary"
+          >{{ t('splitPane.merge') }}</button>
+          <EditorPane
+            pane-id="primary"
+            :tabs="openTabsList"
+            :active-id="activeNoteId"
+            :note="activeNoteDetail"
+            :all-notes="notes"
+            :workspace-id="activeWorkspaceId || undefined"
+            @select-note="handleSelectNoteInPane('primary', $event)"
+            @close-tab="handleCloseTabInPane('primary', $event)"
+            @split-note="handleSplitNote"
+            @update-note="handleUpdateNote"
+            @export-pdf="handleExportNotePdf"
+            @navigate-wikilink="handleWikilinkNavigationInPane('primary', $event)"
+            @reveal-folder="handleRevealFolder"
+          />
+          <div class="split-editor-divider" role="separator" aria-hidden="true"></div>
+          <EditorPane
+            pane-id="secondary"
+            :tabs="secondaryTabsList"
+            :active-id="secondaryActiveNoteId"
+            :note="secondaryNoteDetail"
+            :all-notes="notes"
+            :workspace-id="activeWorkspaceId || undefined"
+            @select-note="handleSelectNoteInPane('secondary', $event)"
+            @close-tab="handleCloseTabInPane('secondary', $event)"
+            @split-note="handleSplitNote"
+            @update-note="handleUpdateNote"
+            @export-pdf="handleExportNotePdf"
+            @navigate-wikilink="handleWikilinkNavigationInPane('secondary', $event)"
+            @reveal-folder="handleRevealFolder"
+          />
+        </div>
+        <EditorPane
+          v-else
+          pane-id="primary"
+          :tabs="openTabsList"
+          :active-id="activeNoteId"
+          :note="activeNoteDetail"
+          :all-notes="notes"
+          :workspace-id="activeWorkspaceId || undefined"
+          @select-note="handleSelectNote"
+          @close-tab="handleCloseTab"
+          @split-note="handleSplitNote"
+          @update-note="handleUpdateNote"
+          @export-pdf="handleExportNotePdf"
+          @navigate-wikilink="handleWikilinkNavigation"
+          @reveal-folder="handleRevealFolder"
+          @drag-note="handleDragNote"
+          @drag-end="handleDragEnd"
+        />
+      </div>
 
       <!-- Empty State -->
       <div v-else class="empty-workspace-state">
@@ -282,11 +339,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import i18n from './i18n'
 import Sidebar from './components/Sidebar.vue'
-import NoteEditor from './components/NoteEditor.vue'
+import EditorPane from './components/EditorPane.vue'
 import SearchResults from './components/SearchResults.vue'
 import LoginModal from './components/LoginModal.vue'
 import CommandPalette from './components/CommandPalette.vue'
@@ -346,8 +403,7 @@ import BoardSwitcher from './components/BoardSwitcher.vue'
 import { isArchived } from './services/collectionUtils'
 import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
-import TabStrip from './components/TabStrip.vue'
-import { useOpenTabs } from './composables/useOpenTabs'
+import { useSplitPanes, type PaneId } from './composables/useSplitPanes'
 import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
 
 const { t } = useI18n()
@@ -358,13 +414,32 @@ const tenants = ref<Tenant[]>([])
 const activeTenantId = ref<number | null>(null)
 const notes = ref<NoteMeta[]>([])
 const folderPositions = ref<FolderPosition[]>([])
-const activeNoteId = ref<number | null>(null)
+const { layout: splitLayout, loadLayout, saveLayout, openNote, closeNote, splitWithNote, mergeSecondary } = useSplitPanes()
+const activeNoteId = computed<number | null>({
+  get: () => splitLayout.value.primary.activeNoteId,
+  set: (noteId) => { splitLayout.value.primary.activeNoteId = noteId },
+})
+const secondaryActiveNoteId = computed<number | null>({
+  get: () => splitLayout.value.secondary.activeNoteId,
+  set: (noteId) => { splitLayout.value.secondary.activeNoteId = noteId },
+})
 const activeNoteDetail = ref<NoteDetail | null>(null)
+const secondaryNoteDetail = ref<NoteDetail | null>(null)
+const draggedNoteId = ref<number | null>(null)
 
-const { openNoteIds, loadTabs, saveTabs, openTab, closeTab } = useOpenTabs()
+const openNoteIds = computed(() => splitLayout.value.primary.openNoteIds)
 
 const openTabsList = computed(() =>
   openNoteIds.value
+    .map(id => {
+      const note = notes.value.find(n => n.id === id)
+      return note ? { id, title: note.title || note.path } : null
+    })
+    .filter((tab): tab is { id: number; title: string } => tab !== null)
+)
+
+const secondaryTabsList = computed(() =>
+  splitLayout.value.secondary.openNoteIds
     .map(id => {
       const note = notes.value.find(n => n.id === id)
       return note ? { id, title: note.title || note.path } : null
@@ -386,20 +461,33 @@ const showTabStrip = computed(() =>
   !isSearchActive.value
 )
 
-watch([openNoteIds, activeNoteId], () => {
+watch(splitLayout, () => {
   if (!activeWorkspaceId.value) return
-  saveTabs(activeWorkspaceId.value, activeNoteId.value)
+  saveLayout(activeWorkspaceId.value)
 }, { deep: true })
 
-async function handleCloseTab(noteId: number) {
-  const nextActiveId = closeTab(noteId, activeNoteId.value)
-  if (nextActiveId === activeNoteId.value) return
-  if (nextActiveId === null) {
-    activeNoteId.value = null
-    activeNoteDetail.value = null
-  } else {
-    await loadActiveNote(nextActiveId)
+async function handleCloseTabInPane(paneId: PaneId, noteId: number) {
+  const previousActiveId = paneId === 'primary' ? activeNoteId.value : secondaryActiveNoteId.value
+  closeNote(paneId, noteId)
+  const nextActiveId = paneId === 'primary' ? activeNoteId.value : secondaryActiveNoteId.value
+  if (nextActiveId === previousActiveId) return
+
+  if (paneId === 'secondary' && splitLayout.value.secondary.openNoteIds.length === 0) {
+    secondaryNoteDetail.value = null
+    mergeSecondary()
+    return
   }
+
+  if (nextActiveId === null) {
+    if (paneId === 'primary') activeNoteDetail.value = null
+    else secondaryNoteDetail.value = null
+  } else {
+    await loadNoteInPane(paneId, nextActiveId)
+  }
+}
+
+async function handleCloseTab(noteId: number) {
+  await handleCloseTabInPane('primary', noteId)
 }
 
 const currentUser = ref<AuthUser | null>(null)
@@ -494,6 +582,7 @@ const availableTagsForSearch = computed(() => {
 const errorMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 const successLink = ref<string | null>(null)
+const paneNoteRequestIds: Record<PaneId, number> = { primary: 0, secondary: 0 }
 
 async function handleSelectNoteFromGraph(noteId: number) {
   isGraphViewActive.value = false
@@ -501,6 +590,7 @@ async function handleSelectNoteFromGraph(noteId: number) {
 }
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleSplitShortcut)
   setUnauthenticatedHandler(() => {
     showLoginModal.value = true
   })
@@ -526,6 +616,10 @@ onMounted(async () => {
 
   await initWorkspace()
   openNotificationPreferencesFromUrl()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleSplitShortcut)
 })
 
 const WORKSPACE_STORAGE_KEY = 'jotter-active-workspace-id'
@@ -567,8 +661,9 @@ async function initWorkspace() {
       localStorage.setItem(WORKSPACE_STORAGE_KEY, String(list[0].id))
     }
 
-    activeNoteId.value = loadTabs(activeWorkspaceId.value)
+    loadLayout(activeWorkspaceId.value)
     await refreshNotesList()
+    await restoreSecondaryNote()
     await refreshNotifications()
   } catch (err) {
     console.error('Failed to initialize workspace:', err)
@@ -578,8 +673,9 @@ async function initWorkspace() {
 async function handleSwitchWorkspace(workspaceId: number) {
   activeWorkspaceId.value = workspaceId
   localStorage.setItem(WORKSPACE_STORAGE_KEY, String(workspaceId))
-  activeNoteId.value = loadTabs(workspaceId)
+  loadLayout(workspaceId)
   await refreshNotesList()
+  await restoreSecondaryNote()
   await refreshNotifications()
   if (isAnalyticsActive.value) await refreshWorkspaceAnalytics()
 }
@@ -663,6 +759,9 @@ async function handleLogout() {
     notes.value = []
     activeNoteId.value = null
     activeNoteDetail.value = null
+    secondaryActiveNoteId.value = null
+    secondaryNoteDetail.value = null
+    mergeSecondary()
     showLoginModal.value = true
   }
 }
@@ -690,17 +789,26 @@ async function refreshNotesList() {
     } else if (list.length > 0) {
       await handleSelectNote(list[0].id)
     }
+
+    const secondaryId = secondaryActiveNoteId.value
+    if (secondaryId !== null && !list.some(n => n.id === secondaryId)) {
+      closeNote('secondary', secondaryId)
+      secondaryNoteDetail.value = null
+      if (splitLayout.value.secondary.openNoteIds.length === 0) mergeSecondary()
+    }
   } catch {
     // Failed requests will trigger unauthenticated handler if 401
   }
 }
 
-async function loadActiveNote(noteId: number) {
+async function loadNoteInPane(paneId: PaneId, noteId: number) {
   if (!activeWorkspaceId.value) return
+  const requestId = ++paneNoteRequestIds[paneId]
   try {
     const detail = await getNote(activeWorkspaceId.value, noteId)
-    activeNoteId.value = noteId
-    activeNoteDetail.value = detail
+    if (requestId !== paneNoteRequestIds[paneId]) return
+    if (paneId === 'primary') activeNoteDetail.value = detail
+    else secondaryNoteDetail.value = detail
 
     // Keep the sidebar tree's copy of this note (frontmatter, title, path)
     // in sync — loadActiveNote only refetches the single note detail, and
@@ -724,8 +832,20 @@ async function loadActiveNote(noteId: number) {
   }
 }
 
+async function loadActiveNote(noteId: number) {
+  await loadNoteInPane('primary', noteId)
+}
+
+async function restoreSecondaryNote(): Promise<void> {
+  if (!splitLayout.value.enabled || secondaryActiveNoteId.value === null) {
+    secondaryNoteDetail.value = null
+    return
+  }
+  await loadNoteInPane('secondary', secondaryActiveNoteId.value)
+}
+
 async function handleSelectNote(noteId: number) {
-  openTab(noteId)
+  openNote('primary', noteId)
   isMobileSidebarOpen.value = false
   isSearchActive.value = false
   isAttachmentsActive.value = false
@@ -737,6 +857,52 @@ async function handleSelectNote(noteId: number) {
   isBoardViewActive.value = false
   isCalendarViewActive.value = false
   await loadActiveNote(noteId)
+}
+
+async function handleSelectNoteInPane(paneId: PaneId, noteId: number): Promise<void> {
+  if (paneId === 'primary') {
+    await handleSelectNote(noteId)
+    return
+  }
+  openNote('secondary', noteId)
+  await loadNoteInPane('secondary', noteId)
+}
+
+async function handleSplitNote(noteId: number): Promise<void> {
+  splitWithNote(noteId)
+  await restoreSecondaryNote()
+}
+
+function handleDragNote(noteId: number): void {
+  draggedNoteId.value = noteId
+}
+
+function handleDragEnd(): void {
+  draggedNoteId.value = null
+}
+
+function handleDropToSplit(): void {
+  const noteId = draggedNoteId.value
+  draggedNoteId.value = null
+  if (noteId !== null) void handleSplitNote(noteId)
+}
+
+function handleMergeSecondary(): void {
+  mergeSecondary()
+  secondaryNoteDetail.value = null
+}
+
+function handleSplitShortcut(event: KeyboardEvent): void {
+  const target = event.target
+  const isTextInput = target instanceof HTMLElement && (
+    target.matches('input, textarea, [contenteditable="true"]') ||
+    target.closest('[contenteditable="true"]') !== null
+  )
+  if (isTextInput || !(event.ctrlKey || event.metaKey) || !event.altKey || event.key.toLowerCase() !== 's') return
+  if (activeNoteId.value === null) return
+
+  event.preventDefault()
+  void handleSplitNote(activeNoteId.value)
 }
 
 async function handleOpenNotificationTarget(target: { noteId: number; targetKind: 'note' | 'trash' }) {
@@ -1315,15 +1481,7 @@ async function handleDeleteNote(noteId: number) {
   if (!confirm(t('app.confirmDeleteNote'))) return
   try {
     await deleteNote(activeWorkspaceId.value, noteId)
-    const nextActiveId = closeTab(noteId, activeNoteId.value)
-    if (nextActiveId !== activeNoteId.value) {
-      if (nextActiveId === null) {
-        activeNoteId.value = null
-        activeNoteDetail.value = null
-      } else {
-        await loadActiveNote(nextActiveId)
-      }
-    }
+    await handleCloseTabInPane('primary', noteId)
     await refreshNotesList()
   } catch (err) {
     console.error('Failed to delete note:', err)
@@ -1374,10 +1532,14 @@ async function handleSearchFiltersChange(filters: SearchFilters) {
 }
 
 async function handleWikilinkNavigation(target: string) {
+  await handleWikilinkNavigationInPane('primary', target)
+}
+
+async function handleWikilinkNavigationInPane(paneId: PaneId, target: string) {
   const match = resolveWikilinkTarget(target, notes.value)
 
   if (match) {
-    await handleSelectNote(match.id)
+    await handleSelectNoteInPane(paneId, match.id)
   } else {
     const targetLower = target.toLowerCase().trim()
     const newPath = targetLower.endsWith('.md') ? targetLower : `${targetLower}.md`
@@ -1481,6 +1643,65 @@ body {
   background: var(--color-canvas);
 }
 
+.editor-layout-shell {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.split-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, var(--primary-ratio)) minmax(0, 1fr);
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+.split-editor-divider {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--primary-ratio);
+  width: 1px;
+  background: var(--color-border-strong);
+  pointer-events: none;
+}
+
+.split-merge-btn {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+  z-index: 2;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.75rem;
+}
+
+.split-merge-btn:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.split-drop-zone {
+  position: absolute;
+  inset: var(--space-4);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--color-action);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-action) 8%, var(--color-canvas));
+  color: var(--color-action);
+  font-weight: 600;
+}
+
 /* Error banner */
 .error-banner {
   position: fixed;
@@ -1577,5 +1798,19 @@ body {
   font-size: 1rem; /* was 0.925rem — spec §4 mandates ≥ 16px for prose */
   color: var(--color-text-muted);
   line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .split-editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .split-editor-divider {
+    inset-block-start: 50%;
+    inset-inline: 0;
+    width: auto;
+    height: 1px;
+  }
 }
 </style>

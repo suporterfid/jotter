@@ -12,6 +12,8 @@ config.global.plugins.push(i18n)
 
 function removeRightDrawerTarget() {
   document.getElementById('app-right-drawer')?.remove()
+  document.getElementById('app-right-drawer-primary')?.remove()
+  document.getElementById('app-right-drawer-secondary')?.remove()
 }
 
 beforeEach(() => {
@@ -20,6 +22,12 @@ beforeEach(() => {
   const target = document.createElement('div')
   target.id = 'app-right-drawer'
   document.body.append(target)
+
+  for (const id of ['app-right-drawer-primary', 'app-right-drawer-secondary']) {
+    const paneTarget = document.createElement('div')
+    paneTarget.id = id
+    document.body.append(paneTarget)
+  }
 })
 
 afterEach(() => {

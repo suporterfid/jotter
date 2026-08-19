@@ -11,6 +11,8 @@
       @select-tab="$emit('select-note', $event)"
       @close-tab="$emit('close-tab', $event)"
       @split-tab="$emit('split-note', $event)"
+      @drag-tab="$emit('drag-note', $event)"
+      @drag-end="$emit('drag-end')"
     />
 
     <div class="editor-pane-content">
@@ -61,6 +63,8 @@ const emit = defineEmits<{
   (e: 'export-pdf'): void
   (e: 'navigate-wikilink', target: string): void
   (e: 'reveal-folder', folderPath: string): void
+  (e: 'drag-note', noteId: number): void
+  (e: 'drag-end'): void
 }>()
 
 const drawerTarget = computed(() => `#app-right-drawer-${props.paneId}`)

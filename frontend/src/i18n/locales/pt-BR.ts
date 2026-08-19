@@ -80,6 +80,10 @@ export default {
   editorPane: {
     empty: 'Selecione uma nota para começar a escrever.',
   },
+  splitPane: {
+    merge: 'Fechar visualização dividida',
+    dropToSplit: 'Solte uma aba aqui para dividir o editor',
+  },
   panelHeader: {
     expand: 'Expandir {title}',
     collapse: 'Recolher {title}',

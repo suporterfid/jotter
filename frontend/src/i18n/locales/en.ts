@@ -80,6 +80,10 @@ export default {
   editorPane: {
     empty: 'Select a note to start writing.',
   },
+  splitPane: {
+    merge: 'Close split view',
+    dropToSplit: 'Drop a tab here to split the editor',
+  },
   panelHeader: {
     expand: 'Expand {title}',
     collapse: 'Collapse {title}',

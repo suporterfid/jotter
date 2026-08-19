@@ -65,6 +65,64 @@ beforeEach(() => {
 })
 
 describe('App Component', () => {
+  it('keeps primary and secondary active notes independent in split mode', async () => {
+    localStorage.setItem(
+      'jotter-open-tabs:1',
+      JSON.stringify({ openNoteIds: [10, 11], activeNoteId: 10 })
+    )
+    vi.mocked(getNotes).mockResolvedValueOnce([
+      { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+      { id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null, updated_at: '2026-07-28T00:00:00Z' },
+    ])
+    const previousGetNote = vi.mocked(getNote).getMockImplementation()
+    vi.mocked(getNote).mockImplementation(async (_workspaceId, noteId) => ({
+      id: noteId,
+      path: noteId === 11 ? 'second.md' : 'welcome.md',
+      title: noteId === 11 ? 'Second Note' : 'Welcome Note',
+      frontmatter: null,
+      sort_position: null,
+      updated_at: '2026-07-27T00:00:00Z',
+      content: `# ${noteId === 11 ? 'Second' : 'Welcome'}`,
+      backlinks: [],
+    }))
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="split-tab-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-pane-id]')).toHaveLength(2)
+    expect(wrapper.find('[data-pane-id="primary"]').attributes('data-active-note-id')).not.toBe(
+      wrapper.find('[data-pane-id="secondary"]').attributes('data-active-note-id')
+    )
+
+    await wrapper.find('[data-pane-id="secondary"] [data-testid="tab-strip-item"]').trigger('click')
+    expect(wrapper.find('[data-pane-id="primary"]').attributes('data-active-note-id')).toBe('10')
+    expect(wrapper.find('[data-pane-id="secondary"]').attributes('data-active-note-id')).toBe('11')
+
+    if (previousGetNote) vi.mocked(getNote).mockImplementation(previousGetNote)
+  })
+
+  it('splits a dragged tab through the accessible drop zone', async () => {
+    localStorage.setItem(
+      'jotter-open-tabs:1',
+      JSON.stringify({ openNoteIds: [10, 11], activeNoteId: 10 })
+    )
+    vi.mocked(getNotes).mockResolvedValueOnce([
+      { id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z' },
+      { id: 11, path: 'second.md', title: 'Second Note', frontmatter: null, sort_position: null, updated_at: '2026-07-28T00:00:00Z' },
+    ])
+
+    const wrapper = mount(App)
+    await flushPromises()
+    await wrapper.find('[data-pane-id="primary"] [data-testid="tab-strip-item"]').trigger('dragstart')
+    await wrapper.find('[data-testid="split-drop-zone"]').trigger('drop')
+    await flushPromises()
+
+    expect(wrapper.find('[data-pane-id="secondary"]').exists()).toBe(true)
+  })
+
   it('queues a workspace PDF export and downloads it when ready', async () => {
     const wrapper = mount(App)
     await flushPromises()

@@ -10,6 +10,7 @@
       data-testid="tab-strip-item"
       draggable="true"
       @dragstart="$emit('drag-tab', tab.id)"
+      @dragend="$emit('drag-end')"
       @click="$emit('select-tab', tab.id)"
     >
       <svg class="tab-strip-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -52,6 +53,7 @@ defineEmits<{
   (e: 'close-tab', noteId: number): void
   (e: 'split-tab', noteId: number): void
   (e: 'drag-tab', noteId: number): void
+  (e: 'drag-end'): void
 }>()
 </script>
 
