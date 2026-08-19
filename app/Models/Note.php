@@ -80,4 +80,9 @@ class Note extends Model
     {
         return $this->hasMany(NoteAclEntry::class);
     }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(NoteShare::class);
+    }
 }
