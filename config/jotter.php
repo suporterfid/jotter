@@ -25,6 +25,12 @@ return [
         'process_batch_size' => (int) env('JOTTER_PDF_PROCESS_BATCH', 10),
     ],
 
+    'analytics' => [
+        'rollup_batch_size' => (int) env('JOTTER_ANALYTICS_ROLLUP_BATCH', 500),
+        'stale_days' => (int) env('JOTTER_ANALYTICS_STALE_DAYS', 30),
+        'record_reads' => (bool) env('JOTTER_ANALYTICS_RECORD_READS', false),
+    ],
+
     'rendering' => [
         // Off by default: emits <span class="jotter-math">/<pre class="mermaid">
         // markup for $$LaTeX$$ and ```mermaid blocks instead of plain code, for a
