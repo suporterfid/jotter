@@ -19,6 +19,26 @@ Six roadmap items conflicted with the spec's hard constraints (§1 Markdown-on-d
 
 ---
 
+## Decision — Roadmap baseline provenance (Issue #360)
+
+**Decided 2026-08-19:** confirm that the current-state gap analysis in `docs/20260727-jotter-roadmap-ai-agent.md` was written for a different product carrying the same Jotter name. The roadmap remains useful for sequencing, dependencies, and feature direction, but its assessment of what this repository already delivers is not authoritative.
+
+### Question
+
+Should the roadmap's baseline and feature-gap summary be used to determine what this repository lacks, or should the repository's own specification and delivered-state table govern planning?
+
+### Options considered
+
+- Treat the roadmap baseline as authoritative: rejected because it describes offline-first behavior, Material You styling, and realtime collaboration, while this repository is a Laravel/Vue server application for shared hosting; it also calls search, nested folders, tags, backlinks, and attachments missing even though they shipped in v0.
+- Discard the roadmap entirely: rejected because its sequencing logic, dependency map, and feature definitions remain useful planning signals.
+- Split the authority: selected. Keep the roadmap for direction and sequencing; use this specification's constraints and §14.3 delivered-state table for current-state claims.
+
+### Rationale
+
+The evidence is already recorded in `docs/jotter-initial-spec-and-build-plan.md` §14.1: the baseline's product description does not match this repository, and five of its six top priorities were already delivered. The repository's server-side architecture, shared-hosting constraints, Markdown-on-disk invariant, and actual delivered-state table are the reliable planning baseline. This closes the final open decision tracked by #360 without deleting the roadmap or re-planning already shipped work.
+
+---
+
 ## Decision Record — Typed Property Model (Issue #79)
 
 The property model projects YAML front-matter key-value pairs into typed, indexed MySQL storage (`note_properties`) while keeping Markdown files on disk as the single source of truth.

@@ -11,15 +11,13 @@ This file previously also carried the shipped-item changelog, decision records, 
 - **Security/correctness audit findings** → `docs/security-audit-2026.md`
 - **Visual-identity design-system tracking** (#96–#110) → `docs/visual-identity.md`
 
-As of 2026-08-19, every previously-tracked Milestone is delivered (backend and UI) and closed. The remaining Confluence-parity work is #360; #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, #358 shipped in PR #382, and #359 shipped in PR #384.
+As of 2026-08-19, every previously-tracked Milestone and Confluence-parity issue (#347–#360) is delivered or resolved. #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, #358 shipped in PR #382, and #359 shipped in PR #384; #360 was resolved as a documentation decision.
 
 ---
 
 ## Needs a decision (spec §14.5)
 
-C1, C2, C3, C5, and C6 were resolved — see `docs/decisions.md`. This section previously still listed them as open `TODO(spec)` blockers after they were resolved; that self-contradiction was found and fixed (#141).
-
-- **Roadmap baseline provenance (#360).** `TODO(spec): confirm whether the roadmap's gap analysis was drawn from a different product of the same name. Until confirmed, spec §14.3 governs what counts as delivered.` The evidence is already assembled in spec §14.1 — what remains is recording the confirmation in `docs/decisions.md` and removing this item, not investigating it.
+All roadmap/spec decisions are resolved — see `docs/decisions.md`. This section is intentionally empty; new decision work must add a dated decision record before implementation is planned.
 
 ## WYSIWYG editor epic (decision resolved 2026-08-05 — option (b))
 
@@ -72,7 +70,7 @@ feature set. All ten shipped:
 comparison against Confluence's feature set, verified against `app/`,
 `frontend/src/`, `database/migrations/` and `routes/api.php` at
 `dcda766`. Fourteen gaps, four of them never reported before. Filed as
-#347–#360. #347–#359 are shipped; #360 remains sequenced behind them.
+#347–#360 are shipped or resolved; no Confluence-parity issue remains open.
 
 Ordered by recommended priority, not by theme. The audit's §4 argues the
 sequence; the short version is that role enforcement was the security
@@ -91,7 +89,7 @@ prerequisite and is now shipped, unblocking page-level ACLs.
 - ~~**No usage analytics (#357, M, P3).**~~ **Shipped in PR #380.** Added durable daily audit rollups, a bounded idempotent `analytics:rollup` command, ACL-safe workspace analytics API/dashboard, and opt-in/off-by-default `NOTE_VIEWED`; dashboards never aggregate live over `audit_log`, whose source rows remain prunable after 90 days. Plan: `docs/superpowers/plans/2026-08-19-jotter-usage-analytics.md`.
 - ~~**Split-screen blocked by document-global DOM lookups (#358, L, P3).**~~ **Shipped in PR #382.** Renderer heading IDs are pane-unique, outline navigation is local to `MarkdownPreview`, `NoteEditor` no longer performs editor-global DOM lookups, and the true split view now persists independent tabs/active notes with keyboard and drag-to-split controls, isolated drawers, responsive layout, and a Playwright regression. Verification: 608 Vitest tests, frontend build, existing notes E2E, and split-screen E2E passed.
 - ~~**No content approval workflow (#359, L, P3).**~~ **Shipped in PR #384.** Added the advisory per-note review workflow (`draft`, `in_review`, `changes_requested`, `approved`), reviewer assignment, audit events, stale detection after direct/WebDAV/reindex edits, API endpoints, editor review drawer, and Playwright coverage. It intentionally does not lock files, write front matter state, or gate publication. **Unblocked by #347.** Plan: `docs/superpowers/plans/2026-08-19-jotter-content-approval.md`.
-- **Roadmap baseline provenance (#360, XS, P3).** Docs only — see "Needs a decision" below.
+- ~~**Roadmap baseline provenance (#360, XS, P3).**~~ **Resolved in `docs/decisions.md` on 2026-08-19.** The roadmap remains a useful sequencing signal, but its current-state gap summary describes a different homonymous product; spec §14.3 governs delivered-state planning.
 
 ## Not adopted
 
