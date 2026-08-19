@@ -45,9 +45,12 @@ vi.mock('./services/api', () => ({
   getWorkspaceProperties: vi.fn().mockResolvedValue([]),
   restoreNoteRevision: vi.fn().mockResolvedValue(undefined),
   setNoteWatching: vi.fn().mockResolvedValue(true),
+  getNoteShare: vi.fn().mockResolvedValue({ active: false, url: null, expires_at: null, revoked_at: null }),
+  createNoteShare: vi.fn().mockResolvedValue({ active: true, url: 'https://example.test/share/token', token: 'token', expires_at: null, revoked_at: null }),
+  revokeNoteShare: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, restoreNoteRevision, setNoteWatching } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, restoreNoteRevision, setNoteWatching, getNoteShare, createNoteShare } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -63,6 +66,36 @@ function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
     ...overrides,
   }
 }
+
+describe('NoteEditor public sharing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('loads share state for the selected note and refreshes it when the note changes', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote({ id: 1 }), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+    expect(getNoteShare).toHaveBeenCalledWith(1, 1)
+
+    await wrapper.setProps({ note: makeNote({ id: 2 }) })
+    await flushPromises()
+    expect(getNoteShare).toHaveBeenLastCalledWith(1, 2)
+  })
+
+  it('shows the one-time public URL returned by share creation', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await flushPromises()
+    await wrapper.get('[data-testid="create-share-link"]').trigger('click')
+    await flushPromises()
+
+    expect(createNoteShare).toHaveBeenCalledWith(1, 1, null)
+    expect(wrapper.get('[data-testid="share-link"]').text()).toContain('https://example.test/share/token')
+  })
+})
 
 describe('NoteEditor page icon', () => {
   beforeEach(() => {

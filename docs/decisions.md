@@ -106,3 +106,19 @@ Append a new dated `##` section below this line, in the same format: the questio
 Single-note export uses `dompdf/dompdf` with `MarkdownServerRenderer`, published CSS/fonts, remote fetching disabled, and local assets resolved through `VaultPathGuard`. Workspace export stores the ACL-filtered note id snapshot, dispatches `App\Jobs\GeneratePdfExport` through `JobDispatcher`, and is processed by `pdf:process-exports --limit=N`. Artifacts are written below a private configurable directory, exposed only through an authorized status/download endpoint, and expire according to `JOTTER_PDF_RETENTION_HOURS`.
 
 This keeps the implementation compatible with shared hosting, preserves per-request ACL decisions, bounds background work, and prevents server-side fetches of remote URLs.
+
+---
+
+## Decision — Per-note public sharing boundary (Issue #355)
+
+**Decided 2026-08-19:** explicit public sharing is a token-authenticated exception to the default ACL-filtered workspace publishing rule. It grants access to one note at a time and does not expose workspace navigation or metadata.
+
+### Selected contract
+
+- A share stores only a SHA-256 token hash. The opaque plaintext token and URL are returned only by the authenticated creation response; subsequent status responses do not reconstruct them.
+- Creating and revoking a share requires note edit access through `NoteAccess`; restricted notes remain hidden from unauthorized subjects.
+- Optional expiry and explicit revocation both make the public HTML and attachment routes return 404. Deleted notes and invalid tokens use the same not-found behavior.
+- `GET /share/{token}` renders only the selected note through the published-page shell. Wikilinks are plain text, external embeds are disabled, and registered local attachments use the same token-scoped route.
+- Share creation and revocation are recorded in the audit log without token or URL values. Token rotation is performed by revoking the old share and creating a new one.
+
+This boundary preserves the Markdown-on-disk source of truth and shared-hosting constraints while making per-note public exposure explicit, revocable, and non-enumerable.
