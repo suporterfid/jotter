@@ -28,6 +28,11 @@ import {
   getAuthConfig,
   queueWorkspacePdfExport,
   getWorkspacePdfExport,
+  getNoteReview,
+  assignNoteReviewer,
+  submitNoteReview,
+  approveNoteReview,
+  requestNoteChanges,
 } from './services/api'
 import axios from 'axios'
 
@@ -121,5 +126,29 @@ describe('note-tree API functions', () => {
 
     await expect(getWorkspacePdfExport(1, 'export-1')).resolves.toEqual({ id: 'export-1', status: 'ready', scope: 'workspace' })
     expect(instance.get).toHaveBeenCalledWith('/workspaces/1/pdf-exports/export-1')
+  })
+})
+
+describe('note review API functions', () => {
+  it('uses the review workflow endpoints', async () => {
+    const summary = { state: 'draft', stale: false }
+    instance.get.mockResolvedValueOnce({ data: { data: summary } })
+    instance.put.mockResolvedValueOnce({ data: { data: summary } })
+    instance.post
+      .mockResolvedValueOnce({ data: { data: summary } })
+      .mockResolvedValueOnce({ data: { data: summary } })
+      .mockResolvedValueOnce({ data: { data: summary } })
+
+    await getNoteReview(1, 2)
+    await assignNoteReviewer(1, 2, 7)
+    await submitNoteReview(1, 2)
+    await approveNoteReview(1, 2)
+    await requestNoteChanges(1, 2, 'Add a source.')
+
+    expect(instance.get).toHaveBeenCalledWith('/workspaces/1/notes/2/review')
+    expect(instance.put).toHaveBeenCalledWith('/workspaces/1/notes/2/reviewer', { reviewer_id: 7 })
+    expect(instance.post).toHaveBeenNthCalledWith(1, '/workspaces/1/notes/2/review/submit')
+    expect(instance.post).toHaveBeenNthCalledWith(2, '/workspaces/1/notes/2/review/approve')
+    expect(instance.post).toHaveBeenNthCalledWith(3, '/workspaces/1/notes/2/review/request-changes', { reason: 'Add a source.' })
   })
 })

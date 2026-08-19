@@ -190,6 +190,16 @@
         </button>
 
         <button
+          class="btn-attach"
+          data-testid="review-drawer-btn"
+          :title="t('noteReview.title')"
+          :aria-expanded="isReviewDrawerOpen"
+          @click="isReviewDrawerOpen = !isReviewDrawerOpen"
+        >
+          <span>✅</span>
+        </button>
+
+        <button
           v-if="note.access?.restricted || note.access?.can_manage"
           class="btn-attach"
           data-testid="note-access-drawer-btn"
@@ -535,6 +545,33 @@
       </aside>
     </Teleport>
 
+    <!-- Content review drawer: workflow metadata stays beside the editor and
+         never becomes part of the Markdown document. -->
+    <Teleport :to="drawerTarget">
+      <aside
+        v-if="isReviewDrawerOpen"
+        class="comments-drawer"
+        data-testid="review-drawer"
+      >
+        <div class="comments-drawer-header">
+          <h3>{{ t('noteReview.title') }}</h3>
+          <button
+            type="button"
+            class="drawer-close-btn"
+            data-testid="review-drawer-close-btn"
+            :aria-label="t('noteReview.title')"
+            @click="isReviewDrawerOpen = false"
+          >&times;</button>
+        </div>
+        <NoteReviewPanel
+          v-if="workspaceId"
+          :workspace-id="workspaceId"
+          :note-id="note.id"
+          :review="note.review"
+        />
+      </aside>
+    </Teleport>
+
     <!-- Note access drawer: ACL state is visible in the note UI while writes
          remain atomic on the server. -->
     <Teleport :to="drawerTarget">
@@ -683,6 +720,7 @@ import OutlinePanel from './OutlinePanel.vue'
 import LocalGraphPanel from './LocalGraphPanel.vue'
 import NoteAccessPanel from './NoteAccessPanel.vue'
 import NoteSharePanel from './NoteSharePanel.vue'
+import NoteReviewPanel from './NoteReviewPanel.vue'
 import type { LocalGraphNeighbor } from '../services/types'
 import { parseHeadings, type HeadingEntry } from '../services/outline'
 import WikilinkPreviewPopup from './WikilinkPreviewPopup.vue'
@@ -967,6 +1005,7 @@ const checklistItems = ref<NoteChecklistItem[]>([])
 const isChecklistDrawerOpen = ref(false)
 const activityEntries = ref<NoteActivityEntry[]>([])
 const isActivityDrawerOpen = ref(false)
+const isReviewDrawerOpen = ref(false)
 const isAccessDrawerOpen = ref(false)
 const canEdit = computed(() => props.note.access?.can_edit !== false)
 // Deliberately NOT reset on note switch (see the watcher below) — like a
