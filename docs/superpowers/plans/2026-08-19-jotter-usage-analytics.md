@@ -10,6 +10,8 @@
 
 **Spec:** `docs/20260817-jotter-confluence-parity-audit.md` §2 gap 10, GitHub issue #357, and the acceptance criteria recorded in `BACKLOG.md`.
 
+**Implementation status (2026-08-19):** complete on branch `codex/cf11-usage-analytics`; publication/merge remains pending.
+
 ## Global Constraints
 
 - Never compute dashboard metrics live from `audit_log`; the dashboard queries durable rollups only.
@@ -347,4 +349,3 @@ Implement #357 before #358–#360 because it is the next unshipped item in the a
 - [ ] `NOTE_VIEWED` is disabled by default and has authorization-boundary tests when enabled.
 - [ ] Cron, retention, configuration, and the “activity vs. views” distinction are documented.
 - [ ] Full PHP/Vitest/build/release verification is green before the implementation PR is opened.
-

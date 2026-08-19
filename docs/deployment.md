@@ -99,6 +99,29 @@ Schedule a daily audit log prune to enforce retention limits (adjust days as nee
 php artisan audit:prune --days=90
 ```
 
+Schedule the bounded usage-analytics rollup after audit events are written. It
+advances an `audit_log` cursor in batches, is safe to rerun, and keeps the
+workspace rollups when `audit:prune` removes the source rows:
+
+```cron
+*/5 * * * * cd /var/www/jotter && php artisan analytics:rollup --batch=500 >> storage/logs/analytics-rollup.log 2>&1
+```
+
+The analytics API and dashboard read only the durable rollups; they do not
+aggregate the raw audit table during a request. Read tracking is disabled by
+default. To opt in to one `note.viewed` audit event after each successful,
+authorized authenticated note-detail read, set:
+
+```dotenv
+JOTTER_ANALYTICS_RECORD_READS=true
+```
+
+The remaining analytics settings are `JOTTER_ANALYTICS_ROLLUP_BATCH` (default
+`500`) and `JOTTER_ANALYTICS_STALE_DAYS` (default `30`). “Most active” reflects
+recorded activity such as edits and other audit events; it should not be read
+as “most viewed” unless read tracking has explicitly been enabled and the
+rollup command has processed those events.
+
 Schedule the notification digest every minute. The command is bounded by the
 per-recipient `--limit`, uses an idempotent delivery ledger, and is safe to run
 repeatedly. It dispatches mail work through `JobDispatcher`; it does not send

@@ -47,6 +47,7 @@
       @toggle-attachments="handleToggleAttachments"
       @daily-note="handleDailyNote"
       @toggle-audit-log="handleToggleAuditLog"
+      @toggle-analytics="handleToggleAnalytics"
       @toggle-trash="handleToggleTrash"
       @import-workspace="handleImportWorkspace"
       @export-workspace="handleExportWorkspace"
@@ -105,6 +106,14 @@
         v-else-if="isAuditLogActive"
         :entries="auditLogEntries"
         :loading="auditLogLoading"
+      />
+
+      <!-- Workspace Analytics View Mode -->
+      <WorkspaceAnalytics
+        v-else-if="isAnalyticsActive"
+        :analytics="workspaceAnalytics"
+        :loading="analyticsLoading"
+        :error="analyticsError"
       />
 
       <!-- Trash View Mode -->
@@ -284,6 +293,7 @@ import CommandPalette from './components/CommandPalette.vue'
 import GraphView from './components/GraphView.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
+import WorkspaceAnalytics from './components/WorkspaceAnalytics.vue'
 import TrashPanel from './components/TrashPanel.vue'
 import LinkReportViewer from './components/LinkReportViewer.vue'
 import CollectionsTableView from './components/CollectionsTableView.vue'
@@ -313,6 +323,7 @@ import {
   createNoteFromTemplate,
   getOrCreateDailyNote,
   getAuditLogs,
+  getWorkspaceAnalytics,
   importWorkspaceArchive,
   getLinkReport,
   publishWorkspace,
@@ -330,7 +341,7 @@ import {
   updateBoard,
   deleteBoard
 } from './services/api'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig, NotificationType } from './services/types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig, NotificationType, WorkspaceAnalytics as WorkspaceAnalyticsData } from './services/types'
 import BoardSwitcher from './components/BoardSwitcher.vue'
 import { isArchived } from './services/collectionUtils'
 import { APP_VERSION } from './version'
@@ -366,6 +377,7 @@ const showTabStrip = computed(() =>
   !isGraphViewActive.value &&
   !isAttachmentsActive.value &&
   !isAuditLogActive.value &&
+  !isAnalyticsActive.value &&
   !isTrashActive.value &&
   !isLinkReportActive.value &&
   !isTableViewActive.value &&
@@ -434,6 +446,10 @@ const attachmentsLoading = ref(false)
 const isAuditLogActive = ref(false)
 const auditLogEntries = ref<AuditLogEntry[]>([])
 const auditLogLoading = ref(false)
+const isAnalyticsActive = ref(false)
+const workspaceAnalytics = ref<WorkspaceAnalyticsData | null>(null)
+const analyticsLoading = ref(false)
+const analyticsError = ref<string | null>(null)
 
 const isTrashActive = ref(false)
 const trashNotes = ref<TrashNoteMeta[]>([])
@@ -565,6 +581,7 @@ async function handleSwitchWorkspace(workspaceId: number) {
   activeNoteId.value = loadTabs(workspaceId)
   await refreshNotesList()
   await refreshNotifications()
+  if (isAnalyticsActive.value) await refreshWorkspaceAnalytics()
 }
 
 async function handleSwitchTenant(tenantId: number) {
@@ -582,6 +599,7 @@ async function handleSwitchTenant(tenantId: number) {
 
     await refreshNotesList()
     await refreshNotifications()
+    if (isAnalyticsActive.value) await refreshWorkspaceAnalytics()
   } catch (err) {
     console.error('Failed to switch tenant:', err)
   }
@@ -712,6 +730,7 @@ async function handleSelectNote(noteId: number) {
   isSearchActive.value = false
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
+  isAnalyticsActive.value = false
   isTrashActive.value = false
   isLinkReportActive.value = false
   isTableViewActive.value = false
@@ -733,6 +752,7 @@ async function handleToggleAttachments() {
   if (isAttachmentsActive.value) {
     isSearchActive.value = false
     isAuditLogActive.value = false
+    isAnalyticsActive.value = false
     isTrashActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
@@ -747,6 +767,7 @@ async function handleToggleAuditLog() {
   if (isAuditLogActive.value) {
     isSearchActive.value = false
     isAttachmentsActive.value = false
+    isAnalyticsActive.value = false
     isTrashActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
@@ -756,12 +777,43 @@ async function handleToggleAuditLog() {
   }
 }
 
+async function handleToggleAnalytics() {
+  isAnalyticsActive.value = !isAnalyticsActive.value
+  if (isAnalyticsActive.value) {
+    isSearchActive.value = false
+    isAttachmentsActive.value = false
+    isAuditLogActive.value = false
+    isTrashActive.value = false
+    isLinkReportActive.value = false
+    isTableViewActive.value = false
+    isBoardViewActive.value = false
+    isCalendarViewActive.value = false
+    await refreshWorkspaceAnalytics()
+  }
+}
+
+async function refreshWorkspaceAnalytics() {
+  if (!activeWorkspaceId.value) return
+  analyticsLoading.value = true
+  analyticsError.value = null
+  try {
+    workspaceAnalytics.value = await getWorkspaceAnalytics(activeWorkspaceId.value)
+  } catch (err: any) {
+    console.error('Failed to load workspace analytics:', err)
+    workspaceAnalytics.value = null
+    analyticsError.value = err.response?.data?.message || t('workspaceAnalytics.error')
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
 async function handleToggleTrash() {
   isTrashActive.value = !isTrashActive.value
   if (isTrashActive.value) {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
+    isAnalyticsActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
     isBoardViewActive.value = false
@@ -776,6 +828,7 @@ async function handleToggleLinkReport() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
+    isAnalyticsActive.value = false
     isTrashActive.value = false
     isTableViewActive.value = false
     isBoardViewActive.value = false
@@ -790,6 +843,7 @@ async function handleToggleTableView() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
+    isAnalyticsActive.value = false
     isLinkReportActive.value = false
     isTrashActive.value = false
     isBoardViewActive.value = false
@@ -804,6 +858,7 @@ async function handleToggleBoardView() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
+    isAnalyticsActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
     isTrashActive.value = false
@@ -921,6 +976,7 @@ async function handleToggleCalendarView() {
     isSearchActive.value = false
     isAttachmentsActive.value = false
     isAuditLogActive.value = false
+    isAnalyticsActive.value = false
     isLinkReportActive.value = false
     isTableViewActive.value = false
     isBoardViewActive.value = false
@@ -1302,6 +1358,7 @@ async function runSearch(query: string, filters: SearchFilters) {
 async function handleSearch(query: string) {
   isAttachmentsActive.value = false
   isAuditLogActive.value = false
+  isAnalyticsActive.value = false
   isLinkReportActive.value = false
   isTableViewActive.value = false
   isBoardViewActive.value = false
