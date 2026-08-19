@@ -56,7 +56,7 @@ public function test_audit_rollup_storage_has_a_unique_daily_dimension_key(): vo
 
 - [ ] **Step 2: Run the focused test to verify it fails.**
 
-Run: `php artisan test tests/Feature/AuditRollupStorageTest.php`  
+Run: `php artisan test tests/Feature/AuditRollupStorageTest.php`
 Expected: FAIL because the migrations, models, and configuration do not exist yet.
 
 - [ ] **Step 3: Add the migration and models.** Use foreign keys to `workspaces` with cascade delete, a `date` `period_start`, an unsigned-big-integer `count`, nullable timestamps for first/last observation, and an indexed cursor table. Cast `period_start` and timestamps in the model; cast `count` and `last_audit_id` to integers.
@@ -65,7 +65,7 @@ Expected: FAIL because the migrations, models, and configuration do not exist ye
 
 - [ ] **Step 5: Run the focused test to verify it passes.**
 
-Run: `php artisan test tests/Feature/AuditRollupStorageTest.php`  
+Run: `php artisan test tests/Feature/AuditRollupStorageTest.php`
 Expected: PASS.
 
 - [ ] **Step 6: Commit the storage contract.**
@@ -147,7 +147,7 @@ private function audit(Workspace $workspace, string $event, ?int $noteId, ?strin
 
 - [ ] **Step 2: Run the focused test to verify it fails.**
 
-Run: `php artisan test tests/Feature/AuditRollupCommandTest.php`  
+Run: `php artisan test tests/Feature/AuditRollupCommandTest.php`
 Expected: FAIL because `analytics:rollup` and the processor do not exist.
 
 - [ ] **Step 3: Implement the processor.** Ensure the singleton cursor is created before locking; use a database transaction around cursor lock, source selection, rollup increments, and cursor advancement. Use the rollup unique key for deterministic increments and derive `period_start` from the source row's UTC `created_at`, not the current runtime date.
@@ -158,7 +158,7 @@ Expected: FAIL because `analytics:rollup` and the processor do not exist.
 
 - [ ] **Step 6: Run the focused test to verify it passes.**
 
-Run: `php artisan test tests/Feature/AuditRollupCommandTest.php`  
+Run: `php artisan test tests/Feature/AuditRollupCommandTest.php`
 Expected: PASS, including the double-run and post-prune assertions.
 
 - [ ] **Step 7: Commit the rollup pipeline.**
@@ -187,14 +187,14 @@ git commit -m "feat: add bounded idempotent audit rollups"
 
 - [ ] **Step 2: Run the focused test to verify it fails.**
 
-Run: `php artisan test tests/Feature/NoteViewAuditTest.php`  
+Run: `php artisan test tests/Feature/NoteViewAuditTest.php`
 Expected: FAIL because the event and controller hook do not exist.
 
 - [ ] **Step 3: Implement the enum and guarded recorder call.** Keep public-share, WebDAV, attachment, and list endpoints out of this first read metric; the issue asks for a deliberate read-path decision, and the authenticated note detail endpoint is the smallest auditable surface.
 
 - [ ] **Step 4: Run the focused test to verify it passes.**
 
-Run: `php artisan test tests/Feature/NoteViewAuditTest.php`  
+Run: `php artisan test tests/Feature/NoteViewAuditTest.php`
 Expected: PASS with the default flag off and the opt-in path covered.
 
 - [ ] **Step 5: Commit the opt-in view event.**
@@ -239,7 +239,7 @@ $this->actingAs($viewer)
 
 - [ ] **Step 2: Run the focused test to verify it fails.**
 
-Run: `php artisan test tests/Feature/WorkspaceAnalyticsTest.php`  
+Run: `php artisan test tests/Feature/WorkspaceAnalyticsTest.php`
 Expected: FAIL because the route, controller, and query object do not exist.
 
 - [ ] **Step 3: Implement the query object with rollup-only reads.** Use grouped rollups for counts and daily activity; use `NoteAccess::scopeVisible()` on note joins; return empty arrays for workspaces with no rollup history; never fall back to `audit_log` in the request path.
@@ -248,7 +248,7 @@ Expected: FAIL because the route, controller, and query object do not exist.
 
 - [ ] **Step 5: Run the focused test to verify it passes.**
 
-Run: `php artisan test tests/Feature/WorkspaceAnalyticsTest.php`  
+Run: `php artisan test tests/Feature/WorkspaceAnalyticsTest.php`
 Expected: PASS, including restricted-note and cross-workspace assertions.
 
 - [ ] **Step 6: Commit the analytics API.**
@@ -279,7 +279,7 @@ git commit -m "feat: expose workspace engagement analytics"
 
 - [ ] **Step 2: Run the focused frontend tests to verify they fail.**
 
-Run: `npm run test -- --run src/WorkspaceAnalytics.spec.ts` from `frontend/`  
+Run: `npm run test -- --run src/WorkspaceAnalytics.spec.ts` from `frontend/`
 Expected: FAIL because the component, API types, and request helper do not exist.
 
 - [ ] **Step 3: Implement the API types/helper and dashboard component.** Use existing semantic tokens, responsive tables, `data-testid` hooks for stable tests, and an explicit note that “most active” is mutation/activity-based unless read tracking is enabled; do not label it “most viewed” by default.
@@ -290,9 +290,9 @@ Expected: FAIL because the component, API types, and request helper do not exist
 
 - [ ] **Step 6: Run focused and full frontend verification.**
 
-Run: `npm run test -- --run src/WorkspaceAnalytics.spec.ts src/AuditLogViewer.spec.ts`  
-Run: `npm run test`  
-Run: `npm run build`  
+Run: `npm run test -- --run src/WorkspaceAnalytics.spec.ts src/AuditLogViewer.spec.ts`
+Run: `npm run test`
+Run: `npm run build`
 Expected: all focused tests, the full Vitest suite, and the production build pass.
 
 - [ ] **Step 7: Commit the dashboard.**
@@ -317,11 +317,11 @@ git commit -m "feat: add workspace analytics dashboard"
 
 - [ ] **Step 3: Run the complete verification gate.**
 
-Run: `php artisan test`  
-Run: `npm run test` from `frontend/`  
-Run: `npm run build` from `frontend/`  
-Run: `php -l app/Domain/Analytics/AuditRollupProcessor.php` and `php -l app/Http/Controllers/WorkspaceAnalyticsController.php`  
-Run: `git diff --check`  
+Run: `php artisan test`
+Run: `npm run test` from `frontend/`
+Run: `npm run build` from `frontend/`
+Run: `php -l app/Domain/Analytics/AuditRollupProcessor.php` and `php -l app/Http/Controllers/WorkspaceAnalyticsController.php`
+Run: `git diff --check`
 Run: `./scripts/jt.sh release` and `./scripts/jt.sh release:verify` (or the PowerShell equivalents).
 
 Expected: all existing and new tests pass, the build succeeds, PHP lint is clean, the diff has no whitespace errors, and the release verification finds no secrets.
@@ -347,3 +347,4 @@ Implement #357 before #358–#360 because it is the next unshipped item in the a
 - [ ] `NOTE_VIEWED` is disabled by default and has authorization-boundary tests when enabled.
 - [ ] Cron, retention, configuration, and the “activity vs. views” distinction are documented.
 - [ ] Full PHP/Vitest/build/release verification is green before the implementation PR is opened.
+
