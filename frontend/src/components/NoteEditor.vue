@@ -457,7 +457,7 @@
          pushing it — the structural mechanism B.10 asks for, with
          Comments as its first occupant. State/data stay owned here since
          they're note-scoped; only the DOM location moves. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isCommentsDrawerOpen"
         class="comments-drawer"
@@ -486,7 +486,7 @@
          Comments. Card-level checklist as a genuinely separate structure
          from the note's own Markdown content (#305) — a note-scoped list of
          checklist_items rows, not derived from `- [ ]` syntax in the body. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isChecklistDrawerOpen"
         class="comments-drawer"
@@ -515,7 +515,7 @@
          Per-card activity feed (#308) — property changes (board moves,
          archive) and checklist changes on this note, sourced from the
          workspace's existing append-only audit log filtered by note_id. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isActivityDrawerOpen"
         class="comments-drawer"
@@ -537,7 +537,7 @@
 
     <!-- Note access drawer: ACL state is visible in the note UI while writes
          remain atomic on the server. -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isAccessDrawerOpen"
         class="comments-drawer"
@@ -565,7 +565,7 @@
     <!-- Outline Drawer: teleported to the same right-drawer mount point as
          Comments (#262), listing the note's headings for quick navigation
          (G.1, #286). -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isOutlineDrawerOpen"
         class="outline-drawer"
@@ -588,7 +588,7 @@
     <!-- Local Graph Drawer: teleported to the same right-drawer mount point as
          Outline/Comments, showing the note's immediate neighbors (backlinks +
          resolved outgoing links) as a small radial graph (G.3, #289). -->
-    <Teleport to="#app-right-drawer">
+    <Teleport :to="drawerTarget">
       <aside
         v-if="isLocalGraphDrawerOpen"
         class="local-graph-drawer"
@@ -690,12 +690,15 @@ import { resolveWikilinkTarget, parseEmbedTargets } from '../services/wikilinks'
 import { renderMarkdown, type EmbedResolution } from '../services/markdown'
 import type { BlockDefinition } from '../services/blockRegistry'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   note: NoteDetail
   allNotes: NoteMeta[]
   workspaceId?: number
   paneId?: string
-}>()
+  drawerTarget?: string
+}>(), {
+  drawerTarget: '#app-right-drawer',
+})
 
 const emit = defineEmits<{
   (e: 'update-note', noteId: number, content: string): void
