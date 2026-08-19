@@ -37,6 +37,11 @@ enum AuditEvent: string
     case NOTE_VIEWED = 'note.viewed';
     case NOTE_SHARE_CREATED = 'note.share_created';
     case NOTE_SHARE_REVOKED = 'note.share_revoked';
+    case NOTE_REVIEWER_ASSIGNED = 'note.reviewer_assigned';
+    case NOTE_REVIEW_SUBMITTED = 'note.review_submitted';
+    case NOTE_REVIEW_APPROVED = 'note.review_approved';
+    case NOTE_REVIEW_CHANGES_REQUESTED = 'note.review_changes_requested';
+    case NOTE_REVIEW_INVALIDATED = 'note.review_invalidated';
 
     case SYSTEM_AUDIT_PRUNED = 'system.audit_pruned';
 }

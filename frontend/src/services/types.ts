@@ -20,6 +20,21 @@ export interface NoteMeta {
   updated_at: string
   watching?: boolean
   access?: NoteAccessMeta | null
+  review?: NoteReviewSummary | null
+}
+
+export type NoteReviewState = 'draft' | 'in_review' | 'changes_requested' | 'approved'
+
+export interface NoteReviewSummary {
+  state: NoteReviewState
+  stale: boolean
+  reviewer: { id: number; name: string; email: string } | null
+  submitted_at: string | null
+  approved_at: string | null
+  can_assign: boolean
+  can_submit: boolean
+  can_approve: boolean
+  can_request_changes: boolean
 }
 
 export interface NoteAccessMeta {

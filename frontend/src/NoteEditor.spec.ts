@@ -49,6 +49,14 @@ vi.mock('./services/api', () => ({
   getNoteShare: vi.fn().mockResolvedValue({ active: false, url: null, expires_at: null, revoked_at: null }),
   createNoteShare: vi.fn().mockResolvedValue({ active: true, url: 'https://example.test/share/token', token: 'token', expires_at: null, revoked_at: null }),
   revokeNoteShare: vi.fn().mockResolvedValue(undefined),
+  getNoteReview: vi.fn().mockResolvedValue({
+    state: 'draft', stale: false, reviewer: null, submitted_at: null, approved_at: null,
+    can_assign: true, can_submit: true, can_approve: false, can_request_changes: false,
+  }),
+  assignNoteReviewer: vi.fn(),
+  submitNoteReview: vi.fn(),
+  approveNoteReview: vi.fn(),
+  requestNoteChanges: vi.fn(),
 }))
 
 import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, restoreNoteRevision, setNoteWatching, getNoteShare, createNoteShare } from './services/api'
@@ -226,6 +234,20 @@ describe('NoteEditor PDF export', () => {
     await wrapper.get('[data-testid="note-export-pdf-btn"]').trigger('click')
 
     expect(wrapper.emitted('export-pdf')).toEqual([[]])
+  })
+})
+
+describe('NoteEditor content review', () => {
+  it('opens the content review drawer from the editor toolbar', async () => {
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+
+    await wrapper.get('[data-testid="review-drawer-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(document.querySelector('[data-testid="review-drawer"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="note-review-panel"]')).not.toBeNull()
   })
 })
 

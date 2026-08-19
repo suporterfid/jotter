@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -114,6 +114,31 @@ export async function updateNote(workspaceId: number, noteId: number, content: s
   const response = await api.put<{ data: NoteMeta }>(`/workspaces/${workspaceId}/notes/${noteId}`, {
     content
   })
+  return response.data.data
+}
+
+export async function getNoteReview(workspaceId: number, noteId: number): Promise<NoteReviewSummary> {
+  const response = await api.get<{ data: NoteReviewSummary }>(`/workspaces/${workspaceId}/notes/${noteId}/review`)
+  return response.data.data
+}
+
+export async function assignNoteReviewer(workspaceId: number, noteId: number, reviewerId: number | null): Promise<NoteReviewSummary> {
+  const response = await api.put<{ data: NoteReviewSummary }>(`/workspaces/${workspaceId}/notes/${noteId}/reviewer`, { reviewer_id: reviewerId })
+  return response.data.data
+}
+
+export async function submitNoteReview(workspaceId: number, noteId: number): Promise<NoteReviewSummary> {
+  const response = await api.post<{ data: NoteReviewSummary }>(`/workspaces/${workspaceId}/notes/${noteId}/review/submit`)
+  return response.data.data
+}
+
+export async function approveNoteReview(workspaceId: number, noteId: number): Promise<NoteReviewSummary> {
+  const response = await api.post<{ data: NoteReviewSummary }>(`/workspaces/${workspaceId}/notes/${noteId}/review/approve`)
+  return response.data.data
+}
+
+export async function requestNoteChanges(workspaceId: number, noteId: number, reason: string): Promise<NoteReviewSummary> {
+  const response = await api.post<{ data: NoteReviewSummary }>(`/workspaces/${workspaceId}/notes/${noteId}/review/request-changes`, { reason })
   return response.data.data
 }
 
