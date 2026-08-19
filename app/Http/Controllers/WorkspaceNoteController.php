@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
+use App\Domain\Audit\AuditEvent;
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Events\WorkspaceEventEmitter;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\Exceptions\VaultNoteNotFound;
@@ -22,6 +24,7 @@ final class WorkspaceNoteController extends Controller
         private readonly IdentityProvider $identityProvider,
         private readonly NoteAccess $noteAccess,
         private readonly WorkspaceEventEmitter $eventEmitter,
+        private readonly AuditRecorder $auditRecorder,
     ) {}
 
     public function index(Request $request, Workspace $workspace): JsonResponse
@@ -66,6 +69,17 @@ final class WorkspaceNoteController extends Controller
             $content = $storage->readContents($workspace, $note->path);
         } catch (VaultNoteNotFound) {
             abort(404);
+        }
+
+        if (config('jotter.analytics.record_reads', false)) {
+            $this->auditRecorder->record(
+                AuditEvent::NOTE_VIEWED,
+                tenantId: $workspace->tenant_id,
+                workspaceId: $workspace->id,
+                actorId: $subject->subjectId,
+                metadata: ['source' => 'workspace_note_show'],
+                noteId: $note->id,
+            );
         }
 
         $backlinks = $note->incomingLinks()
