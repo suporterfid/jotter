@@ -304,7 +304,7 @@ That baseline does not describe this repository:
 
 The offline-first, Material You, and realtime-collaboration signals suggest the gap analysis was drawn from a different product carrying the same name. Plan from §14.3's delivered-state column, not from the roadmap's gap summary.
 
-`TODO(spec): confirm the provenance of the roadmap's baseline. Until confirmed, §14.3 governs what is considered already delivered.`
+**Resolved by the Roadmap baseline provenance decision (#360, 2026-08-19):** the roadmap's sequencing logic and feature definitions remain useful, but its current-state gap summary describes a different homonymous product. Section §14.3 governs what is considered already delivered.
 
 ### 14.2 Product direction
 
@@ -337,16 +337,16 @@ The roadmap's recommended direction — "begin as a notes-first and knowledge-fi
 | Phase 4 / Milestone D — structured work | Beyond current v2 | Blocked on C2. Do not begin without that decision. |
 | Phase 5 — differentiators | Partly delivered | AI-KB Layer 1 (`llms.txt`) ships; MCP server is v1. Offline/mobile-first and canvas are not adopted (C4, C5). |
 
-### 14.5 Conflicts to resolve before the affected roadmap items are planned
+### 14.5 Recorded conflicts and decisions
 
-Each is a decision, not a defect. Until resolved, the constraint wins and the roadmap item stays unplanned.
+Each item is a decision, not a defect. The decisions are recorded in `docs/decisions.md`; until a decision is superseded, the documented constraint wins and the affected roadmap item stays unplanned.
 
-- **C1 — Realtime collaboration and presence** (roadmap baseline, Phase 3) vs **§3 N1 / §4**. Shared hosting has no websockets or daemons. Any "live" behavior must be polling or deferred. `TODO(spec): confirm collaboration stays asynchronous — comments and mentions yes, presence and live cursors no.`
-- **C2 — Database-like collections and board/calendar views** (Phase 4) vs **§1**. MySQL is an index, not the source of truth. A collections feature is only admissible if it stays a rebuildable projection of front-matter on disk. `TODO(spec): decide whether structured collections project from front-matter, or whether the Markdown-on-disk invariant is being amended.`
-- **C3 — Synced/reusable blocks** (Phase 2) vs **§1 Obsidian compatibility**. Transclusion that does not survive as plain Markdown breaks the "if Jotter disappears, you still have a readable folder of notes" guarantee. `TODO(spec): choose a syntax that degrades to readable Markdown, or drop the item.`
+- **C1 — Realtime collaboration and presence** (roadmap baseline, Phase 3) vs **§3 N1 / §4**. **Resolved:** Jotter remains async-first; any "live" behavior must be polling or deferred. See `docs/decisions.md` C1.
+- **C2 — Database-like collections and board/calendar views** (Phase 4) vs **§1**. **Resolved:** admissible collections remain rebuildable projections of front matter, with MySQL as an index rather than the source of truth. See `docs/decisions.md` C2.
+- **C3 — Synced/reusable blocks** (Phase 2) vs **§1 Obsidian compatibility**. **Resolved:** only syntax that degrades to readable plain Markdown is supported. See `docs/decisions.md` C3.
 - **C4 — Visual canvas / whiteboard** (Phase 5) vs **§3 N3 / §6 v2**. The roadmap itself lists whiteboard parity as a non-goal for the next cycle. No action needed unless the product direction changes.
-- **C5 — Offline-first and mobile-first differentiators** (Phase 5) vs **§2**. See §14.2. `TODO(spec): confirm WebDAV + Obsidian is the mobile/offline answer.`
-- **C6 — Page history storage** (Phase 1) vs **§4 inode and disk quotas**. A vault is already thousands of small files; per-note revision files would multiply inode usage. `TODO(spec): choose DB-stored deltas or bounded snapshot retention; do not write per-revision files into the vault.`
+- **C5 — Offline-first and mobile-first differentiators** (Phase 5) vs **§2**. **Resolved:** WebDAV + Obsidian is the sanctioned mobile/offline answer. See §14.2 and `docs/decisions.md` C5.
+- **C6 — Page history storage** (Phase 1) vs **§4 inode and disk quotas**. **Resolved:** use DB-stored deduplicated snapshots with bounded retention; do not write per-revision files into the vault. See `docs/decisions.md` C6.
 
 ---
 
