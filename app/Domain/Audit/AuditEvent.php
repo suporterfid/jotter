@@ -34,6 +34,8 @@ enum AuditEvent: string
     case NOTE_UPDATED = 'note.updated';
     case NOTE_DELETED = 'note.deleted';
     case NOTE_MOVED = 'note.moved';
+    case NOTE_SHARE_CREATED = 'note.share_created';
+    case NOTE_SHARE_REVOKED = 'note.share_revoked';
 
     case SYSTEM_AUDIT_PRUNED = 'system.audit_pruned';
 }

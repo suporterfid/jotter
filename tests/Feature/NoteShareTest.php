@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Sharing\NoteShareService;
+use App\Models\AuditLog;
 use App\Models\Note;
+use App\Models\NoteAclEntry;
+use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Workspace;
@@ -73,6 +76,77 @@ final class NoteShareTest extends TestCase
         $this->assertSame($created->id, $resolved->id);
         $this->assertArrayNotHasKey('token', $resolved->getAttributes());
         $this->assertTrue($resolved->isActive());
+    }
+
+    public function test_admin_can_create_read_and_revoke_a_note_share(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $note = $this->noteFixture();
+        $url = "/api/workspaces/{$note->workspace_id}/notes/{$note->id}/share";
+
+        $created = $this->actingAs($admin)
+            ->postJson($url, ['expires_at' => now()->addDay()->toISOString()])
+            ->assertCreated()
+            ->assertJsonPath('data.active', true)
+            ->assertJsonStructure(['data' => ['token', 'url', 'expires_at', 'revoked_at']]);
+
+        $token = $created->json('data.token');
+        $this->assertIsString($token);
+        $this->assertStringContainsString($token, $created->json('data.url'));
+
+        $this->actingAs($admin)
+            ->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('data.active', true)
+            ->assertJsonPath('data.url', null)
+            ->assertJsonMissingPath('data.token');
+
+        $this->actingAs($admin)
+            ->deleteJson($url)
+            ->assertOk()
+            ->assertJsonPath('data.active', false);
+
+        $this->assertNotNull($this->noteShare()->revoked_at);
+        $this->assertDatabaseHas('audit_log', [
+            'event' => 'note.share_created',
+            'note_id' => $note->id,
+        ]);
+        $this->assertDatabaseHas('audit_log', [
+            'event' => 'note.share_revoked',
+            'note_id' => $note->id,
+        ]);
+        $auditMetadata = AuditLog::query()->latest('id')->limit(2)->pluck('metadata')->all();
+        $this->assertStringNotContainsString($token, json_encode($auditMetadata, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_editor_without_view_access_cannot_create_a_share_for_a_restricted_note(): void
+    {
+        $note = $this->noteFixture();
+        $allowedUser = User::factory()->create();
+        NoteAclEntry::create([
+            'note_id' => $note->id,
+            'principal_type' => 'user',
+            'principal_id' => $allowedUser->id,
+            'permission' => 'view',
+        ]);
+        $editor = User::factory()->create();
+        Membership::create([
+            'subject_id' => (string) $editor->id,
+            'tenant_id' => $note->workspace->tenant_id,
+            'workspace_id' => $note->workspace_id,
+            'role' => 'editor',
+        ]);
+
+        $this->actingAs($editor)
+            ->postJson("/api/workspaces/{$note->workspace_id}/notes/{$note->id}/share", ['expires_at' => null])
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('note_shares', 0);
+    }
+
+    private function noteShare(): \App\Models\NoteShare
+    {
+        return \App\Models\NoteShare::query()->latest('id')->firstOrFail();
     }
 
     private function noteFixture(): Note

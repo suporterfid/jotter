@@ -2,6 +2,8 @@
 
 namespace App\Domain\Sharing;
 
+use App\Domain\Audit\AuditEvent;
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\NoteAccess;
 use App\Models\Note;
@@ -12,6 +14,7 @@ final class NoteShareService
 {
     public function __construct(
         private readonly NoteAccess $noteAccess,
+        private readonly AuditRecorder $auditRecorder,
     ) {}
 
     /**
@@ -20,6 +23,7 @@ final class NoteShareService
     public function create(Note $note, AuthenticatedSubject $subject, ?DateTimeInterface $expiresAt): array
     {
         $this->assertCanManage($note, $subject);
+        $note->loadMissing('workspace');
 
         $token = bin2hex(random_bytes(32));
         $share = NoteShare::query()->create([
@@ -28,6 +32,18 @@ final class NoteShareService
             'token_hash' => NoteShare::hashToken($token),
             'expires_at' => $expiresAt,
         ]);
+
+        $this->auditRecorder->record(
+            AuditEvent::NOTE_SHARE_CREATED,
+            $note->workspace->tenant_id,
+            $note->workspace_id,
+            $subject->subjectId,
+            [
+                'share_id' => $share->id,
+                'expires_at' => $share->expires_at?->toIso8601String(),
+            ],
+            $note->id,
+        );
 
         return ['share' => $share, 'token' => $token];
     }
@@ -51,6 +67,19 @@ final class NoteShareService
     {
         $this->assertCanManage($share->note, $subject);
         $share->forceFill(['revoked_at' => now()])->save();
+
+        $share->loadMissing('note.workspace');
+        $this->auditRecorder->record(
+            AuditEvent::NOTE_SHARE_REVOKED,
+            $share->note->workspace->tenant_id,
+            $share->note->workspace_id,
+            $subject->subjectId,
+            [
+                'share_id' => $share->id,
+                'revoked_at' => $share->revoked_at?->toIso8601String(),
+            ],
+            $share->note_id,
+        );
 
         return $share->fresh();
     }

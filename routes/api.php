@@ -18,6 +18,7 @@ use App\Http\Controllers\WorkspaceSearchController;
 use App\Http\Controllers\WorkspaceSyncController;
 use App\Http\Controllers\WorkspaceTrashController;
 use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\NoteShareController;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Route;
 
@@ -79,6 +80,9 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::put('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'update'])->middleware('workspace.write');
     Route::delete('/workspaces/{workspace}/notes/{note}/checklist-items/{item}', [\App\Http\Controllers\NoteChecklistItemController::class, 'destroy'])->middleware('workspace.write');
     Route::get('/workspaces/{workspace}/notes/{note}/activity', [\App\Http\Controllers\WorkspaceNoteActivityController::class, 'index']);
+    Route::get('/workspaces/{workspace}/notes/{note}/share', [NoteShareController::class, 'show']);
+    Route::post('/workspaces/{workspace}/notes/{note}/share', [NoteShareController::class, 'store'])->middleware('workspace.write');
+    Route::delete('/workspaces/{workspace}/notes/{note}/share', [NoteShareController::class, 'destroy'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/notifications', [\App\Http\Controllers\WorkspaceNotificationController::class, 'index']);
     Route::post('/workspaces/{workspace}/notifications/{notification}/read', [\App\Http\Controllers\WorkspaceNotificationController::class, 'markAsRead']);
