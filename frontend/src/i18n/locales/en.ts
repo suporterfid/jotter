@@ -562,6 +562,12 @@ export default {
     selectToPreview: 'Select a revision to preview its content.',
     loadingPreview: 'Loading…',
     restore: 'Restore this version',
+    compareFrom: 'Compare from',
+    compareTo: 'Compare to',
+    current: 'Current content',
+    compare: 'Compare',
+    loadingComparison: 'Comparing revisions…',
+    noDifferences: 'These versions have no differences.',
   },
   markdownPreview: {
     copy: 'Copy',

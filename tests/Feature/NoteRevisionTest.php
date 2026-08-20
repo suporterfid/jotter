@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Domain\Vault\VaultReindexer;
 use App\Domain\Vault\VaultStorage;
+use App\Models\NoteAclEntry;
 use App\Models\NoteRevision;
+use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Workspace;
@@ -89,5 +91,108 @@ final class NoteRevisionTest extends TestCase
 
         $this->assertDatabaseMissing('note_revisions', ['id' => $rev1->id]);
         $this->assertDatabaseCount('note_revisions', 3);
+    }
+
+    public function test_revisions_can_be_compared_with_current_content_and_acl_isolation(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $reader = User::factory()->create();
+        $tenant = Tenant::create(['slug' => 'compare-'.uniqid(), 'name' => 'Compare']);
+
+        $vaultPath = storage_path('app/vaults/rev_compare_'.uniqid());
+        mkdir($vaultPath, 0755, true);
+
+        $workspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'compare',
+            'name' => 'Compare Workspace',
+            'vault_path' => $vaultPath,
+        ]);
+        Membership::create([
+            'subject_id' => (string) $reader->id,
+            'tenant_id' => $tenant->id,
+            'workspace_id' => $workspace->id,
+            'role' => 'viewer',
+        ]);
+
+        /** @var VaultStorage $storage */
+        $storage = $this->app->make(VaultStorage::class);
+        $note = $storage->write($workspace, 'compare.md', "same\nold");
+        $first = NoteRevision::query()->where('note_id', $note->id)->firstOrFail();
+        $storage->write($workspace, 'compare.md', "same\nnew");
+        $second = NoteRevision::query()->where('note_id', $note->id)->latest('id')->firstOrFail();
+
+        $response = $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$first->id}&to={$second->id}"
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.from.id', $first->id)
+            ->assertJsonPath('data.to.id', $second->id)
+            ->assertJsonPath('data.changed', true)
+            ->assertJsonFragment(['type' => 'removed', 'text' => 'old'])
+            ->assertJsonFragment(['type' => 'added', 'text' => 'new']);
+
+        $storage->write($workspace, 'compare.md', "same\ncurrent");
+        $currentResponse = $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$second->id}&to=current"
+        );
+        $currentResponse->assertOk()
+            ->assertJsonPath('data.to.id', null)
+            ->assertJsonPath('data.to.content_hash', hash('sha256', "same\ncurrent"))
+            ->assertJsonFragment(['type' => 'removed', 'text' => 'new'])
+            ->assertJsonFragment(['type' => 'added', 'text' => 'current']);
+
+        $sameResponse = $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$second->id}&to={$second->id}"
+        );
+        $sameResponse->assertOk()->assertJsonPath('data.changed', false)->assertJsonPath('data.lines', []);
+
+        NoteAclEntry::create([
+            'note_id' => $note->id,
+            'principal_type' => 'user',
+            'principal_id' => $admin->id,
+            'permission' => 'view',
+        ]);
+        $this->actingAs($reader)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$first->id}&to={$second->id}"
+        )->assertNotFound();
+
+        $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$first->id}&to=999999"
+        )->assertNotFound();
+
+        $otherVaultPath = storage_path('app/vaults/rev_compare_other_'.uniqid());
+        mkdir($otherVaultPath, 0755, true);
+        $otherWorkspace = Workspace::create([
+            'tenant_id' => $tenant->id,
+            'slug' => 'compare-other',
+            'name' => 'Other Compare Workspace',
+            'vault_path' => $otherVaultPath,
+        ]);
+        $otherNote = $storage->write($otherWorkspace, 'other.md', 'other');
+        $otherRevision = NoteRevision::query()->where('note_id', $otherNote->id)->firstOrFail();
+
+        $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$otherRevision->id}&to={$second->id}"
+        )->assertNotFound();
+        $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$first->id}&to={$otherRevision->id}"
+        )->assertNotFound();
+
+        $stranger = User::factory()->create();
+        $this->actingAs($stranger)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$first->id}&to={$second->id}"
+        )->assertForbidden();
+        $this->app['auth']->forgetGuards();
+        $this->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$first->id}&to={$second->id}"
+        )->assertUnauthorized();
+        $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?to={$second->id}"
+        )->assertStatus(422);
+        $this->actingAs($admin)->getJson(
+            "/api/workspaces/{$workspace->id}/notes/{$note->id}/revisions/compare?from={$first->id}&to=invalid"
+        )->assertStatus(422);
     }
 }

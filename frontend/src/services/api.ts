@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteRevisionComparison, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -269,6 +269,22 @@ export async function getNoteRevisions(workspaceId: number, noteId: number): Pro
 
 export async function getNoteRevision(workspaceId: number, noteId: number, revisionId: number): Promise<NoteRevisionDetail> {
   const response = await api.get<{ data: NoteRevisionDetail }>(`/workspaces/${workspaceId}/notes/${noteId}/revisions/${revisionId}`)
+  return response.data.data
+}
+
+export async function compareNoteRevisions(
+  workspaceId: number,
+  noteId: number,
+  fromRevisionId: number,
+  toRevisionId: number | 'current'
+): Promise<NoteRevisionComparison> {
+  const params = new URLSearchParams({
+    from: String(fromRevisionId),
+    to: String(toRevisionId)
+  })
+  const response = await api.get<{ data: NoteRevisionComparison }>(
+    `/workspaces/${workspaceId}/notes/${noteId}/revisions/compare?${params.toString()}`
+  )
   return response.data.data
 }
 

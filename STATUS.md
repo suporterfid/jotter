@@ -1,9 +1,10 @@
 # Jotter — Project Status
 
 - **Current Version:** v0.9.0 (v0 spec contracts complete; v1 work in progress)
-- **Last Updated:** 2026-08-19 (#359 shipped in PR #384; #360 resolved in documentation; #51 version history verified; no open Confluence-parity issues remain)
+- **Last Updated:** 2026-08-20 (#388 revision comparison delivered; #51 version history remains complete; no open Confluence-parity issues remain)
 - **Repo:** https://github.com/suporterfid/jotter
 - **Production Site:** https://hub.taskconnect.com.br/
+- **#388 — Revision comparison:** delivered an ACL-protected revision/current line-diff endpoint, bounded in-memory diffing, HistoryPanel source/target selectors, semantic added/removed/context rows, and regression coverage. Restore remains an independent write action.
 - **CI Status:** 🟢 Green on `main`. #140 and #142 fixed via PR #144, merged and confirmed on two green GitHub Actions runs, both issues closed. **`main` is now branch-protected** (#148): the `test` CI job is a required status check, `enforce_admins` is on, force-pushes and deletions are disabled — direct pushes and merges without green CI are rejected by GitHub. Verified live: an empty direct-push commit was rejected with `Required status check "test" is expected`. This is the mechanism that was missing when #140 regressed silently after #49.
 - **Planning authority:** `docs/jotter-initial-spec-and-build-plan.md` §14 sequences post-v0 work from `docs/20260727-jotter-roadmap-ai-agent.md`
 
