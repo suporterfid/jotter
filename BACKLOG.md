@@ -11,7 +11,7 @@ This file previously also carried the shipped-item changelog, decision records, 
 - **Security/correctness audit findings** → `docs/security-audit-2026.md`
 - **Visual-identity design-system tracking** (#96–#110) → `docs/visual-identity.md`
 
-As of 2026-08-19, every previously-tracked Milestone and Confluence-parity issue (#347–#360) is delivered or resolved. #51 (version history) is also delivered and verified; #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, #358 shipped in PR #382, and #359 shipped in PR #384; #360 was resolved as a documentation decision.
+As of 2026-08-20, every previously-tracked Milestone and Confluence-parity issue (#347–#360) is delivered or resolved. #51 (version history) and its comparison follow-up #388 are delivered and verified; #355 shipped in PR #375, #356 shipped in PR #377, #357 shipped in PR #380, #358 shipped in PR #382, and #359 shipped in PR #384; #360 was resolved as a documentation decision.
 
 ---
 
@@ -22,6 +22,10 @@ All roadmap/spec decisions are resolved — see `docs/decisions.md`. This sectio
 ## Current implementation queue
 
 The roadmap's historical Phase 1 gaps are already delivered in this repository: search filters (#52), Markdown/JSON import and round-trip backup (#77/#78), templates/daily notes (#56), and version history with restore (#51). Do not create duplicate issues from the roadmap's stale gap summary; select the next new feature from a refreshed issue or audit.
+
+## Completed follow-up
+
+- ~~**Revision comparison (#388).**~~ **Delivered.** Added the ACL-protected revision comparison endpoint for revision-to-revision and revision-to-current comparisons, a bounded in-memory line diff, workspace/note isolation and 401/403/404/422 coverage, plus HistoryPanel selectors and semantic diff rendering. The restore workflow remains independent.
 
 ## WYSIWYG editor epic (decision resolved 2026-08-05 — option (b))
 

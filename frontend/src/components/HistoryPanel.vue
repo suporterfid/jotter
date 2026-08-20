@@ -44,32 +44,98 @@
             </div>
           </template>
         </div>
+
+        <div v-if="revisions.length > 0" class="revision-comparison-pane">
+          <div class="revision-compare-controls">
+            <label>
+              {{ t('historyPanel.compareFrom') }}
+              <select v-model="compareFromValue" data-testid="revision-compare-from">
+                <option v-for="revision in revisions" :key="revision.id" :value="String(revision.id)">
+                  {{ formatDate(revision.created_at) }}
+                </option>
+              </select>
+            </label>
+            <label>
+              {{ t('historyPanel.compareTo') }}
+              <select v-model="compareToValue" data-testid="revision-compare-to">
+                <option value="current">{{ t('historyPanel.current') }}</option>
+                <option v-for="revision in revisions" :key="revision.id" :value="String(revision.id)">
+                  {{ formatDate(revision.created_at) }}
+                </option>
+              </select>
+            </label>
+            <button
+              type="button"
+              class="btn-primary"
+              data-testid="revision-compare-btn"
+              :disabled="comparisonLoading || !compareFromValue"
+              @click="requestComparison"
+            >
+              {{ t('historyPanel.compare') }}
+            </button>
+          </div>
+
+          <div v-if="comparisonLoading" class="pane-empty">{{ t('historyPanel.loadingComparison') }}</div>
+          <div v-else-if="comparison" class="revision-diff" data-testid="revision-diff">
+            <p v-if="!comparison.changed" class="pane-empty">{{ t('historyPanel.noDifferences') }}</p>
+            <div
+              v-for="(line, index) in comparison.lines"
+              :key="index + '-' + line.type"
+              class="revision-diff-line"
+              :class="'revision-diff-line-' + line.type"
+              :data-diff-type="line.type"
+            >
+              <span class="revision-diff-line-number">{{ line.from_line ?? '·' }}</span>
+              <span class="revision-diff-line-number">{{ line.to_line ?? '·' }}</span>
+              <code>{{ line.text || ' ' }}</code>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { NoteRevisionMeta } from '../services/types'
+import type { NoteRevisionMeta, NoteRevisionComparison } from '../services/types'
 
 const { t, locale } = useI18n()
 
-defineProps<{
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'select-revision', revisionId: number): void
+  (e: 'restore-revision', revisionId: number): void
+  (e: 'compare-revisions', fromRevisionId: number, toRevisionId: number | 'current'): void
+}>()
+
+const props = defineProps<{
   revisions: NoteRevisionMeta[]
   loading?: boolean
   selectedRevisionId: number | null
   previewContent: string | null
   previewLoading?: boolean
+  comparison?: NoteRevisionComparison | null
+  comparisonLoading?: boolean
 }>()
 
-defineEmits<{
-  (e: 'close'): void
-  (e: 'select-revision', revisionId: number): void
-  (e: 'restore-revision', revisionId: number): void
-}>()
+const compareFromValue = ref(String(props.selectedRevisionId ?? props.revisions[0]?.id ?? ''))
+const compareToValue = ref<number | 'current'>('current')
 
-function formatDate(iso: string): string {
+watch(() => props.selectedRevisionId, (revisionId) => {
+  if (revisionId !== null) compareFromValue.value = String(revisionId)
+})
+
+function requestComparison(): void {
+  const fromRevisionId = Number(compareFromValue.value)
+  if (!Number.isInteger(fromRevisionId) || fromRevisionId < 1) return
+  const toRevisionId = compareToValue.value === 'current' ? 'current' : Number(compareToValue.value)
+  emit('compare-revisions', fromRevisionId, toRevisionId)
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return t('historyPanel.current')
   try {
     return new Intl.DateTimeFormat(locale.value, {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -209,6 +275,68 @@ function formatDate(iso: string): string {
 .revision-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.revision-comparison-pane {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3) var(--space-4);
+  max-height: 42%;
+  overflow-y: auto;
+}
+
+.revision-compare-controls {
+  display: flex;
+  align-items: end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.revision-compare-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.revision-compare-controls select {
+  min-height: 32px;
+  max-width: 150px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.revision-diff {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.revision-diff-line {
+  display: grid;
+  grid-template-columns: 2.5rem 2.5rem minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: 0.2rem var(--space-2);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.revision-diff-line-added {
+  background: color-mix(in srgb, var(--color-success, #2f9e44) 18%, transparent);
+}
+
+.revision-diff-line-removed {
+  background: color-mix(in srgb, var(--color-danger, #c92a2a) 18%, transparent);
+}
+
+.revision-diff-line-number {
+  color: var(--color-text-muted);
+  text-align: right;
+  user-select: none;
 }
 
 .btn-primary {

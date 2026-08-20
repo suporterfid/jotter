@@ -1,4 +1,4 @@
-import { config } from '@vue/test-utils'
+import { config, enableAutoUnmount } from '@vue/test-utils'
 import { afterEach, beforeEach } from 'vitest'
 import i18n from './i18n'
 
@@ -9,6 +9,7 @@ import i18n from './i18n'
 i18n.global.locale.value = 'en'
 
 config.global.plugins.push(i18n)
+enableAutoUnmount(afterEach)
 
 function removeRightDrawerTarget() {
   document.getElementById('app-right-drawer')?.remove()

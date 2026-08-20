@@ -41,6 +41,13 @@ vi.mock('./services/api', () => ({
   }),
   getNote: vi.fn(),
   getNoteRevisions: vi.fn().mockResolvedValue([]),
+  getNoteRevision: vi.fn().mockResolvedValue({ id: 1, note_id: 1, content_hash: 'hash', actor_id: null, created_at: '2026-08-01T00:00:00Z', workspace_id: 1, content: 'content' }),
+  compareNoteRevisions: vi.fn().mockResolvedValue({
+    from: { id: 1, note_id: 1, content_hash: 'hash', actor_id: null, created_at: '2026-08-01T00:00:00Z' },
+    to: { id: null, note_id: 1, content_hash: 'current', actor_id: null, created_at: null },
+    changed: false,
+    lines: [],
+  }),
   getNoteActivity: vi.fn().mockResolvedValue([]),
   getChecklistItems: vi.fn().mockResolvedValue([]),
   getWorkspaceProperties: vi.fn().mockResolvedValue([]),
@@ -59,7 +66,7 @@ vi.mock('./services/api', () => ({
   requestNoteChanges: vi.fn(),
 }))
 
-import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, restoreNoteRevision, setNoteWatching, getNoteShare, createNoteShare } from './services/api'
+import { getNoteComments, setNoteProperty, deleteNoteProperty, addNoteComment, getNote, getOutgoingLinks, getNoteRevisions, compareNoteRevisions, restoreNoteRevision, setNoteWatching, getNoteShare, createNoteShare } from './services/api'
 
 function makeNote(overrides: Partial<NoteDetail> = {}): NoteDetail {
   return {
@@ -1449,6 +1456,25 @@ describe('NoteEditor selection-driven features on the Live surface (WY.4, #324)'
     expect(wrapper.find('h1').text()).toBe('Restored')
 
     confirmSpy.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('compares the selected revision with the current content', async () => {
+    vi.mocked(getNoteRevisions).mockResolvedValueOnce([
+      { id: 2, note_id: 1, content_hash: 'hash-2', actor_id: null, created_at: '2026-08-02T00:00:00Z' },
+      { id: 1, note_id: 1, content_hash: 'hash-1', actor_id: null, created_at: '2026-08-01T00:00:00Z' },
+    ])
+    const wrapper = mount(NoteEditor, {
+      props: { note: makeNote(), allNotes: [], workspaceId: 1 },
+    })
+    await wrapper.find('[data-testid="history-btn"]').trigger('click')
+    await flushPromises()
+    const panel = wrapper.findComponent({ name: 'HistoryPanel' })
+    await panel.get('[data-testid="revision-compare-from"]').setValue('1')
+    await panel.get('[data-testid="revision-compare-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(compareNoteRevisions).toHaveBeenCalledWith(1, 1, 1, 'current')
     wrapper.unmount()
   })
 })

@@ -681,9 +681,12 @@
       :selected-revision-id="selectedRevisionId"
       :preview-content="revisionPreviewContent"
       :preview-loading="revisionPreviewLoading"
+      :comparison="revisionComparison"
+      :comparison-loading="revisionComparisonLoading"
       @close="showHistory = false"
       @select-revision="handleSelectRevision"
       @restore-revision="handleRestoreRevision"
+      @compare-revisions="handleCompareRevisions"
     />
   </div>
 </template>
@@ -691,12 +694,12 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed, nextTick, onUnmounted, onMounted, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink, NoteShareState } from '../services/types'
+import type { NoteDetail, NoteMeta, NoteRevisionMeta, NoteRevisionComparison, NoteComment, NoteChecklistItem, NoteActivityEntry, UnlinkedMention, OutgoingLink, NoteShareState } from '../services/types'
 
 const { t } = useI18n()
 import {
   uploadAttachment,
-  getNoteRevisions, getNoteRevision, restoreNoteRevision,
+  getNoteRevisions, getNoteRevision, compareNoteRevisions, restoreNoteRevision,
   setNoteProperty, deleteNoteProperty,
   getNoteComments, addNoteComment, deleteNoteComment,
   getChecklistItems, createChecklistItem, updateChecklistItem, deleteChecklistItem,
@@ -998,6 +1001,8 @@ const revisionsLoading = ref(false)
 const selectedRevisionId = ref<number | null>(null)
 const revisionPreviewContent = ref<string | null>(null)
 const revisionPreviewLoading = ref(false)
+const revisionComparison = ref<NoteRevisionComparison | null>(null)
+const revisionComparisonLoading = ref(false)
 
 const comments = ref<NoteComment[]>([])
 const commentsError = ref<string | null>(null)
@@ -1628,6 +1633,7 @@ async function openHistory() {
   showHistory.value = true
   selectedRevisionId.value = null
   revisionPreviewContent.value = null
+  revisionComparison.value = null
   if (!props.workspaceId) return
   revisionsLoading.value = true
   try {
@@ -1651,6 +1657,24 @@ async function handleSelectRevision(revisionId: number) {
     console.error('Failed to load revision:', err)
   } finally {
     revisionPreviewLoading.value = false
+  }
+}
+
+async function handleCompareRevisions(fromRevisionId: number, toRevisionId: number | 'current') {
+  if (!props.workspaceId) return
+  revisionComparisonLoading.value = true
+  try {
+    revisionComparison.value = await compareNoteRevisions(
+      props.workspaceId,
+      props.note.id,
+      fromRevisionId,
+      toRevisionId
+    )
+  } catch (err) {
+    console.error('Failed to compare revisions:', err)
+    revisionComparison.value = null
+  } finally {
+    revisionComparisonLoading.value = false
   }
 }
 

@@ -562,6 +562,12 @@ export default {
     selectToPreview: 'Selecione uma revisão para pré-visualizar o conteúdo.',
     loadingPreview: 'Carregando…',
     restore: 'Restaurar esta versão',
+    compareFrom: 'Comparar de',
+    compareTo: 'Comparar com',
+    current: 'Conteúdo atual',
+    compare: 'Comparar',
+    loadingComparison: 'Comparando revisões…',
+    noDifferences: 'Estas versões não têm diferenças.',
   },
   markdownPreview: {
     copy: 'Copiar',

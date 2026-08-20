@@ -161,12 +161,32 @@ export interface NoteRevisionMeta {
   note_id: number
   content_hash: string
   actor_id: string | null
-  created_at: string
+  created_at: string | null
 }
 
 export interface NoteRevisionDetail extends NoteRevisionMeta {
   workspace_id: number
   content: string
+}
+
+export interface NoteRevisionComparisonMeta extends Omit<NoteRevisionMeta, 'id'> {
+  id: number | null
+}
+
+export type NoteRevisionDiffLineType = 'context' | 'added' | 'removed'
+
+export interface NoteRevisionDiffLine {
+  type: NoteRevisionDiffLineType
+  from_line: number | null
+  to_line: number | null
+  text: string
+}
+
+export interface NoteRevisionComparison {
+  from: NoteRevisionComparisonMeta
+  to: NoteRevisionComparisonMeta
+  changed: boolean
+  lines: NoteRevisionDiffLine[]
 }
 
 export interface NoteComment {

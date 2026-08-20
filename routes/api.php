@@ -118,6 +118,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::delete('/workspaces/{workspace}/trash/{note}', [WorkspaceTrashController::class, 'destroy'])->middleware('workspace.write');
 
     Route::get('/workspaces/{workspace}/notes/{note}/revisions', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'index']);
+    Route::get('/workspaces/{workspace}/notes/{note}/revisions/compare', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'compare']);
     Route::get('/workspaces/{workspace}/notes/{note}/revisions/{revision}', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'show']);
     Route::post('/workspaces/{workspace}/notes/{note}/revisions/{revision}/restore', [\App\Http\Controllers\WorkspaceNoteRevisionController::class, 'restore'])->middleware('workspace.write');
 
