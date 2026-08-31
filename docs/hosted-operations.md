@@ -121,6 +121,25 @@ php artisan templates:pack --locale=pt-BR --to=/tmp/templates-pt-BR.zip
 
 Existing files under `_templates/` are never overwritten by `tenant:provision`.
 
+## MCP tokens for customers
+
+```sh
+php artisan mcp:token owner@acme.example --tenant=acme --name="Ana — Claude Code"
+```
+
+Prints the token once with the `https://<host>/api/mcp` URL. Customers can
+also issue their own from Administration → MCP tokens. Client setup:
+`docs/mcp-clients.md`. Revoke from the same screen or by setting `revoked_at`.
+
+## Demo vault
+
+```sh
+php artisan demo:seed <workspace-slug> [--tenant=<slug>] [--overwrite]
+```
+
+Writes 25 interlinked pt-BR notes (wiki, ADRs, meeting notes, runbooks) for
+demos and screenshots; never touches other notes.
+
 ## Health and diagnostics
 
 - `php artisan jotter:doctor [--json]` — installation self-check.

@@ -25,6 +25,13 @@
         >
           {{ t('adminPanel.users') }}
         </button>
+        <button
+          :class="['tab-btn', { active: activeTab === 'mcp' }]"
+          data-testid="admin-tab-mcp"
+          @click="activeTab = 'mcp'"
+        >
+          {{ t('adminPanel.mcpTokens') }}
+        </button>
       </div>
 
       <div v-if="error" class="admin-error-banner">
@@ -124,6 +131,41 @@
           </li>
         </ul>
       </div>
+
+      <!-- MCP machine tokens Tab -->
+      <div v-if="activeTab === 'mcp'" class="tab-content" data-testid="admin-mcp-tab">
+        <h3>{{ t('adminPanel.mcpCreateToken') }}</h3>
+        <p class="admin-note">{{ t('adminPanel.mcpTokenHelp') }}</p>
+        <form @submit.prevent="createMcpToken" class="admin-form">
+          <select v-model.number="newToken.tenant_id" data-testid="admin-mcp-tenant" required>
+            <option :value="null" disabled>{{ t('adminPanel.selectTenant') }}</option>
+            <option v-for="tn in tenants" :key="tn.id" :value="tn.id">{{ tn.name }} ({{ tn.slug }})</option>
+          </select>
+          <select v-model.number="newToken.user_id" data-testid="admin-mcp-user" required>
+            <option :value="null" disabled>{{ t('adminPanel.mcpSelectUser') }}</option>
+            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.email }})</option>
+          </select>
+          <input v-model="newToken.name" :placeholder="t('adminPanel.mcpTokenName')" data-testid="admin-mcp-name" required />
+          <button type="submit" data-testid="admin-mcp-submit" :disabled="loading">{{ t('adminPanel.mcpCreateTokenSubmit') }}</button>
+        </form>
+
+        <div v-if="issuedToken" class="admin-issued-token" data-testid="admin-mcp-issued">
+          <p class="admin-note admin-note-strong">{{ t('adminPanel.mcpTokenOnce') }}</p>
+          <code class="admin-token-value" data-testid="admin-mcp-token-value">{{ issuedToken.token }}</code>
+          <McpClientSnippets :token="issuedToken.token" :host="issuedToken.host" :server-name="issuedToken.serverName" />
+        </div>
+
+        <h3>{{ t('adminPanel.mcpTokensList') }}</h3>
+        <ul class="admin-list">
+          <li v-for="tk in machineTokens" :key="tk.id" class="admin-list-item" :data-testid="`admin-mcp-token-${tk.id}`">
+            <span>
+              <strong>{{ tk.name }}</strong> — {{ tk.user_email }} · {{ tk.tenant_slug }}
+              <em v-if="tk.revoked_at">{{ t('adminPanel.mcpRevokedTag') }}</em>
+            </span>
+            <button v-if="!tk.revoked_at" class="warning-btn" :disabled="loading" @click="revokeMcpToken(tk)">{{ t('adminPanel.mcpRevoke') }}</button>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
@@ -133,13 +175,14 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, getTenants, adminResetPassword } from '../services/api'
 import type { Tenant } from '../services/types'
+import McpClientSnippets from './McpClientSnippets.vue'
 
 const { t } = useI18n()
 
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits(['close'])
 
-const activeTab = ref<'workspaces' | 'members' | 'users'>('workspaces')
+const activeTab = ref<'workspaces' | 'members' | 'users' | 'mcp'>('workspaces')
 const error = ref('')
 const loading = ref(false)
 
@@ -154,6 +197,58 @@ const newWs = ref<{ tenant_id: number | null; name: string; slug: string; vault_
 })
 const newMember = ref({ subject_id: '', role: 'editor' })
 const newUser = ref({ name: '', email: '', password: '', is_admin: false })
+
+interface MachineTokenRow {
+  id: number
+  name: string
+  tenant_slug: string | null
+  user_email: string | null
+  created_at: string | null
+  revoked_at: string | null
+}
+const machineTokens = ref<MachineTokenRow[]>([])
+const newToken = ref<{ tenant_id: number | null; user_id: number | null; name: string }>({ tenant_id: null, user_id: null, name: '' })
+const issuedToken = ref<{ token: string; host: string; serverName: string } | null>(null)
+
+async function fetchMachineTokens() {
+  try {
+    const response = await api.get<{ data: MachineTokenRow[] }>('/admin/machine-tokens')
+    machineTokens.value = response.data.data
+  } catch (e) {
+    error.value = extractErrorMessage(e, t('adminPanel.requestFailed'))
+  }
+}
+
+async function createMcpToken() {
+  if (!newToken.value.tenant_id || !newToken.value.user_id) return
+  loading.value = true
+  error.value = ''
+  try {
+    const response = await api.post<{ data: { token: string; mcp_url: string; tenant_slug: string | null } }>('/admin/machine-tokens', newToken.value)
+    const data = response.data.data
+    const host = data.mcp_url ? data.mcp_url.replace(/\/api\/mcp$/, '') : ''
+    issuedToken.value = { token: data.token, host, serverName: data.tenant_slug ? `jotter-${data.tenant_slug}` : 'jotter' }
+    newToken.value = { ...newToken.value, name: '' }
+    await fetchMachineTokens()
+  } catch (e) {
+    error.value = extractErrorMessage(e, t('adminPanel.requestFailed'))
+  } finally {
+    loading.value = false
+  }
+}
+
+async function revokeMcpToken(token: MachineTokenRow) {
+  if (!confirm(t('adminPanel.mcpRevokeConfirm', { name: token.name }))) return
+  loading.value = true
+  try {
+    await api.delete(`/admin/machine-tokens/${token.id}`)
+    await fetchMachineTokens()
+  } catch (e) {
+    error.value = extractErrorMessage(e, t('adminPanel.requestFailed'))
+  } finally {
+    loading.value = false
+  }
+}
 
 const editingWsId = ref<number | null>(null)
 const wsEditDraft = ref({ name: '', slug: '' })
@@ -333,6 +428,7 @@ async function toggleDeactivate(u: any, deactivate: boolean) {
 watch(() => props.isOpen, (val) => {
   if (val) {
     fetchTenants()
+    fetchMachineTokens()
     fetchWorkspaces()
     fetchUsers()
   }

@@ -432,6 +432,14 @@
           @change="onImportFileSelected"
         />
         <label class="modal-checkbox-label">
+          <span>{{ t('sidebar.importSource') }}</span>
+          <select v-model="importSource" class="modal-input" data-testid="import-source-select">
+            <option value="generic">{{ t('sidebar.importSourceGeneric') }}</option>
+            <option value="obsidian">{{ t('sidebar.importSourceObsidian') }}</option>
+            <option value="notion">{{ t('sidebar.importSourceNotion') }}</option>
+          </select>
+        </label>
+        <label class="modal-checkbox-label">
           <input v-model="importOverwrite" type="checkbox" data-testid="import-overwrite-checkbox" />
           <span>{{ t('sidebar.overwriteExisting') }}</span>
         </label>
@@ -514,6 +522,7 @@ import BrandMark from './BrandMark.vue'
 import BrandFooter from './BrandFooter.vue'
 import { brand } from '../services/brand'
 import { moveNote, reorderNoteTree } from '../services/api'
+import type { ImportSource } from '../services/api'
 import { createNoteTreeSortable, type NoteTreeSortableHandle } from '../composables/useNoteTreeSortable'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
 
@@ -549,7 +558,7 @@ const emit = defineEmits<{
   (e: 'toggle-audit-log'): void
   (e: 'toggle-analytics'): void
   (e: 'toggle-trash'): void
-  (e: 'import-workspace', archive: File, overwrite: boolean): void
+  (e: 'import-workspace', archive: File, overwrite: boolean, source: ImportSource): void
   (e: 'export-workspace'): void
   (e: 'export-workspace-pdf'): void
   (e: 'toggle-link-report'): void
@@ -618,6 +627,7 @@ function closeMoreMenuAnd(action: () => void) {
 }
 const importFile = ref<File | null>(null)
 const importOverwrite = ref(false)
+const importSource = ref<ImportSource>('generic')
 const importFileInputRef = ref<HTMLInputElement | null>(null)
 
 const availableTemplates = computed(() =>
@@ -833,12 +843,13 @@ function closeImportModal() {
   showImportModal.value = false
   importFile.value = null
   importOverwrite.value = false
+  importSource.value = 'generic'
   if (importFileInputRef.value) importFileInputRef.value.value = ''
 }
 
 function handleImportSubmit() {
   if (!importFile.value) return
-  emit('import-workspace', importFile.value, importOverwrite.value)
+  emit('import-workspace', importFile.value, importOverwrite.value, importSource.value)
   closeImportModal()
 }
 </script>

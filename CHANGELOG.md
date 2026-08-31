@@ -2,6 +2,17 @@
 
 All notable changes to Jotter will be documented here. Decision records live in `docs/decisions.md`; security-audit findings live in `docs/security-audit-2026.md`; visual-identity rollout tracking lives in `docs/visual-identity.md`. Split from a single overloaded `BACKLOG.md` in #208.
 
+## v1 (post-v0) — 2026-08-31: MCP client guides, migration guides, demo vault, README
+
+Connecting Claude Code, Cursor, and Claude Desktop to a vault is now a documented, tested five-minute path (`docs/mcp-clients`).
+
+- **MCP server compatibility** — `initialize` negotiates the protocol version (`2025-06-18` / `2025-03-26` / `2024-11-05`), `notifications/*` answer 202, `ping`/`resources/list`/`prompts/list` implemented, every tool publishes an `inputSchema`, new `list_workspaces` tool, and `workspace_id` defaults when the token reaches exactly one workspace (otherwise a recoverable `isError` result lists the options). `serverInfo.version` reports the release version.
+- **Machine tokens** — `App\Domain\Auth\MachineTokenIssuer`; admin API `GET/POST /api/admin/machine-tokens`, `DELETE …/{id}` (revoke); `php artisan mcp:token <email>`; audited as `machine_token.created` / `machine_token.revoked`. Administration gains an **MCP tokens** tab that issues a token and shows copy-ready snippets for Claude Code (`claude mcp add` + `.mcp.json`), Cursor (`.cursor/mcp.json`), and Claude Desktop (`claude_desktop_config.json` via `mcp-remote`) with the current host filled in (`McpClientSnippets.vue`).
+- **Docs** — `docs/mcp-clients.md` (per-client setup validated against current official docs, smoke test, curl proof, common errors), `docs/migrate-from-obsidian.md`, `docs/migrate-from-notion.md`, `docs/mcp.md` refreshed; README gains "Use with AI agents (MCP)", "Hosted option" (cadernia.app), and "Self-hosting on shared PHP hosting"; `/llms.txt` lists the guides and the MCP endpoint.
+- **Import sources** — `source=generic|obsidian|notion` on `POST /api/workspaces/{id}/import`, `vault:import --source=`, and a selector in the import dialog. Obsidian: strips the vault-folder wrapper, skips `.obsidian/` and `.trash/`. Notion: strips 32-hex page ids from paths, URL-decodes links, turns page links into `[[wikilinks]]`, keeps attachments; CSV databases are reported, not imported (`ImportPathNormalizer`).
+- **`demo:seed {workspace-slug}`** — 25 interlinked pt-BR notes (wiki, ADRs, meeting notes, runbooks, projects) from `resources/demo/pt-BR` for public demos and screenshots; every wikilink resolves.
+- **Tests** — `McpProtocolTest`, `AdminMachineTokenTest`, `ImportSourcesTest`, `DemoSeedCommandTest`, `LlmsTxtTest`; Vitest `McpClientSnippets.spec.ts`.
+
 ## v1 (post-v0) — 2026-08-31: CLI provisioning and transactional e-mail
 
 A new hosted customer is ready with one SSH command, and e-mail leaves for real (`feat/provisioning-and-mail`). Runbook: `docs/hosted-operations.md`.

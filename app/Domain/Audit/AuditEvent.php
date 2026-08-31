@@ -26,6 +26,8 @@ enum AuditEvent: string
     case MCP_CONNECTED = 'mcp.connected';
     case MCP_METHOD_CALLED = 'mcp.method_called';
     case MCP_AUTH_FAILED = 'mcp.auth_failed';
+    case MACHINE_TOKEN_CREATED = 'machine_token.created';
+    case MACHINE_TOKEN_REVOKED = 'machine_token.revoked';
 
     case ATTACHMENT_CREATED = 'attachment.created';
     case ATTACHMENT_DELETED = 'attachment.deleted';

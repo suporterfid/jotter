@@ -407,6 +407,7 @@ import { resolveWikilinkTarget } from './services/wikilinks'
 import { useSplitPanes, type PaneId } from './composables/useSplitPanes'
 import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
 import { brand, setBrand } from './services/brand'
+import type { ImportSource } from './services/api'
 import PlanBanner from './components/PlanBanner.vue'
 
 const { t } = useI18n()
@@ -1282,10 +1283,10 @@ async function refreshLinkReport() {
   }
 }
 
-async function handleImportWorkspace(archive: File, overwrite: boolean) {
+async function handleImportWorkspace(archive: File, overwrite: boolean, source: ImportSource = 'generic') {
   if (!activeWorkspaceId.value) return
   try {
-    const result = await importWorkspaceArchive(activeWorkspaceId.value, archive, overwrite)
+    const result = await importWorkspaceArchive(activeWorkspaceId.value, archive, overwrite, source)
     await refreshNotesList()
     const parts = [
       t('app.importedCount', { count: result.extracted_count }),
