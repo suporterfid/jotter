@@ -43,6 +43,15 @@ Schedule::command('vault:purge-trash')->dailyAt('02:00')->withoutOverlapping(60)
 Schedule::command('vault:prune-revisions', ['--days=30'])->dailyAt('02:15')->withoutOverlapping(60);
 Schedule::command('audit:prune', ['--days=90'])->dailyAt('02:30')->withoutOverlapping(60);
 
-// Hosted mode only: trials past their deadline become read_only (audited). A
+// Hosted mode only: trial reminders (3 days before), then trials past their
+// deadline become read_only (audited) and owners are e-mailed once. A
 // self-hosted installation has no trial tenants, so this is a no-op there.
 Schedule::command('tenant:expire-trials')->dailyAt('03:00')->withoutOverlapping(60);
+
+// Mail is sent synchronously. If an operator opts into QUEUE_CONNECTION=database
+// anyway, drain it from cron: no daemon, exits as soon as the queue is empty.
+if (config('queue.default') === 'database') {
+    Schedule::command('queue:work', ['--stop-when-empty', '--max-time=50', '--tries=3'])
+        ->everyMinute()
+        ->withoutOverlapping(5);
+}

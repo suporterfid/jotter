@@ -152,7 +152,7 @@ final class TenantPlan
     /**
      * Moves every trial whose deadline passed to `read_only`, one audit row each.
      *
-     * @return list<string> slugs that were expired
+     * @return list<Tenant> tenants that were expired
      */
     public function expireTrials(): array
     {
@@ -179,7 +179,7 @@ final class TenantPlan
                     ],
                 );
 
-                $expired[] = $tenant->slug;
+                $expired[] = $tenant;
             });
 
         return $expired;

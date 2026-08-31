@@ -78,6 +78,7 @@ final class InstanceDoctor
             $databaseCheck,
             $this->checkPendingMigrations($databaseCheck->passed),
             $this->checkMailer(),
+            $this->checkMailFrom(),
             $this->checkScheduler(),
         ];
 
@@ -324,6 +325,18 @@ final class InstanceDoctor
         return $mailer !== 'log'
             ? DoctorCheck::pass('mail_mailer', 'MAIL_MAILER', false, $mailer, ['mailer' => $mailer])
             : DoctorCheck::fail('mail_mailer', 'MAIL_MAILER', false, 'MAIL_MAILER=log: notification emails are recorded as skipped and never delivered.', ['mailer' => $mailer]);
+    }
+
+    private function checkMailFrom(): DoctorCheck
+    {
+        $address = trim((string) config('mail.from.address'));
+        $details = ['address' => $address];
+
+        if ($address === '' || str_ends_with($address, '@example.com')) {
+            return DoctorCheck::fail('mail_from', 'MAIL_FROM_ADDRESS', false, 'Not set (or a placeholder): transactional e-mails cannot be sent without a verified sender.', $details);
+        }
+
+        return DoctorCheck::pass('mail_from', 'MAIL_FROM_ADDRESS', false, $address, $details);
     }
 
     private function checkScheduler(): DoctorCheck

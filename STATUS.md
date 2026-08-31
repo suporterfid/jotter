@@ -117,6 +117,13 @@ This file previously ended at the 2026-08-05 formatting toolbar while 65 commits
 
 ---
 
+## 1.4 Delivered 2026-08-31 — CLI provisioning + transactional e-mail
+
+- **`tenant:provision`** one-shot customer setup (tenant, workspace/vault, owner admin via `platform:bootstrap-admin`, membership, trial, starter templates, welcome e-mail; password shown once, never logged). **`tenant:export`** full portable ZIP (vault + JSON backup + manifest). **`templates:pack`** importable starter templates (en/pt-BR).
+- **E-mail** — branded layout, welcome / password reset / trial reminder / trial ended mailables (en/pt-BR), SMTP documented for Resend/Postmark, synchronous sending, optional cron-driven `queue:work --stop-when-empty`. Runbook in `docs/hosted-operations.md`.
+
+---
+
 ## 2. Position against the product roadmap
 
 `docs/20260727-jotter-roadmap-ai-agent.md` ranks twelve near-term priorities. **Five of its top six already ship here** — search, nested folders, tags, backlinks, and attachments. Its gap analysis says otherwise because its baseline describes a different product (offline-first, Material You, realtime collaboration); spec §14.1 records this and §14.3 carries the authoritative delivered-state table.
