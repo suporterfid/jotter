@@ -135,10 +135,12 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:purge-trash` | daily 02:00 | Permanently deletes notes past the trash retention period. |
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
+| `tenant:expire-trials` | daily 03:00 | Hosted mode only: moves trials past `trial_ends_at` to `read_only` and audits it. No-op for self-hosted tenants. |
 
-Trial expiry is not scheduled because the product has no trial concept; add it to
-this table and to `routes/console.php` if one is introduced. The individual
-commands below remain available for one-off runs with different options.
+The individual commands below remain available for one-off runs with different
+options. Hosted-mode plan state is changed with `php artisan tenant:plan <slug>`
+and inspected with `php artisan tenant:show <slug>` (see `docs/architecture.md`,
+"Hosted mode").
 
 ## External content embeds
 

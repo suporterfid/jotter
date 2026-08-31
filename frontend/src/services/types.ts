@@ -5,10 +5,22 @@ export interface Workspace {
   name: string
 }
 
+export type PlanStatus = 'self_hosted' | 'trial' | 'active' | 'past_due' | 'read_only'
+
+export interface TenantPlan {
+  status: PlanStatus
+  name: string | null
+  seats: number | null
+  trial_ends_at: string | null
+  trial_days_left: number | null
+  read_only: boolean
+}
+
 export interface Tenant {
   id: number
   slug: string
   name: string
+  plan?: TenantPlan
 }
 
 export interface NoteMeta {

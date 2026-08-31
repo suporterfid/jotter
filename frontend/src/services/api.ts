@@ -1,3 +1,4 @@
+import type { BrandConfig } from './brand'
 import axios from 'axios'
 import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteRevisionComparison, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
 
@@ -73,6 +74,7 @@ export interface AuthConfig {
   sso_login_url: string | null
   version: string | null
   external_embed_domains?: string[]
+  brand?: BrandConfig
 }
 
 export async function getAuthConfig(): Promise<AuthConfig> {

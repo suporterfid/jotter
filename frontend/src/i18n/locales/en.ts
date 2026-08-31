@@ -1,9 +1,21 @@
 export default {
+  brand: {
+    footerLabel: 'About this service',
+    terms: 'Terms',
+    privacy: 'Privacy',
+    support: 'Support',
+    poweredBy: 'Powered by Jotter',
+  },
+  plan: {
+    trialEndsIn: 'Trial ends in {days} days',
+    trialEndsToday: 'Trial ends today',
+    readOnly: 'This account is read-only. You can keep reading, searching, and exporting, but changes are paused.',
+  },
   nav: {
     settings: 'Settings',
   },
   login: {
-    heading: 'Jotter Sign In',
+    heading: '{name} Sign In',
     subtitle: 'Enter your administrator credentials to access your notes vault.',
     ssoButton: 'Sign in with GrandpaSSOn',
     ssoGenericButton: 'Sign in with SSO',

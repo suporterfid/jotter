@@ -42,6 +42,7 @@ final class SchedulerRegistrationTest extends TestCase
             'vault:purge-trash',
             'vault:prune-revisions',
             'audit:prune',
+            'tenant:expire-trials',
             'jotter:scheduler-heartbeat',
         ] as $expected) {
             $this->assertStringContainsString($expected, $commands, "{$expected} is not scheduled");

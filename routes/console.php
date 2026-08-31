@@ -42,3 +42,7 @@ Schedule::command('vault:reindex', ['--all'])->hourly()->withoutOverlapping(55);
 Schedule::command('vault:purge-trash')->dailyAt('02:00')->withoutOverlapping(60);
 Schedule::command('vault:prune-revisions', ['--days=30'])->dailyAt('02:15')->withoutOverlapping(60);
 Schedule::command('audit:prune', ['--days=90'])->dailyAt('02:30')->withoutOverlapping(60);
+
+// Hosted mode only: trials past their deadline become read_only (audited). A
+// self-hosted installation has no trial tenants, so this is a no-op there.
+Schedule::command('tenant:expire-trials')->dailyAt('03:00')->withoutOverlapping(60);

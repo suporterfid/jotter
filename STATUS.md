@@ -110,6 +110,13 @@ This file previously ended at the 2026-08-05 formatting toolbar while 65 commits
 
 ---
 
+## 1.3 Delivered 2026-08-31 — branding by environment + hosted-mode plan/trial
+
+- **Branding.** `JOTTER_BRAND_*` env → `config('jotter.brand')` → `GET /api/auth/config` `data.brand` → SPA (title, header mark, login, footer links, "Powered by Jotter"), Laravel shell OG tags, published-page footer. Defaults = stock Jotter.
+- **Plan/trial.** `tenants.plan_status` (+ `trial_ends_at`, `plan_name`, `plan_seats`), `TenantPlan` gate returning 402 on writes for expired trial / `past_due` / `read_only`, seat limit on membership grants, trial banner in the SPA, `tenant:plan` / `tenant:show` / scheduled `tenant:expire-trials`. `self_hosted` default changes nothing; no billing code (decision recorded in `docs/decisions.md`).
+
+---
+
 ## 2. Position against the product roadmap
 
 `docs/20260727-jotter-roadmap-ai-agent.md` ranks twelve near-term priorities. **Five of its top six already ship here** — search, nested folders, tags, backlinks, and attachments. Its gap analysis says otherwise because its baseline describes a different product (offline-first, Material You, realtime collaboration); spec §14.1 records this and §14.3 carries the authoritative delivered-state table.

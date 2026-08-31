@@ -1,4 +1,4 @@
-import { mount, flushPromises } from '@vue/test-utils'
+import { config, mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote, queueWorkspacePdfExport, getWorkspacePdfExport, downloadWorkspacePdfExport } from './services/api'
@@ -59,6 +59,12 @@ vi.mock('./services/api', () => ({
   getWorkspacePdfExport: vi.fn().mockResolvedValue({ id: 'export-1', status: 'ready', scope: 'workspace' }),
   downloadWorkspacePdfExport: vi.fn(),
 }))
+
+// The real Milkdown editor arms 3s readiness timers that can fire after the
+// jsdom environment is torn down ("removeEventListener is not defined" as an
+// unhandled error under load). Nothing here interacts with the WYSIWYG surface,
+// so stub it; NoteEditor (the textarea surface) stays real.
+config.global.stubs = { ...config.global.stubs, NoteEditorWysiwyg: true }
 
 beforeEach(() => {
   localStorage.clear()

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\AuthenticatedSubject;
+use App\Domain\Plan\TenantPlan;
 use App\Models\Membership;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,7 @@ final class AdminMembershipController extends Controller
 
     public function __construct(
         private readonly AuditRecorder $auditRecorder = new AuditRecorder,
+        private readonly TenantPlan $tenantPlan = new TenantPlan,
     ) {}
 
     public function index(Request $request, Workspace $workspace): JsonResponse
@@ -43,6 +45,17 @@ final class AdminMembershipController extends Controller
             'subject_id' => ['required', 'string', 'max:191'],
             'role' => ['required', 'string', Rule::in(self::ALLOWED_ROLES)],
         ]);
+
+        // Hosted mode: a new subject beyond `plan_seats` is refused with 402.
+        $tenant = $workspace->tenant;
+        if ($tenant !== null && $this->tenantPlan->seatLimitReached($tenant, $validated['subject_id'])) {
+            return $this->tenantPlan->denySeat(
+                $tenant,
+                $workspace->id,
+                $this->currentSubject($request)?->subjectId,
+                $validated['subject_id'],
+            );
+        }
 
         // Cross-tenant check: ensure workspace belongs to requested tenant context
         $membership = Membership::query()->updateOrCreate(

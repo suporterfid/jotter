@@ -15,6 +15,12 @@
     $entry = $manifest['src/main.ts']
         ?? $manifest['index.html']
         ?? null;
+
+    // Operator branding (JOTTER_BRAND_*); defaults reproduce the stock Jotter shell.
+    $brand = \App\Support\Branding::configured();
+    $brandDescription = $brand->name === 'Jotter'
+        ? 'A fast, local-first Markdown knowledge base and note-taking application.'
+        : $brand->name.' — Markdown knowledge base and notes.';
 @endphp
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -37,18 +43,18 @@
         if (themeColor) themeColor.setAttribute('content', theme === 'dark' ? '#191919' : '#FFFFFF');
       })();
     </script>
-    <meta name="description" content="A fast, local-first Markdown knowledge base and note-taking application.">
+    <meta name="description" content="{{ $brandDescription }}">
 
-    <title>Jotter</title>
+    <title>{{ $brand->name }}</title>
 
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-    <meta property="og:title" content="Jotter">
-    <meta property="og:description" content="A fast, local-first Markdown knowledge base and note-taking application.">
-    <meta property="og:image" content="{{ url('social-card.png') }}">
+    <meta property="og:title" content="{{ $brand->name }}">
+    <meta property="og:description" content="{{ $brandDescription }}">
+    <meta property="og:image" content="{{ $brand->logoUrl ?? url('social-card.png') }}">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
 
