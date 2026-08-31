@@ -1,7 +1,7 @@
 # Jotter — Project Status
 
-- **Current Version:** v0.9.0 (v0 spec contracts complete; v1 work in progress)
-- **Last Updated:** 2026-08-20 (#388 revision comparison delivered; #51 version history remains complete; no open Confluence-parity issues remain)
+- **Current Version:** [v0.10.0](https://github.com/suporterfid/jotter/releases/tag/v0.10.0) (tagged 2026-08-31; release ZIP + checksum attached to the GitHub Release)
+- **Last Updated:** 2026-08-31 (v0.10.0 released: #391 doctor/health, #392 branding + plan/trial, #394 provisioning + mail, #395 MCP client path + migrations + demo, #393 token-guard fix — see §1.2–§1.5 and CHANGELOG.md)
 - **Repo:** https://github.com/suporterfid/jotter
 - **Production Site:** https://hub.taskconnect.com.br/
 - **#388 — Revision comparison:** delivered an ACL-protected revision/current line-diff endpoint, bounded in-memory diffing, HistoryPanel source/target selectors, semantic added/removed/context rows, and regression coverage. Restore remains an independent write action.
