@@ -38,6 +38,7 @@ final class JotterDoctorCommandTest extends TestCase
             'app.key' => 'base64:'.base64_encode(random_bytes(32)),
             'app.url' => 'https://client-a.example.com',
             'mail.default' => 'smtp',
+            'mail.from.address' => 'no-reply@client-a.example.com',
             'vault.base_path' => $this->vault,
             'jotter.instance_slug' => 'client-a',
         ]);
@@ -117,6 +118,8 @@ final class JotterDoctorCommandTest extends TestCase
         $byId = array_column($report['checks'], null, 'id');
 
         $this->assertSame('warn', $byId['mail_mailer']['status']);
+        config(['mail.from.address' => 'hello@example.com']);
+        $this->assertSame('warn', array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id')['mail_from']['status']);
         $this->assertSame('fail', $byId['scheduler']['status']);
         $this->assertSame('fail', $report['status']);
     }

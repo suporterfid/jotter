@@ -96,7 +96,7 @@ The doctor verifies: PHP version and required extensions, `APP_KEY`, `APP_ENV`,
 `APP_DEBUG=false`, `APP_URL` on HTTPS, `storage/` and `bootstrap/cache` writable,
 `VAULT_BASE_PATH` existing, writable, and outside the document root, free disk
 space for the vault, database connectivity, pending migrations, `MAIL_MAILER`
-different from `log`, `APP_INSTANCE_SLUG`, and the scheduler heartbeat (a
+different from `log`, `MAIL_FROM_ADDRESS` set, `APP_INSTANCE_SLUG`, and the scheduler heartbeat (a
 `schedule:run` within the last 5 minutes). `APP_DEBUG` and the HTTPS check are
 critical when `APP_ENV=production` and warnings otherwise; the mailer, recommended
 extensions, and instance slug are always warnings.
@@ -135,7 +135,8 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:purge-trash` | daily 02:00 | Permanently deletes notes past the trash retention period. |
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
-| `tenant:expire-trials` | daily 03:00 | Hosted mode only: moves trials past `trial_ends_at` to `read_only` and audits it. No-op for self-hosted tenants. |
+| `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
+| `queue:work --stop-when-empty --max-time=50` | every minute, only when `QUEUE_CONNECTION=database` | Drains a database queue without a daemon. Mail is synchronous by default, so this is normally not registered. |
 
 The individual commands below remain available for one-off runs with different
 options. Hosted-mode plan state is changed with `php artisan tenant:plan <slug>`

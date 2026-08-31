@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\AuthenticatedSubject;
+use App\Mail\PasswordResetEmail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 
 final class AdminUserController extends Controller
@@ -130,6 +132,15 @@ final class AdminUserController extends Controller
                 'mode' => 'admin_reset',
             ]
         );
+
+        // Tell the user out of band; the message never contains the password.
+        if (config('mail.default') !== 'log') {
+            try {
+                Mail::to($user->email)->send(new PasswordResetEmail($user));
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
 
         return response()->json(['message' => __('messages.user_password_reset_successfully')]);
     }

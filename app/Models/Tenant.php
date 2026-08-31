@@ -14,10 +14,14 @@ class Tenant extends Model
         'trial_ends_at',
         'plan_name',
         'plan_seats',
+        'trial_reminder_sent_at',
+        'trial_ended_notified_at',
     ];
 
     protected $casts = [
         'trial_ends_at' => 'immutable_datetime',
+        'trial_reminder_sent_at' => 'immutable_datetime',
+        'trial_ended_notified_at' => 'immutable_datetime',
         'plan_seats' => 'integer',
     ];
 

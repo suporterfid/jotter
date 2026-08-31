@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
+use App\Domain\Export\WorkspaceJsonBackup;
+use App\Domain\Vault\VaultPathGuard;
 use App\Models\Note;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +18,7 @@ final class WorkspaceExportController extends Controller
     public function __construct(
         private readonly IdentityProvider $identityProvider,
         private readonly NoteAccess $noteAccess,
+        private readonly WorkspaceJsonBackup $jsonBackup = new WorkspaceJsonBackup,
     ) {}
 
     public function export(Request $request, int $workspaceId): JsonResponse|BinaryFileResponse
@@ -41,31 +44,14 @@ final class WorkspaceExportController extends Controller
 
         if ($request->query('format') === 'json') {
             $notes = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)->get();
-            $pathGuard = new \App\Domain\Vault\VaultPathGuard();
-            $exportedNotes = [];
-            foreach ($notes as $note) {
-                try {
-                    $fullPath = $pathGuard->resolve($workspace, $note->path, mustExist: true, mustBeMarkdown: false);
-                    $exportedNotes[] = [
-                        'path' => $note->path,
-                        'content' => file_get_contents($fullPath),
-                    ];
-                } catch (\Throwable) {
-                    // file missing
-                }
-            }
-            return response()->json([
-                'version' => '1.0',
-                'workspace_slug' => $workspace->slug,
-                'exported_at' => now()->toIso8601String(),
-                'notes' => $exportedNotes,
-            ]);
+
+            return response()->json($this->jsonBackup->build($workspace, $notes));
         }
 
         $zipPath = "{$exportDir}/export_workspace_{$workspace->id}.zip";
         @unlink($zipPath);
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return response()->json(['message' => __('messages.failed_to_create_export_zip')], 500);
         }
@@ -73,7 +59,7 @@ final class WorkspaceExportController extends Controller
         $notes = $this->noteAccess->scopeVisible(Note::query(), $subject, $workspaceId)->get();
         $hasFiles = false;
 
-        $pathGuard = new \App\Domain\Vault\VaultPathGuard();
+        $pathGuard = new VaultPathGuard;
         foreach ($notes as $note) {
             try {
                 $fullPath = $pathGuard->resolve($workspace, $note->path, mustExist: true, mustBeMarkdown: false);

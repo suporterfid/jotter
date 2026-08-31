@@ -2,6 +2,16 @@
 
 All notable changes to Jotter will be documented here. Decision records live in `docs/decisions.md`; security-audit findings live in `docs/security-audit-2026.md`; visual-identity rollout tracking lives in `docs/visual-identity.md`. Split from a single overloaded `BACKLOG.md` in #208.
 
+## v1 (post-v0) — 2026-08-31: CLI provisioning and transactional e-mail
+
+A new hosted customer is ready with one SSH command, and e-mail leaves for real (`feat/provisioning-and-mail`). Runbook: `docs/hosted-operations.md`.
+
+- **`tenant:provision`** — tenant, workspace with vault at `VAULT_BASE_PATH/<workspace-slug>`, owner admin with a random 20-character password (created through `platform:bootstrap-admin`), owner membership, trial plan (`--trial-days=14 --seats=5`), starter templates in `--locale`, welcome e-mail; prints URLs and the password once (`--json` too). Exit 2 when the tenant exists; existing users are reused without touching their password. The password is never logged or audited (`tenant.provisioned`).
+- **Transactional e-mail** — shared `x-mail-layout` shell with operator branding; `WelcomeEmail` (login, WebDAV, MCP guide, trial length), `PasswordResetEmail` (sent by `AdminUserController::resetPassword`, no password inside), `TrialReminderEmail` (3 days before) and `TrialEndedEmail` (on expiry), both driven by the daily `tenant:expire-trials` task and sent at most once per tenant (`trial_reminder_sent_at`, `trial_ended_notified_at`). Notification e-mails reuse the layout. i18n in `lang/{en,pt-BR}/emails.php`. Sending is synchronous; if `QUEUE_CONNECTION=database` is used, the scheduler drains it with `queue:work --stop-when-empty`. `.env.example` documents SMTP (Resend / Postmark).
+- **`tenant:export {slug} --to=`** — one ZIP with every vault file, the JSON backup (`WorkspaceJsonBackup`, now shared with the API export), and `tenant.json` (plan, workspaces, memberships, users) for LGPD portability; refuses the document root; audited as `tenant.exported`.
+- **Starter templates** — `resources/templates/{en,pt-BR}/_templates/` (ADR, meeting notes, daily, runbook, PRD) using TemplateEngine placeholders; `templates:pack` builds a ZIP the import endpoint accepts.
+- **Tests** — `TenantProvisionCommandTest`, `TenantExportCommandTest`, `TemplatePackTest`, `TransactionalEmailTest` (all with `Mail::fake()`).
+
 ## v1 (post-v0) — 2026-08-31: Branding by environment and hosted-mode plan/trial
 
 Jotter (MIT) is also offered as the hosted service "Cadernia". Both are the same engine: branding and plan state are configuration with self-hosting-neutral defaults (`docs/decisions.md`, "Single engine; hosting is configuration"). Zero change with defaults; no payment code (`feat/brand-and-plan`).
