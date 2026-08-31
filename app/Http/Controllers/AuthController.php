@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Vault\ExternalEmbedPolicy;
+use App\Support\ReleaseVersion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -68,14 +69,11 @@ final class AuthController extends Controller
             $ssoLoginUrl = url('/api/auth/oidc/redirect');
         }
 
-        $versionFile = base_path('VERSION');
-        $version = file_exists($versionFile) ? trim(file_get_contents($versionFile)) : null;
-
         return response()->json([
             'data' => [
                 'provider' => $provider,
                 'sso_login_url' => $ssoLoginUrl,
-                'version' => $version,
+                'version' => ReleaseVersion::current(),
                 'external_embed_domains' => ExternalEmbedPolicy::configured()->allowedHosts(),
             ],
         ]);

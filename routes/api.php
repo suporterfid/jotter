@@ -28,6 +28,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 Route::get('/auth/me', [AuthController::class, 'me']);
 Route::get('/auth/config', [AuthController::class, 'config']);
+// GET /api/health lives in bootstrap/app.php (no session/throttle middleware).
 Route::get('/auth/oidc/redirect', [\App\Http\Controllers\OidcController::class, 'redirect']);
 Route::get('/auth/oidc/callback', [\App\Http\Controllers\OidcController::class, 'callback']);
 Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);

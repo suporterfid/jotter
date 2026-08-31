@@ -23,6 +23,11 @@ All roadmap/spec decisions are resolved — see `docs/decisions.md`. This sectio
 
 The roadmap's historical Phase 1 gaps are already delivered in this repository: search filters (#52), Markdown/JSON import and round-trip backup (#77/#78), templates/daily notes (#56), and version history with restore (#51). Do not create duplicate issues from the roadmap's stale gap summary; select the next new feature from a refreshed issue or audit.
 
+## Operations follow-ups (from the 2026-08-31 multi-instance release)
+
+- **Trial expiry job.** There is no trial concept today; when one is introduced, register its expiry command in `routes/console.php` and add it to the scheduled-jobs table in `docs/deployment.md` (the doctor and scheduler test will need the new command name).
+- **Doctor thresholds.** Disk-space (100 MiB critical / 1 GiB warning) and scheduler age (5 minutes) are constants on `InstanceDoctor`; make them configurable only if a host proves them wrong.
+
 ## Completed follow-up
 
 - ~~**Revision comparison (#388).**~~ **Delivered.** Added the ACL-protected revision comparison endpoint for revision-to-revision and revision-to-current comparisons, a bounded in-memory line diff, workspace/note isolation and 401/403/404/422 coverage, plus HistoryPanel selectors and semantic diff rendering. The restore workflow remains independent.

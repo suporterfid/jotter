@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // Identifies one installation when several share a host (logs, doctor, support).
+    'instance_slug' => env('APP_INSTANCE_SLUG'),
+
     'seed' => [
         'tenant_name' => env('JOTTER_TENANT_NAME', 'Jotter'),
         'tenant_slug' => env('JOTTER_TENANT_SLUG', 'default'),

@@ -54,8 +54,8 @@ jobs:
         with:
           name: jotter-release
           path: |
-            dist/jotter-release.zip
-            dist/jotter-release.zip.sha256
+            dist/jotter-release-*.zip
+            dist/jotter-release-*.zip.sha256
 
       - name: Stop containers
         if: always()

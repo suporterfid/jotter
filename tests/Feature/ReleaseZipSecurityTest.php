@@ -12,7 +12,7 @@ class ReleaseZipSecurityTest extends TestCase
     public function test_release_zip_contains_no_secrets_or_private_keys(): void
     {
         $configuredPath = getenv('JOTTER_RELEASE_ZIP');
-        $path = $configuredPath ?: base_path('dist/jotter-release.zip');
+        $path = $configuredPath ?: $this->newestReleaseZip();
 
         if (! is_file($path)) {
             if (is_string($configuredPath) && $configuredPath !== '') {
@@ -58,6 +58,17 @@ class ReleaseZipSecurityTest extends TestCase
         $zip->close();
 
         $this->assertSame([], $violations, implode(PHP_EOL, $violations));
+    }
+
+    /**
+     * `jt release` writes dist/jotter-release-<version>.zip; pick the newest.
+     */
+    private function newestReleaseZip(): string
+    {
+        $candidates = glob(base_path('dist/jotter-release-*.zip')) ?: [];
+        usort($candidates, static fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
+
+        return $candidates[0] ?? base_path('dist/jotter-release.zip');
     }
 
     private function isForbiddenPath(string $name): bool

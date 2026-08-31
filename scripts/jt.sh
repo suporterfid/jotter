@@ -74,8 +74,9 @@ Verbs:
   artisan   Run an Artisan command
   composer  Run Composer
   npm       Run npm in frontend/
-  release         Build dist/jotter-release.zip and checksum
-  release:verify  Scan an existing release ZIP for secrets and private keys
+  release         Build dist/jotter-release-<version>.zip and checksum
+  release:verify  Scan a release ZIP for secrets and private keys (newest, or path arg)
+  release:doctor  Extract a release ZIP into dist/install-test and run jotter:doctor there
 EOF
 }
 
@@ -103,31 +104,129 @@ cmd_e2e() {
   compose --profile dev run --rm node npm run e2e -- "$@"
 }
 
+# Git tag when HEAD is exactly tagged, otherwise 0.0.0-<short sha>. Sanitized so
+# it is safe inside a file name.
+release_version() {
+  local version
+  version="$(git describe --tags --exact-match 2>/dev/null || true)"
+  if [[ -z "$version" ]]; then
+    version="0.0.0-$(git rev-parse --short HEAD)"
+  fi
+  printf '%s' "$version" | tr -c 'A-Za-z0-9._-' '-'
+}
+
+# Newest release ZIP in dist/, or the explicit path given as first argument.
+latest_release_zip() {
+  local explicit="${1:-}"
+  if [[ -n "$explicit" ]]; then
+    printf '%s' "$explicit"
+    return
+  fi
+  ls -t dist/jotter-release-*.zip 2>/dev/null | head -n 1 || true
+}
+
 cmd_release() {
   ensure_env
   mkdir -p dist
-  export GIT_SHA="$(git rev-parse --short HEAD)"
-  export BUILD_TIME="$(date -u +'%Y-%m-%d %H:%M')"
+  export RELEASE_VERSION="$(release_version)"
+  local zip_name="jotter-release-${RELEASE_VERSION}.zip"
+  rm -f "dist/${zip_name}" "dist/${zip_name}.sha256"
   compose --profile tools run --rm --build release
-  test -s dist/jotter-release.zip
-  test -s dist/jotter-release.zip.sha256
-  (cd dist && sha256sum -c jotter-release.zip.sha256)
-  echo "Release written to dist/jotter-release.zip (version: ${GIT_SHA} · ${BUILD_TIME})"
+  test -s "dist/${zip_name}"
+  test -s "dist/${zip_name}.sha256"
+  (cd dist && sha256sum -c "${zip_name}.sha256")
+  echo "Release written to dist/${zip_name} (version: ${RELEASE_VERSION}, commit: $(git rev-parse --short HEAD))"
 }
 
 cmd_release_verify() {
-  local zip_path='dist/jotter-release.zip'
+  local zip_path
+  zip_path="$(latest_release_zip "${1:-}")"
 
-  if [[ ! -s "$zip_path" ]]; then
-    echo "Release zip is missing or empty: $zip_path. Run ./scripts/jt.sh release first." >&2
+  if [[ -z "$zip_path" || ! -s "$zip_path" ]]; then
+    echo "Release zip is missing or empty: ${zip_path:-dist/jotter-release-<version>.zip}. Run ./scripts/jt.sh release first." >&2
+    return 1
+  fi
+
+  case "$zip_path" in
+    dist/*) ;;
+    *) echo "Release zip must live under dist/ so the container can read it: $zip_path" >&2; return 1 ;;
+  esac
+
+  ensure_env
+  compose run --rm \
+    -e "JOTTER_RELEASE_ZIP=/var/www/html/${zip_path}" \
+    app php artisan test --filter=ReleaseZipSecurityTest
+  echo "Release ZIP security verification passed: ${zip_path}"
+}
+
+# Installs the ZIP the way a shared host would (fresh directory, its own .env,
+# its own vault outside public/) and runs the doctor inside that copy. Reuses the
+# dev MySQL database (schema state is only read); `schedule:run` is executed once
+# so the heartbeat check has something to report. Usage:
+#   ./scripts/jt.sh release:doctor [dist/jotter-release-<version>.zip] [--json]
+cmd_release_doctor() {
+  local zip_arg=''
+  if [[ "${1:-}" == *.zip ]]; then
+    zip_arg="$1"
+    shift
+  fi
+
+  local zip_path
+  zip_path="$(latest_release_zip "$zip_arg")"
+
+  if [[ -z "$zip_path" || ! -s "$zip_path" ]]; then
+    echo "Release zip is missing or empty. Run ./scripts/jt.sh release first." >&2
     return 1
   fi
 
   ensure_env
-  compose run --rm \
-    -e JOTTER_RELEASE_ZIP=/var/www/html/dist/jotter-release.zip \
-    app php artisan test --filter=ReleaseZipSecurityTest
-  echo "Release ZIP security verification passed."
+  local install_dir='dist/install-test'
+
+  # The dev compose service injects the repository .env into the container, and
+  # real environment variables win over a .env file. Override the values that
+  # must differ for the installation under test.
+  local -a overrides=(
+    APP_ENV=production
+    APP_DEBUG=false
+    APP_URL=https://install-test.example.invalid
+    APP_INSTANCE_SLUG=install-test
+    LOG_CHANNEL=single
+    CACHE_STORE=database
+    SESSION_DRIVER=database
+    QUEUE_CONNECTION=sync
+    MAIL_MAILER=log
+    "VAULT_BASE_PATH=/var/www/html/${install_dir}/vault"
+  )
+
+  # Staged on the host (dist/ is host-owned); copied into the extracted app by
+  # the container, which owns everything under install_dir.
+  {
+    grep -E '^(APP_KEY|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' .env
+    printf 'DB_CONNECTION=mysql\nDB_HOST=mysql\nDB_PORT=3306\n'
+    printf '%s\n' "${overrides[@]}"
+  } > "${install_dir}.env"
+
+  local -a env_flags=()
+  local override
+  for override in "${overrides[@]}"; do
+    env_flags+=(-e "$override")
+  done
+
+  # Extraction, .env placement, and cleanup all happen inside the container so
+  # file ownership never blocks a rerun from the host.
+  compose run --rm "${env_flags[@]}" \
+    -e "JOTTER_INSTALL_DIR=/var/www/html/${install_dir}" \
+    -e "JOTTER_INSTALL_ZIP=/var/www/html/${zip_path}" \
+    app sh -c '
+      set -e
+      rm -rf "$JOTTER_INSTALL_DIR"
+      mkdir -p "$JOTTER_INSTALL_DIR/vault"
+      unzip -q "$JOTTER_INSTALL_ZIP" -d "$JOTTER_INSTALL_DIR"
+      cp "$JOTTER_INSTALL_DIR.env" "$JOTTER_INSTALL_DIR/app/.env"
+      cd "$JOTTER_INSTALL_DIR/app"
+      php artisan schedule:run --no-ansi >/dev/null
+      php artisan jotter:doctor "$@"
+    ' sh "$@"
 }
 
 main() {
@@ -143,7 +242,8 @@ main() {
     composer) ensure_env; compose run --rm --no-deps app composer "$@" ;;
     npm) ensure_env; compose --profile dev run --rm --no-deps node npm "$@" ;;
     release) cmd_release ;;
-    release:verify) cmd_release_verify ;;
+    release:verify) cmd_release_verify "$@" ;;
+    release:doctor) cmd_release_doctor "$@" ;;
     help|-h|--help) usage ;;
     *) echo "Unknown verb: $verb" >&2; usage >&2; return 1 ;;
   esac

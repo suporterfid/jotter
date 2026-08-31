@@ -135,7 +135,7 @@ Jotter Docker toolchain
 
 Usage: .\scripts\jt.ps1 <verb> [args...]
 
-Verbs: up, down, test, e2e, artisan, composer, npm, release, release:verify
+Verbs: up, down, test, e2e, artisan, composer, npm, release, release:verify, release:doctor
 '@ | Write-Output
 }
 
@@ -192,10 +192,18 @@ switch ($Verb) {
     'release' {
         Initialize-Env
         New-Item -ItemType Directory -Force -Path 'dist' | Out-Null
+
+        # Git tag when HEAD is exactly tagged, otherwise 0.0.0-<short sha>.
+        $version = (& git describe --tags --exact-match 2>$null)
+        if (-not $version) { $version = "0.0.0-$(& git rev-parse --short HEAD)" }
+        $version = ($version -replace '[^A-Za-z0-9._-]', '-')
+        $env:RELEASE_VERSION = $version
+
+        $zipPath = "dist/jotter-release-$version.zip"
+        $checksumPath = "$zipPath.sha256"
+        Remove-Item -Force -ErrorAction SilentlyContinue $zipPath, $checksumPath
         Invoke-Compose -Arguments @('--profile', 'tools', 'run', '--rm', '--build', 'release')
 
-        $zipPath = 'dist/jotter-release.zip'
-        $checksumPath = 'dist/jotter-release.zip.sha256'
         if (-not (Test-Path $zipPath) -or -not (Test-Path $checksumPath)) {
             throw 'Release zip or checksum was not produced.'
         }
@@ -205,10 +213,14 @@ switch ($Verb) {
         if ($actual -ne $expected.ToLowerInvariant()) {
             throw 'Release checksum validation failed.'
         }
-        Write-Output 'Release written to dist/jotter-release.zip'
+        Write-Output "Release written to $zipPath (version: $version)"
     }
     'release:verify' {
-        $zipPath = 'dist/jotter-release.zip'
+        $zipPath = if ($VerbArgs.Count -gt 0) { $VerbArgs[0] } else {
+            $newest = Get-ChildItem -Path 'dist' -Filter 'jotter-release-*.zip' -File -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if ($newest) { "dist/$($newest.Name)" } else { 'dist/jotter-release-<version>.zip' }
+        }
         if (-not (Test-Path $zipPath -PathType Leaf) -or (Get-Item $zipPath).Length -eq 0) {
             throw "Release zip is missing or empty: $zipPath. Run .\scripts\jt.ps1 release first."
         }
@@ -216,10 +228,66 @@ switch ($Verb) {
         Initialize-Env
         Invoke-Compose -Arguments @(
             'run', '--rm',
-            '-e', 'JOTTER_RELEASE_ZIP=/var/www/html/dist/jotter-release.zip',
+            '-e', "JOTTER_RELEASE_ZIP=/var/www/html/$($zipPath -replace '\\', '/')",
             'app', 'php', 'artisan', 'test', '--filter=ReleaseZipSecurityTest'
         )
-        Write-Output 'Release ZIP security verification passed.'
+        Write-Output "Release ZIP security verification passed: $zipPath"
+    }
+    'release:doctor' {
+        # Extract the newest (or given) release ZIP into dist/install-test and run
+        # jotter:doctor inside that copy against the dev database. Mirrors jt.sh.
+        $doctorArgs = @($VerbArgs)
+        $zipPath = $null
+        if ($doctorArgs.Count -gt 0 -and $doctorArgs[0] -like '*.zip') {
+            $zipPath = $doctorArgs[0]
+            $doctorArgs = if ($doctorArgs.Count -gt 1) { $doctorArgs[1..($doctorArgs.Count - 1)] } else { @() }
+        }
+        if (-not $zipPath) {
+            $newest = Get-ChildItem -Path 'dist' -Filter 'jotter-release-*.zip' -File -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if (-not $newest) { throw 'Release zip is missing. Run .\scripts\jt.ps1 release first.' }
+            $zipPath = "dist/$($newest.Name)"
+        }
+
+        Initialize-Env
+        $installDir = 'dist/install-test'
+
+        $overrides = @(
+            'APP_ENV=production',
+            'APP_DEBUG=false',
+            'APP_URL=https://install-test.example.invalid',
+            'APP_INSTANCE_SLUG=install-test',
+            'LOG_CHANNEL=single',
+            'CACHE_STORE=database',
+            'SESSION_DRIVER=database',
+            'QUEUE_CONNECTION=sync',
+            'MAIL_MAILER=log',
+            "VAULT_BASE_PATH=/var/www/html/$installDir/vault"
+        )
+        $envLines = @(Get-Content '.env' | Where-Object { $_ -match '^(APP_KEY|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' })
+        $envLines += @('DB_CONNECTION=mysql', 'DB_HOST=mysql', 'DB_PORT=3306') + $overrides
+        Set-Content -Path "$installDir.env" -Value $envLines -NoNewline:$false
+
+        # Extraction, .env placement, and cleanup happen inside the container so
+        # file ownership never blocks a rerun from the host.
+        $script = @'
+set -e
+rm -rf "$JOTTER_INSTALL_DIR"
+mkdir -p "$JOTTER_INSTALL_DIR/vault"
+unzip -q "$JOTTER_INSTALL_ZIP" -d "$JOTTER_INSTALL_DIR"
+cp "$JOTTER_INSTALL_DIR.env" "$JOTTER_INSTALL_DIR/app/.env"
+cd "$JOTTER_INSTALL_DIR/app"
+php artisan schedule:run --no-ansi >/dev/null
+php artisan jotter:doctor "$@"
+'@
+        $composeArgs = @('run', '--rm')
+        foreach ($override in $overrides) { $composeArgs += @('-e', $override) }
+        $composeArgs += @(
+            '-e', "JOTTER_INSTALL_DIR=/var/www/html/$installDir",
+            '-e', "JOTTER_INSTALL_ZIP=/var/www/html/$($zipPath -replace '\\', '/')",
+            'app', 'sh', '-c', $script, 'sh'
+        ) + $doctorArgs
+        Invoke-Compose -Arguments $composeArgs
     }
     { $_ -in @('help', '-h', '--help') } { Show-Usage }
     default { Write-Error "Unknown verb: $Verb"; Show-Usage; exit 1 }
