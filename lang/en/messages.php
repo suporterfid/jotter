@@ -49,4 +49,6 @@ return [
     'notification_email_unsubscribe' => 'Change or unsubscribe from these notifications',
     'notification_email_preferences' => 'Manage notification preferences',
     'notification_type_unsupported' => 'Unsupported notification type.',
+    'plan_read_only' => 'This workspace is read-only: the plan for this account does not allow changes right now. Reading, search, and exports remain available.',
+    'plan_seat_limit_reached' => 'Seat limit reached: this plan allows :seats member(s). Remove a member or upgrade the plan.',
 ];

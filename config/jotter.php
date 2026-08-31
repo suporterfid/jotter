@@ -4,6 +4,17 @@ return [
     // Identifies one installation when several share a host (logs, doctor, support).
     'instance_slug' => env('APP_INSTANCE_SLUG'),
 
+    // Branding. Defaults reproduce the stock Jotter UI; a hosted operator (e.g.
+    // "Cadernia") overrides them by environment only. Empty strings mean unset.
+    'brand' => [
+        'name' => env('JOTTER_BRAND_NAME') ?: env('APP_NAME', 'Jotter'),
+        'logo_url' => env('JOTTER_BRAND_LOGO_URL') ?: null,
+        'support_url' => env('JOTTER_BRAND_SUPPORT_URL') ?: null,
+        'terms_url' => env('JOTTER_BRAND_TERMS_URL') ?: null,
+        'privacy_url' => env('JOTTER_BRAND_PRIVACY_URL') ?: null,
+        'powered_by' => (bool) env('JOTTER_BRAND_POWERED_BY', true),
+    ],
+
     'seed' => [
         'tenant_name' => env('JOTTER_TENANT_NAME', 'Jotter'),
         'tenant_slug' => env('JOTTER_TENANT_SLUG', 'default'),

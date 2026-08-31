@@ -1,3 +1,12 @@
+@php
+    $brand = \App\Support\Branding::configured();
+    $brandLinks = array_filter([
+        'terms' => $brand->termsUrl,
+        'privacy' => $brand->privacyUrl,
+        'support' => $brand->supportUrl,
+    ]);
+    $brandLinkLabels = $brandLinkLabels ?? ['terms' => 'Terms', 'privacy' => 'Privacy', 'support' => 'Support'];
+@endphp
 <!DOCTYPE html>
 <html lang="{{ $locale }}" dir="{{ $direction }}">
 <head>
@@ -26,5 +35,15 @@
             {!! $html !!}
         </article>
     </main>
+    @if ($brandLinks !== [] || $brand->poweredBy)
+    <footer class="publish-footer" data-brand="{{ $brand->name }}">
+        @foreach ($brandLinks as $key => $href)
+            <a href="{{ $href }}" rel="noopener">{{ $brandLinkLabels[$key] ?? ucfirst($key) }}</a>
+        @endforeach
+        @if ($brand->poweredBy)
+            <a class="publish-powered-by" href="{{ \App\Support\Branding::REPOSITORY_URL }}" rel="noopener">Powered by Jotter</a>
+        @endif
+    </footer>
+    @endif
 </body>
 </html>

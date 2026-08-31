@@ -49,4 +49,6 @@ return [
     'notification_email_unsubscribe' => 'Alterar ou cancelar estas notificações',
     'notification_email_preferences' => 'Gerenciar preferências de notificações',
     'notification_type_unsupported' => 'Tipo de notificação não suportado.',
+    'plan_read_only' => 'Este espaço está somente leitura: o plano desta conta não permite alterações no momento. Leitura, busca e exportações continuam disponíveis.',
+    'plan_seat_limit_reached' => 'Limite de assentos atingido: este plano permite :seats membro(s). Remova um membro ou atualize o plano.',
 ];

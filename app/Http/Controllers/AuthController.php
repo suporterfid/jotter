@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Vault\ExternalEmbedPolicy;
+use App\Support\Branding;
 use App\Support\ReleaseVersion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -75,6 +76,7 @@ final class AuthController extends Controller
                 'sso_login_url' => $ssoLoginUrl,
                 'version' => ReleaseVersion::current(),
                 'external_embed_domains' => ExternalEmbedPolicy::configured()->allowedHosts(),
+                'brand' => Branding::configured()->toArray(),
             ],
         ]);
     }

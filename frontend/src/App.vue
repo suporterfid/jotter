@@ -76,6 +76,7 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
+      <PlanBanner :plan="activeTenantPlan" />
       <!-- Graph View Mode -->
       <GraphView
         v-if="isGraphViewActive"
@@ -405,6 +406,8 @@ import { APP_VERSION } from './version'
 import { resolveWikilinkTarget } from './services/wikilinks'
 import { useSplitPanes, type PaneId } from './composables/useSplitPanes'
 import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
+import { brand, setBrand } from './services/brand'
+import PlanBanner from './components/PlanBanner.vue'
 
 const { t } = useI18n()
 
@@ -412,6 +415,7 @@ const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
 const tenants = ref<Tenant[]>([])
 const activeTenantId = ref<number | null>(null)
+const activeTenantPlan = computed(() => tenants.value.find((tenant) => tenant.id === activeTenantId.value)?.plan ?? null)
 const notes = ref<NoteMeta[]>([])
 const folderPositions = ref<FolderPosition[]>([])
 const { layout: splitLayout, loadLayout, saveLayout, openNote, closeNote, splitWithNote, mergeSecondary } = useSplitPanes()
@@ -610,9 +614,12 @@ onMounted(async () => {
     backendVersion.value = config.version
     authProvider.value = config.provider
     setExternalEmbedAllowedHosts(config.external_embed_domains ?? [])
+    setBrand(config.brand)
   } catch {
     setExternalEmbedAllowedHosts([])
+    setBrand(null)
   }
+  if (typeof document !== 'undefined') document.title = brand.name
 
   await initWorkspace()
   openNotificationPreferencesFromUrl()

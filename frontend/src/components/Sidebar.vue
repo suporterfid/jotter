@@ -19,14 +19,8 @@
     <!-- Header -->
     <div class="sidebar-header">
       <div class="brand">
-        <svg class="brand-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        <span class="brand-title">Jotter</span>
+        <BrandMark :size="22" />
+        <span class="brand-title" data-testid="brand-title">{{ brand.name }}</span>
       </div>
       <TenantSwitcher
         v-if="(props.tenants ?? []).length > 1"
@@ -500,6 +494,7 @@
         (backend: {{ props.backendVersion }})
       </span>
     </div>
+    <BrandFooter />
   </aside>
 </template>
 
@@ -515,6 +510,9 @@ import ThemeToggle from './ThemeToggle.vue'
 import LocaleToggle from './LocaleToggle.vue'
 import WorkspaceSwitcher from './WorkspaceSwitcher.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
+import BrandMark from './BrandMark.vue'
+import BrandFooter from './BrandFooter.vue'
+import { brand } from '../services/brand'
 import { moveNote, reorderNoteTree } from '../services/api'
 import { createNoteTreeSortable, type NoteTreeSortableHandle } from '../composables/useNoteTreeSortable'
 import { useCollapsiblePanel } from '../composables/useCollapsiblePanel'
@@ -937,10 +935,6 @@ function handleImportSubmit() {
   color: var(--color-text);
   font-weight: 700;
   font-size: 1.125rem;
-}
-
-.brand-icon {
-  color: var(--color-action);
 }
 
 .header-actions {

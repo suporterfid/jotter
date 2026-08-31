@@ -10,6 +10,15 @@ class Tenant extends Model
     protected $fillable = [
         'slug',
         'name',
+        'plan_status',
+        'trial_ends_at',
+        'plan_name',
+        'plan_seats',
+    ];
+
+    protected $casts = [
+        'trial_ends_at' => 'immutable_datetime',
+        'plan_seats' => 'integer',
     ];
 
     public function workspaces(): HasMany

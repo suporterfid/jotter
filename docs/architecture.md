@@ -47,6 +47,41 @@ PR4 adds the MySQL FULLTEXT index and read-only search endpoint only. It does no
 
 For AI assistant integration, Jotter provides a Model Context Protocol server over HTTP JSON-RPC 2.0 (`POST /api/mcp`). Read-only tools (`list_notes`, `read_note`, `search_notes`, `get_backlinks`) are implemented with per-workspace authorization. Write tools are intentionally deferred and gated per security policy §8 S2 & S5. See [docs/mcp.md](mcp.md) for details.
 
+## Hosted mode
+
+Jotter (MIT) is one engine. Offering it as a hosted service — for example under
+the "Cadernia" brand — is configuration of that engine, never a fork
+(`docs/decisions.md`, "Single engine; hosting is configuration"). Every hosted
+feature has a default that leaves a self-hosted installation byte-for-byte
+unchanged, and none of it involves payment code: billing is external and the
+operator reflects it with an Artisan command.
+
+**Branding** (`config/jotter.php` → `brand`, env `JOTTER_BRAND_*`): name
+(defaults to `APP_NAME`), logo URL (empty = bundled mark from `assets/brand/`),
+support/terms/privacy URLs, and a `powered_by` flag (default `true`). The values
+are served by `GET /api/auth/config` (`data.brand`) and consumed by the SPA
+(tab title, sidebar header, login screen, footer links, "Powered by Jotter"), by
+the Laravel shell (`app.blade.php` title/OG tags), and by published static pages
+(`publish/page.blade.php` footer).
+
+**Plan** (`tenants.plan_status`, `trial_ends_at`, `plan_name`, `plan_seats`):
+`self_hosted` (default) disables every rule. `trial` writes until
+`trial_ends_at`; the SPA shows a discreet "Trial ends in N days" banner
+(`GET /api/tenants` → `plan`). An expired `trial`, `past_due`, or `read_only`
+tenant keeps login, reading, search, and ZIP/JSON/PDF export, while writes
+behind `workspace.write`, WebDAV `PUT`/`MKCOL`/`DELETE`, and import answer
+`402 Payment Required` with a localized message (`App\Domain\Plan\TenantPlan`).
+`plan_seats` refuses a membership for a new subject beyond the limit with 402;
+existing members can still change role. Group, ACL, review, and notification
+writes are metadata and stay outside the gate (see `BACKLOG.md`).
+
+**Operations**: `tenant:plan {slug} --status= --trial-days= --seats= --name=`
+and `tenant:show {slug}` (both `--json`) are the only way plan state changes;
+each change is an `audit_log` row (`tenant.plan_changed`). The scheduled
+`tenant:expire-trials` (daily, via the single `schedule:run` cron) moves overdue
+trials to `read_only` and records `tenant.trial_expired`. Blocked writes and
+refused seats are audited as `plan.write_blocked` / `plan.seat_limit_reached`.
+
 ## Visual Identity
 
 The user interface follows the shared visual identity specification, documented in [docs/visual-identity.md](visual-identity.md) and asset inventory in `assets/brand/`.

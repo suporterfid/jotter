@@ -43,5 +43,10 @@ enum AuditEvent: string
     case NOTE_REVIEW_CHANGES_REQUESTED = 'note.review_changes_requested';
     case NOTE_REVIEW_INVALIDATED = 'note.review_invalidated';
 
+    case TENANT_PLAN_CHANGED = 'tenant.plan_changed';
+    case TENANT_TRIAL_EXPIRED = 'tenant.trial_expired';
+    case PLAN_WRITE_BLOCKED = 'plan.write_blocked';
+    case PLAN_SEAT_LIMIT_REACHED = 'plan.seat_limit_reached';
+
     case SYSTEM_AUDIT_PRUNED = 'system.audit_pruned';
 }

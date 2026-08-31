@@ -6,11 +6,12 @@ use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
+use App\Domain\Plan\TenantPlan;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\VaultPathGuard;
 use App\Domain\Vault\VaultStorage;
-use App\Models\Workspace;
 use App\Models\Note;
+use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,6 +24,7 @@ final class WebDavController extends Controller
         private readonly VaultStorage $storage,
         private readonly NoteAccess $noteAccess,
         private readonly AuditRecorder $auditRecorder = new AuditRecorder,
+        private readonly TenantPlan $tenantPlan = new TenantPlan,
     ) {}
 
     public function handle(Request $request, int $workspaceId, ?string $path = null): Response|JsonResponse
@@ -57,6 +59,12 @@ final class WebDavController extends Controller
             );
 
             return response()->json(['message' => __('messages.forbidden')], 403);
+        }
+
+        if (in_array($method, ['PUT', 'MKCOL', 'DELETE'], true)
+            && $workspace->tenant !== null
+            && ! $this->tenantPlan->allowsWrites($workspace->tenant)) {
+            return $this->tenantPlan->denyWrite($workspace->tenant, $request, $workspace->id, $subject->subjectId);
         }
 
         $targetPath = trim($path ?? '', '/');

@@ -1,9 +1,21 @@
 export default {
+  brand: {
+    footerLabel: 'Sobre este serviço',
+    terms: 'Termos',
+    privacy: 'Privacidade',
+    support: 'Suporte',
+    poweredBy: 'Powered by Jotter',
+  },
+  plan: {
+    trialEndsIn: 'O período de teste termina em {days} dias',
+    trialEndsToday: 'O período de teste termina hoje',
+    readOnly: 'Esta conta está somente leitura. Você pode continuar lendo, buscando e exportando, mas as alterações estão pausadas.',
+  },
   nav: {
     settings: 'Configurações',
   },
   login: {
-    heading: 'Entrar no Jotter',
+    heading: 'Entrar no {name}',
     subtitle: 'Digite suas credenciais de administrador para acessar seu cofre de notas.',
     ssoButton: 'Entrar com GrandpaSSOn',
     ssoGenericButton: 'Entrar com SSO',

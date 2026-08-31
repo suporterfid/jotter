@@ -3,14 +3,8 @@
     <div class="login-card">
       <div class="login-header">
         <div class="login-brand">
-          <svg class="brand-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
-          <h2>{{ t('login.heading') }}</h2>
+          <BrandMark :size="28" />
+          <h2 data-testid="login-heading">{{ t('login.heading', { name: brand.name }) }}</h2>
         </div>
         <p class="login-subtitle">{{ t('login.subtitle') }}</p>
       </div>
@@ -63,6 +57,7 @@
           <span v-else>{{ t('login.signIn') }}</span>
         </button>
       </form>
+      <BrandFooter />
     </div>
   </div>
 </template>
@@ -71,6 +66,9 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { login, getAuthConfig } from '../services/api'
+import { brand, setBrand } from '../services/brand'
+import BrandMark from './BrandMark.vue'
+import BrandFooter from './BrandFooter.vue'
 import type { AuthConfig } from '../services/api'
 import type { AuthUser } from '../services/types'
 
@@ -99,6 +97,7 @@ watch(
       const config = await getAuthConfig()
       ssoLoginUrl.value = config.sso_login_url
       authProvider.value = config.provider
+      if (config.brand) setBrand(config.brand)
     } catch (err) {
       console.error('Failed to load auth config:', err)
     }

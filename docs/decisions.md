@@ -169,3 +169,26 @@ This boundary preserves the Markdown-on-disk source of truth and shared-hosting 
 This decision resolves the semantics required before implementing #359. A future decision may add publication gating or a stronger deployment-level lock, but that would supersede this entry and require a separate issue.
 
 ---
+
+## Decision — Single engine; hosting is configuration, not a fork (feat/brand-and-plan)
+
+**Decided 2026-08-31:** Jotter is offered both as MIT self-hosted software and as a hosted service ("Cadernia"). Both run the same engine from the same repository. Branding and commercial plan state are configuration and data of that engine, with defaults that leave a self-hosted installation unchanged.
+
+### Selected contract
+
+- Branding is environment configuration (`JOTTER_BRAND_NAME`, `JOTTER_BRAND_LOGO_URL`, `JOTTER_BRAND_SUPPORT_URL`, `JOTTER_BRAND_TERMS_URL`, `JOTTER_BRAND_PRIVACY_URL`, `JOTTER_BRAND_POWERED_BY`) exposed through `GET /api/auth/config`. Defaults reproduce the stock identity; `powered_by` defaults to `true` and links to the repository.
+- Plan state lives on `tenants` (`plan_status`, `trial_ends_at`, `plan_name`, `plan_seats`) with `self_hosted` as the default that disables every rule. Restrictions are read-only gates (402) on writes; reading, search, export, and login are never restricted.
+- Plan state changes only through operator commands (`tenant:plan`, `tenant:show`) and one scheduled transition (`tenant:expire-trials`). Every change is audited.
+- No payment, checkout, invoice, or billing-provider code enters the repository. Billing is external; the operator mirrors its outcome with `tenant:plan`.
+- No hosted-only branch, build flag, or fork. Any hosted feature must ship with a default that keeps self-hosting identical and must be usable by any self-hoster who wants it.
+
+### Options considered
+
+- Fork or private downstream branch for the hosted product: rejected — divergence tax, duplicated security fixes, and the MIT engine would stop being the product actually run.
+- Build-time white-label (compile-time constants): rejected — one artifact must install for both audiences (`jt release` is shared), and per-client configuration is already the deployment model.
+- Payment integration inside the engine: rejected — it would force billing-provider dependencies and secrets on every self-hoster; a status field the operator sets is sufficient and auditable.
+- Runtime configuration with `self_hosted` default: selected.
+
+This entry governs future hosted-mode work; a decision that introduces billing code or a hosted-only fork would have to supersede it explicitly.
+
+---

@@ -2,6 +2,15 @@
 
 All notable changes to Jotter will be documented here. Decision records live in `docs/decisions.md`; security-audit findings live in `docs/security-audit-2026.md`; visual-identity rollout tracking lives in `docs/visual-identity.md`. Split from a single overloaded `BACKLOG.md` in #208.
 
+## v1 (post-v0) — 2026-08-31: Branding by environment and hosted-mode plan/trial
+
+Jotter (MIT) is also offered as the hosted service "Cadernia". Both are the same engine: branding and plan state are configuration with self-hosting-neutral defaults (`docs/decisions.md`, "Single engine; hosting is configuration"). Zero change with defaults; no payment code (`feat/brand-and-plan`).
+
+- **Branding.** `JOTTER_BRAND_NAME` (default `APP_NAME`), `JOTTER_BRAND_LOGO_URL`, `JOTTER_BRAND_SUPPORT_URL`, `JOTTER_BRAND_TERMS_URL`, `JOTTER_BRAND_PRIVACY_URL`, `JOTTER_BRAND_POWERED_BY` (default `true`) in `config/jotter.php`/`.env.example`, exposed as `data.brand` on `GET /api/auth/config`. The SPA uses them for the tab title, sidebar header (`BrandMark`), login heading, footer links and "Powered by Jotter" (`BrandFooter`); `app.blade.php` for `<title>`/OG; published pages get a footer with the links and the powered-by credit.
+- **Plan and trial.** `tenants.plan_status` (`self_hosted` default, `trial`, `active`, `past_due`, `read_only`), `trial_ends_at`, `plan_name`, `plan_seats`. `GET /api/tenants` returns a `plan` payload; the SPA shows "Trial ends in N days" (en/pt-BR) and a read-only notice. Expired trial, `past_due`, and `read_only` block writes behind `workspace.write`, WebDAV `PUT`/`MKCOL`/`DELETE`, and import with 402 + localized message while reading, search, ZIP/JSON/PDF export, and login keep working. `plan_seats` refuses a membership for a new subject beyond the limit (402). Audited as `plan.write_blocked` / `plan.seat_limit_reached`.
+- **Operator commands.** `tenant:plan {slug} --status= --trial-days= --seats= --name= [--json]` (audited as `tenant.plan_changed`) and `tenant:show {slug} [--json]`. Scheduled `tenant:expire-trials` (daily 03:00 via `schedule:run`) moves overdue trials to `read_only` and records `tenant.trial_expired`.
+- **Tests.** `BrandingTest`, `TenantPlanEnforcementTest`, `TenantPlanCommandsTest`, scheduler registration; Vitest `Brand.spec.ts`, `PlanBanner.spec.ts`.
+
 ## v1 (post-v0) — 2026-08-31: Multi-instance release and installation doctor
 
 Shared-hosting production means one installation per client on its own subdomain, no daemon, and a single cron per installation. This entry makes the release ZIP install predictably N times on one host and lets each installation diagnose itself (`feat/multi-instance-release`).
