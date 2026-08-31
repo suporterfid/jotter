@@ -18,8 +18,7 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts
 
 FROM node:22-bookworm-slim AS frontend
 
-ARG GIT_SHA=dev
-ARG BUILD_TIME=unknown
+ARG RELEASE_VERSION=0.0.0-dev
 
 WORKDIR /app/frontend
 
@@ -27,13 +26,14 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 COPY frontend/ ./
-ENV VITE_APP_VERSION="${GIT_SHA} · ${BUILD_TIME}"
+ENV VITE_APP_VERSION="${RELEASE_VERSION}"
 RUN npm run build
 
 FROM alpine:3.21 AS release
 
-ARG GIT_SHA=dev
-ARG BUILD_TIME=unknown
+# Git tag when HEAD is tagged, otherwise 0.0.0-<short sha>. Written to VERSION
+# inside the artifact and exposed by GET /api/auth/config and GET /api/health.
+ARG RELEASE_VERSION=0.0.0-dev
 
 RUN apk add --no-cache zip
 
@@ -45,7 +45,7 @@ COPY --from=frontend /app/public/manifest.webmanifest /release/app/public/manife
 COPY --from=frontend /app/public/offline.html /release/app/public/offline.html
 COPY --from=frontend /app/public/service-worker.js /release/app/public/service-worker.js
 
-RUN echo "${GIT_SHA} · ${BUILD_TIME}" > /release/app/VERSION
+RUN printf '%s\n' "${RELEASE_VERSION}" > /release/app/VERSION
 
 RUN cd /release/app \
     && rm -rf \
@@ -84,12 +84,12 @@ RUN cd /release/app \
     && find storage bootstrap/cache -type d -exec chmod 775 {} \;
 
 RUN cd /release \
-    && zip -q -r /jotter-release.zip app \
+    && zip -q -r "/jotter-release-${RELEASE_VERSION}.zip" app \
     && cd / \
-    && sha256sum jotter-release.zip > jotter-release.zip.sha256
+    && sha256sum "jotter-release-${RELEASE_VERSION}.zip" > "jotter-release-${RELEASE_VERSION}.zip.sha256"
 
 FROM scratch AS export
 
 COPY --from=release /release/app /app
-COPY --from=release /jotter-release.zip /jotter-release.zip
-COPY --from=release /jotter-release.zip.sha256 /jotter-release.zip.sha256
+COPY --from=release /jotter-release-*.zip /
+COPY --from=release /jotter-release-*.zip.sha256 /

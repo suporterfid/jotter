@@ -100,6 +100,16 @@ This file previously ended at the 2026-08-05 formatting toolbar while 65 commits
 
 ---
 
+## 1.2 Delivered 2026-08-31 — multi-instance release + doctor
+
+- **Versioned release ZIP.** `jt release` writes `dist/jotter-release-<version>.zip` (+ `.sha256`) with `<version>` from the exact git tag or `0.0.0-<sha>`, and stores the same string in `VERSION` (exposed by `/api/auth/config` and `/api/health`). `jt release:verify` resolves the newest ZIP or a path argument.
+- **`jotter:doctor`.** Installation self-diagnosis (human and `--json`), exit 1 on critical failures. `jt release:doctor` rehearses an install from the ZIP inside the dev container.
+- **`GET /api/health`.** Public liveness probe: `{status, version, scheduler_last_run_at}`, 503 without MySQL, no sensitive data.
+- **Scheduler completeness.** All periodic jobs registered in `routes/console.php` for one `schedule:run` cron per installation; new `notifications:process-deliveries` executes deliveries the `JobDispatcher` only recorded; `vault:reindex --all`.
+- **`APP_INSTANCE_SLUG`** in `.env.example`, log context, and the doctor. `docs/deployment.md` documents the per-client folder layout on a shared host.
+
+---
+
 ## 2. Position against the product roadmap
 
 `docs/20260727-jotter-roadmap-ai-agent.md` ranks twelve near-term priorities. **Five of its top six already ship here** — search, nested folders, tags, backlinks, and attachments. Its gap analysis says otherwise because its baseline describes a different product (offline-first, Material You, realtime collaboration); spec §14.1 records this and §14.3 carries the authoritative delivered-state table.

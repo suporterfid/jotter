@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -43,5 +44,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         \App\Models\Workspace::observe(\App\Observers\WorkspaceObserver::class);
+
+        // Several installations may share one host; stamp every log line with the
+        // installation slug so they can be told apart when logs are aggregated.
+        $instance = config('jotter.instance_slug');
+        if (is_string($instance) && trim($instance) !== '') {
+            Log::shareContext(['instance' => trim($instance)]);
+        }
     }
 }

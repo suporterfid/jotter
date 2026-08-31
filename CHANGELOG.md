@@ -2,6 +2,18 @@
 
 All notable changes to Jotter will be documented here. Decision records live in `docs/decisions.md`; security-audit findings live in `docs/security-audit-2026.md`; visual-identity rollout tracking lives in `docs/visual-identity.md`. Split from a single overloaded `BACKLOG.md` in #208.
 
+## v1 (post-v0) — 2026-08-31: Multi-instance release and installation doctor
+
+Shared-hosting production means one installation per client on its own subdomain, no daemon, and a single cron per installation. This entry makes the release ZIP install predictably N times on one host and lets each installation diagnose itself (`feat/multi-instance-release`).
+
+- **Versioned artifact.** `jt release` resolves the version from the exact git tag or `0.0.0-<short sha>`, writes it to `VERSION` inside the ZIP, and names the artifact `dist/jotter-release-<version>.zip` with a matching `.sha256`. `GET /api/auth/config` exposes it as `data.version`; `jt release:verify` accepts the newest ZIP or an explicit path; CI uploads the glob.
+- **`php artisan jotter:doctor`** (`--json` for machines, exit code 1 on any critical failure). Checks PHP version and required/recommended extensions, `APP_KEY`, `APP_ENV`, `APP_DEBUG`, `APP_URL` HTTPS, `storage/` and `bootstrap/cache` writability, `VAULT_BASE_PATH` existence/writability/location outside the document root, vault free disk space, database connectivity, pending migrations, `MAIL_MAILER`, `APP_INSTANCE_SLUG`, and the scheduler heartbeat (last `schedule:run` within 5 minutes). Logic lives in `App\Domain\Health\InstanceDoctor`.
+- **`GET /api/health`** — unauthenticated `{status, version, scheduler_last_run_at}`, 503 when MySQL does not answer, registered outside the `api` middleware group so session/cache/throttle failures cannot turn a 503 into a 500. Exposes no slug, path, hostname, or configuration.
+- **Scheduler is the only executor.** `routes/console.php` registers every periodic job (`notifications:send-digest`, new `notifications:process-deliveries`, `pdf:process-exports`, `analytics:rollup`, `vault:reindex --all`, `vault:purge-trash`, `vault:prune-revisions`, `audit:prune`, plus a heartbeat) for the one-line `schedule:run` cron, with cache-lock overlap protection and no `runInBackground()`. `notifications:process-deliveries` closes a real gap: `LocalJobDispatcher` only logged `SendNotificationEmail`, so pending deliveries were never sent without a queue worker. `vault:reindex` gained `--all`.
+- **`APP_INSTANCE_SLUG`** identifies an installation; it is shared into every log line's context and printed by the doctor. `.env.example` now documents every production-required variable.
+- **Rehearsal verb.** `jt release:doctor` extracts the newest ZIP into `dist/install-test/`, writes an isolated `.env`, runs `schedule:run` once, and runs the doctor inside the extracted copy (both `jt.sh` and `jt.ps1`).
+- **Docs and tests.** `docs/deployment.md` gains "Multiple instances on one shared host", the health endpoint contract, and the scheduled-jobs table; feature tests cover the doctor (ok, failure, severities, JSON), `/api/health` (200/503/no leaks), scheduler registration and heartbeat, and the deliveries command.
+
 ## v1 (post-v0) — 2026-07-29: UI audit follow-through
 
 `BACKLOG.md`'s Milestone checkmarks tracked backend/API delivery, not UI delivery — a 2026-07-29 audit of the SPA against the roadmap found 14 backend-complete features with no frontend surface. All 14 gaps (#156–#169) plus a follow-up (#197) are closed:

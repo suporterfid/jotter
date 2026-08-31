@@ -14,7 +14,22 @@ On PowerShell:
 .\scripts\jt.ps1 release:verify
 ```
 
-The release command writes `dist/jotter-release.zip` and `dist/jotter-release.zip.sha256`. The verification command must pass before the ZIP is deployed or shared.
+The release command writes `dist/jotter-release-<version>.zip` and
+`dist/jotter-release-<version>.zip.sha256`, where `<version>` is the git tag when
+`HEAD` is exactly tagged (for example `v1.4.0`) and `0.0.0-<short sha>` otherwise.
+The same string is written to `VERSION` inside the artifact and reported by
+`GET /api/auth/config` (`data.version`), `GET /api/health` (`version`), and
+`php artisan jotter:doctor`. The verification command scans the newest ZIP in
+`dist/` (or an explicit path: `./scripts/jt.sh release:verify dist/jotter-release-v1.4.0.zip`)
+and must pass before the ZIP is deployed or shared.
+
+To rehearse an installation before touching a host, extract the newest ZIP into
+`dist/install-test/` and run the doctor inside that copy against the dev database:
+
+```sh
+./scripts/jt.sh release:doctor          # human-readable
+./scripts/jt.sh release:doctor --json   # machine-readable
+```
 
 ## Deploy
 
@@ -25,6 +40,105 @@ The release command writes `dist/jotter-release.zip` and `dist/jotter-release.zi
 5. Ensure `storage/` and `bootstrap/cache/` are writable by PHP.
 6. Run `php artisan migrate --force` using the host's PHP 8.2+ CLI facility.
 7. Keep debug mode off and use HTTPS.
+8. Add the single cron entry described under [Scheduled jobs](#scheduled-jobs-one-cron-entry-per-installation).
+9. Run `php artisan jotter:doctor` and fix every `[FAIL]` before handing the installation over.
+
+## Multiple instances on one shared host
+
+One release ZIP installs any number of times on the same Hostinger account: one
+directory per client, one subdomain per client, one database (or one `DB_PREFIX`)
+per client, one vault directory per client, and one cron entry per client. Nothing
+is shared between installations except the PHP runtime.
+
+Recommended layout for a client with slug `acme` served at `acme.example.com`:
+
+```text
+domains/acme.example.com/public_html/acme/   ← extracted `app/` contents (this is the Laravel root)
+    .env                                     ← this installation's values only
+    artisan
+    public/                                  ← the subdomain's document root points HERE
+    storage/, bootstrap/cache/               ← writable by PHP
+    VERSION                                  ← written by `jt release`
+~/vaults/acme/                               ← VAULT_BASE_PATH (outside every document root)
+~/pdf-exports/acme/                          ← JOTTER_PDF_STORAGE_PATH (optional, outside every document root)
+```
+
+Rules that keep installations predictable:
+
+- The document root of the subdomain must be `.../<slug>/public/`, never the
+  Laravel root and never a parent folder shared with another installation.
+- `VAULT_BASE_PATH` must be outside every document root and unique per slug. The
+  doctor fails the installation when the vault resolves inside `public/`.
+- `APP_INSTANCE_SLUG=<slug>` names the installation. It is added to every log line
+  (`context.instance`) and printed by the doctor; it is never exposed by
+  `GET /api/health`.
+- `APP_URL=https://<slug>.example.com`, `APP_ENV=production`, `APP_DEBUG=false`,
+  `SESSION_SECURE_COOKIE=true`, `CACHE_STORE=database`, `SESSION_DRIVER=database`.
+  `.env.example` marks every value a production installation must set.
+- Each installation gets its own `APP_KEY` (`php artisan key:generate --force`);
+  never copy a key between clients.
+
+Per-installation cron entry (adjust the PHP binary to the host's 8.2+ CLI):
+
+```cron
+* * * * * cd /home/<user>/domains/acme.example.com/public_html/acme && /usr/bin/php artisan schedule:run >> storage/logs/scheduler.log 2>&1
+```
+
+After extracting, migrating, and adding the cron entry, run the doctor:
+
+```sh
+cd /home/<user>/domains/acme.example.com/public_html/acme
+php artisan jotter:doctor           # exit code 1 while any critical check fails
+php artisan jotter:doctor --json    # for scripts and support tickets
+```
+
+The doctor verifies: PHP version and required extensions, `APP_KEY`, `APP_ENV`,
+`APP_DEBUG=false`, `APP_URL` on HTTPS, `storage/` and `bootstrap/cache` writable,
+`VAULT_BASE_PATH` existing, writable, and outside the document root, free disk
+space for the vault, database connectivity, pending migrations, `MAIL_MAILER`
+different from `log`, `APP_INSTANCE_SLUG`, and the scheduler heartbeat (a
+`schedule:run` within the last 5 minutes). `APP_DEBUG` and the HTTPS check are
+critical when `APP_ENV=production` and warnings otherwise; the mailer, recommended
+extensions, and instance slug are always warnings.
+
+## Health endpoint
+
+`GET /api/health` is unauthenticated and answers with exactly three fields:
+
+```json
+{"status": "ok", "version": "v1.4.0", "scheduler_last_run_at": "2026-08-31T10:00:00+00:00"}
+```
+
+It returns HTTP 503 with `status: "unavailable"` when the database does not answer.
+It deliberately exposes nothing sensitive: no instance slug, hostnames, paths,
+database names, PHP version, or configuration values. The route is registered
+outside the `api` middleware group so it can still answer 503 (instead of 500)
+when the session, cache, or throttle stores backed by MySQL are down. Point the
+host's uptime monitor at it and alert when `scheduler_last_run_at` is older than
+a few minutes.
+
+## Scheduled jobs (one cron entry per installation)
+
+All periodic work is registered in `routes/console.php` and executed by the single
+`php artisan schedule:run` cron entry above. No job needs a queue worker, daemon,
+or background process; every command is bounded and idempotent, and overlapping
+runs are prevented with cache locks (`CACHE_STORE=database`).
+
+| Job | Schedule | Purpose |
+| --- | --- | --- |
+| `jotter:scheduler-heartbeat` | every minute | Records the last `schedule:run` time read by the doctor and `/api/health`. |
+| `notifications:send-digest --limit=100` | every minute | Builds digest deliveries from unsent notifications. |
+| `notifications:process-deliveries --limit=50` | every minute | Sends pending notification e-mails. `JobDispatcher` only records `SendNotificationEmail` on shared hosting; this command is its executor. |
+| `pdf:process-exports` | every minute | Renders queued PDF exports (`GeneratePdfExport`) and removes expired artifacts. |
+| `analytics:rollup` | every 5 minutes | Advances the usage-analytics cursor over new audit rows. |
+| `vault:reindex --all` | hourly | Reconciles every workspace vault from disk into the MySQL projection. |
+| `vault:purge-trash` | daily 02:00 | Permanently deletes notes past the trash retention period. |
+| `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
+| `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
+
+Trial expiry is not scheduled because the product has no trial concept; add it to
+this table and to `routes/console.php` if one is introduced. The individual
+commands below remain available for one-off runs with different options.
 
 ## External content embeds
 
@@ -78,48 +192,40 @@ and does not require a queue worker, daemon, websocket, or long-running process.
 
 The artifact includes production `vendor/` dependencies and compiled `public/build/` assets. It excludes tests, frontend sources, container files, development tooling, and secrets.
 
-Schedule a bounded reconcile for each workspace vault (adjust the id and frequency to the host):
+One-off reconcile of a single workspace vault (the scheduler runs `--all` hourly):
 
 ```sh
 php artisan vault:reindex --workspace=1
 ```
 
-Schedule a bounded daily purge for notes that have exceeded the trash retention
-period (the default is 30 days; override it with `JOTTER_TRASH_RETENTION_DAYS`):
+Trash purge (scheduled daily; the default retention is 30 days via
+`JOTTER_TRASH_RETENTION_DAYS`). Use `--days=N` or `--batch=N` for a one-off
+retention or batch-size override:
 
 ```sh
 php artisan vault:purge-trash
 ```
 
-Use `--days=N` or `--batch=N` for a one-off retention or batch-size override.
-
-Schedule a daily audit log prune to enforce retention limits (adjust days as needed):
+Audit log prune (scheduled daily with `--days=90`):
 
 ```sh
 php artisan audit:prune --days=90
 ```
 
-Schedule a bounded daily prune for derived note revision snapshots. Revision
-history is stored in MySQL; the Markdown files in the vault are never removed
-by this command. The default retention window is 30 days and can be overridden
-per run with `--days=N`:
-
-```cron
-15 2 * * * cd /var/www/jotter && php artisan vault:prune-revisions --days=30 >> storage/logs/revision-prune.log 2>&1
-```
-
-Run it manually with a different window when needed:
+Revision snapshot prune (scheduled daily with `--days=30`). Revision history is
+stored in MySQL; the Markdown files in the vault are never removed by this
+command:
 
 ```sh
 php artisan vault:prune-revisions --days=90
 ```
 
-Schedule the bounded usage-analytics rollup after audit events are written. It
-advances an `audit_log` cursor in batches, is safe to rerun, and keeps the
-workspace rollups when `audit:prune` removes the source rows:
+Usage-analytics rollup (scheduled every 5 minutes). It advances an `audit_log`
+cursor in batches, is safe to rerun, and keeps the workspace rollups when
+`audit:prune` removes the source rows:
 
-```cron
-*/5 * * * * cd /var/www/jotter && php artisan analytics:rollup --batch=500 >> storage/logs/analytics-rollup.log 2>&1
+```sh
+php artisan analytics:rollup --batch=500
 ```
 
 The analytics API and dashboard read only the durable rollups; they do not
@@ -137,13 +243,15 @@ recorded activity such as edits and other audit events; it should not be read
 as “most viewed” unless read tracking has explicitly been enabled and the
 rollup command has processed those events.
 
-Schedule the notification digest every minute. The command is bounded by the
-per-recipient `--limit`, uses an idempotent delivery ledger, and is safe to run
-repeatedly. It dispatches mail work through `JobDispatcher`; it does not send
-SMTP mail inline in the cron process.
+The notification digest runs every minute from the scheduler. The command is
+bounded by the per-recipient `--limit`, uses an idempotent delivery ledger, and is
+safe to run repeatedly. It hands mail work to `JobDispatcher`; the scheduled
+`notifications:process-deliveries` command then sends the pending deliveries, so
+no SMTP mail is sent inline in a web request.
 
-```cron
-* * * * * cd /var/www/jotter && php artisan notifications:send-digest --limit=100 >> storage/logs/notification-digest.log 2>&1
+```sh
+php artisan notifications:send-digest --limit=100
+php artisan notifications:process-deliveries --limit=50
 ```
 
 Configure a Laravel mail transport for external delivery. With the default
@@ -181,11 +289,12 @@ JOTTER_PDF_RETENTION_HOURS=24
 JOTTER_PDF_PROCESS_BATCH=10
 ```
 
-Ensure PHP can create and remove files in that directory. Run the bounded worker
-from cron (or invoke the same command from the configured `JobDispatcher` worker):
+Ensure PHP can create and remove files in that directory. The scheduler runs the
+bounded worker every minute; invoke it manually with a different batch size when
+needed:
 
-```cron
-* * * * * cd /var/www/jotter && php artisan pdf:process-exports --limit=10 >> storage/logs/pdf-exports.log 2>&1
+```sh
+php artisan pdf:process-exports --limit=10
 ```
 
 `POST /api/workspaces/{workspace}/pdf-exports` snapshots only notes visible to

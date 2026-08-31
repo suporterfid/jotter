@@ -76,14 +76,13 @@ services:
       dockerfile: docker/release/Dockerfile
       target: release
       args:
-        GIT_SHA: ${GIT_SHA:-dev}
-        BUILD_TIME: ${BUILD_TIME:-unknown}
+        RELEASE_VERSION: ${RELEASE_VERSION:-0.0.0-dev}
     volumes:
       - ./dist:/dist
     command:
       - sh
       - -c
-      - cp /jotter-release.zip /jotter-release.zip.sha256 /dist/
+      - cp /jotter-release-*.zip /jotter-release-*.zip.sha256 /dist/
 
 volumes:
   mysql_data:
