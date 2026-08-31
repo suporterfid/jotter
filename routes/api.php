@@ -43,6 +43,9 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/admin/users/{user}/deactivate', [\App\Http\Controllers\AdminUserController::class, 'deactivate']);
     Route::post('/admin/users/{user}/reactivate', [\App\Http\Controllers\AdminUserController::class, 'reactivate']);
     Route::post('/admin/users/{user}/reset-password', [\App\Http\Controllers\AdminUserController::class, 'resetPassword']);
+    Route::get('/admin/machine-tokens', [\App\Http\Controllers\AdminMachineTokenController::class, 'index']);
+    Route::post('/admin/machine-tokens', [\App\Http\Controllers\AdminMachineTokenController::class, 'store']);
+    Route::delete('/admin/machine-tokens/{machineToken}', [\App\Http\Controllers\AdminMachineTokenController::class, 'destroy']);
     Route::get('/workspaces/{workspace}/llms.txt', [LlmsTxtController::class, 'workspaceLlmsTxt']);
     Route::match(['PROPFIND', 'GET', 'PUT', 'MKCOL', 'DELETE', 'OPTIONS'], '/webdav/{workspace}/{path?}', [WebDavController::class, 'handle'])->where('path', '.*');
     Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish'])->middleware('workspace.write');

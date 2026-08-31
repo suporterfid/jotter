@@ -399,14 +399,18 @@ export interface ImportResult {
   errors: string[]
 }
 
+export type ImportSource = 'generic' | 'obsidian' | 'notion'
+
 export async function importWorkspaceArchive(
   workspaceId: number,
   archive: File,
-  overwrite: boolean
+  overwrite: boolean,
+  source: ImportSource = 'generic'
 ): Promise<ImportResult> {
   const formData = new FormData()
   formData.append('archive', archive)
   formData.append('overwrite', overwrite ? '1' : '0')
+  formData.append('source', source)
 
   const response = await api.post<ImportResult>(`/workspaces/${workspaceId}/import`, formData, {
     headers: {

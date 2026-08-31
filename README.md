@@ -22,6 +22,47 @@ What ships on top of that today:
 
 See [STATUS.md](STATUS.md) for the authoritative current state and [BACKLOG.md](BACKLOG.md) for what is deferred.
 
+## Use with AI agents (MCP)
+
+Jotter is an MCP server: Claude Code, Cursor, Claude Desktop, and any other
+Model Context Protocol client can list, read, search, and follow backlinks
+across the workspaces a token is allowed to see — read-only, per-user
+authorization, every call audited.
+
+1. Administration → **MCP tokens** → issue a token (or `php artisan mcp:token you@example.com`).
+2. Paste the generated snippet, e.g. for Claude Code:
+
+   ```sh
+   claude mcp add --transport http jotter https://<host>/api/mcp \
+     --header "Authorization: Bearer jt_mkt_…"
+   ```
+
+3. Ask the assistant to "list my notes".
+
+Step-by-step for each client, `.mcp.json` / `.cursor/mcp.json` /
+`claude_desktop_config.json` blocks, and common errors:
+[docs/mcp-clients.md](docs/mcp-clients.md). Server reference:
+[docs/mcp.md](docs/mcp.md). Migrating an existing vault? See
+[docs/migrate-from-obsidian.md](docs/migrate-from-obsidian.md) and
+[docs/migrate-from-notion.md](docs/migrate-from-notion.md).
+
+## Hosted option
+
+If you would rather not run it yourself, [Cadernia](https://cadernia.app)
+offers Jotter as a hosted service. It runs this same open-source engine —
+branding, plans, and provisioning are configuration, not a fork
+([docs/decisions.md](docs/decisions.md)) — so you can export a full ZIP and
+self-host at any time.
+
+## Self-hosting on shared PHP hosting
+
+Jotter targets ordinary PHP 8.2 + MySQL 8 shared hosting: no daemons, no
+workers, one cron entry. Build the release ZIP with `./scripts/jt.sh release`,
+upload, point the document root at `public/`, run migrations, add the cron,
+and check the installation with `php artisan jotter:doctor`. Full guide:
+[docs/deployment.md](docs/deployment.md); running several customers on one
+host and operating them over SSH: [docs/hosted-operations.md](docs/hosted-operations.md).
+
 ## Documentation
 
 - [Project Status](STATUS.md) — authoritative current state
@@ -30,8 +71,11 @@ See [STATUS.md](STATUS.md) for the authoritative current state and [BACKLOG.md](
 - [Initial Spec & Build Plan](docs/jotter-initial-spec-and-build-plan.md) — planning authority
 - [Decision Record](docs/decisions.md)
 - [Visual Identity Specification](docs/visual-identity.md)
-- [Model Context Protocol (MCP)](docs/mcp.md)
+- [Model Context Protocol (MCP)](docs/mcp.md) — server reference
+- [Connect AI clients (Claude Code, Cursor, Claude Desktop)](docs/mcp-clients.md)
+- [Migrate from Obsidian](docs/migrate-from-obsidian.md) · [Migrate from Notion](docs/migrate-from-notion.md)
 - [Deployment](docs/deployment.md)
+- [Hosted operations](docs/hosted-operations.md)
 
 ## Requirements
 

@@ -124,6 +124,14 @@ This file previously ended at the 2026-08-05 formatting toolbar while 65 commits
 
 ---
 
+## 1.5 Delivered 2026-08-31 — MCP client path, migrations, demo vault
+
+- **MCP** — protocol compatibility for real clients (version negotiation, notifications, `inputSchema`, `list_workspaces`, workspace default), machine-token issuing (admin tab with per-client snippets, API, `mcp:token`), `docs/mcp-clients.md` validated against Claude Code, Cursor, and Claude Desktop docs, connection proven against the local server (see PR).
+- **Migrations** — import sources `obsidian` / `notion` (path normalization, link rewriting) with guides `docs/migrate-from-obsidian.md` and `docs/migrate-from-notion.md`.
+- **Demo** — `demo:seed` with 25 interlinked pt-BR notes. README: MCP, hosted option (cadernia.app), shared-hosting sections; `/llms.txt` lists the guides.
+
+---
+
 ## 2. Position against the product roadmap
 
 `docs/20260727-jotter-roadmap-ai-agent.md` ranks twelve near-term priorities. **Five of its top six already ship here** — search, nested folders, tags, backlinks, and attachments. Its gap analysis says otherwise because its baseline describes a different product (offline-first, Material You, realtime collaboration); spec §14.1 records this and §14.3 carries the authoritative delivered-state table.

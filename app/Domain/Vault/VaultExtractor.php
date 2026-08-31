@@ -28,7 +28,8 @@ final class VaultExtractor
 
     public function __construct(
         private readonly VaultPathGuard $pathGuard,
-        private readonly AuditRecorder $auditRecorder
+        private readonly AuditRecorder $auditRecorder,
+        private readonly ImportPathNormalizer $normalizer = new ImportPathNormalizer,
     ) {}
 
     /**
@@ -36,7 +37,7 @@ final class VaultExtractor
      *
      * @return array{extracted: list<string>, skipped: list<string>, errors: list<string>}
      */
-    public function extract(Workspace $workspace, string $archivePath, bool $overwrite = false): array
+    public function extract(Workspace $workspace, string $archivePath, bool $overwrite = false, ImportSource $source = ImportSource::GENERIC): array
     {
         if (! file_exists($archivePath)) {
             throw new InvalidArgumentException("Archive file does not exist: {$archivePath}");
@@ -54,7 +55,7 @@ final class VaultExtractor
         }
 
         try {
-            return $this->processZip($workspace, $zip, $overwrite);
+            return $this->processZip($workspace, $zip, $overwrite, $source);
         } finally {
             $zip->close();
         }
@@ -69,7 +70,7 @@ final class VaultExtractor
         $data = json_decode($raw, true);
 
         if (! is_array($data) || ! isset($data['version'])) {
-            throw new InvalidArgumentException("Invalid JSON backup schema: missing version header");
+            throw new InvalidArgumentException('Invalid JSON backup schema: missing version header');
         }
 
         if ($data['version'] !== '1.0') {
@@ -94,11 +95,13 @@ final class VaultExtractor
             } catch (\Throwable $e) {
                 $errors[] = "Zip-slip path traversal rejected: {$name}";
                 $skipped[] = $name;
+
                 continue;
             }
 
             if (! $overwrite && file_exists($resolvedPath)) {
                 $skipped[] = $name;
+
                 continue;
             }
 
@@ -121,9 +124,22 @@ final class VaultExtractor
     /**
      * @return array{extracted: list<string>, skipped: list<string>, errors: list<string>}
      */
-    private function processZip(Workspace $workspace, ZipArchive $zip, bool $overwrite): array
+    private function processZip(Workspace $workspace, ZipArchive $zip, bool $overwrite, ImportSource $source = ImportSource::GENERIC): array
     {
         $numFiles = $zip->numFiles;
+
+        // Obsidian and Notion exports usually wrap everything in one folder.
+        $rootPrefix = null;
+        if ($source !== ImportSource::GENERIC) {
+            $entryNames = [];
+            for ($i = 0; $i < $numFiles; $i++) {
+                $entryName = (string) $zip->getNameIndex($i);
+                if ($entryName !== '' && ! str_ends_with($entryName, '/')) {
+                    $entryNames[] = $entryName;
+                }
+            }
+            $rootPrefix = $this->normalizer->detectRootDirectory($entryNames);
+        }
         if ($numFiles > self::MAX_ENTRY_COUNT) {
             $this->auditRecorder->record(
                 AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
@@ -132,7 +148,7 @@ final class VaultExtractor
                 null,
                 ['reason' => 'max_entry_count_exceeded', 'count' => $numFiles]
             );
-            throw new RuntimeException("Archive exceeds maximum allowed entry count of ".self::MAX_ENTRY_COUNT);
+            throw new RuntimeException('Archive exceeds maximum allowed entry count of '.self::MAX_ENTRY_COUNT);
         }
 
         $totalSize = 0;
@@ -147,9 +163,16 @@ final class VaultExtractor
                 continue;
             }
 
-            $name = $stat['name'];
+            $entryName = $stat['name'];
 
-            if (str_ends_with($name, '/')) {
+            if (str_ends_with($entryName, '/')) {
+                continue;
+            }
+
+            $name = $this->normalizer->normalize($source, $entryName, $rootPrefix);
+            if ($name === null) {
+                $skipped[] = $entryName;
+
                 continue;
             }
 
@@ -166,6 +189,7 @@ final class VaultExtractor
                 );
                 $errors[] = "Symlink entry prohibited: {$name}";
                 $skipped[] = $name;
+
                 continue;
             }
 
@@ -179,6 +203,7 @@ final class VaultExtractor
                 );
                 $errors[] = "Invalid or aliased path rejected: {$name}";
                 $skipped[] = $name;
+
                 continue;
             }
 
@@ -194,6 +219,7 @@ final class VaultExtractor
                 );
                 $errors[] = "Zip-slip path traversal rejected: {$name}";
                 $skipped[] = $name;
+
                 continue;
             }
 
@@ -208,11 +234,13 @@ final class VaultExtractor
                 );
                 $errors[] = "Disallowed file type: {$name}";
                 $skipped[] = $name;
+
                 continue;
             }
 
             if (! $overwrite && file_exists($resolvedPath)) {
                 $skipped[] = $name;
+
                 continue;
             }
 
@@ -227,21 +255,24 @@ final class VaultExtractor
                     null,
                     ['reason' => 'max_total_size_exceeded', 'total_size' => $totalSize]
                 );
-                throw new RuntimeException("Archive total size exceeds maximum limit of ".self::MAX_TOTAL_UNCOMPRESSED_SIZE." bytes");
+                throw new RuntimeException('Archive total size exceeds maximum limit of '.self::MAX_TOTAL_UNCOMPRESSED_SIZE.' bytes');
             }
 
             $validEntries[] = [
                 'index' => $i,
+                'entry' => $entryName,
                 'name' => $name,
                 'destination' => $resolvedPath,
+                'rewrite' => $source === ImportSource::NOTION && in_array($ext, ['md', 'markdown'], true),
             ];
         }
 
         foreach ($validEntries as $entry) {
-            $stream = $zip->getStream($entry['name']);
+            $stream = $zip->getStream($entry['entry']);
             if (! $stream) {
                 $errors[] = "Failed to stream entry: {$entry['name']}";
                 $skipped[] = $entry['name'];
+
                 continue;
             }
 
@@ -250,11 +281,21 @@ final class VaultExtractor
                 mkdir($destDir, 0755, true);
             }
 
+            if ($entry['rewrite']) {
+                $markdown = (string) stream_get_contents($stream);
+                fclose($stream);
+                file_put_contents($entry['destination'], $this->normalizer->rewriteNotionMarkdown($markdown));
+                $extracted[] = $entry['name'];
+
+                continue;
+            }
+
             $outStream = fopen($entry['destination'], 'wb');
             if (! $outStream) {
                 fclose($stream);
                 $errors[] = "Failed to open output destination: {$entry['destination']}";
                 $skipped[] = $entry['name'];
+
                 continue;
             }
 
