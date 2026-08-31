@@ -33,7 +33,7 @@ The roadmap's historical Phase 1 gaps are already delivered in this repository: 
 - **Plan gate coverage.** The 402 gate covers `workspace.write` routes, WebDAV `PUT`/`MKCOL`/`DELETE`, and import, per the issue's scope. Group, ACL, review-workflow, watch, and notification-state writes are metadata and remain allowed for read-only tenants; extend the gate if operators need a stricter freeze.
 - **Trial expiry job.** Delivered as `tenant:expire-trials` (daily). Remove the placeholder from the 2026-08-31 operations follow-ups above.
 - **Hosted-mode UX.** The SPA surfaces 402 responses through the existing error paths (message text from the API). A dedicated upgrade/contact call-to-action would need the operator's `JOTTER_BRAND_SUPPORT_URL` and is not built.
-- **Design-token guard debt.** `scripts/check-design-tokens.sh` fails on `main` for pre-existing raw color fallbacks in `NoteReviewPanel.vue:243` and `NotificationPreferences.vue:117`; new components in this branch are token-only.
+- ~~**Design-token guard debt.**~~ Fixed in `fix/design-token-guard`: `NoteReviewPanel.vue` and `NotificationPreferences.vue` now use `--color-status-danger` / `--color-border`; `scripts/check-design-tokens.sh` passes on `main`.
 
 ## Completed follow-up
 

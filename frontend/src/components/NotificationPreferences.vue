@@ -114,7 +114,7 @@ async function handleUnsubscribeRequest(): Promise<void> {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.75rem;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  border: 1px solid var(--color-border);
   border-radius: 0.6rem;
 }
 

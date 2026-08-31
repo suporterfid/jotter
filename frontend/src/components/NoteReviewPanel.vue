@@ -240,7 +240,7 @@ watch(() => props.review, (value) => {
 .note-review-stale,
 .note-review-error {
   margin: 0;
-  color: var(--color-danger, #b42318);
+  color: var(--color-status-danger);
   font-size: 0.8125rem;
 }
 
