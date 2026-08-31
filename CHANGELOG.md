@@ -2,6 +2,10 @@
 
 All notable changes to Jotter will be documented here. Decision records live in `docs/decisions.md`; security-audit findings live in `docs/security-audit-2026.md`; visual-identity rollout tracking lives in `docs/visual-identity.md`. Split from a single overloaded `BACKLOG.md` in #208.
 
+## v0.10.0 — 2026-08-31
+
+Tagged release: [v0.10.0](https://github.com/suporterfid/jotter/releases/tag/v0.10.0), built with `jt release` as `jotter-release-v0.10.0.zip` (+ `.sha256`, attached to the GitHub Release; `VERSION` inside the artifact reads `v0.10.0`). Packages the four 2026-08-31 deliveries below — multi-instance release + installation doctor (#391), branding by environment + hosted-mode plan/trial (#392), CLI provisioning + transactional e-mail (#394), and the MCP client path with migration guides and the demo vault (#395) — plus the design-token guard fix (#393).
+
 ## v1 (post-v0) — 2026-08-31: MCP client guides, migration guides, demo vault, README
 
 Connecting Claude Code, Cursor, and Claude Desktop to a vault is now a documented, tested five-minute path (`docs/mcp-clients`).
