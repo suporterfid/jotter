@@ -8,14 +8,14 @@
   >
     <span>{{ message }}</span>
     <a
-      v-if="readOnly && brand.support_url"
-      :href="brand.support_url"
+      v-if="supportUrl"
+      :href="supportUrl"
       target="_blank"
       rel="noopener"
       class="plan-banner-link"
       data-testid="plan-banner-support"
     >
-      {{ t('brand.support') }}
+      {{ supportLabel }}
     </a>
   </div>
 </template>
@@ -28,11 +28,12 @@ import type { TenantPlan } from '../services/types'
 
 const { t } = useI18n()
 
-const props = defineProps<{ plan?: TenantPlan | null }>()
+const props = defineProps<{ plan?: TenantPlan | null; planLimit?: boolean }>()
 
 const readOnly = computed(() => !!props.plan && props.plan.status !== 'self_hosted' && props.plan.read_only)
 
 const message = computed<string | null>(() => {
+  if (props.planLimit) return t('plan.planLimit')
   const plan = props.plan
   if (!plan || plan.status === 'self_hosted') return null
   if (plan.read_only) return t('plan.readOnly')
@@ -41,6 +42,11 @@ const message = computed<string | null>(() => {
   }
   return null
 })
+
+const showSupport = computed(() => readOnly.value || !!props.planLimit)
+const supportUrl = computed(() => (showSupport.value && brand.support_url) ? brand.support_url : null)
+
+const supportLabel = computed(() => (props.planLimit ? t('plan.contactSupport') : t('brand.support')))
 </script>
 
 <style scoped>

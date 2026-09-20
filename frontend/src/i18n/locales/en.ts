@@ -18,6 +18,8 @@ export default {
     trialEndsIn: 'Trial ends in {days} days',
     trialEndsToday: 'Trial ends today',
     readOnly: 'This account is read-only. You can keep reading, searching, and exporting, but changes are paused.',
+    planLimit: "You've reached your plan's limit. Upgrade or contact support to continue.",
+    contactSupport: 'Contact support',
   },
   nav: {
     settings: 'Settings',
