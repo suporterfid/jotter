@@ -41,11 +41,11 @@ Docker is a development and build tool only. Production requires PHP 8.2+, MySQL
 
 ## Scope boundary
 
-PR4 adds the MySQL FULLTEXT index and read-only search endpoint only. It does not add notes CRUD APIs, auth providers, uploads, UI, or any v1 feature.
+PR4 originally added only the MySQL FULLTEXT index and read-only search endpoint. That boundary is long since superseded: `routes/api.php` now carries ~100 routes (note CRUD, attachments, comments, checklists, sharing, PDF export, and OIDC auth among them), identity providers include a second (`OidcIdentityProvider`) beyond local, and the Vue SPA lives under `frontend/src/components/`. See [STATUS.md](../STATUS.md) for the authoritative delivered-state list.
 
 ## Model Context Protocol (MCP)
 
-For AI assistant integration, Jotter provides a Model Context Protocol server over HTTP JSON-RPC 2.0 (`POST /api/mcp`). Read-only tools (`list_notes`, `read_note`, `search_notes`, `get_backlinks`) are implemented with per-workspace authorization. Write tools are intentionally deferred and gated per security policy §8 S2 & S5. See [docs/mcp.md](mcp.md) for details.
+For AI assistant integration, Jotter provides a Model Context Protocol server over HTTP JSON-RPC 2.0 (`POST /api/mcp`). Read-only tools (`list_workspaces`, `list_notes`, `read_note`, `search_notes`, `get_backlinks`) are implemented with per-workspace authorization. Write tools are intentionally deferred and gated per security policy §8 S2 & S5. See [docs/mcp.md](mcp.md) for details.
 
 ## Hosted mode
 
