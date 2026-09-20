@@ -18,6 +18,8 @@ export default {
     trialEndsIn: 'O período de teste termina em {days} dias',
     trialEndsToday: 'O período de teste termina hoje',
     readOnly: 'Esta conta está somente leitura. Você pode continuar lendo, buscando e exportando, mas as alterações estão pausadas.',
+    planLimit: 'Você atingiu o limite do seu plano. Faça upgrade ou fale com o suporte para continuar.',
+    contactSupport: 'Falar com o suporte',
   },
   nav: {
     settings: 'Configurações',

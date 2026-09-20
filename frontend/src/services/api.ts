@@ -14,9 +14,29 @@ export const api = axios.create({
 })
 
 let onUnauthenticatedHandler: (() => void) | null = null
+let onPlanLimitHandler: (() => void) | null = null
 
 export function setUnauthenticatedHandler(handler: () => void) {
   onUnauthenticatedHandler = handler
+}
+
+export function setPlanLimitHandler(handler: () => void) {
+  onPlanLimitHandler = handler
+}
+
+/**
+ * Typed error for a hosted tenant that is over its plan: the API answers 402
+ * and the SPA surfaces an upgrade/contact call-to-action instead of a generic
+ * failure (see BACKLOG.md "Hosted-mode UX").
+ */
+export class PlanLimitError extends Error {
+  readonly planStatus: string | null
+
+  constructor(data: { message?: string; plan_status?: string } | undefined) {
+    super(data?.message ?? 'Plan limit reached')
+    this.name = 'PlanLimitError'
+    this.planStatus = data?.plan_status ?? null
+  }
 }
 
 api.interceptors.response.use(
@@ -26,6 +46,11 @@ api.interceptors.response.use(
       if (onUnauthenticatedHandler) {
         onUnauthenticatedHandler()
       }
+    } else if (error.response && error.response.status === 402) {
+      if (onPlanLimitHandler) {
+        onPlanLimitHandler()
+      }
+      return Promise.reject(new PlanLimitError(error.response.data))
     }
     return Promise.reject(error)
   }

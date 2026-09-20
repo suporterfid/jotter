@@ -44,6 +44,7 @@ vi.mock('./services/api', () => ({
   logout: vi.fn(),
   getCsrfCookie: vi.fn().mockResolvedValue(undefined),
   setUnauthenticatedHandler: vi.fn(),
+  setPlanLimitHandler: vi.fn(),
   getAuthConfig: vi.fn().mockResolvedValue({ provider: 'local', sso_login_url: null, version: null }),
   getNoteComments: vi.fn().mockResolvedValue([]),
   getChecklistItems: vi.fn().mockResolvedValue([]),

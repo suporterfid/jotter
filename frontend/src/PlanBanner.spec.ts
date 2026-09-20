@@ -43,4 +43,22 @@ describe('PlanBanner', () => {
     expect(mount(PlanBanner, { props: { plan: plan({ status: 'trial', trial_days_left: 0, read_only: true }) } }).text()).toContain('read-only')
     expect(mount(PlanBanner, { props: { plan: plan({ status: 'past_due', read_only: true }) } }).text()).toContain('read-only')
   })
+
+  it('shows a plan-limit upgrade call to action with a support link when configured', () => {
+    setBrand({ support_url: 'https://cadernia.example.com/support' })
+    const wrapper = mount(PlanBanner, { props: { plan: plan({ status: 'active' }), planLimit: true } })
+
+    expect(wrapper.find('[data-testid="plan-banner"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain("plan's limit")
+    expect(wrapper.find('[data-testid="plan-banner-support"]').attributes('href')).toBe('https://cadernia.example.com/support')
+  })
+
+  it('shows the plan-limit message without a link when the support URL is unset', () => {
+    resetBrand()
+    const wrapper = mount(PlanBanner, { props: { plan: plan({ status: 'active' }), planLimit: true } })
+
+    expect(wrapper.find('[data-testid="plan-banner"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain("plan's limit")
+    expect(wrapper.find('[data-testid="plan-banner-support"]').exists()).toBe(false)
+  })
 })

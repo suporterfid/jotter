@@ -76,7 +76,7 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
-      <PlanBanner :plan="activeTenantPlan" />
+      <PlanBanner :plan="activeTenantPlan" :plan-limit="planLimitActive" />
       <!-- Graph View Mode -->
       <GraphView
         v-if="isGraphViewActive"
@@ -376,6 +376,7 @@ import {
   getMe,
   logout,
   setUnauthenticatedHandler,
+  setPlanLimitHandler,
   getAttachments,
   deleteAttachment,
   createNoteFromTemplate,
@@ -417,6 +418,7 @@ const activeWorkspaceId = ref<number>(1)
 const tenants = ref<Tenant[]>([])
 const activeTenantId = ref<number | null>(null)
 const activeTenantPlan = computed(() => tenants.value.find((tenant) => tenant.id === activeTenantId.value)?.plan ?? null)
+const planLimitActive = ref(false)
 const notes = ref<NoteMeta[]>([])
 const folderPositions = ref<FolderPosition[]>([])
 const { layout: splitLayout, loadLayout, saveLayout, openNote, closeNote, splitWithNote, mergeSecondary } = useSplitPanes()
@@ -598,6 +600,9 @@ onMounted(async () => {
   window.addEventListener('keydown', handleSplitShortcut)
   setUnauthenticatedHandler(() => {
     showLoginModal.value = true
+  })
+  setPlanLimitHandler(() => {
+    planLimitActive.value = true
   })
 
   try {
