@@ -23,6 +23,19 @@ All roadmap/spec decisions are resolved — see `docs/decisions.md`. This sectio
 
 The roadmap's historical Phase 1 gaps are already delivered in this repository: search filters (#52), Markdown/JSON import and round-trip backup (#77/#78), templates/daily notes (#56), and version history with restore (#51). Do not create duplicate issues from the roadmap's stale gap summary; select the next new feature from a refreshed issue or audit.
 
+## Brain multi-agent epic (spec 2026-11-03)
+
+Spec: `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md`. Plan: `docs/superpowers/plans/2026-11-03-jotter-brain-multiagent.md` (verifies the spec against `d53653a` and adds 13 corrections, G1–G13). Reopens the "write tools deferred" stance of `docs/mcp.md`; per this file's rule, PR 1 records the dated decision (D1–D8) in `docs/decisions.md` before any code. Sequence (each PR merged and green before the next):
+
+1. **Scoped credentials (R2, P1, security).** `CredentialContext`, `ResolveMachineToken` + `CredentialScopedIdentityProvider` decorator (MCP works under `oidc`/`grandpasson`), `EnforceCredentialAudience` (`mcp:*`/`api:*`, never `/api/admin|auth|user/*`), workspace allowlist (mandatory for admin-owned tokens), CLI + admin UI. **BREAKING:** existing tokens become `mcp:read` only.
+2. **MCP protocol polish (R4, P1).** `WWW-Authenticate`, `2025-11-25`, `MCP-Protocol-Version`/`Origin` checks, tool `annotations`, scope-filtered `tools/list`, dynamic `instructions`, per-token rate limits (429 + `Retry-After`).
+3. **Scoped write tools (R3, P1).** `create_note`, `append_to_note`, `update_note` confined by `write_paths` (own `**` glob matcher), per-note lock, disk-hash optimistic concurrency, `mcp.note_written` audit; REST `base_sha256` → 409 with SPA conflict dialog.
+4. **Brain tools + vault pack (R5 + R6, P2).** `get_brain_context` (≤ 24 KB), `list_recent_changes`, `get_outgoing_links`, OpenAI-format `search`/`fetch`, idempotent `brain:init`, `templates:pack --pack=brain`.
+5. **Embedded OAuth 2.1 server (R1, P1, off by default).** RFC 9728/8414 metadata, DCR, PKCE S256 authorize + consent, rotating refresh with reuse revocation, revoke, Connected apps, `oauth:prune`.
+6. **Client docs + doctor.** Five-client setup in `docs/mcp-clients.md`, snippets for Codex/Hermes, `jotter:doctor` OAuth checks, manual smoke test against the real deployment.
+
+Follow-up, not in this epic: WebDAV `ETag`/`If-Match` so Obsidian writes get the same conflict protection; CIMD; semantic search.
+
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 
 - **Doctor thresholds.** Disk-space (100 MiB critical / 1 GiB warning) and scheduler age (5 minutes) are constants on `InstanceDoctor`; make them configurable only if a host proves them wrong.
