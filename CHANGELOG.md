@@ -2,6 +2,16 @@
 
 All notable changes to Jotter will be documented here. Decision records live in `docs/decisions.md`; security-audit findings live in `docs/security-audit-2026.md`; visual-identity rollout tracking lives in `docs/visual-identity.md`. Split from a single overloaded `BACKLOG.md` in #208.
 
+## Unreleased
+
+### CI runs locally, without GitHub Actions — 2026-11-03
+
+- **Removed** `.github/workflows/ci.yml`. Nothing runs on GitHub anymore; the `test` required status check on `main` must be removed from branch protection by the owner.
+- **`jt ci`** (`scripts/jt.sh` and `scripts/jt.ps1`) runs the former workflow's steps — `composer install`, `up`, `test`, `e2e`, `release`, `release:verify` — then `down --volumes`. It uses its own Compose project (`jotter-ci-<hash>`) so it never touches the development database, refuses a dirty tree unless `--allow-dirty`, supports `--dry-run`, and writes `dist/ci/last-run.txt` (summary), `dist/ci/last-run.log`, and `dist/ci/passed-<sha>` on a clean pass. `make ci` calls it.
+- **Pre-push hook** `.githooks/pre-push`, enabled with `jt ci:install-hook`: every pushed commit needs `dist/ci/passed-<sha>`; pushing HEAD without one runs `jt ci` first. Skip once with `JOTTER_SKIP_CI=1`.
+- **`compose.ci.yaml`** no longer publishes port 8080, so a CI run coexists with a running dev stack (Playwright already uses the internal `jotter-web` alias).
+- **Brain multi-agent plan files** — `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md` and `docs/superpowers/plans/2026-11-03-jotter-brain-multiagent.md` were referenced by #401 but not committed (`/docs/superpowers` is git-ignored); added with `git add -f`.
+
 ## v0.10.0 — 2026-08-31
 
 Tagged release: [v0.10.0](https://github.com/suporterfid/jotter/releases/tag/v0.10.0), built with `jt release` as `jotter-release-v0.10.0.zip` (+ `.sha256`, attached to the GitHub Release; `VERSION` inside the artifact reads `v0.10.0`). Packages the four 2026-08-31 deliveries below — multi-instance release + installation doctor (#391), branding by environment + hosted-mode plan/trial (#392), CLI provisioning + transactional e-mail (#394), and the MCP client path with migration guides and the demo vault (#395) — plus the design-token guard fix (#393).

@@ -111,6 +111,10 @@ Use `scripts/jt.sh` or `scripts/jt.ps1` with:
 - `artisan`, `composer`, `npm` — run the corresponding tool in a container
 - `release` — create `dist/jotter-release.zip` and its SHA-256 checksum
 - `release:verify` — scan an existing release ZIP for secrets and private keys
+- `ci` — run the whole CI pipeline locally (Composer install, `up`, `test`, `e2e`, `release`, `release:verify`) in an isolated Compose project, then tear it down; summary in `dist/ci/last-run.txt`
+- `ci:install-hook` — enable the pre-push hook that requires a passing `ci` run for every pushed commit (skip once with `JOTTER_SKIP_CI=1 git push`)
+
+Jotter has no hosted CI: `ci` is the check every pull request must pass before merge.
 
 Bootstrap the first local administrator after startup:
 
