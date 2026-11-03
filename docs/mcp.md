@@ -24,9 +24,27 @@ is in [mcp-clients.md](mcp-clients.md).
   Administration → MCP tokens (`POST /api/admin/machine-tokens`) or with
   `php artisan mcp:token <email>`; revoke from the same screen. Issue and
   revoke are audited (`machine_token.created` / `machine_token.revoked`).
-- A token acts as the user it was issued for: authorization is evaluated
-  through the `IdentityProvider` seam per workspace (`isAuthorizedForWorkspace`)
-  and per note (`NoteAccess`), exactly like that user in the SPA.
+- Tokens work with every identity provider (`local`, `oidc`, `grandpasson`):
+  `CredentialScopedIdentityProvider` resolves them before the configured provider.
+  An unknown, revoked, or expired `jt_mkt_` token answers 401 and never falls
+  back to a browser session.
+- **Scopes** (decision "Scoped credentials" in `docs/decisions.md`):
+  `mcp:read` for `/api/mcp`; `api:read` / `api:write` for the REST API and
+  WebDAV; `mcp:write` reserved for the MCP write tools (later PR). Admin, auth,
+  and user-settings routes (`/api/admin/*`, `/api/auth/*`, `/api/user/*`) never
+  accept a token. A missing scope answers 403 with
+  `WWW-Authenticate: Bearer error="insufficient_scope", scope="…"`.
+- **Reach**: a token reaches the owner's explicit workspace memberships, narrowed
+  by its workspace list; a token owned by an administrator must list its
+  workspaces and gets no administrator bypass, so note ACLs apply. Write paths
+  (`{glob, ops}`, `{client}` = the token's client slug) and an optional expiry
+  are stored for the write tools; `_brain/`, `.trash/`, `_resources/`,
+  `_templates/`, `.obsidian/` can never be write targets.
+- CLI example:
+  `php artisan mcp:token joe@example.com --workspace=brain --scope=mcp:read --scope=mcp:write --write-path="inbox/{client}/**:create,append,update" --client=hermes --expires=180d`.
+- Authorization is then evaluated through the `IdentityProvider` seam per
+  workspace and per note (`NoteAccess`), like the owner in the SPA but narrowed
+  as above. GrandpaSSOn service tokens need `kb:read` to use MCP.
 - Failed authentication is audited as `mcp.auth_failed`; every method call as
   `mcp.method_called`.
 
@@ -41,6 +59,11 @@ Jotter intentionally exposes **read-only** tools for knowledge context retrieval
 5. `get_backlinks`: Incoming wikilinks to a `target` note (path or title).
 
 ## Write Tools Decision & Scope (Deferred)
+
+> **Superseded 2026-11-03** by the "Scoped credentials and MCP write tools" entry in
+> `docs/decisions.md`: the `mcp:write` scope now exists, and `create_note`,
+> `append_to_note`, `update_note` (no delete) land in the write-tools PR of the
+> brain multi-agent plan, after rate limits. The original rationale is kept below.
 
 Write tools (`create_note`, `update_note`, `delete_note`) are **intentionally deferred and gated**:
 

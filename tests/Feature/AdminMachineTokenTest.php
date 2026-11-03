@@ -93,4 +93,73 @@ final class AdminMachineTokenTest extends TestCase
         $this->artisan('mcp:token ana@acme.example --tenant=other')->assertSuccessful();
         $this->artisan('mcp:token ana@acme.example --tenant=ghost')->assertFailed();
     }
+
+    public function test_admin_issues_a_scoped_token_and_listing_shows_its_scope(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $user = User::factory()->create();
+        $tenant = Tenant::create(['slug' => 'acme', 'name' => 'Acme']);
+        $workspace = Workspace::create(['tenant_id' => $tenant->id, 'slug' => 'brain', 'name' => 'Brain', 'vault_path' => storage_path('app/vaults/tok_'.uniqid())]);
+        Membership::create(['tenant_id' => $tenant->id, 'workspace_id' => $workspace->id, 'subject_id' => (string) $user->id, 'role' => 'editor']);
+
+        $created = $this->actingAs($admin)->postJson('/api/admin/machine-tokens', [
+            'tenant_id' => $tenant->id,
+            'user_id' => $user->id,
+            'name' => 'Hermes VPS',
+            'scopes' => ['mcp:read', 'mcp:write'],
+            'workspace_ids' => [$workspace->id],
+            'write_paths' => [['glob' => 'inbox/{client}/**', 'ops' => ['create', 'append', 'update']], ['glob' => 'diario/**', 'ops' => ['append']]],
+            'client_slug' => 'hermes',
+            'expires' => '180d',
+        ])->assertCreated();
+
+        $created->assertJsonPath('data.scopes', ['mcp:read', 'mcp:write'])
+            ->assertJsonPath('data.workspace_ids', [$workspace->id])
+            ->assertJsonPath('data.client_slug', 'hermes')
+            ->assertJsonPath('data.write_paths.1.glob', 'diario/**');
+        $this->assertNotNull($created->json('data.expires_at'));
+
+        $audit = AuditLog::query()->where('event', 'machine_token.created')->sole();
+        $this->assertSame(['mcp:read', 'mcp:write'], $audit->metadata['scopes']);
+        $this->assertSame('hermes', $audit->metadata['client_slug']);
+
+        $this->actingAs($admin)->postJson('/api/admin/machine-tokens', [
+            'tenant_id' => $tenant->id, 'user_id' => $user->id, 'name' => 'bad',
+            'scopes' => ['mcp:read', 'mcp:write'], 'write_paths' => [['glob' => '_brain/**', 'ops' => ['update']]],
+        ])->assertStatus(422)->assertJsonValidationErrors(['write_paths']);
+
+        $this->actingAs($admin)->postJson('/api/admin/machine-tokens', [
+            'tenant_id' => $tenant->id, 'user_id' => $user->id, 'name' => 'bad', 'scopes' => ['root'],
+        ])->assertStatus(422)->assertJsonValidationErrors(['scopes']);
+    }
+
+    public function test_mcp_token_command_accepts_scope_options(): void
+    {
+        $admin = User::factory()->create(['email' => 'joe@acme.example', 'is_admin' => true]);
+        $tenant = Tenant::create(['slug' => 'acme', 'name' => 'Acme']);
+        Workspace::create(['tenant_id' => $tenant->id, 'slug' => 'brain', 'name' => 'Brain', 'vault_path' => storage_path('app/vaults/tok_'.uniqid())]);
+
+        $this->artisan('mcp:token joe@acme.example --tenant=acme')->assertFailed();
+
+        $this->assertSame(0, Artisan::call('mcp:token', [
+            'email' => 'joe@acme.example',
+            '--tenant' => 'acme',
+            '--name' => 'Hermes VPS',
+            '--workspace' => ['brain'],
+            '--scope' => ['mcp:read', 'mcp:write'],
+            '--write-path' => ['inbox/{client}/**:create,append,update'],
+            '--client' => 'hermes',
+            '--expires' => '180d',
+            '--json' => true,
+        ]));
+        $report = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(['mcp:read', 'mcp:write'], $report['scopes']);
+        $this->assertSame(['brain'], $report['workspaces']);
+        $this->assertSame('hermes', $report['client']);
+        $this->assertSame([['glob' => 'inbox/{client}/**', 'ops' => ['create', 'append', 'update']]], $report['write_paths']);
+        $this->assertNotNull($report['expires_at']);
+
+        $this->artisan('mcp:token joe@acme.example --tenant=acme --workspace=brain --write-path="inbox/**:create"')->assertFailed();
+    }
 }

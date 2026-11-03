@@ -112,24 +112,24 @@ PR 6  Docs dos 5 clientes + jotter:doctor        ← PR 4, 5   ⇒ teste de fuma
 
 **Branch sugerida:** `feat/mcp-scoped-credentials`. **Aceite:** um token só `mcp:read` recebe 403 em `PUT /api/workspaces/{id}/notes/{n}` e em WebDAV `PUT`; o MCP funciona com `JOTTER_AUTH_PROVIDER=oidc` e `grandpasson`; um token restrito a `brain` não lista `brain-restrito`; token de admin sem lista de workspaces é recusado na emissão.
 
-- [ ] **1.1 Decisão.** Nova entrada datada em `docs/decisions.md`: "Decision — Scoped credentials and MCP write tools (supersedes the deferral in `docs/mcp.md`)". Registra D1–D8 e mostra como cada uma das duas condições de reabertura de `docs/mcp.md` é atendida: escopo `mcp:write` (PR 1), rate limit (PR 2) e lock (PR 3). Atualizar `docs/mcp.md` § "Write Tools Decision" apontando para a entrada.
-- [ ] **1.2 Migração `extend_machine_tokens`** (idempotente, com `hasColumn`): `kind` enum(`manual`,`oauth`) default `manual`; `scopes` json; `workspace_ids` json nulo; `write_paths` json nulo; `client_id` unsignedBigInteger nulo **sem FK** (G8); `client_slug` varchar(40) nulo; `expires_at` e `last_used_at` timestamp nulos; índice em (`kind`, `expires_at`). Backfill: `scopes=["mcp:read"]` onde for nulo.
-- [ ] **1.3 `CredentialContext`** (readonly): `tokenId`, `kind`, `scopes`, `workspaceIds`, `writePaths`, `clientId`, `clientSlug`, `expiresAt`; métodos `hasScope()` e `allowsWorkspace()`. `AuthenticatedSubject` ganha `?CredentialContext $credential = null` (parâmetro nomeado no fim, sem quebrar chamadas existentes).
-- [ ] **1.4 `MachineTokenResolver`.** Aceita os prefixos `jt_mkt_` e `jt_oat_` (o segundo já previsto para o PR 5). Busca pelo hash, recusa revogado, expirado ou usuário inativo, e grava `last_used_at` no máximo 1×/min (`Cache::add("mt:used:{id}", 1, 60)`). Monta o subject com `isAdmin=false` e `attributes['owner_is_admin']` (D3).
-- [ ] **1.5 Middleware `ResolveMachineToken`**, *prepend* no grupo `api`. Com Bearer de prefixo Jotter: resolve e guarda em `$request->attributes['credential_subject']`; se o token for inválido, marca `credential_failed`, e as camadas seguintes respondem 401. Bearer sem prefixo Jotter (service token do GrandpaSSOn) passa intacto.
-- [ ] **1.6 `CredentialScopedIdentityProvider`** (decorator, bind em `AppServiceProvider` sobre o provider configurado):
+- [x] **1.1 Decisão.** Nova entrada datada em `docs/decisions.md`: "Decision — Scoped credentials and MCP write tools (supersedes the deferral in `docs/mcp.md`)". Registra D1–D8 e mostra como cada uma das duas condições de reabertura de `docs/mcp.md` é atendida: escopo `mcp:write` (PR 1), rate limit (PR 2) e lock (PR 3). Atualizar `docs/mcp.md` § "Write Tools Decision" apontando para a entrada.
+- [x] **1.2 Migração `extend_machine_tokens`** (idempotente, com `hasColumn`): `kind` enum(`manual`,`oauth`) default `manual`; `scopes` json; `workspace_ids` json nulo; `write_paths` json nulo; `client_id` unsignedBigInteger nulo **sem FK** (G8); `client_slug` varchar(40) nulo; `expires_at` e `last_used_at` timestamp nulos; índice em (`kind`, `expires_at`). Backfill: `scopes=["mcp:read"]` onde for nulo.
+- [x] **1.3 `CredentialContext`** (readonly): `tokenId`, `kind`, `scopes`, `workspaceIds`, `writePaths`, `clientId`, `clientSlug`, `expiresAt`; métodos `hasScope()` e `allowsWorkspace()`. `AuthenticatedSubject` ganha `?CredentialContext $credential = null` (parâmetro nomeado no fim, sem quebrar chamadas existentes).
+- [x] **1.4 `MachineTokenResolver`.** Aceita os prefixos `jt_mkt_` e `jt_oat_` (o segundo já previsto para o PR 5). Busca pelo hash, recusa revogado, expirado ou usuário inativo, e grava `last_used_at` no máximo 1×/min (`Cache::add("mt:used:{id}", 1, 60)`). Monta o subject com `isAdmin=false` e `attributes['owner_is_admin']` (D3).
+- [x] **1.5 Middleware `ResolveMachineToken`** *(entregue sem middleware próprio: `MachineTokenResolver` resolve o Bearer uma vez por requisição e guarda o resultado nos atributos dela; o decorator e o `EnforceCredentialAudience` usam o mesmo resolvedor)*, *prepend* no grupo `api`. Com Bearer de prefixo Jotter: resolve e guarda em `$request->attributes['credential_subject']`; se o token for inválido, marca `credential_failed`, e as camadas seguintes respondem 401. Bearer sem prefixo Jotter (service token do GrandpaSSOn) passa intacto.
+- [x] **1.6 `CredentialScopedIdentityProvider`** (decorator, bind em `AppServiceProvider` sobre o provider configurado):
   - `resolveIdentity`: devolve `credential_subject` se existir; se houver `credential_failed`, devolve `null` sem cair na sessão; senão delega.
   - `isAuthorizedForWorkspace`: para credencial, o workspace precisa estar em `workspaceIds`. Se o dono for admin, isso basta, com a mesma tenant do token conferida. Senão, exige também membership explícita (via provider local, já que o subject vem com `isAdmin=false`).
   - `canWriteWorkspace`: o mesmo, mais papel de escrita (ou dono admin) e escopo `mcp:write`/`api:write` conforme a rota (definido pelo middleware 1.7).
   - `accessibleWorkspaceIds`: interseção equivalente; `accessibleTenantIds`: só a tenant do token.
   - Remover o bloco Bearer de `LocalIdentityProvider::resolveIdentity`, que agora mora no resolver.
-- [ ] **1.7 Middleware `EnforceCredentialAudience`**, *append* no grupo `api`, roda só quando há credencial:
+- [x] **1.7 Middleware `EnforceCredentialAudience`**, *append* no grupo `api`, roda só quando há credencial:
   - `api/mcp` → exige `mcp:read`.
   - `api/admin/*`, `api/auth/*`, `api/user/*` → 403 sempre (regra 3 + G5).
   - Demais rotas: `GET`/`HEAD`/`OPTIONS`/`PROPFIND` exigem `api:read`; as outras exigem `api:write`.
   - Sem o escopo: 403 com `WWW-Authenticate: Bearer error="insufficient_scope", scope="…"`; auditar `auth.forbidden` com `reason=insufficient_scope`, `token_id` e `client_slug`.
-- [ ] **1.8 Service token do GrandpaSSOn no MCP (G9).** Com `kb:read`, é tratado como `mcp:read`; sem ferramentas de escrita. Teste dedicado.
-- [ ] **1.9 Emissão.** `MachineTokenOptions` valida:
+- [x] **1.8 Service token do GrandpaSSOn no MCP (G9).** Com `kb:read`, é tratado como `mcp:read`; sem ferramentas de escrita. Teste dedicado.
+- [x] **1.9 Emissão.** `MachineTokenOptions` valida:
   - escopos ⊂ {`mcp:read`, `mcp:write`, `api:read`, `api:write`};
   - `write_paths` só junto com `mcp:write`; globs relativos, sem `..`, sem barra inicial, sem `_brain/`, `.trash/`, `_resources/`, `_templates/` (D7); `ops` ⊂ {`create`, `append`, `update`};
   - `client_slug` casando `^[a-z0-9-]{1,40}$`, obrigatório se algum glob usa `{client}`;
@@ -137,16 +137,16 @@ PR 6  Docs dos 5 clientes + jotter:doctor        ← PR 4, 5   ⇒ teste de fuma
   - validade no formato `30d|180d|1y|never`.
 
   `MachineTokenIssuer::issue(User, Tenant, string $name, MachineTokenOptions $options, ?string $actorId)`. O audit `machine_token.created` passa a incluir scopes, workspaces e client.
-- [ ] **1.10 CLI.** `mcp:token` ganha `--workspace=*` (slug ou id), `--scope=*` (padrão `mcp:read`), `--write-path=*` (`glob:op,op`), `--client=` e `--expires=`. Saída e `--json` mostram o escopo efetivo.
-- [ ] **1.11 Admin API + UI.** `POST /api/admin/machine-tokens` aceita os campos novos; `present()` devolve `scopes`, `workspace_ids`, `write_paths`, `client_slug`, `expires_at`, `last_used_at`, `kind`. Na aba MCP tokens do `AdminPanel.vue`: checkboxes de workspace (nenhum marcado por padrão), escopos (leitura marcada), linhas de caminho de escrita (pré-preenchidas com `inbox/{client}/**` create/append/update e `diario/**` append quando `mcp:write` for marcado), slug do cliente e validade. Lista com colunas de escopo, último uso e expiração. i18n en/pt-BR.
-- [ ] **1.12 Testes.**
+- [x] **1.10 CLI.** `mcp:token` ganha `--workspace=*` (slug ou id), `--scope=*` (padrão `mcp:read`), `--write-path=*` (`glob:op,op`), `--client=` e `--expires=`. Saída e `--json` mostram o escopo efetivo.
+- [x] **1.11 Admin API + UI.** `POST /api/admin/machine-tokens` aceita os campos novos; `present()` devolve `scopes`, `workspace_ids`, `write_paths`, `client_slug`, `expires_at`, `last_used_at`, `kind`. Na aba MCP tokens do `AdminPanel.vue`: checkboxes de workspace (nenhum marcado por padrão), escopos (leitura marcada), linhas de caminho de escrita (pré-preenchidas com `inbox/{client}/**` create/append/update e `diario/**` append quando `mcp:write` for marcado), slug do cliente e validade. Lista com colunas de escopo, último uso e expiração. i18n en/pt-BR.
+- [x] **1.12 Testes.**
   - `McpTokenScopeTest`: REST `PUT` 403, WebDAV `PUT` 403, `/api/admin/*` 403 mesmo com `api:write`, `/api/user/locale` 403, `GET /notes` 200 com `api:read`.
   - `TokenAudienceTest`: MCP com `JOTTER_AUTH_PROVIDER=oidc` e `grandpasson`.
   - `TokenWorkspaceAllowlistTest`: `list_workspaces` sem o restrito; token de admin vê nota com ACL só se a ACL permitir; emissão de token de admin sem workspaces → 422.
   - Expirado/revogado → 401.
   - Backfill da migração.
   - Ampliar `AdminMachineTokenTest`, `McpTransportAuthTest`, `AdminPanel.spec.ts`.
-- [ ] **1.13 Docs.** CHANGELOG marca **BREAKING** com o comando de reemissão; `docs/mcp.md` § Authentication; `STATUS.md` e `BACKLOG.md`.
+- [x] **1.13 Docs.** CHANGELOG marca **BREAKING** com o comando de reemissão; `docs/mcp.md` § Authentication; `STATUS.md` e `BACKLOG.md`.
 
 ### PR 2 — Protocolo e limites (R4)
 

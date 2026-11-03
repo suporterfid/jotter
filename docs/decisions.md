@@ -192,3 +192,37 @@ This decision resolves the semantics required before implementing #359. A future
 This entry governs future hosted-mode work; a decision that introduces billing code or a hosted-only fork would have to supersede it explicitly.
 
 ---
+
+## Decision — Scoped credentials and MCP write tools (brain multi-agent epic)
+
+**Decided 2026-11-03:** machine tokens become scoped credentials, and MCP write tools are back in scope behind those scopes. This supersedes the "Write Tools Decision & Scope (Deferred)" section of `docs/mcp.md`, which was a scope note rather than an entry here. Spec: `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md`; plan: `docs/superpowers/plans/2026-11-03-jotter-brain-multiagent.md`.
+
+### Question
+
+One Jotter deployment is to serve as the shared "brain" of several AI clients (Claude Code, Codex, Hermes, Claude web, ChatGPT). Before this decision a machine token acted as its full user: it wrote through REST and WebDAV, reached `/api/admin/*` when the user was an administrator, and authenticated only under the local identity provider. Under what rules may agents read and write?
+
+### Selected contract
+
+- **Scopes.** A credential carries `mcp:read`, `mcp:write`, `api:read`, `api:write`. `/api/mcp` needs `mcp:read`; other API routes need `api:read` for GET/HEAD/OPTIONS/PROPFIND and `api:write` otherwise (WebDAV included). `/api/admin/*`, `/api/auth/*`, and `/api/user/*` never accept a credential. A missing scope answers 403 with `WWW-Authenticate: Bearer error="insufficient_scope"`.
+- **D1 — existing tokens become `mcp:read` only.** Breaking for anyone using a token on REST or WebDAV; the CHANGELOG gives the reissue command. The only documented use was MCP, and keeping implicit REST access is the vulnerability being fixed.
+- **D2 — workspace allowlist.** Effective workspaces are the owner's explicit memberships, intersected with the token's `workspace_ids` when set, within the token's tenant. A token owned by an administrator must list its workspaces explicitly at issuance; legacy administrator tokens were backfilled with every workspace of their tenant, preserving their MCP reach.
+- **D3 — no administrator bypass.** A credential subject never carries the administrator flag, so note ACLs apply to agents and admin routes stay closed by two independent checks.
+- **D4 — OAuth (later PR) is off by default** (`JOTTER_OAUTH_ENABLED=false`); a deployment opts in.
+- **D5 — Hermes uses a manual token** in this cycle.
+- **D6 — delivery order:** scoped credentials → protocol polish → write tools → brain tools → OAuth → client docs.
+- **D7 — `_brain/`, `.trash/`, `_resources/`, `_templates/`, `.obsidian/` are never writable by a credential**, whatever its write paths say; a write-path glob must start with a literal folder.
+- **D8 — OAuth grants only `mcp:read`, `mcp:write`, `offline_access`**, never `api:*`.
+- Credentials resolve for every identity provider through `CredentialScopedIdentityProvider` (a decorator over the configured provider) and `MachineTokenResolver`; an unknown or expired Jotter-prefixed token answers 401 and never falls back to a session.
+
+### How the deferral's revisit conditions are met
+
+`docs/mcp.md` deferred write tools until (1) an `mcp:write` scope existed in token issuance and (2) per-workspace write rate limiting and locking existed for MCP. (1) ships with this decision; (2) ships in the protocol PR (rate limits) and the write-tools PR (per-note lock, optimistic concurrency, audit). No write tool is exposed before both are merged.
+
+### Options considered
+
+- Keep tokens as full user impersonation and add write tools: rejected — a leaked read-only agent token could already write everywhere the user can, including admin routes.
+- Separate token tables per audience (MCP vs REST): rejected — two issuance paths and two resolvers for one concept; scopes on one table express the same thing.
+- JWT access tokens: rejected — key management on shared hosting; opaque hashed tokens already work.
+- Scoped opaque tokens with a provider decorator: selected.
+
+---

@@ -19,13 +19,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Domain\Auth\Contracts\IdentityProvider::class, function (): \App\Domain\Auth\Contracts\IdentityProvider {
             $provider = config('jotter.auth_provider', 'local');
 
-            return match ($provider) {
+            $inner = match ($provider) {
                 'grandpasson' => new \App\Domain\Auth\Providers\GrandpaSSOnIdentityProvider,
                 'oidc' => new \App\Domain\Auth\Providers\OidcIdentityProvider(
                     app(\App\Domain\Auth\Oidc\OidcAuthenticationService::class),
                 ),
                 default => new \App\Domain\Auth\Providers\LocalIdentityProvider,
             };
+
+            // Bearer machine/OAuth tokens are resolved and scoped here, for every
+            // provider (docs/decisions.md — scoped credentials).
+            return new \App\Domain\Auth\CredentialScopedIdentityProvider($inner);
         });
 
         $this->app->singleton(\App\Domain\Jobs\Contracts\JobDispatcher::class, function (): \App\Domain\Jobs\Contracts\JobDispatcher {

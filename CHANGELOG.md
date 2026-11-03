@@ -4,6 +4,16 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Scoped machine tokens — 2026-11-03 (brain multi-agent epic, PR 1)
+
+- **BREAKING — existing machine tokens are now MCP read-only (`mcp:read`).** A token used on the REST API or WebDAV gets 403 `insufficient_scope`. Reissue it with the scopes it needs, for example: `php artisan mcp:token you@example.com --workspace=<slug> --scope=api:read --scope=api:write --name="Obsidian sync"`. Tokens owned by administrators were given an explicit list of every workspace in their tenant, so their MCP reach is unchanged.
+- **Scopes** `mcp:read`, `mcp:write`, `api:read`, `api:write`, enforced per route by `EnforceCredentialAudience`; `/api/admin/*`, `/api/auth/*`, `/api/user/*` never accept a token. Denials are audited (`auth.forbidden`, reason `insufficient_scope` / `credential_not_allowed`, with `token_id` and `client_slug`).
+- **Workspace allowlist, write paths, client slug, expiry, last use** on `machine_tokens` (migration `2026_11_03_000001`, idempotent). Tokens never inherit the administrator bypass, so note ACLs apply to agents; administrator-owned tokens must list their workspaces.
+- **Every identity provider**: `CredentialScopedIdentityProvider` + `MachineTokenResolver` resolve tokens under `local`, `oidc`, and `grandpasson`. Unknown or expired `jt_mkt_` tokens answer 401 without falling back to the session. GrandpaSSOn service tokens need `kb:read` on MCP.
+- **Issuance**: `mcp:token --workspace --scope --write-path --client --expires`, and the same fields in Administration → MCP tokens (workspace checkboxes, scopes, write paths pre-filled with `inbox/{client}/**` and `diario/**` when `mcp:write` is chosen, expiry; the list shows scope, reach, last use, expiry).
+- **Decision** recorded in `docs/decisions.md` (D1–D8), superseding the write-tools deferral in `docs/mcp.md`.
+- **Tests**: `McpTokenScopeTest`, `TokenAudienceTest`, `TokenWorkspaceAllowlistTest`, `MachineTokenWritePathTest`, extended `AdminMachineTokenTest`, Vitest for the token form.
+
 ### CI runs locally, without GitHub Actions — 2026-11-03
 
 - **Removed** `.github/workflows/ci.yml`. Nothing runs on GitHub anymore; the `test` required status check on `main` must be removed from branch protection by the owner.

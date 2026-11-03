@@ -212,6 +212,10 @@ final class NoteAccess
 
     private function hasWorkspaceAccess(AuthenticatedSubject $subject, int $workspaceId): bool
     {
+        if ($subject->credential !== null) {
+            return (new CredentialScope)->allowsWorkspace($subject, $workspaceId);
+        }
+
         if ($subject->isAdmin || $this->isServiceToken($subject)) {
             return $this->isServiceToken($subject)
                 ? in_array($workspaceId, $this->serviceWorkspaceIds($subject), true)
@@ -234,6 +238,10 @@ final class NoteAccess
 
     private function canWriteWorkspace(AuthenticatedSubject $subject, int $workspaceId): bool
     {
+        if ($subject->credential !== null) {
+            return (new CredentialScope)->canWrite($subject, $workspaceId);
+        }
+
         if ($subject->isAdmin) {
             return true;
         }
