@@ -3,6 +3,7 @@
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\AuthorizeWorkspaceAccess;
 use App\Http\Middleware\AuthorizeWorkspaceWrite;
+use App\Http\Middleware\EnforceCredentialAudience;
 use App\Http\Middleware\SetLocaleFromSubject;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -37,6 +38,8 @@ return Application::configure(basePath: dirname(__DIR__))
             StartSession::class,
             ShareErrorsFromSession::class,
             SetLocaleFromSubject::class,
+            // Bearer machine/OAuth tokens: scope and audience per route.
+            EnforceCredentialAudience::class,
         ]);
 
         // Markdown is canonical file content: preserve intentional whitespace and empty notes.

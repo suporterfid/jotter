@@ -17,5 +17,15 @@ final class AuthenticatedSubject
         public readonly ?User $user = null,
         public readonly array $attributes = [],
         public readonly string $locale = 'pt-BR',
+        public readonly ?CredentialContext $credential = null,
     ) {}
+
+    /**
+     * True when the request authenticated with a bearer credential (machine or
+     * OAuth token) rather than a browser session.
+     */
+    public function isCredential(): bool
+    {
+        return $this->credential !== null;
+    }
 }

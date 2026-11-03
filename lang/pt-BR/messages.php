@@ -52,4 +52,7 @@ return [
     'plan_read_only' => 'Este espaço está somente leitura: o plano desta conta não permite alterações no momento. Leitura, busca e exportações continuam disponíveis.',
     'plan_seat_limit_reached' => 'Limite de assentos atingido: este plano permite :seats membro(s). Remova um membro ou atualize o plano.',
     'machine_token_revoked' => 'Token de máquina revogado.',
+    'credential_insufficient_scope' => 'Este token não tem o escopo :scope exigido por esta requisição.',
+    'credential_not_allowed' => 'Tokens não podem ser usados nesta requisição; entre com seu usuário.',
+    'machine_token_invalid_options' => 'Opções inválidas para o token de máquina.',
 ];

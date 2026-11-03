@@ -22,8 +22,10 @@ use Illuminate\Support\Collection;
  * MCP server over Streamable HTTP (JSON responses only, no SSE stream). One
  * POST per JSON-RPC message; notifications are acknowledged with 202.
  * Authentication is a machine token (`Authorization: Bearer jt_mkt_...`) that
- * acts as its user; every tool call is authorized per workspace through the
- * IdentityProvider seam. Tools are read-only (see docs/mcp.md).
+ * acts as its user narrowed by its scopes and workspace allowlist (the
+ * `mcp:read` scope is enforced by EnforceCredentialAudience); every tool call is
+ * authorized per workspace through the IdentityProvider seam. GrandpaSSOn
+ * service tokens need `kb:read`. Tools are read-only (see docs/mcp.md).
  */
 final class McpController extends Controller
 {
@@ -47,6 +49,11 @@ final class McpController extends Controller
             );
 
             return $this->error($request->input('id'), -32001, 'Unauthorized machine token', 401);
+        }
+
+        if (($subject->attributes['auth_method'] ?? null) === 'grandpasson_service_token'
+            && ! in_array('kb:read', (array) ($subject->attributes['scopes'] ?? []), true)) {
+            return $this->error($request->input('id'), -32003, 'Token does not have the required scope (kb:read)', 403);
         }
 
         $method = (string) $request->input('method', '');

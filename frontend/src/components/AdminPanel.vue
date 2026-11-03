@@ -146,6 +146,45 @@
             <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.email }})</option>
           </select>
           <input v-model="newToken.name" :placeholder="t('adminPanel.mcpTokenName')" data-testid="admin-mcp-name" required />
+
+          <fieldset class="admin-fieldset" data-testid="admin-mcp-workspaces">
+            <legend>{{ t('adminPanel.mcpWorkspaces') }}</legend>
+            <p class="admin-note">{{ t('adminPanel.mcpWorkspacesHelp') }}</p>
+            <label v-for="ws in tokenTenantWorkspaces" :key="ws.id" class="admin-check">
+              <input type="checkbox" :value="ws.id" v-model="newToken.workspace_ids" :data-testid="`admin-mcp-ws-${ws.id}`" />
+              {{ ws.name }} ({{ ws.slug }})
+            </label>
+          </fieldset>
+
+          <fieldset class="admin-fieldset" data-testid="admin-mcp-scopes">
+            <legend>{{ t('adminPanel.mcpScopes') }}</legend>
+            <label v-for="scope in TOKEN_SCOPES" :key="scope" class="admin-check">
+              <input type="checkbox" :value="scope" v-model="newToken.scopes" :data-testid="`admin-mcp-scope-${scope}`" />
+              <code>{{ scope }}</code> — {{ t(`adminPanel.mcpScopeHelp.${scope.replace(':', '_')}`) }}
+            </label>
+          </fieldset>
+
+          <fieldset v-if="newToken.scopes.includes('mcp:write')" class="admin-fieldset" data-testid="admin-mcp-write-paths">
+            <legend>{{ t('adminPanel.mcpWritePaths') }}</legend>
+            <p class="admin-note">{{ t('adminPanel.mcpWritePathsHelp') }}</p>
+            <div v-for="(path, index) in newToken.write_paths" :key="index" class="admin-write-path">
+              <input v-model="path.glob" :data-testid="`admin-mcp-glob-${index}`" :aria-label="t('adminPanel.mcpWritePathGlob')" />
+              <label v-for="op in WRITE_OPS" :key="op" class="admin-check">
+                <input type="checkbox" :value="op" v-model="path.ops" /> {{ op }}
+              </label>
+              <button type="button" class="warning-btn" @click="newToken.write_paths.splice(index, 1)">{{ t('adminPanel.mcpRemove') }}</button>
+            </div>
+            <button type="button" @click="newToken.write_paths.push({ glob: '', ops: ['create'] })">{{ t('adminPanel.mcpAddWritePath') }}</button>
+            <input v-model="newToken.client_slug" :placeholder="t('adminPanel.mcpClientSlug')" data-testid="admin-mcp-client" />
+          </fieldset>
+
+          <label class="admin-check">
+            {{ t('adminPanel.mcpExpires') }}
+            <select v-model="newToken.expires" data-testid="admin-mcp-expires">
+              <option v-for="option in EXPIRY_OPTIONS" :key="option" :value="option">{{ t(`adminPanel.mcpExpiry.${option}`) }}</option>
+            </select>
+          </label>
+
           <button type="submit" data-testid="admin-mcp-submit" :disabled="loading">{{ t('adminPanel.mcpCreateTokenSubmit') }}</button>
         </form>
 
@@ -161,6 +200,14 @@
             <span>
               <strong>{{ tk.name }}</strong> — {{ tk.user_email }} · {{ tk.tenant_slug }}
               <em v-if="tk.revoked_at">{{ t('adminPanel.mcpRevokedTag') }}</em>
+              <br />
+              <small class="admin-note" :data-testid="`admin-mcp-token-scope-${tk.id}`">
+                {{ (tk.scopes || []).join(' ') }}
+                · {{ tk.workspace_ids === null ? t('adminPanel.mcpReachMemberships') : workspaceSlugs(tk.workspace_ids) }}
+                <template v-if="tk.client_slug"> · {{ tk.client_slug }}</template>
+                · {{ t('adminPanel.mcpLastUsed') }}: {{ tk.last_used_at ? formatDate(tk.last_used_at) : t('adminPanel.mcpNever') }}
+                · {{ t('adminPanel.mcpExpires') }}: {{ tk.expires_at ? formatDate(tk.expires_at) : t('adminPanel.mcpNever') }}
+              </small>
             </span>
             <button v-if="!tk.revoked_at" class="warning-btn" :disabled="loading" @click="revokeMcpToken(tk)">{{ t('adminPanel.mcpRevoke') }}</button>
           </li>
@@ -171,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, getTenants, adminResetPassword } from '../services/api'
 import type { Tenant } from '../services/types'
@@ -203,11 +250,65 @@ interface MachineTokenRow {
   name: string
   tenant_slug: string | null
   user_email: string | null
+  scopes?: string[]
+  workspace_ids?: number[] | null
+  client_slug?: string | null
   created_at: string | null
+  expires_at?: string | null
+  last_used_at?: string | null
   revoked_at: string | null
 }
+interface WritePathDraft { glob: string; ops: string[] }
+interface TokenDraft {
+  tenant_id: number | null
+  user_id: number | null
+  name: string
+  workspace_ids: number[]
+  scopes: string[]
+  write_paths: WritePathDraft[]
+  client_slug: string
+  expires: string
+}
+
+const TOKEN_SCOPES = ['mcp:read', 'mcp:write', 'api:read', 'api:write'] as const
+const WRITE_OPS = ['create', 'append', 'update'] as const
+const EXPIRY_OPTIONS = ['never', '30d', '90d', '180d', '1y'] as const
+
+function emptyTokenDraft(tenantId: number | null = null, userId: number | null = null): TokenDraft {
+  return { tenant_id: tenantId, user_id: userId, name: '', workspace_ids: [], scopes: ['mcp:read'], write_paths: [], client_slug: '', expires: 'never' }
+}
+
 const machineTokens = ref<MachineTokenRow[]>([])
-const newToken = ref<{ tenant_id: number | null; user_id: number | null; name: string }>({ tenant_id: null, user_id: null, name: '' })
+const newToken = ref<TokenDraft>(emptyTokenDraft())
+
+const tokenTenantWorkspaces = computed(() =>
+  workspaces.value.filter((ws: { tenant_id: number }) => ws.tenant_id === newToken.value.tenant_id),
+)
+
+// Turning on mcp:write pre-fills the brain defaults: a per-client inbox and an
+// append-only daily journal (docs/superpowers/plans/2026-11-03-jotter-brain-multiagent.md).
+watch(
+  () => newToken.value.scopes.includes('mcp:write'),
+  (canWrite) => {
+    if (canWrite && newToken.value.write_paths.length === 0) {
+      newToken.value.write_paths = [
+        { glob: 'inbox/{client}/**', ops: ['create', 'append', 'update'] },
+        { glob: 'diario/**', ops: ['append'] },
+      ]
+    }
+    if (!canWrite) {
+      newToken.value.write_paths = []
+    }
+  },
+)
+
+function workspaceSlugs(ids: number[] | null | undefined): string {
+  return (ids || []).map((id) => workspaces.value.find((ws: { id: number }) => ws.id === id)?.slug ?? `#${id}`).join(', ')
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString()
+}
 const issuedToken = ref<{ token: string; host: string; serverName: string } | null>(null)
 
 async function fetchMachineTokens() {
@@ -224,11 +325,22 @@ async function createMcpToken() {
   loading.value = true
   error.value = ''
   try {
-    const response = await api.post<{ data: { token: string; mcp_url: string; tenant_slug: string | null } }>('/admin/machine-tokens', newToken.value)
+    const draft = newToken.value
+    const payload = {
+      tenant_id: draft.tenant_id,
+      user_id: draft.user_id,
+      name: draft.name,
+      scopes: draft.scopes,
+      workspace_ids: draft.workspace_ids.length > 0 ? draft.workspace_ids : null,
+      write_paths: draft.scopes.includes('mcp:write') ? draft.write_paths : [],
+      client_slug: draft.client_slug.trim() || null,
+      expires: draft.expires,
+    }
+    const response = await api.post<{ data: { token: string; mcp_url: string; tenant_slug: string | null } }>('/admin/machine-tokens', payload)
     const data = response.data.data
     const host = data.mcp_url ? data.mcp_url.replace(/\/api\/mcp$/, '') : ''
     issuedToken.value = { token: data.token, host, serverName: data.tenant_slug ? `jotter-${data.tenant_slug}` : 'jotter' }
-    newToken.value = { ...newToken.value, name: '' }
+    newToken.value = emptyTokenDraft(draft.tenant_id, draft.user_id)
     await fetchMachineTokens()
   } catch (e) {
     error.value = extractErrorMessage(e, t('adminPanel.requestFailed'))
@@ -528,6 +640,32 @@ watch(() => props.isOpen, (val) => {
 .btn-group {
   display: flex;
   gap: var(--space-2);
+}
+.admin-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.admin-fieldset legend {
+  padding: 0 var(--space-1);
+  color: var(--color-text);
+}
+.admin-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.admin-write-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.admin-write-path input:not([type="checkbox"]) {
+  flex: 1 1 12rem;
 }
 .admin-form-note {
   font-size: 0.75rem;

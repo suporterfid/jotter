@@ -218,4 +218,65 @@ describe('AdminPanel Component', () => {
     expect(wrapper.text()).toContain('That slug is already taken.')
     expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(true)
   })
+
+  it('issues a scoped MCP token with workspaces, write paths and expiry', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [
+          { id: 10, tenant_id: 1, slug: 'brain', name: 'Brain' },
+          { id: 11, tenant_id: 1, slug: 'brain-restrito', name: 'Restrito' },
+          { id: 20, tenant_id: 2, slug: 'elsewhere', name: 'Elsewhere' },
+        ] } })
+      }
+      if (url === '/admin/machine-tokens') {
+        return Promise.resolve({ data: { data: [
+          { id: 7, name: 'Hermes VPS', tenant_slug: 'acme', user_email: 'joe@acme.test', scopes: ['mcp:read', 'mcp:write'], workspace_ids: [10], client_slug: 'hermes', created_at: null, expires_at: null, last_used_at: null, revoked_at: null },
+        ] } })
+      }
+      if (url === '/admin/users') {
+        return Promise.resolve({ data: { data: [{ id: 3, name: 'Joe', email: 'joe@acme.test' }] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    apiPost.mockResolvedValue({ data: { data: { token: 'jt_mkt_x', mcp_url: 'https://acme.test/api/mcp', tenant_slug: 'acme' } } })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    await wrapper.find('[data-testid="admin-tab-mcp"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="admin-mcp-token-scope-7"]').text().replace(/\s+/g, ' ')).toContain('mcp:read mcp:write · brain · hermes')
+
+    await wrapper.find('[data-testid="admin-mcp-tenant"]').setValue(1)
+    await wrapper.find('[data-testid="admin-mcp-user"]').setValue(3)
+    await wrapper.find('[data-testid="admin-mcp-name"]').setValue('Hermes VPS')
+
+    // Only the selected tenant's workspaces are offered.
+    expect(wrapper.find('[data-testid="admin-mcp-ws-20"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="admin-mcp-ws-10"]').setValue(true)
+
+    await wrapper.find('[data-testid="admin-mcp-scope-mcp:write"]').setValue(true)
+    await flushPromises()
+    expect((wrapper.find('[data-testid="admin-mcp-glob-0"]').element as HTMLInputElement).value).toBe('inbox/{client}/**')
+    await wrapper.find('[data-testid="admin-mcp-client"]').setValue('hermes')
+    await wrapper.find('[data-testid="admin-mcp-expires"]').setValue('180d')
+
+    await wrapper.find('[data-testid="admin-mcp-tab"] form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(apiPost).toHaveBeenCalledWith('/admin/machine-tokens', {
+      tenant_id: 1,
+      user_id: 3,
+      name: 'Hermes VPS',
+      scopes: ['mcp:read', 'mcp:write'],
+      workspace_ids: [10],
+      write_paths: [
+        { glob: 'inbox/{client}/**', ops: ['create', 'append', 'update'] },
+        { glob: 'diario/**', ops: ['append'] },
+      ],
+      client_slug: 'hermes',
+      expires: '180d',
+    })
+    expect(wrapper.find('[data-testid="admin-mcp-token-value"]').text()).toBe('jt_mkt_x')
+  })
 })

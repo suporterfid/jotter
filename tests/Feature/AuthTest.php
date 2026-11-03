@@ -175,7 +175,8 @@ class AuthTest extends TestCase
         config(['jotter.auth_provider' => 'grandpasson']);
         $provider = app(IdentityProvider::class);
 
-        $this->assertInstanceOf(GrandpaSSOnIdentityProvider::class, $provider);
+        $this->assertInstanceOf(\App\Domain\Auth\CredentialScopedIdentityProvider::class, $provider);
+        $this->assertInstanceOf(GrandpaSSOnIdentityProvider::class, $provider->inner());
 
         $admin = User::factory()->create(['is_admin' => true]);
         $tenant = Tenant::create(['slug' => 'default', 'name' => 'Default']);

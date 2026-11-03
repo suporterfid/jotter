@@ -52,4 +52,7 @@ return [
     'plan_read_only' => 'This workspace is read-only: the plan for this account does not allow changes right now. Reading, search, and exports remain available.',
     'plan_seat_limit_reached' => 'Seat limit reached: this plan allows :seats member(s). Remove a member or upgrade the plan.',
     'machine_token_revoked' => 'Machine token revoked.',
+    'credential_insufficient_scope' => 'This token lacks the :scope scope for this request.',
+    'credential_not_allowed' => 'Tokens cannot be used for this request; sign in instead.',
+    'machine_token_invalid_options' => 'Invalid machine token options.',
 ];

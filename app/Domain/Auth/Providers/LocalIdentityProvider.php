@@ -19,32 +19,8 @@ final class LocalIdentityProvider implements IdentityProvider
 
     public function resolveIdentity(Request $request): ?AuthenticatedSubject
     {
-        // 1. Check Bearer MachineToken header
-        $bearerToken = $request->bearerToken();
-        if ($bearerToken) {
-            $hash = \App\Models\MachineToken::hashToken($bearerToken);
-            $tokenRecord = \App\Models\MachineToken::query()
-                ->where('token_hash', $hash)
-                ->whereNull('revoked_at')
-                ->first();
-
-            if ($tokenRecord) {
-                /** @var User|null $user */
-                $user = User::find($tokenRecord->subject_id);
-                if ($user && $user->is_active !== false) {
-                    return new AuthenticatedSubject(
-                        subjectId: (string) $user->id,
-                        email: $user->email,
-                        name: $user->name,
-                        isAdmin: (bool) $user->is_admin,
-                        user: $user,
-                        locale: $user->locale,
-                    );
-                }
-            }
-        }
-
-        // 2. Check Session User
+        // Bearer machine/OAuth tokens are resolved by MachineTokenResolver through
+        // CredentialScopedIdentityProvider, for every provider. Sessions only here.
         /** @var User|null $user */
         $user = Auth::guard('web')->user() ?? Auth::user();
 
