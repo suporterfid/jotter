@@ -77,6 +77,9 @@ Verbs:
   release         Build dist/jotter-release-<version>.zip and checksum
   release:verify  Scan a release ZIP for secrets and private keys (newest, or path arg)
   release:doctor  Extract a release ZIP into dist/install-test and run jotter:doctor there
+  ci              Run the full CI pipeline locally (up, test, e2e, release, release:verify)
+                  Options: --allow-dirty, --dry-run. Summary: dist/ci/last-run.txt
+  ci:install-hook Enable the pre-push hook that requires a passing `ci` for pushed commits
 EOF
 }
 
@@ -229,6 +232,126 @@ cmd_release_doctor() {
     ' sh "$@"
 }
 
+# --- Local CI -----------------------------------------------------------------
+#
+# Jotter has no hosted CI. `ci` runs the full pipeline that used to live in
+# .github/workflows/ci.yml: up, test, e2e, release, release:verify, then tears
+# everything down. It runs in its own Compose project (jotter-ci-<hash>) with the
+# CI overrides, so it never touches the development database and publishes no
+# host ports. A summary goes to dist/ci/last-run.txt, the full log to
+# dist/ci/last-run.log, and a passing run on a clean tree writes
+# dist/ci/passed-<sha>, which the pre-push hook (.githooks/pre-push) accepts.
+
+# `composer install` runs first, always: vendor/ is bind-mounted and shared with
+# the dev stack, and `up` skips the install when vendor/autoload.php exists, so
+# a broken composer.lock would otherwise go unnoticed.
+CI_STEPS=("composer install --no-interaction --prefer-dist" up test e2e release release:verify)
+
+ci_project_name() {
+  printf 'jotter-ci-%s' "$(printf '%s' "$ROOT_DIR" | sha256sum | cut -c1-12)"
+}
+
+ci_child() {
+  JOTTER_CI=1 CI=true COMPOSE_PROJECT_NAME="$(ci_project_name)" "$ROOT_DIR/scripts/jt.sh" "$@"
+}
+
+ci_dump_diagnostics() {
+  echo "--- storage/logs/laravel.log (tail) ---"
+  tail -n 200 storage/logs/laravel.log 2>/dev/null || echo "(no laravel.log)"
+  echo "--- docker compose logs app (tail) ---"
+  JOTTER_CI=1 COMPOSE_PROJECT_NAME="$(ci_project_name)" \
+    docker compose -f compose.yaml -f compose.ci.yaml logs --tail=200 app 2>&1 || true
+}
+
+cmd_ci() {
+  local allow_dirty=0 dry_run=0 arg
+  for arg in "$@"; do
+    case "$arg" in
+      --allow-dirty) allow_dirty=1 ;;
+      --dry-run) dry_run=1 ;;
+      *) echo "Unknown ci option: $arg (use --allow-dirty or --dry-run)" >&2; return 1 ;;
+    esac
+  done
+
+  local sha dirty=0
+  sha="$(git rev-parse HEAD)"
+  if [[ -n "$(git status --porcelain)" ]]; then
+    dirty=1
+    if [[ "$allow_dirty" -eq 0 ]]; then
+      echo "jt ci: the working tree has uncommitted changes, so the result would not describe ${sha:0:12}." >&2
+      echo "Commit or stash them, or rerun with --allow-dirty (no pass marker is written then)." >&2
+      return 1
+    fi
+  fi
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    echo "jt ci (dry run): commit ${sha:0:12}, project $(ci_project_name), dirty=${dirty}"
+    printf 'step: %s\n' "${CI_STEPS[@]}"
+    echo "then: down --volumes --remove-orphans"
+    return 0
+  fi
+
+  local out_dir='dist/ci'
+  mkdir -p "$out_dir"
+  local log="${out_dir}/last-run.log" summary="${out_dir}/last-run.txt"
+  rm -f "${out_dir}/passed-${sha}"
+  : > "$log"
+
+  local started result='passed' failed_step='' step step_start status
+  started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  local -a lines=()
+
+  # shellcheck disable=SC2064
+  trap "ci_child down --volumes --remove-orphans >>'$log' 2>&1 || true" EXIT
+
+  for step in "${CI_STEPS[@]}"; do
+    echo "==> jt ci: ${step}" | tee -a "$log"
+    step_start=$SECONDS
+    set +e
+    # shellcheck disable=SC2086 # word-split the step into verb + arguments
+    ci_child $step 2>&1 | tee -a "$log"
+    status=${PIPESTATUS[0]}
+    set -e
+    lines+=("$(printf '%-15s %-6s %4ss' "${step%% *}" "$([[ $status -eq 0 ]] && echo ok || echo FAIL)" "$((SECONDS - step_start))")")
+    if [[ $status -ne 0 ]]; then
+      result='failed'
+      failed_step="${step%% *}"
+      ci_dump_diagnostics 2>&1 | tee -a "$log"
+      break
+    fi
+  done
+
+  {
+    echo "result:   ${result}${failed_step:+ (step: ${failed_step})}"
+    echo "commit:   ${sha}"
+    echo "branch:   $(git rev-parse --abbrev-ref HEAD)"
+    echo "dirty:    $([[ $dirty -eq 1 ]] && echo yes || echo no)"
+    echo "started:  ${started}"
+    echo "finished: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "project:  $(ci_project_name)"
+    echo
+    printf '%s\n' "${lines[@]}"
+  } > "$summary"
+
+  echo
+  cat "$summary"
+
+  if [[ "$result" != 'passed' ]]; then
+    echo "jt ci FAILED at ${failed_step}. Full log: ${log}" >&2
+    return 1
+  fi
+
+  if [[ "$dirty" -eq 0 ]]; then
+    cp "$summary" "${out_dir}/passed-${sha}"
+  fi
+  echo "jt ci passed. Paste ${summary} into the PR."
+}
+
+cmd_ci_install_hook() {
+  git config core.hooksPath .githooks
+  echo "pre-push hook enabled (core.hooksPath=.githooks). Skip once with JOTTER_SKIP_CI=1 git push."
+}
+
 main() {
   local verb="${1:-help}"
   shift || true
@@ -244,6 +367,8 @@ main() {
     release) cmd_release ;;
     release:verify) cmd_release_verify "$@" ;;
     release:doctor) cmd_release_doctor "$@" ;;
+    ci) cmd_ci "$@" ;;
+    ci:install-hook) cmd_ci_install_hook ;;
     help|-h|--help) usage ;;
     *) echo "Unknown verb: $verb" >&2; usage >&2; return 1 ;;
   esac

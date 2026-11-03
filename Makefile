@@ -1,4 +1,4 @@
-.PHONY: up down test e2e release
+.PHONY: up down test e2e release ci
 
 up:
 	./scripts/jt.sh up
@@ -14,3 +14,6 @@ e2e:
 
 release:
 	./scripts/jt.sh release
+
+ci:
+	./scripts/jt.sh ci

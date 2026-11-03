@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Jotter pre-push hook: every pushed commit needs a passing local CI run.
+#
+# Enable once per clone:  ./scripts/jt.sh ci:install-hook   (or .\scripts\jt.ps1 ci:install-hook)
+# Skip once:              JOTTER_SKIP_CI=1 git push   (or git push --no-verify)
+#
+# A commit passes when dist/ci/passed-<sha> exists, which `jt ci` writes after a
+# green run on a clean tree. If HEAD is being pushed without that marker, the
+# hook runs `jt ci` now; any other commit must be checked out and tested first.
+set -euo pipefail
+
+if [[ "${JOTTER_SKIP_CI:-}" == "1" ]]; then
+  echo "jt ci: skipped for this push (JOTTER_SKIP_CI=1)." >&2
+  exit 0
+fi
+
+root="$(git rev-parse --show-toplevel)"
+head="$(git rev-parse HEAD)"
+zero='0000000000000000000000000000000000000000'
+
+run_ci() {
+  case "${OSTYPE:-}" in
+    msys*|cygwin*) powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/scripts/jt.ps1" ci ;;
+    *) "$root/scripts/jt.sh" ci ;;
+  esac
+}
+
+while read -r local_ref local_sha _remote_ref _remote_sha; do
+  [[ "$local_sha" == "$zero" ]] && continue   # branch deletion
+  [[ -f "$root/dist/ci/passed-$local_sha" ]] && continue
+
+  if [[ "$local_sha" != "$head" ]]; then
+    echo "jt ci: ${local_ref} (${local_sha:0:12}) has no passing local CI run." >&2
+    echo "Check it out and run ./scripts/jt.sh ci, or push with JOTTER_SKIP_CI=1." >&2
+    exit 1
+  fi
+
+  echo "jt ci: no passing run for ${local_sha:0:12}; running the local CI now." >&2
+  run_ci </dev/null
+done

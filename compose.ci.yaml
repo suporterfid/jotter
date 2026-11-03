@@ -1,7 +1,9 @@
+# Overrides for `jt ci` (and any run with JOTTER_CI=1 or CI=true). Nothing is
+# published on the host, so a CI run can coexist with a running dev stack;
+# Playwright reaches the app through the internal `jotter-web` alias.
 services:
   app:
-    ports: !override
-      - "8080:80"
+    ports: !override []
 
   mysql:
     ports: !override []

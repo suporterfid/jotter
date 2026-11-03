@@ -135,7 +135,8 @@ Jotter Docker toolchain
 
 Usage: .\scripts\jt.ps1 <verb> [args...]
 
-Verbs: up, down, test, e2e, artisan, composer, npm, release, release:verify, release:doctor
+Verbs: up, down, test, e2e, artisan, composer, npm, release, release:verify, release:doctor,
+       ci [--allow-dirty] [--dry-run], ci:install-hook
 '@ | Write-Output
 }
 
@@ -153,7 +154,7 @@ switch ($Verb) {
         Invoke-Compose -Arguments (@('down') + $VerbArgs)
     }
     'test' {
-        Invoke-WithTestComposeProject -RepositoryPath $RootDir -Action {
+        $testAction = {
             Invoke-Bootstrap
             Initialize-TestDatabase
             Invoke-Compose -Arguments @(
@@ -165,6 +166,13 @@ switch ($Verb) {
             # own Vitest invocation through the `npm` verb and must not receive
             # PHPUnit-only flags such as `--filter`.
             Invoke-Compose -Arguments @('--profile', 'dev', 'run', '--rm', '--no-deps', 'node', 'npm', 'test')
+        }
+        # Inside `ci` the Compose project is already isolated (jotter-ci-<hash>);
+        # keep it so the final `down --volumes` cleans up the test containers too.
+        if ($env:JOTTER_CI -eq '1' -and $env:COMPOSE_PROJECT_NAME) {
+            & $testAction
+        } else {
+            Invoke-WithTestComposeProject -RepositoryPath $RootDir -Action $testAction
         }
     }
     'e2e' {
@@ -288,6 +296,112 @@ php artisan jotter:doctor "$@"
             'app', 'sh', '-c', $script, 'sh'
         ) + $doctorArgs
         Invoke-Compose -Arguments $composeArgs
+    }
+    'ci' {
+        # Full local CI, mirroring `./scripts/jt.sh ci`: composer install, up, test,
+        # e2e, release, release:verify, then down --volumes, in an isolated
+        # Compose project with the CI overrides. Summary: dist/ci/last-run.txt;
+        # transcript: dist/ci/last-run.log; pass marker: dist/ci/passed-<sha>.
+        foreach ($option in $VerbArgs) {
+            if ($option -notin @('--allow-dirty', '--dry-run')) {
+                throw "Unknown ci option: $option (use --allow-dirty or --dry-run)"
+            }
+        }
+        $allowDirty = $VerbArgs -contains '--allow-dirty'
+        $dryRun = $VerbArgs -contains '--dry-run'
+
+        $sha = (& git rev-parse HEAD).Trim()
+        $dirty = [bool](& git status --porcelain)
+        if ($dirty -and -not $allowDirty) {
+            throw "jt ci: the working tree has uncommitted changes, so the result would not describe $($sha.Substring(0, 12)). Commit or stash them, or rerun with --allow-dirty (no pass marker is written then)."
+        }
+
+        $projectName = (Get-TestComposeProjectName -RepositoryPath $RootDir) -replace '^jotter-test-', 'jotter-ci-'
+        $steps = @('composer install --no-interaction --prefer-dist', 'up', 'test', 'e2e', 'release', 'release:verify')
+
+        if ($dryRun) {
+            Write-Output "jt ci (dry run): commit $($sha.Substring(0, 12)), project $projectName, dirty=$([int]$dirty)"
+            foreach ($step in $steps) { Write-Output "step: $step" }
+            Write-Output 'then: down --volumes --remove-orphans'
+            break
+        }
+
+        $outDir = 'dist/ci'
+        New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+        $log = Join-Path $outDir 'last-run.log'
+        $summary = Join-Path $outDir 'last-run.txt'
+        $marker = Join-Path $outDir "passed-$sha"
+        Remove-Item -Force -ErrorAction SilentlyContinue $marker, $log
+
+        $saved = @{}
+        foreach ($name in @('JOTTER_CI', 'CI', 'COMPOSE_PROJECT_NAME')) {
+            $saved[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+        }
+        $env:JOTTER_CI = '1'
+        $env:CI = 'true'
+        $env:COMPOSE_PROJECT_NAME = $projectName
+
+        $started = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        $result = 'passed'
+        $failedStep = ''
+        $lines = @()
+
+        Start-Transcript -Path $log | Out-Null
+        try {
+            foreach ($step in $steps) {
+                $parts = $step -split ' '
+                $label = $parts[0]
+                Write-Output "==> jt ci: $step"
+                $watch = [Diagnostics.Stopwatch]::StartNew()
+                $ok = $true
+                try { & $PSCommandPath @parts } catch { $ok = $false; Write-Output $_ }
+                $lines += ('{0,-15} {1,-6} {2,4}s' -f $label, $(if ($ok) { 'ok' } else { 'FAIL' }), [int]$watch.Elapsed.TotalSeconds)
+                if (-not $ok) {
+                    $result = 'failed'
+                    $failedStep = $label
+                    Write-Output '--- storage/logs/laravel.log (tail) ---'
+                    if (Test-Path 'storage/logs/laravel.log') { Get-Content 'storage/logs/laravel.log' -Tail 200 } else { Write-Output '(no laravel.log)' }
+                    Write-Output '--- docker compose logs app (tail) ---'
+                    $previousErrorActionPreference = $ErrorActionPreference
+                    $ErrorActionPreference = 'Continue'
+                    try { & docker compose @ComposeFiles logs --tail=200 app } finally { $ErrorActionPreference = $previousErrorActionPreference }
+                    break
+                }
+            }
+        } finally {
+            try { & $PSCommandPath down --volumes --remove-orphans } catch { Write-Output "teardown failed: $_" }
+            Stop-Transcript | Out-Null
+            foreach ($name in $saved.Keys) {
+                [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process')
+            }
+        }
+
+        $branch = (& git rev-parse --abbrev-ref HEAD).Trim()
+        $resultLine = if ($failedStep) { "$result (step: $failedStep)" } else { $result }
+        $summaryLines = @(
+            "result:   $resultLine",
+            "commit:   $sha",
+            "branch:   $branch",
+            "dirty:    $(if ($dirty) { 'yes' } else { 'no' })",
+            "started:  $started",
+            "finished: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))",
+            "project:  $projectName",
+            ''
+        ) + $lines
+        Set-Content -Path $summary -Value $summaryLines
+        $summaryLines | Write-Output
+
+        if ($result -ne 'passed') {
+            [Console]::Error.WriteLine("jt ci FAILED at $failedStep. Full log: $log")
+            exit 1
+        }
+        if (-not $dirty) { Copy-Item $summary $marker }
+        Write-Output "jt ci passed. Paste $summary into the PR."
+    }
+    'ci:install-hook' {
+        & git config core.hooksPath .githooks
+        if ($LASTEXITCODE -ne 0) { throw 'git config core.hooksPath failed' }
+        Write-Output 'pre-push hook enabled (core.hooksPath=.githooks). Skip once with JOTTER_SKIP_CI=1 git push.'
     }
     { $_ -in @('help', '-h', '--help') } { Show-Usage }
     default { Write-Error "Unknown verb: $Verb"; Show-Usage; exit 1 }
