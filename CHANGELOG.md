@@ -4,6 +4,16 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### MCP protocol polish and rate limits — 2026-11-03 (brain multi-agent epic, PR 2)
+
+- **Protocol `2025-11-25`** negotiated first; an unsupported `MCP-Protocol-Version` header answers 400; a foreign browser `Origin` answers 403 (`mcp.origin_rejected`, extra origins via `JOTTER_MCP_ALLOWED_ORIGINS`).
+- **401 is discoverable**: `WWW-Authenticate: Bearer realm="jotter", scope="mcp:read"`, with `resource_metadata` once `JOTTER_OAUTH_ENABLED=true` (OAuth server lands later; off by default).
+- **Tool annotations and titles** on every tool (`readOnlyHint: true`, `openWorldHint: false` for reads) via `App\Domain\Mcp\McpToolCatalog`; `tools/list` is filtered by scope and a tool needing a missing scope answers 403 `insufficient_scope`.
+- **Dynamic `instructions`**: server text plus the default workspace's `_brain/instructions.md`, ACL-checked, cut at 4 KB on a UTF-8 boundary (`McpInstructions`).
+- **Rate limits** (`McpRateLimiter`, cache-backed, no daemon): 120 calls/min per token; write budget 30/min and 500/day ready for the write tools. 429 with `Retry-After`, audited as `mcp.rate_limited`. Configurable in `jotter.mcp.rate_limits` / `.env`.
+- **Audit**: `mcp.method_called` now records `tool`, `token_id`, `client_slug`, and the tenant.
+- **Tests**: extended `McpProtocolTest`; new `McpRateLimitTest`, `McpToolCatalogTest`.
+
 ### Scoped machine tokens — 2026-11-03 (brain multi-agent epic, PR 1)
 
 - **BREAKING — existing machine tokens are now MCP read-only (`mcp:read`).** A token used on the REST API or WebDAV gets 403 `insufficient_scope`. Reissue it with the scopes it needs, for example: `php artisan mcp:token you@example.com --workspace=<slug> --scope=api:read --scope=api:write --name="Obsidian sync"`. Tokens owned by administrators were given an explicit list of every workspace in their tenant, so their MCP reach is unchanged.

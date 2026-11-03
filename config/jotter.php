@@ -59,6 +59,34 @@ return [
         explode(',', (string) env('JOTTER_EXTERNAL_EMBED_DOMAINS', '')),
     ), static fn (string $host): bool => $host !== ''))),
 
+    /*
+     | MCP server (POST /api/mcp). Rate limits are per credential (token id) or
+     | per subject for session callers; exceeding one answers 429 + Retry-After.
+     | `allowed_origins` lists extra browser origins accepted in the Origin
+     | header besides APP_URL's (DNS-rebinding guard, MCP 2025-06-18+).
+     */
+    'mcp' => [
+        'rate_limits' => [
+            'calls_per_minute' => (int) env('JOTTER_MCP_CALLS_PER_MINUTE', 120),
+            'writes_per_minute' => (int) env('JOTTER_MCP_WRITES_PER_MINUTE', 30),
+            'writes_per_day' => (int) env('JOTTER_MCP_WRITES_PER_DAY', 500),
+        ],
+        'allowed_origins' => array_values(array_filter(array_map(
+            static fn (string $origin): string => rtrim(trim($origin), '/'),
+            explode(',', (string) env('JOTTER_MCP_ALLOWED_ORIGINS', '')),
+        ))),
+        'instructions_max_bytes' => 4096,
+    ],
+
+    /*
+     | Embedded OAuth 2.1 authorization server for MCP clients (brain plan PR 5).
+     | Off by default (decision D4); while off, the MCP 401 does not advertise
+     | protected-resource metadata.
+     */
+    'oauth' => [
+        'enabled' => (bool) env('JOTTER_OAUTH_ENABLED', false),
+    ],
+
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 

@@ -7,6 +7,9 @@ use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
+use App\Domain\Mcp\McpInstructions;
+use App\Domain\Mcp\McpRateLimiter;
+use App\Domain\Mcp\McpToolCatalog;
 use App\Domain\Search\WorkspaceSearch;
 use App\Domain\Vault\VaultStorage;
 use App\Models\Note;
@@ -26,20 +29,38 @@ use Illuminate\Support\Collection;
  * `mcp:read` scope is enforced by EnforceCredentialAudience); every tool call is
  * authorized per workspace through the IdentityProvider seam. GrandpaSSOn
  * service tokens need `kb:read`. Tools are read-only (see docs/mcp.md).
+ *
+ * Protocol polish (brain plan PR 2): 401 carries `WWW-Authenticate`, browser
+ * `Origin` headers from other hosts are refused, an unsupported
+ * `MCP-Protocol-Version` header answers 400, calls are rate limited per token
+ * (429 + Retry-After), tools carry `annotations` and are listed by scope, and
+ * `initialize` returns the workspace's `_brain/instructions.md`.
  */
 final class McpController extends Controller
 {
     /** Newest first; the client's requested version is echoed when supported. */
-    public const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+    public const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 
     public function __construct(
         private readonly IdentityProvider $identityProvider,
         private readonly NoteAccess $noteAccess,
+        private readonly McpToolCatalog $tools,
+        private readonly McpRateLimiter $rateLimiter,
+        private readonly McpInstructions $instructions,
         private readonly AuditRecorder $auditRecorder = new AuditRecorder,
     ) {}
 
     public function handle(Request $request): JsonResponse|Response
     {
+        if (! $this->originAllowed($request)) {
+            $this->auditRecorder->record(
+                event: AuditEvent::MCP_ORIGIN_REJECTED,
+                metadata: ['ip' => $request->ip(), 'origin' => mb_substr((string) $request->header('Origin'), 0, 255)]
+            );
+
+            return $this->error($request->input('id'), -32003, 'Origin not allowed', 403);
+        }
+
         $subject = $this->identityProvider->resolveIdentity($request);
 
         if (! $subject) {
@@ -48,7 +69,8 @@ final class McpController extends Controller
                 metadata: ['ip' => $request->ip()]
             );
 
-            return $this->error($request->input('id'), -32001, 'Unauthorized machine token', 401);
+            return $this->error($request->input('id'), -32001, 'Unauthorized machine token', 401)
+                ->header('WWW-Authenticate', $this->bearerChallenge());
         }
 
         if (($subject->attributes['auth_method'] ?? null) === 'grandpasson_service_token'
@@ -59,21 +81,45 @@ final class McpController extends Controller
         $method = (string) $request->input('method', '');
         $id = $request->input('id');
 
+        $headerVersion = $request->header('MCP-Protocol-Version');
+        if ($method !== 'initialize' && $headerVersion !== null && $headerVersion !== ''
+            && ! in_array($headerVersion, self::PROTOCOL_VERSIONS, true)) {
+            return $this->error($id, -32600, 'Unsupported MCP-Protocol-Version: '.mb_substr($headerVersion, 0, 32), 400);
+        }
+
         // JSON-RPC notifications carry no id and expect no body.
         if (str_starts_with($method, 'notifications/')) {
             return response()->noContent(202);
         }
 
+        $retryAfter = $this->rateLimiter->hitCall($subject);
+        if ($retryAfter !== null) {
+            $this->auditRecorder->record(
+                event: AuditEvent::MCP_RATE_LIMITED,
+                tenantId: $subject->credential?->tenantId,
+                actorId: $subject->subjectId,
+                metadata: ($subject->credential?->auditMetadata() ?? []) + ['method' => $method, 'limit' => 'calls_per_minute'],
+            );
+
+            return $this->error($id, -32000, 'Rate limit exceeded; retry after '.$retryAfter.' seconds', 429)
+                ->header('Retry-After', (string) $retryAfter);
+        }
+
+        $metadata = ['method' => $method];
+        if ($method === 'tools/call') {
+            $metadata['tool'] = mb_substr((string) $request->input('params.name', ''), 0, 64);
+        }
         $this->auditRecorder->record(
             event: AuditEvent::MCP_METHOD_CALLED,
+            tenantId: $subject->credential?->tenantId,
             actorId: $subject->subjectId,
-            metadata: ['method' => $method]
+            metadata: ($subject->credential?->auditMetadata() ?? []) + $metadata,
         );
 
         return match ($method) {
-            'initialize' => $this->initialize($request, $id),
+            'initialize' => $this->initialize($request, $subject, $id),
             'ping' => $this->result($id, new \stdClass),
-            'tools/list' => $this->result($id, ['tools' => $this->toolDefinitions()]),
+            'tools/list' => $this->result($id, ['tools' => $this->tools->visibleTo($subject)]),
             'tools/call' => $this->callTool($request, $subject, $id),
             'resources/list' => $this->result($id, ['resources' => []]),
             'prompts/list' => $this->result($id, ['prompts' => []]),
@@ -81,7 +127,7 @@ final class McpController extends Controller
         };
     }
 
-    private function initialize(Request $request, mixed $id): JsonResponse
+    private function initialize(Request $request, AuthenticatedSubject $subject, mixed $id): JsonResponse
     {
         $requested = (string) ($request->input('params.protocolVersion') ?? '');
         $version = in_array($requested, self::PROTOCOL_VERSIONS, true) ? $requested : self::PROTOCOL_VERSIONS[0];
@@ -90,69 +136,8 @@ final class McpController extends Controller
             'protocolVersion' => $version,
             'capabilities' => ['tools' => ['listChanged' => false], 'resources' => new \stdClass, 'prompts' => new \stdClass],
             'serverInfo' => ['name' => 'Jotter MCP Server', 'version' => ReleaseVersion::current() ?? '1.0.0'],
-            'instructions' => 'Read-only access to Jotter Markdown notes. Call list_workspaces first when a tool asks for a workspace_id; when the token can reach exactly one workspace it is used automatically.',
+            'instructions' => $this->instructions->for($subject),
         ]);
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function toolDefinitions(): array
-    {
-        $workspaceId = [
-            'type' => 'integer',
-            'description' => 'Workspace id. Optional when the token can access exactly one workspace; see list_workspaces.',
-        ];
-
-        return [
-            [
-                'name' => 'list_workspaces',
-                'description' => 'List the workspaces this token can read (id, slug, name).',
-                'inputSchema' => ['type' => 'object', 'properties' => new \stdClass, 'additionalProperties' => false],
-            ],
-            [
-                'name' => 'list_notes',
-                'description' => 'List notes (id, path, title, updated_at) in a workspace, ordered by id.',
-                'inputSchema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'workspace_id' => $workspaceId,
-                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50],
-                    ],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'name' => 'read_note',
-                'description' => 'Read the canonical Markdown of one note by its vault path (for example "guides/setup.md").',
-                'inputSchema' => [
-                    'type' => 'object',
-                    'properties' => ['workspace_id' => $workspaceId, 'path' => ['type' => 'string', 'description' => 'Note path relative to the vault root.']],
-                    'required' => ['path'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'name' => 'search_notes',
-                'description' => 'Full-text search over titles and content; returns ranked results with snippets.',
-                'inputSchema' => [
-                    'type' => 'object',
-                    'properties' => ['workspace_id' => $workspaceId, 'query' => ['type' => 'string', 'description' => 'Search terms.']],
-                    'required' => ['query'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'name' => 'get_backlinks',
-                'description' => 'Notes that link to a target note, identified by path or title.',
-                'inputSchema' => [
-                    'type' => 'object',
-                    'properties' => ['workspace_id' => $workspaceId, 'target' => ['type' => 'string', 'description' => 'Target note path or title.']],
-                    'required' => ['target'],
-                    'additionalProperties' => false,
-                ],
-            ],
-        ];
     }
 
     private function callTool(Request $request, AuthenticatedSubject $subject, mixed $id): JsonResponse
@@ -169,8 +154,14 @@ final class McpController extends Controller
             ])->values()->all());
         }
 
-        if (! in_array($name, ['list_notes', 'read_note', 'search_notes', 'get_backlinks'], true)) {
+        if (! $this->tools->has($name)) {
             return $this->error($id, -32602, "Unknown tool: {$name}", 404);
+        }
+
+        $requiredScope = $this->tools->requiredScope($name);
+        if (! $this->tools->subjectHasScope($subject, $requiredScope)) {
+            return $this->error($id, -32003, "Tool {$name} requires the {$requiredScope} scope", 403)
+                ->header('WWW-Authenticate', sprintf('Bearer error="insufficient_scope", scope="%s"', $requiredScope));
         }
 
         $workspaceId = (int) ($args['workspace_id'] ?? 0);
@@ -281,6 +272,41 @@ final class McpController extends Controller
     private function toolError(mixed $id, string $message): JsonResponse
     {
         return $this->result($id, ['content' => [['type' => 'text', 'text' => $message]], 'isError' => true]);
+    }
+
+    /**
+     * Requests without an Origin header (CLI and server-side clients) pass. A
+     * browser Origin must match APP_URL's origin or `jotter.mcp.allowed_origins`.
+     */
+    private function originAllowed(Request $request): bool
+    {
+        $origin = $request->header('Origin');
+        if ($origin === null || $origin === '') {
+            return true;
+        }
+
+        $origin = rtrim(strtolower($origin), '/');
+        $allowed = array_map(static fn (string $value): string => rtrim(strtolower($value), '/'), (array) config('jotter.mcp.allowed_origins', []));
+        $appUrl = parse_url((string) config('app.url'));
+        if (isset($appUrl['scheme'], $appUrl['host'])) {
+            $allowed[] = strtolower($appUrl['scheme'].'://'.$appUrl['host'].(isset($appUrl['port']) ? ':'.$appUrl['port'] : ''));
+        }
+
+        return in_array($origin, $allowed, true);
+    }
+
+    /**
+     * RFC 6750 challenge; points to the RFC 9728 metadata only when the
+     * embedded OAuth server is enabled (decision D4).
+     */
+    private function bearerChallenge(): string
+    {
+        $challenge = 'Bearer realm="jotter", scope="mcp:read"';
+        if ((bool) config('jotter.oauth.enabled', false)) {
+            $challenge .= sprintf(', resource_metadata="%s/.well-known/oauth-protected-resource/api/mcp"', rtrim((string) config('app.url'), '/'));
+        }
+
+        return $challenge;
     }
 
     private function result(mixed $id, mixed $result): JsonResponse

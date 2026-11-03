@@ -60,7 +60,11 @@ final class McpProtocolTest extends TestCase
 
         $this->rpc(['id' => 2, 'method' => 'initialize', 'params' => ['protocolVersion' => '1999-01-01']])
             ->assertOk()
-            ->assertJsonPath('result.protocolVersion', '2025-06-18');
+            ->assertJsonPath('result.protocolVersion', '2025-11-25');
+
+        $this->rpc(['id' => 3, 'method' => 'initialize', 'params' => ['protocolVersion' => '2025-11-25']])
+            ->assertOk()
+            ->assertJsonPath('result.protocolVersion', '2025-11-25');
     }
 
     public function test_notifications_are_acknowledged_with_202_and_ping_returns_an_empty_result(): void
@@ -118,5 +122,88 @@ final class McpProtocolTest extends TestCase
         $this->workspace('one');
         $this->rpc(['id' => 9, 'method' => 'tools/call', 'params' => ['name' => 'delete_everything', 'arguments' => []]])->assertStatus(404)->assertJsonPath('error.code', -32602);
         $this->rpc(['id' => 10, 'method' => 'nope'])->assertStatus(404)->assertJsonPath('error.code', -32601);
+    }
+
+    public function test_every_tool_publishes_read_only_annotations_and_a_title(): void
+    {
+        $tools = $this->rpc(['id' => 10, 'method' => 'tools/list'])->assertOk()->json('result.tools');
+
+        foreach ($tools as $tool) {
+            $this->assertNotEmpty($tool['title'] ?? null, $tool['name']);
+            $this->assertTrue($tool['annotations']['readOnlyHint'], $tool['name']);
+            $this->assertFalse($tool['annotations']['openWorldHint'], $tool['name']);
+            $this->assertArrayNotHasKey('requiredScope', $tool);
+        }
+    }
+
+    public function test_unauthenticated_call_carries_a_bearer_challenge(): void
+    {
+        $challenge = $this->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping'])
+            ->assertStatus(401)
+            ->headers->get('WWW-Authenticate');
+        $this->assertSame('Bearer realm="jotter", scope="mcp:read"', $challenge);
+
+        config(['jotter.oauth.enabled' => true, 'app.url' => 'https://brain.example.test']);
+        $challenge = $this->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'ping'])
+            ->assertStatus(401)
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString('resource_metadata="https://brain.example.test/.well-known/oauth-protected-resource/api/mcp"', $challenge);
+    }
+
+    public function test_unsupported_protocol_version_header_is_rejected(): void
+    {
+        $this->withHeader('MCP-Protocol-Version', '2025-11-25')->rpc(['id' => 1, 'method' => 'ping'])->assertOk();
+        $this->withHeader('MCP-Protocol-Version', '1999-01-01')->rpc(['id' => 2, 'method' => 'ping'])->assertStatus(400);
+    }
+
+    public function test_browser_origin_must_match_the_app_url(): void
+    {
+        config(['app.url' => 'https://brain.example.test', 'jotter.mcp.allowed_origins' => ['https://inspector.example.test']]);
+
+        $this->withHeader('Origin', 'https://evil.example.test')->rpc(['id' => 1, 'method' => 'ping'])->assertStatus(403);
+        $this->assertDatabaseHas('audit_log', ['event' => 'mcp.origin_rejected']);
+        $this->withHeader('Origin', 'https://brain.example.test')->rpc(['id' => 2, 'method' => 'ping'])->assertOk();
+        $this->withHeader('Origin', 'https://inspector.example.test')->rpc(['id' => 3, 'method' => 'ping'])->assertOk();
+    }
+
+    public function test_initialize_appends_the_workspace_brain_instructions_cut_at_four_kilobytes(): void
+    {
+        $workspace = $this->workspace('brain');
+        app(\App\Domain\Vault\VaultStorage::class)->write($workspace, '_brain/instructions.md', "# Regras\n\nLeia get_brain_context primeiro.\n".str_repeat('ção ', 2000));
+
+        $instructions = (string) $this->rpc(['id' => 1, 'method' => 'initialize', 'params' => ['protocolVersion' => '2025-11-25']])
+            ->assertOk()
+            ->json('result.instructions');
+
+        $this->assertStringStartsWith(\App\Domain\Mcp\McpInstructions::SERVER_TEXT, $instructions);
+        $this->assertStringContainsString('Leia get_brain_context primeiro.', $instructions);
+        $this->assertLessThanOrEqual(4096, strlen($instructions));
+        $this->assertTrue(mb_check_encoding($instructions, 'UTF-8'));
+    }
+
+    public function test_tool_requiring_a_missing_scope_is_hidden_and_refused(): void
+    {
+        $this->workspace('brain');
+        $this->app->instance(\App\Domain\Mcp\McpToolCatalog::class, new \App\Domain\Mcp\McpToolCatalog(array_merge(
+            \App\Domain\Mcp\McpToolCatalog::definitions(),
+            [['name' => 'create_note', 'title' => 'Create note', 'description' => 'test', 'inputSchema' => ['type' => 'object'], 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false], 'requiredScope' => 'mcp:write']],
+        )));
+
+        $names = array_column($this->rpc(['id' => 1, 'method' => 'tools/list'])->assertOk()->json('result.tools'), 'name');
+        $this->assertNotContains('create_note', $names);
+
+        $response = $this->rpc(['id' => 2, 'method' => 'tools/call', 'params' => ['name' => 'create_note', 'arguments' => []]])->assertStatus(403);
+        $this->assertSame('Bearer error="insufficient_scope", scope="mcp:write"', $response->headers->get('WWW-Authenticate'));
+    }
+
+    public function test_method_calls_are_audited_with_token_and_tool(): void
+    {
+        $this->workspace('brain');
+        $this->rpc(['id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'list_workspaces', 'arguments' => []]])->assertOk();
+
+        $log = \App\Models\AuditLog::query()->where('event', 'mcp.method_called')->latest('id')->firstOrFail();
+        $this->assertSame('tools/call', $log->metadata['method']);
+        $this->assertSame('list_workspaces', $log->metadata['tool']);
+        $this->assertSame(MachineToken::query()->sole()->id, $log->metadata['token_id']);
     }
 }
