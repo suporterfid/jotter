@@ -57,11 +57,22 @@ final class McpToolCatalogTest extends TestCase
         }
     }
 
-    public function test_every_shipped_tool_is_read_only_and_annotated(): void
+    public function test_shipped_tools_are_annotated_and_writes_need_mcp_write(): void
     {
         foreach (McpToolCatalog::definitions() as $tool) {
-            $this->assertArrayNotHasKey('requiredScope', $tool, $tool['name']);
-            $this->assertSame(McpToolCatalog::READ_ANNOTATIONS, $tool['annotations'], $tool['name']);
+            if (in_array($tool['name'], McpToolCatalog::WRITE_TOOLS, true)) {
+                $this->assertSame('mcp:write', $tool['requiredScope'], $tool['name']);
+                $this->assertFalse($tool['annotations']['readOnlyHint'], $tool['name']);
+                $this->assertSame($tool['name'] === 'update_note', $tool['annotations']['destructiveHint'], $tool['name']);
+            } else {
+                $this->assertArrayNotHasKey('requiredScope', $tool, $tool['name']);
+                $this->assertSame(McpToolCatalog::READ_ANNOTATIONS, $tool['annotations'], $tool['name']);
+            }
         }
+
+        $this->assertSame(McpToolCatalog::WRITE_TOOLS, array_values(array_filter(
+            array_column(McpToolCatalog::definitions(), 'name'),
+            static fn (string $name): bool => in_array($name, McpToolCatalog::WRITE_TOOLS, true),
+        )));
     }
 }

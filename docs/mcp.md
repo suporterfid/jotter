@@ -70,30 +70,62 @@ is in [mcp-clients.md](mcp-clients.md).
 - Failed authentication is audited as `mcp.auth_failed`; every method call as
   `mcp.method_called`.
 
-## Implemented Tools (Read-Only)
+## Tools
 
-Jotter intentionally exposes **read-only** tools for knowledge context retrieval:
+### Read (`mcp:read`)
 
 1. `list_workspaces`: Workspaces the token can read (`id`, `slug`, `name`).
 2. `list_notes`: List notes (`id`, `path`, `title`, `updated_at`) within a workspace (`limit` ≤ 100).
-3. `read_note`: Fetch canonical Markdown content of a specific note `path`.
+3. `read_note`: Canonical Markdown of a note `path`. `structuredContent` carries
+   `{path, sha256, updated_at}`; `sha256` is computed from the file on disk, not the
+   index, and is what `update_note` expects.
 4. `search_notes`: Full-text title and content search with ranked snippets (`query`).
 5. `get_backlinks`: Incoming wikilinks to a `target` note (path or title).
 
-## Write Tools Decision & Scope (Deferred)
+### Write (`mcp:write`, only inside the token's write paths)
+
+| Tool | Arguments | Behaviour | Operation |
+| --- | --- | --- | --- |
+| `create_note` | `workspace_id?`, `path`, `content`, `if_exists: fail\|suffix` | Creates the note; with `suffix` an existing path becomes `name-2.md` … `name-50.md` | `create` |
+| `append_to_note` | `workspace_id?`, `path`, `content`, `heading?`, `idempotency_key?` | Appends at the end, or at the end of the `heading` section (created when missing); creates the note when absent; the same key within 24 h is a no-op (`status: duplicate`) | `append` |
+| `update_note` | `workspace_id?`, `path`, `content`, `expected_sha256` | Replaces the content only when the file's current SHA-256 matches; otherwise nothing is written and `current_sha256` is returned | `update` |
+
+Every write (`App\Domain\Mcp\McpNoteWriter`):
+
+1. normalizes the path with `VaultPathGuard`, requires `.md`, and refuses `_brain/`,
+   `.trash/`, `_resources/`, `_templates/`, `.obsidian/` whatever the write paths say;
+2. needs `mcp:write`, a writer role in the workspace, and note ACL `edit` for existing notes;
+3. matches the path and operation against the token's write paths (`**` crosses
+   folders, `*`/`?` stay in one segment, `{client}` is the token's client slug);
+4. checks the tenant plan, a 256 KB limit per call, and the write rate budget (429);
+5. takes `Cache::lock("note:{workspace}:sha1(path)")` and compares hashes against the
+   bytes on disk inside the lock;
+6. writes through `VaultStorage::write` (revision, projections, links), then emits the
+   note-edited event (agents do not auto-watch notes);
+7. audits `mcp.note_written` with `tool`, `token_id`, `client_slug`, `path`, `bytes`,
+   `sha256_before`, `sha256_after`.
+
+Rule failures come back as an `isError` tool result the model can read; nothing touches
+the disk. Deleting and moving notes is not available over MCP, and the server never
+stamps front matter: the origin of a write lives in the audit log and the revision
+history.
+
+The REST API offers the same protection to people: `PUT /api/workspaces/{id}/notes/{note}`
+accepts an optional `base_sha256` (the `content_hash` returned by `GET` and by the
+previous save) and answers 409 `{current_sha256}` when the file changed in between. The
+editor sends it on every autosave and, on 409, offers "reload their version" or "keep
+mine and overwrite".
+
+## History: write tools deferral (superseded)
 
 > **Superseded 2026-11-03** by the "Scoped credentials and MCP write tools" entry in
-> `docs/decisions.md`: the `mcp:write` scope now exists, and `create_note`,
-> `append_to_note`, `update_note` (no delete) land in the write-tools PR of the
-> brain multi-agent plan, after rate limits. The original rationale is kept below.
+> `docs/decisions.md`. Both revisit conditions below are met: the `mcp:write` scope
+> exists in token issuance, and MCP writes are rate limited and run under a per-note
+> lock. The original rationale is kept for the record.
 
-Write tools (`create_note`, `update_note`, `delete_note`) are **intentionally deferred and gated**:
-
-### Decision & Rationale
+### Original decision & rationale
 - **Security Policy §8 S2 & S5 Compliance**: Direct AI agent file mutations over remote transport risk unauthenticated bulk file modification, path traversal, or index corruption if token permissions are not fine-grained.
 - **Single Source of Truth**: Writes to canonical Markdown files must uphold client workspace lock invariants, full audit trail logging, and property projection synchronization.
 - **Revisit Conditions**: Write tools will be revisited in a future major version when:
   1. Fine-grained write-scope machine token capabilities (`mcp:write`) are added to the admin token UI.
   2. Per-workspace write rate limiting and transaction locking are implemented for MCP transport.
-
-For now, read-only tools fully satisfy AI agent contextual lookup requirements while ensuring 100% data safety.

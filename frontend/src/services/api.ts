@@ -137,9 +137,15 @@ export async function createNote(workspaceId: number, path: string, content: str
   return response.data.data
 }
 
-export async function updateNote(workspaceId: number, noteId: number, content: string): Promise<NoteMeta> {
+/**
+ * Saves a note. With `baseSha256` the server only writes when the file still has
+ * that hash and answers 409 otherwise (another client — an agent, Obsidian over
+ * WebDAV, another tab — changed it since it was loaded).
+ */
+export async function updateNote(workspaceId: number, noteId: number, content: string, baseSha256?: string): Promise<NoteMeta> {
   const response = await api.put<{ data: NoteMeta }>(`/workspaces/${workspaceId}/notes/${noteId}`, {
-    content
+    content,
+    ...(baseSha256 ? { base_sha256: baseSha256 } : {}),
   })
   return response.data.data
 }

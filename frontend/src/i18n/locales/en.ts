@@ -584,6 +584,9 @@ export default {
   app: {
     toggleSidebar: 'Toggle sidebar',
     dismissError: 'Dismiss error',
+    noteConflict: 'This note was changed elsewhere (an agent, Obsidian, or another tab) since you opened it. Your latest edits were not saved.',
+    noteConflictReload: 'Reload their version',
+    noteConflictOverwrite: 'Keep mine and overwrite',
     dismissMessage: 'Dismiss message',
     open: 'Open',
     noNoteSelected: 'No Note Selected',

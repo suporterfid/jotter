@@ -16,7 +16,9 @@ use App\Domain\Review\NoteReviewWorkflowService;
 use App\Models\Note;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 final class WorkspaceNoteController extends Controller
@@ -101,6 +103,9 @@ final class WorkspaceNoteController extends Controller
 
         return response()->json([
             'data' => array_merge($this->metadata($note, $subject), [
+                // Hash of the bytes just read from disk: the index can lag behind
+                // out-of-band edits (Obsidian/WebDAV) until the next reindex.
+                'content_hash' => hash('sha256', $content),
                 'content' => $content,
                 'html_rendered' => $renderer->render($content),
                 'backlinks' => $backlinks,
@@ -112,16 +117,51 @@ final class WorkspaceNoteController extends Controller
     {
         $validated = $request->validate([
             'content' => ['present', 'string'],
+            'base_sha256' => ['sometimes', 'nullable', 'string', 'regex:/^[0-9a-f]{64}$/'],
         ]);
         $note = $this->scopedNote($workspace, $note);
         $subject = $this->subject($request);
         $this->noteAccess->assertEdit($subject, $note);
+        $baseSha256 = $validated['base_sha256'] ?? null;
 
-        $updatedNote = $storage->write($workspace, $note->path, $validated['content'], $subject->subjectId);
-        $this->eventEmitter->ensureAutoWatch($updatedNote, $subject->user?->id);
-        $this->eventEmitter->emitNoteEdited($updatedNote, $subject);
+        // Optimistic concurrency: with base_sha256 the write happens only when the
+        // file on disk still has that hash, under the same per-note lock the MCP
+        // write tools take. Without it the request overwrites, as before.
+        $write = function () use ($workspace, $note, $validated, $subject, $storage, $baseSha256): Note|JsonResponse {
+            if ($baseSha256 !== null) {
+                try {
+                    $current = hash('sha256', $storage->readContents($workspace, $note->path));
+                } catch (VaultNoteNotFound) {
+                    abort(404);
+                }
 
-        return response()->json(['data' => $this->metadata($updatedNote, $subject)]);
+                if (! hash_equals($current, $baseSha256)) {
+                    return response()->json([
+                        'message' => __('messages.note_changed_conflict'),
+                        'current_sha256' => $current,
+                    ], 409);
+                }
+            }
+
+            return $storage->write($workspace, $note->path, $validated['content'], $subject->subjectId);
+        };
+
+        try {
+            $outcome = $baseSha256 === null
+                ? $write()
+                : Cache::lock('note:'.$workspace->id.':'.sha1($note->path), 10)->block(5, $write);
+        } catch (LockTimeoutException) {
+            return response()->json(['message' => __('messages.note_locked')], 423);
+        }
+
+        if ($outcome instanceof JsonResponse) {
+            return $outcome;
+        }
+
+        $this->eventEmitter->ensureAutoWatch($outcome, $subject->user?->id);
+        $this->eventEmitter->emitNoteEdited($outcome, $subject);
+
+        return response()->json(['data' => $this->metadata($outcome, $subject)]);
     }
 
     public function destroy(Request $request, Workspace $workspace, int $note, NoteTrash $trash): JsonResponse
@@ -227,6 +267,7 @@ final class WorkspaceNoteController extends Controller
             'frontmatter' => $note->frontmatter,
             'properties' => $properties,
             'sort_position' => $note->sort_position,
+            'content_hash' => $note->content_hash,
             'updated_at' => $note->updated_at->toISOString(),
             'watching' => $subject?->user === null ? false : $this->eventEmitter->isWatching($note, $subject->user->id),
             'access' => $subject === null ? null : [

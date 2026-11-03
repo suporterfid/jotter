@@ -165,11 +165,11 @@ PR 6  Docs dos 5 clientes + jotter:doctor        ← PR 4, 5   ⇒ teste de fuma
 
 **Aceite:** escrita fora de `write_paths` falha sem tocar o disco; hash divergente não grava; toda escrita gera revisão e `mcp.note_written`; o SPA recebe 409 e mostra conflito.
 
-- [ ] **3.1 `WritePathPolicy`.**
+- [x] **3.1 `WritePathPolicy`.**
   - Normaliza com `VaultPathGuard`, exige `.md` e recusa de forma fixa `.trash/`, `_resources/`, `_templates/`, `_brain/` e `.obsidian/`.
   - Casamento com glob próprio (G2): `**` cruza diretórios; `*` e `?` não cruzam; `{client}` é substituído pelo `client_slug` escapado. Ops `create|append|update`.
   - Teste de tabela com no mínimo: `inbox/hermes/**` casa `inbox/hermes/a/b.md` e não casa `inbox/hermes-x/a.md`; `diario/**` com só `append` recusa `update`.
-- [ ] **3.2 `McpNoteWriter`**, que executa os 7 passos da spec:
+- [x] **3.2 `McpNoteWriter`**, que executa os 7 passos da spec:
   1. caminho;
   2. escopo + `canWriteWorkspace` + `NoteAccess::assertEdit` (nota existente);
   3. policy;
@@ -179,13 +179,13 @@ PR 6  Docs dos 5 clientes + jotter:doctor        ← PR 4, 5   ⇒ teste de fuma
   7. audit `mcp.note_written` (`tool`, `token_id`, `client_slug`, `path`, `bytes`, `sha256_before`, `sha256_after`).
 
   Conta no limite de escrita do PR 2. Falhas de regra viram `isError` legível pelo modelo, não erro de transporte.
-- [ ] **3.3 `create_note`.** `if_exists: fail|suffix`; o sufixo tenta `nome-2.md` … `nome-50.md`.
-- [ ] **3.4 `append_to_note`.** `MarkdownSectionAppender`: sem `heading`, acrescenta no fim; com `heading`, insere antes do próximo heading de nível ≤ ao alvo, ignorando headings dentro de blocos de código cercados. Se o heading não existir, cria `## heading` no fim. Garante uma linha em branco de separação e preserva front matter. Cria a nota se não existir; essa criação exige só a op `append` (é o caso do `diario/**`, que não tem `create`). `idempotency_key`: `Cache::has` dentro do lock e `Cache::put(…, 86400)` só depois de gravar com sucesso; repetição → no-op com `{"status":"duplicate"}`.
-- [ ] **3.5 `update_note`.** `expected_sha256` obrigatório; divergente → `isError` com `current_sha256`, nada gravado.
-- [ ] **3.6 `read_note`.** `structuredContent {path, sha256, updated_at}` (sha256 do disco) + `outputSchema` (G12); o texto continua em `content`.
-- [ ] **3.7 REST.** `PUT /notes/{id}` aceita `base_sha256` opcional; com ele, toma o mesmo lock e responde 409 `{current_sha256}` se divergir. `metadata()` expõe `content_hash` (G7). O SPA (`NoteEditor.vue`/`services/api.ts`) envia `base_sha256` no autosave e, no 409, pausa o autosave e oferece "recarregar" ou "sobrescrever"; sobrescrever reenvia sem base, como ação explícita do humano.
-- [ ] **3.8 Testes.** `McpWriteToolsTest`, `WritePathPolicyTest`, `NoteOptimisticConcurrencyTest` (MCP e REST, inclusive arquivo editado em disco sem reindex), `MarkdownSectionAppenderTest` (unit), Vitest do diálogo de conflito, `NoteEditor` E2E de 409.
-- [ ] **3.9 Docs.** `docs/mcp.md` vira "Read and scoped write tools"; CHANGELOG.
+- [x] **3.3 `create_note`.** `if_exists: fail|suffix`; o sufixo tenta `nome-2.md` … `nome-50.md`.
+- [x] **3.4 `append_to_note`.** `MarkdownSectionAppender`: sem `heading`, acrescenta no fim; com `heading`, insere antes do próximo heading de nível ≤ ao alvo, ignorando headings dentro de blocos de código cercados. Se o heading não existir, cria `## heading` no fim. Garante uma linha em branco de separação e preserva front matter. Cria a nota se não existir; essa criação exige só a op `append` (é o caso do `diario/**`, que não tem `create`). `idempotency_key`: `Cache::has` dentro do lock e `Cache::put(…, 86400)` só depois de gravar com sucesso; repetição → no-op com `{"status":"duplicate"}`.
+- [x] **3.5 `update_note`.** `expected_sha256` obrigatório; divergente → `isError` com `current_sha256`, nada gravado.
+- [x] **3.6 `read_note`.** `structuredContent {path, sha256, updated_at}` (sha256 do disco) + `outputSchema` (G12); o texto continua em `content`.
+- [x] **3.7 REST.** `PUT /notes/{id}` aceita `base_sha256` opcional; com ele, toma o mesmo lock e responde 409 `{current_sha256}` se divergir. `metadata()` expõe `content_hash` (G7). O SPA (`NoteEditor.vue`/`services/api.ts`) envia `base_sha256` no autosave e, no 409, pausa o autosave e oferece "recarregar" ou "sobrescrever"; sobrescrever reenvia sem base, como ação explícita do humano.
+- [x] **3.8 Testes.** `McpWriteToolsTest`, `WritePathPolicyTest`, `NoteOptimisticConcurrencyTest` (MCP e REST, inclusive arquivo editado em disco sem reindex), `MarkdownSectionAppenderTest` (unit), Vitest do diálogo de conflito, `NoteEditor` E2E de 409.
+- [x] **3.9 Docs.** `docs/mcp.md` vira "Read and scoped write tools"; CHANGELOG.
 
 **Fora do escopo (backlog):** `ETag`/`If-Match` no WebDAV para proteger o Obsidian da mesma forma.
 

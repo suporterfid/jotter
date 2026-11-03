@@ -8,6 +8,8 @@ use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
 use App\Domain\Mcp\McpInstructions;
+use App\Domain\Mcp\McpNoteWriter;
+use App\Domain\Mcp\McpWriteResult;
 use App\Domain\Mcp\McpRateLimiter;
 use App\Domain\Mcp\McpToolCatalog;
 use App\Domain\Search\WorkspaceSearch;
@@ -28,7 +30,8 @@ use Illuminate\Support\Collection;
  * acts as its user narrowed by its scopes and workspace allowlist (the
  * `mcp:read` scope is enforced by EnforceCredentialAudience); every tool call is
  * authorized per workspace through the IdentityProvider seam. GrandpaSSOn
- * service tokens need `kb:read`. Tools are read-only (see docs/mcp.md).
+ * service tokens need `kb:read`. Write tools (`create_note`, `append_to_note`,
+ * `update_note`) need `mcp:write` and run through McpNoteWriter (see docs/mcp.md).
  *
  * Protocol polish (brain plan PR 2): 401 carries `WWW-Authenticate`, browser
  * `Origin` headers from other hosts are refused, an unsupported
@@ -184,6 +187,10 @@ final class McpController extends Controller
             return $this->error($id, -32602, 'Workspace not found', 404);
         }
 
+        if (in_array($name, McpToolCatalog::WRITE_TOOLS, true)) {
+            return $this->writeTool($name, $subject, $workspace, $args, $id);
+        }
+
         return match ($name) {
             'list_notes' => $this->listNotes($subject, $workspaceId, $args, $id),
             'read_note' => $this->readNote($subject, $workspace, $args, $id),
@@ -215,7 +222,61 @@ final class McpController extends Controller
         $this->noteAccess->assertView($subject, $note);
         $content = (new VaultStorage)->readContents($workspace, $path);
 
-        return $this->result($id, ['content' => [['type' => 'text', 'text' => $content ?? '']]]);
+        return $this->result($id, [
+            'content' => [['type' => 'text', 'text' => $content]],
+            // Hash of the bytes on disk (not the index), for update_note's expected_sha256.
+            'structuredContent' => [
+                'path' => $note->path,
+                'sha256' => hash('sha256', $content),
+                'updated_at' => $note->updated_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
+     * @param array<string, mixed> $args
+     */
+    private function writeTool(string $name, AuthenticatedSubject $subject, Workspace $workspace, array $args, mixed $id): JsonResponse
+    {
+        $writer = app(McpNoteWriter::class);
+        $path = (string) ($args['path'] ?? '');
+        $content = $args['content'] ?? null;
+        if ($path === '' || ! is_string($content)) {
+            return $this->toolError($id, 'path and content (string) are required.');
+        }
+
+        $result = match ($name) {
+            'create_note' => $writer->create($subject, $workspace, $path, $content, (string) ($args['if_exists'] ?? 'fail')),
+            'append_to_note' => $writer->append(
+                $subject,
+                $workspace,
+                $path,
+                $content,
+                isset($args['heading']) ? (string) $args['heading'] : null,
+                isset($args['idempotency_key']) ? mb_substr((string) $args['idempotency_key'], 0, 200) : null,
+            ),
+            default => $writer->update($subject, $workspace, $path, $content, (string) ($args['expected_sha256'] ?? '')),
+        };
+
+        return $this->writeResult($id, $result);
+    }
+
+    private function writeResult(mixed $id, McpWriteResult $result): JsonResponse
+    {
+        if ($result->retryAfter !== null) {
+            return $this->error($id, -32000, (string) $result->error, 429)->header('Retry-After', (string) $result->retryAfter);
+        }
+
+        $payload = $result->ok ? $result->data : ['error' => $result->error] + $result->data;
+        $text = $result->ok
+            ? (string) json_encode($result->data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+            : $result->error.($result->data === [] ? '' : ' '.json_encode($result->data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+        return $this->result($id, array_filter([
+            'content' => [['type' => 'text', 'text' => $text]],
+            'structuredContent' => $result->ok ? $payload : null,
+            'isError' => $result->ok ? null : true,
+        ], static fn ($value): bool => $value !== null));
     }
 
     private function searchNotes(AuthenticatedSubject $subject, Workspace $workspace, array $args, mixed $id): JsonResponse
