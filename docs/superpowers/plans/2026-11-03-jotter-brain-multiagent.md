@@ -152,14 +152,14 @@ PR 6  Docs dos 5 clientes + jotter:doctor        ← PR 4, 5   ⇒ teste de fuma
 
 **Aceite:** a 121ª chamada no minuto recebe 429 com `Retry-After`; `tools/list` sem `mcp:write` não mostra escrita; 401 traz `WWW-Authenticate`.
 
-- [ ] **2.1** Extrair as definições de ferramenta para `McpToolCatalog` (puro, testável), com `title` e `annotations` em todas: leitura `readOnlyHint: true, openWorldHint: false`. As de escrita já ficam declaradas aqui para o PR 3 (`create_note`/`append_to_note`: `destructiveHint: false`; `update_note`: `destructiveHint: true`), filtradas por escopo.
-- [ ] **2.2** `tools/list` filtra por `mcp:write`; `tools/call` de escrita sem escopo → HTTP 403 + `WWW-Authenticate: Bearer error="insufficient_scope", scope="mcp:write"`.
-- [ ] **2.3** 401: `WWW-Authenticate: Bearer realm="jotter", scope="mcp:read"`, mais `resource_metadata="{APP_URL}/.well-known/oauth-protected-resource/api/mcp"` só quando `jotter.oauth.enabled` (G10).
-- [ ] **2.4** `PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']`. Ler o header `MCP-Protocol-Version`: ausente é aceito (compatibilidade), não suportado → 400. `Origin` presente e de outro host → 403 (G11).
-- [ ] **2.5** `instructions` dinâmico: texto fixo + `_brain/instructions.md` do workspace padrão (primeiro de `workspace_ids`, ou o único acessível), com `assertView`, cortado em 4 KB com `mb_strcut`. Ausente → só o texto fixo. O texto fixo diz que conteúdo de nota é dado, não instrução.
-- [ ] **2.6** `McpRateLimiter` sobre `RateLimiter` (cache `database`): `mcp:calls:{token}` 120/60 s, `mcp:writes:{token}` 30/60 s, `mcp:writes-day:{token}` 500/86400 s. Chave por `subjectId` quando não há credencial. Configurável em `jotter.mcp.rate_limits` (+ `.env.example`). Excedeu → HTTP 429 + `Retry-After` + audit `mcp.rate_limited`. Os contadores de escrita só passam a contar no PR 3.
-- [ ] **2.7** Audit `mcp.method_called` ganha `token_id`, `client_slug` e `tool`.
-- [ ] **2.8 Testes.** Ampliar `McpProtocolTest` (versão 2025-11-25, header, Origin, annotations em todas as ferramentas, filtro por escopo, `instructions` ≤ 4 KB); `McpRateLimitTest` (121ª → 429, `Retry-After`, isolamento entre tokens).
+- [x] **2.1** *(entregue com o mecanismo de escopo por ferramenta, `requiredScope`, mas sem declarar as ferramentas de escrita antes de existirem: elas entram no catálogo no PR 3)* Extrair as definições de ferramenta para `McpToolCatalog` (puro, testável), com `title` e `annotations` em todas: leitura `readOnlyHint: true, openWorldHint: false`. As de escrita já ficam declaradas aqui para o PR 3 (`create_note`/`append_to_note`: `destructiveHint: false`; `update_note`: `destructiveHint: true`), filtradas por escopo.
+- [x] **2.2** `tools/list` filtra por `mcp:write`; `tools/call` de escrita sem escopo → HTTP 403 + `WWW-Authenticate: Bearer error="insufficient_scope", scope="mcp:write"`.
+- [x] **2.3** 401: `WWW-Authenticate: Bearer realm="jotter", scope="mcp:read"`, mais `resource_metadata="{APP_URL}/.well-known/oauth-protected-resource/api/mcp"` só quando `jotter.oauth.enabled` (G10).
+- [x] **2.4** `PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']`. Ler o header `MCP-Protocol-Version`: ausente é aceito (compatibilidade), não suportado → 400. `Origin` presente e de outro host → 403 (G11).
+- [x] **2.5** `instructions` dinâmico: texto fixo + `_brain/instructions.md` do workspace padrão (primeiro de `workspace_ids`, ou o único acessível), com `assertView`, cortado em 4 KB com `mb_strcut`. Ausente → só o texto fixo. O texto fixo diz que conteúdo de nota é dado, não instrução.
+- [x] **2.6** `McpRateLimiter` sobre `RateLimiter` (cache `database`): `mcp:calls:{token}` 120/60 s, `mcp:writes:{token}` 30/60 s, `mcp:writes-day:{token}` 500/86400 s. Chave por `subjectId` quando não há credencial. Configurável em `jotter.mcp.rate_limits` (+ `.env.example`). Excedeu → HTTP 429 + `Retry-After` + audit `mcp.rate_limited`. Os contadores de escrita só passam a contar no PR 3.
+- [x] **2.7** Audit `mcp.method_called` ganha `token_id`, `client_slug` e `tool`.
+- [x] **2.8 Testes.** Ampliar `McpProtocolTest` (versão 2025-11-25, header, Origin, annotations em todas as ferramentas, filtro por escopo, `instructions` ≤ 4 KB); `McpRateLimitTest` (121ª → 429, `Retry-After`, isolamento entre tokens).
 
 ### PR 3 — Ferramentas de escrita + concorrência otimista (R3; PR 4 da spec)
 

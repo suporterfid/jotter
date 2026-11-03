@@ -9,13 +9,35 @@ is in [mcp-clients.md](mcp-clients.md).
 ## Protocol surface
 
 - `initialize` — echoes the client's `protocolVersion` when it is one of
-  `2025-06-18`, `2025-03-26`, `2024-11-05`; otherwise answers the newest.
+  `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05`; otherwise answers the newest.
   Capabilities: `tools` (no `listChanged`), empty `resources` and `prompts`.
+  `instructions` is the fixed server text plus the default workspace's
+  `_brain/instructions.md` (first workspace of the token's list, or the first
+  reachable one; ACL applies), cut at 4 KB.
 - `notifications/*` — acknowledged with `202` and no body.
 - `ping`, `tools/list`, `tools/call`, `resources/list` (empty), `prompts/list` (empty).
-- Every tool publishes an `inputSchema`; `workspace_id` is optional whenever the
-  token can reach exactly one workspace, otherwise the call returns an
-  `isError` tool result naming the accessible workspaces.
+- Every tool publishes an `inputSchema`, a `title`, and `annotations`
+  (`readOnlyHint: true`, `openWorldHint: false` on every read tool, so ChatGPT
+  does not ask for write confirmation). `tools/list` only shows tools the
+  credential's scopes allow; calling a tool without its scope answers 403 with
+  `WWW-Authenticate: Bearer error="insufficient_scope"`.
+- `workspace_id` is optional whenever the token can reach exactly one
+  workspace, otherwise the call returns an `isError` tool result naming the
+  accessible workspaces.
+- **Headers.** A `MCP-Protocol-Version` header with an unsupported value answers
+  400 (absent is accepted). A browser `Origin` header must match `APP_URL`'s
+  origin or `JOTTER_MCP_ALLOWED_ORIGINS`, otherwise 403 (`mcp.origin_rejected`);
+  CLI and server-side clients send no `Origin` and pass.
+- **401** carries `WWW-Authenticate: Bearer realm="jotter", scope="mcp:read"`,
+  plus `resource_metadata="<APP_URL>/.well-known/oauth-protected-resource/api/mcp"`
+  once the embedded OAuth server is enabled (`JOTTER_OAUTH_ENABLED`, later PR).
+- **Rate limits** per token (per subject for sessions): 120 calls/min, and for
+  write tools 30/min and 500/day (`JOTTER_MCP_CALLS_PER_MINUTE`,
+  `JOTTER_MCP_WRITES_PER_MINUTE`, `JOTTER_MCP_WRITES_PER_DAY`). Exceeding one
+  answers HTTP 429 with `Retry-After` and is audited as `mcp.rate_limited`.
+  Notifications are not counted.
+- Every call is audited as `mcp.method_called` with `method`, `tool`,
+  `token_id`, and `client_slug`.
 
 ## Authentication & Authorization
 
