@@ -46,10 +46,10 @@ const props = withDefaults(defineProps<{
   serverName: 'jotter',
 })
 
-type ClientId = 'claude-code' | 'cursor' | 'claude-desktop'
+type ClientId = 'claude-code' | 'codex' | 'hermes' | 'cursor' | 'claude-desktop'
 
 interface SnippetBlock {
-  kind: 'cli' | 'json'
+  kind: 'cli' | 'json' | 'toml' | 'yaml'
   title: string
   code: string
 }
@@ -98,6 +98,42 @@ const clients = computed<ClientSnippet[]>(() => {
           code: json({ mcpServers: { [name]: { type: 'http', url: mcpUrl.value, headers: { Authorization: authHeader.value } } } }),
         },
       ],
+    },
+    {
+      id: 'codex',
+      label: 'Codex',
+      blocks: [
+        {
+          kind: 'cli',
+          title: t('mcp.codexEnv'),
+          code: `export JOTTER_MCP_TOKEN="${props.token}"`,
+        },
+        {
+          kind: 'toml',
+          title: '~/.codex/config.toml',
+          code: `[mcp_servers.${name}]\nurl = "${mcpUrl.value}"\nbearer_token_env_var = "JOTTER_MCP_TOKEN"\ntool_timeout_sec = 60.0`,
+        },
+      ],
+    },
+    {
+      id: 'hermes',
+      label: 'Hermes',
+      blocks: [
+        {
+          kind: 'yaml',
+          title: '~/.hermes/config.yaml',
+          code: [
+            'mcp_servers:',
+            `  ${name}:`,
+            `    url: "${mcpUrl.value}"`,
+            '    headers:',
+            `      Authorization: "${authHeader.value}"`,
+            '    tools:',
+            '      include: [get_brain_context, search_notes, read_note, list_recent_changes, append_to_note, create_note]',
+          ].join('\n'),
+        },
+      ],
+      note: t('mcp.hermesNote'),
     },
     {
       id: 'cursor',

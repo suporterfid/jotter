@@ -147,4 +147,29 @@ final class JotterDoctorCommandTest extends TestCase
             ->expectsOutputToContain('[FAIL] VAULT_BASE_PATH')
             ->assertFailed();
     }
+
+    public function test_doctor_reports_oauth_disabled_then_checks_its_setup(): void
+    {
+        $this->healthyProductionConfig();
+        config(['jotter.oauth.enabled' => false]);
+        $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+        $this->assertSame('pass', $byId['oauth']['status']);
+        $this->assertArrayNotHasKey('oauth_metadata', $byId);
+
+        config(['jotter.oauth.enabled' => true]);
+        $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+        $this->assertSame('pass', $byId['oauth_issuer']['status']);
+        $this->assertSame('pass', $byId['oauth_metadata']['status']);
+        $this->assertSame('pass', $byId['oauth_redirect_allowlist']['status']);
+        $this->assertSame('pass', $byId['oauth_prune']['status']);
+
+        config(['jotter.oauth.redirect_allowlist' => ['http://claude.ai/cb', 'https://chatgpt.com/x']]);
+        $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+        $this->assertSame('fail', $byId['oauth_redirect_allowlist']['status']);
+        $this->assertSame(['http://claude.ai/cb'], $byId['oauth_redirect_allowlist']['details']['invalid']);
+
+        config(['app.url' => 'http://brain.example.com']);
+        $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+        $this->assertSame('fail', $byId['oauth_issuer']['status']);
+    }
 }

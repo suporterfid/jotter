@@ -1,168 +1,240 @@
 # Connect AI clients to Jotter over MCP
 
 Jotter serves the Model Context Protocol at `POST https://<host>/api/mcp`
-(Streamable HTTP, JSON-RPC 2.0, JSON responses). Tools are **read-only**:
-`list_workspaces`, `list_notes`, `read_note`, `search_notes`, `get_backlinks`
-(see [mcp.md](mcp.md)). Authentication is a **machine token** sent as
-`Authorization: Bearer jt_mkt_…`; the token acts as the user it was issued for
-and reads exactly that user's workspaces.
+(Streamable HTTP, JSON-RPC 2.0, JSON responses). One deployment can be the shared
+**brain** of several assistants at once: Claude Code, Codex, Hermes, Claude
+web/Desktop/mobile, and ChatGPT read the same notes and write into their own
+`inbox/`. Protocol details and every tool are in [mcp.md](mcp.md).
 
-Five minutes: create a token, paste one configuration block, ask the assistant
-to "list my notes".
+There are two ways in, with the same rules on the server:
 
-Formats below were checked against the clients' current documentation
-(Claude Code `claude mcp add` / `.mcp.json`, Cursor `mcp.json`, Claude Desktop
-`claude_desktop_config.json` + `mcp-remote`) on 2026-08-31.
+| Client | How it authenticates | Who decides the scope |
+| --- | --- | --- |
+| Claude Code, Codex CLI/IDE, Hermes Agent, Cursor | **Manual token** in a header (`Authorization: Bearer jt_mkt_…`) | The administrator who issues the token |
+| Claude web/Desktop/mobile, ChatGPT | **OAuth 2.1** by URL (consent screen) | The person, on the consent screen |
 
-## 1. Create a machine token
+Terminal clients use manual tokens so the restricted workspace (for example
+`brain-restrito`) never travels through a browser grant.
 
-**In the app (administrator):** Administration → **MCP tokens** → choose the
-tenant and the user the token should act as, give it a label, click **Issue
-token**. The token is shown once, together with ready-to-copy snippets for the
-three clients with your host already filled in.
-
-**Over SSH (hosted operators):**
+## 0. Prepare the brain (once)
 
 ```sh
-php artisan mcp:token ana@acme.example --name="Ana — Claude Code"
+php artisan brain:init brain --locale=pt-BR
 ```
 
-Only the SHA-256 hash is stored. Revoke from the same screen (or delete the
-row); revocation is immediate. A token can read every workspace its user is a
-member of — issue tokens for a user with the narrowest membership you need.
+This writes `_brain/README.md`, `_brain/instructions.md`, `projetos/`, `decisoes/`,
+`diario/`, `inbox/`, and `pessoas/` and never overwrites existing files. Edit
+`_brain/instructions.md` to your rules: agents receive it in `initialize` and in
+`get_brain_context`, and they can never write to `_brain/`.
 
-Replace `https://acme.example.com` and `jt_mkt_…` below with your host and token.
+For the web clients, turn OAuth on (see [deployment.md](deployment.md#oauth-for-mcp-web-clients-claude-web-chatgpt)):
 
-## 2. Claude Code
+```dotenv
+JOTTER_OAUTH_ENABLED=true
+```
 
-One command (scope `local` = this project; add `-s user` for all projects):
+## 1. Issue a manual token (terminal clients)
+
+A token carries scopes, a workspace list, write paths, a client slug, and an expiry.
+It never inherits administrator access, never reaches `/api/admin`, and note ACLs
+apply to it.
+
+| Scope | Allows |
+| --- | --- |
+| `mcp:read` | MCP read tools (default) |
+| `mcp:write` | MCP write tools, only inside the token's write paths |
+| `api:read` / `api:write` | REST API and WebDAV (for scripts or Obsidian sync, not needed for MCP) |
+
+**Over SSH:**
 
 ```sh
-claude mcp add --transport http jotter https://acme.example.com/api/mcp \
-  --header "Authorization: Bearer jt_mkt_…"
+php artisan mcp:token joe@example.com --name="Hermes VPS" \
+  --workspace=brain --scope=mcp:read --scope=mcp:write \
+  --write-path="inbox/{client}/**:create,append,update" --write-path="diario/**:append" \
+  --client=hermes --expires=180d
 ```
 
-Or commit a project file `.mcp.json` (env expansion keeps the secret out of git):
+**In the app:** Administration → **MCP tokens** → tenant, user, label, workspaces,
+scopes (write paths are pre-filled when you tick `mcp:write`), client slug, expiry →
+**Issue token**. The token is shown once with ready-to-copy snippets. Tokens owned by
+an administrator must list their workspaces explicitly.
+
+Write paths are globs relative to the vault: `**` crosses folders, `*` and `?` stay in
+one folder, `{client}` is the client slug. `_brain/`, `.trash/`, `_resources/`,
+`_templates/`, and `.obsidian/` are never writable.
+
+Replace `https://brain.example.com` and `jt_mkt_…` below with your host and token.
+
+## 2. Claude Code CLI
+
+Example token: workspaces `brain` and `brain-restrito`, write paths
+`inbox/claude-code/**` and `diario/**`, `--client=claude-code`.
+
+```sh
+claude mcp add -s user --transport http brain https://brain.example.com/api/mcp \
+  --header "Authorization: Bearer ${JOTTER_MCP_TOKEN}"
+```
+
+Or a project `.mcp.json` (env expansion keeps the secret out of git):
 
 ```json
 {
   "mcpServers": {
-    "jotter": {
+    "brain": {
       "type": "http",
-      "url": "https://acme.example.com/api/mcp",
-      "headers": {
-        "Authorization": "Bearer ${JOTTER_MCP_TOKEN}"
-      }
+      "url": "https://brain.example.com/api/mcp",
+      "headers": { "Authorization": "Bearer ${JOTTER_MCP_TOKEN}" }
     }
   }
 }
 ```
 
-Check: `claude mcp list` shows `jotter … ✔ Connected`; inside a session, `/mcp`
-lists the five tools.
+Check: `claude mcp list` shows `brain … ✔ Connected`; `/mcp` lists the tools.
 
-**Smoke test** — in a Claude Code session:
+## 3. Codex CLI / IDE
 
-> list my notes
+`~/.codex/config.toml`:
 
-Claude calls `list_notes` (or `list_workspaces` first when the token can reach
-several workspaces) and answers with paths and titles. Then try
-"search my notes for *deploy*" (`search_notes`) and "read `runbooks/deploy.md`"
-(`read_note`).
+```toml
+[mcp_servers.brain]
+url = "https://brain.example.com/api/mcp"
+bearer_token_env_var = "JOTTER_MCP_TOKEN"
+tool_timeout_sec = 60.0
+```
 
-## 3. Cursor
+Export `JOTTER_MCP_TOKEN` in the shell that starts Codex. Use `--client=codex` and
+`inbox/{client}/**` when issuing the token.
 
-Project file `.cursor/mcp.json` (or `~/.cursor/mcp.json` for every project).
-Cursor's remote-server entries use `url` + `headers` (no `type` key):
+## 4. Hermes Agent
+
+`~/.hermes/config.yaml`, with a token issued as in step 1 (`--client=hermes`):
+
+```yaml
+mcp_servers:
+  brain:
+    url: "https://brain.example.com/api/mcp"
+    headers:
+      Authorization: "Bearer jt_mkt_…"
+    tools:
+      include: [get_brain_context, search_notes, read_note, list_recent_changes, append_to_note, create_note]
+```
+
+In Hermes's end-of-task skill, call `append_to_note` on `diario/AAAA-MM-DD.md` with
+`heading: "Hermes"`. Hermes keeps its own memory (`MEMORY.md`, `USER.md`) local; what
+other agents must see goes into the brain.
+
+## 5. Claude web, Desktop, and mobile (OAuth)
+
+1. Settings → **Connectors** → **Add custom connector**.
+2. URL `https://brain.example.com/api/mcp` → **Connect**.
+3. Sign in to Jotter if asked; on the consent screen tick **only `brain`**, decide
+   whether to allow writing (paths pre-filled with `inbox/{client}/**` and
+   `diario/**`), keep the client slug (`claude`), choose a validity → **Allow**.
+
+Claude's callback `https://claude.ai/api/mcp/auth_callback` is in the default
+redirect allowlist. Revoke under the sidebar's link icon → **Connected apps**.
+
+## 6. ChatGPT (Developer Mode)
+
+1. Turn on **Developer Mode**, then Apps & Connectors → **Create**.
+2. URL `https://brain.example.com/api/mcp`, authentication **OAuth**.
+3. Copy the callback URL ChatGPT shows and append it to
+   `JOTTER_OAUTH_REDIRECT_ALLOWLIST` (comma-separated), then reload the server
+   configuration.
+4. Connect, sign in, consent to **only `brain`**.
+
+Every read tool is marked `readOnlyHint`, so ChatGPT does not ask for confirmation
+on reads; writes still ask. Deep Research uses the `search` and `fetch` tools.
+
+## 7. Other clients
+
+**Cursor** (`.cursor/mcp.json` or `~/.cursor/mcp.json`):
 
 ```json
 {
   "mcpServers": {
-    "jotter": {
-      "url": "https://acme.example.com/api/mcp",
-      "headers": {
-        "Authorization": "Bearer jt_mkt_…"
-      }
+    "brain": {
+      "url": "https://brain.example.com/api/mcp",
+      "headers": { "Authorization": "Bearer ${env:JOTTER_MCP_TOKEN}" }
     }
   }
 }
 ```
 
-Cursor supports `"${env:JOTTER_MCP_TOKEN}"` interpolation if you prefer not to
-store the token in the file. Enable the server in **Settings → MCP**; the tools
-appear under "jotter" with a green dot.
-
-**Smoke test** — in the agent chat: "list my notes in Jotter".
-
-## 4. Claude Desktop
-
-`claude_desktop_config.json` only launches **stdio** servers (`command` +
-`args`) and has no field for a custom `Authorization` header; remote servers
-added through *Settings → Connectors* must speak OAuth, which Jotter does not
-implement. Bridge with [`mcp-remote`](https://github.com/geelen/mcp-remote)
-(Node.js 18+), which runs locally as a stdio server and forwards to the HTTP
-endpoint with your header:
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+**Claude Desktop with a manual token** (when OAuth is off): bridge with
+[`mcp-remote`](https://github.com/geelen/mcp-remote) (Node.js 18+) in
+`claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "jotter": {
+    "brain": {
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://acme.example.com/api/mcp",
-        "--header",
-        "Authorization:${JOTTER_AUTH}"
-      ],
-      "env": {
-        "JOTTER_AUTH": "Bearer jt_mkt_…"
-      }
+      "args": ["-y", "mcp-remote", "https://brain.example.com/api/mcp", "--header", "Authorization:${JOTTER_AUTH}"],
+      "env": { "JOTTER_AUTH": "Bearer jt_mkt_…" }
     }
   }
 }
 ```
 
-The `Authorization:${JOTTER_AUTH}` form (no space after the colon, value in
-`env`) is the layout mcp-remote recommends because Claude Desktop on Windows
-mangles spaces inside `args`. For a plain `http://` development server add
-`"--allow-http"` to `args`. Quit and reopen Claude Desktop; the server shows
-under the "Add files, connectors, and more" menu.
+The `Authorization:${JOTTER_AUTH}` form (no space after the colon, value in `env`)
+avoids Claude Desktop mangling spaces in `args` on Windows.
 
-**Smoke test**: "list my notes".
+## 8. Smoke test (every client)
 
-## 5. Verify with curl (any host)
+Ask, in this order:
+
+1. "Leia o contexto do brain e me diga o próximo passo do projeto X." → the client
+   calls `get_brain_context` and answers from `projetos/x/estado.md`.
+2. "Anote no inbox que testei a conexão." → the client calls `create_note` in
+   `inbox/<client>/…`; the note appears in Jotter with a revision and an
+   `mcp.note_written` audit entry naming the client.
+3. For Claude web and ChatGPT: "liste meus workspaces" must **not** show
+   `brain-restrito`.
+
+With curl:
 
 ```sh
 TOKEN=jt_mkt_…
-HOST=https://acme.example.com
+HOST=https://brain.example.com
 
 curl -s $HOST/api/mcp -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
 
 curl -s $HOST/api/mcp -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_notes","arguments":{"query":"deploy"}}}' | jq '.result'
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_brain_context","arguments":{}}}' | jq '.result.structuredContent.projects'
+
+# OAuth discovery (only when JOTTER_OAUTH_ENABLED=true)
+curl -si $HOST/api/mcp -X POST -H 'Content-Type: application/json' -d '{}' | grep -i www-authenticate
+curl -s $HOST/.well-known/oauth-authorization-server | jq .issuer
 ```
+
+`php artisan jotter:doctor` also checks the OAuth setup (metadata reachable, redirect
+allowlist, HTTPS `APP_URL`).
 
 ## Common errors
 
 | Symptom | Cause | Fix |
-|---|---|---|
-| `401 … Unauthorized machine token` | Header missing, not `Bearer`, token revoked, or user deactivated | Re-issue the token; check `Authorization: Bearer jt_mkt_…` |
-| `403 … Unauthorized workspace access` | `workspace_id` names a workspace the token's user is not a member of | Call `list_workspaces`; grant membership |
-| Tool result "`workspace_id is required: this token can reach N workspaces`" | The user belongs to several workspaces | Ask the assistant to call `list_workspaces` first, or issue the token for a user with one membership |
-| `✘ Failed to connect` in `claude mcp list` | Wrong URL (must end in `/api/mcp`), HTTPS certificate problem, or the host blocks `POST` bodies | `curl` the endpoint as above; confirm `https://` |
-| Claude Desktop shows nothing | Config file syntax, Node.js/npx missing, or a space in `Authorization: …` on Windows | Check `~/Library/Logs/Claude/mcp*.log`; use the `env` layout above |
-| Works in curl, 419/405 in a client | Client sent `GET` (SSE stream) first | Jotter answers `405` to `GET`; clients fall back to POST automatically (mcp-remote: `--transport http-only`) |
+| --- | --- | --- |
+| `401 … Unauthorized machine token` | Header missing, token revoked or expired, user deactivated | Re-issue; check `Authorization: Bearer jt_mkt_…` |
+| `403` with `WWW-Authenticate: … insufficient_scope, scope="mcp:read"` | The token has only `api:*` scopes | Re-issue with `--scope=mcp:read` |
+| `403 … insufficient_scope, scope="api:write"` on REST or WebDAV | Tokens are MCP-only unless they carry `api:*` (tokens issued before 2026-11-03 became `mcp:read`) | Re-issue with `--scope=api:read --scope=api:write` |
+| Write tool returns "Operation … is not allowed on …" | Path or operation outside the token's write paths | Write inside `inbox/<client>/`, or re-issue with the right `--write-path` |
+| `update_note` returns "The note changed since you read it" | Someone edited the note after the agent's `read_note` | Read again and retry with the new `sha256` |
+| `429` with `Retry-After` | 120 calls/min, or 30 writes/min / 500 writes/day per token | Wait the given seconds; tune `JOTTER_MCP_*` if needed |
+| Tool result "`workspace_id is required: this token can reach N workspaces`" | The token reaches several workspaces | Call `list_workspaces` first, or pass `workspace_id` |
+| Claude web / ChatGPT: "couldn't connect" | OAuth off, `APP_URL` not the public HTTPS origin, callback not in the allowlist, or a WAF blocking `/.well-known` / `/oauth` | Run `jotter:doctor`; see [deployment.md](deployment.md#oauth-for-mcp-web-clients-claude-web-chatgpt) |
+| Consent screen says the redirect is not registered | The client's callback is not in `JOTTER_OAUTH_REDIRECT_ALLOWLIST` | Append the exact callback URL |
+| `403 … Origin not allowed` | A browser-based client sent a foreign `Origin` | Add it to `JOTTER_MCP_ALLOWED_ORIGINS` |
 | Notes missing from results | ACLs hide them from the token's user | Grant view access to that user |
 
 ## Security notes
 
-- Tokens are bearer secrets: keep them out of git (`.mcp.json` env expansion,
-  Cursor `${env:…}`, Claude Desktop `env`).
-- Every call is audited (`mcp.method_called`); failed auth is audited without
-  the token.
-- Tools cannot create, edit, or delete notes ([mcp.md](mcp.md) explains why).
+- Tokens are bearer secrets: keep them out of git (`.mcp.json` env expansion, Codex
+  `bearer_token_env_var`, Cursor `${env:…}`, Claude Desktop `env`).
+- Isolation between the general brain and client material is by **workspace**, not by
+  folder: never grant `brain-restrito` to Claude web or ChatGPT.
+- Agents write only inside their write paths; `_brain/` is human-only, which limits
+  persistent prompt injection through `inbox/`. Note content is data, not instructions.
+- Every call is audited (`mcp.method_called`, `mcp.note_written`, `oauth.*`) with the
+  token id and client slug; `audit:prune` keeps 90 days.

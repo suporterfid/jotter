@@ -80,6 +80,7 @@ final class InstanceDoctor
             $this->checkMailer(),
             $this->checkMailFrom(),
             $this->checkScheduler(),
+            ...$this->checkOAuth(),
         ];
 
         return new DoctorReport(
@@ -88,6 +89,72 @@ final class InstanceDoctor
             environment: (string) config('app.env'),
             checks: $checks,
         );
+    }
+
+    /**
+     * Embedded OAuth server for MCP web clients (brain plan PR 6). Checked
+     * in-process (route table and metadata controller), never with an HTTP
+     * call to ourselves, which some shared hosts block.
+     *
+     * @return list<DoctorCheck>
+     */
+    private function checkOAuth(): array
+    {
+        if (! (bool) config('jotter.oauth.enabled', false)) {
+            return [DoctorCheck::pass('oauth', 'OAuth for MCP web clients', false, 'Disabled (JOTTER_OAUTH_ENABLED=false); Claude web and ChatGPT cannot connect by URL.')];
+        }
+
+        $checks = [];
+        $issuer = \App\Domain\OAuth\OAuthServer::issuer();
+        $checks[] = str_starts_with($issuer, 'https://')
+            ? DoctorCheck::pass('oauth_issuer', 'OAuth issuer (APP_URL)', true, $issuer, ['issuer' => $issuer, 'resource' => \App\Domain\OAuth\OAuthServer::resource()])
+            : DoctorCheck::fail('oauth_issuer', 'OAuth issuer (APP_URL)', true, sprintf("APP_URL is '%s'; OAuth clients require the public https:// origin.", $issuer), ['issuer' => $issuer]);
+
+        $missing = [];
+        foreach (['/.well-known/oauth-protected-resource/api/mcp', '/.well-known/oauth-authorization-server', '/oauth/authorize'] as $path) {
+            try {
+                \Illuminate\Support\Facades\Route::getRoutes()->match(\Illuminate\Http\Request::create($path, 'GET'));
+            } catch (\Throwable) {
+                $missing[] = $path;
+            }
+        }
+        foreach (['/oauth/register', '/oauth/token', '/oauth/revoke'] as $path) {
+            try {
+                \Illuminate\Support\Facades\Route::getRoutes()->match(\Illuminate\Http\Request::create($path, 'POST'));
+            } catch (\Throwable) {
+                $missing[] = $path;
+            }
+        }
+        $metadata = (array) app(\App\Http\Controllers\OAuthMetadataController::class)->authorizationServer()->getData(true);
+        $checks[] = $missing === [] && ($metadata['issuer'] ?? null) === $issuer
+            ? DoctorCheck::pass('oauth_metadata', 'OAuth metadata and endpoints', true, 'RFC 9728/8414 metadata and the register/authorize/token/revoke routes are registered.', ['token_endpoint' => $metadata['token_endpoint'] ?? null])
+            : DoctorCheck::fail('oauth_metadata', 'OAuth metadata and endpoints', true, 'Missing routes: '.implode(', ', $missing ?: ['(issuer mismatch)']).'. Clear the route cache (php artisan route:clear).', ['missing' => $missing]);
+
+        $allowlist = (array) config('jotter.oauth.redirect_allowlist', []);
+        $invalid = array_values(array_filter($allowlist, static function ($pattern): bool {
+            $pattern = (string) $pattern;
+            if (str_starts_with($pattern, 'https://')) {
+                return false;
+            }
+
+            return preg_match('#^http://(localhost|127\.0\.0\.1|\[::1\])(:|/|$)#i', $pattern) !== 1;
+        }));
+        if ($allowlist === []) {
+            $checks[] = DoctorCheck::fail('oauth_redirect_allowlist', 'OAuth redirect allowlist', true, 'JOTTER_OAUTH_REDIRECT_ALLOWLIST is empty; no client can register.');
+        } elseif ($invalid !== []) {
+            $checks[] = DoctorCheck::fail('oauth_redirect_allowlist', 'OAuth redirect allowlist', true, 'Entries must be https:// or http on loopback: '.implode(', ', $invalid), ['invalid' => $invalid]);
+        } else {
+            $hasClaude = in_array('https://claude.ai/api/mcp/auth_callback', $allowlist, true);
+            $checks[] = DoctorCheck::pass('oauth_redirect_allowlist', 'OAuth redirect allowlist', true, sprintf('%d entr%s%s.', count($allowlist), count($allowlist) === 1 ? 'y' : 'ies', $hasClaude ? ', Claude web included' : '; Claude web callback not listed'), ['allowlist' => $allowlist]);
+        }
+
+        $scheduled = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+            ->contains(static fn ($event): bool => str_contains((string) ($event->command ?? ''), 'oauth:prune'));
+        $checks[] = $scheduled
+            ? DoctorCheck::pass('oauth_prune', 'oauth:prune scheduled', false, 'Daily at 02:45.')
+            : DoctorCheck::fail('oauth_prune', 'oauth:prune scheduled', false, 'oauth:prune is not in the schedule; expired OAuth codes and tokens will accumulate.');
+
+        return $checks;
     }
 
     private function isProduction(): bool

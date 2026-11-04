@@ -41,7 +41,7 @@ final class LlmsTxtController extends Controller
         }
         $content .= "\n## Model Context Protocol\n\n";
         $content .= '- Endpoint: `POST '.rtrim((string) config('app.url'), '/')."/api/mcp` (Streamable HTTP, JSON-RPC 2.0)\n";
-        $content .= "- Auth: `Authorization: Bearer <machine token>`; tools: list_workspaces, list_notes, read_note, search_notes, get_backlinks (read-only)\n\n";
+        $content .= "- Auth: `Authorization: Bearer <machine token>`; scoped tokens or OAuth; start with get_brain_context; read tools plus create_note/append_to_note/update_note within the token's write paths\n\n";
         $content .= "## Available Workspaces\n\n";
 
         foreach ($workspaces as $ws) {

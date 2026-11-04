@@ -4,6 +4,8 @@ export default {
     copy: 'Copiar',
     copied: 'Copiado',
     claudeCodeCli: 'Terminal (um comando)',
+    codexEnv: "Defina o token no shell que inicia o Codex",
+    hermesNote: "Hermes: termine cada tarefa com append_to_note em diario/AAAA-MM-DD.md, sob o título \"Hermes\".",
     claudeDesktopNote: 'O Claude Desktop só inicia servidores stdio por este arquivo e não envia header Authorization sozinho; o mcp-remote faz a ponte até o endpoint HTTP. Requer Node.js 18+. Reinicie o Claude Desktop após salvar.',
     smokeTest: 'Teste de fumaça: peça ao assistente para "listar minhas notas" — ele deve chamar list_notes (ou list_workspaces antes).',
   },

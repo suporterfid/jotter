@@ -45,4 +45,22 @@ describe('McpClientSnippets', () => {
     const fallback = mount(McpClientSnippets, { props: { token: TOKEN } })
     expect(fallback.find('[data-testid="mcp-code-claude-code-cli"]').text()).toContain(`${window.location.origin}/api/mcp`)
   })
+
+  it('renders Codex (bearer_token_env_var) and Hermes (headers + tools.include) configurations', async () => {
+    const wrapper = mount(McpClientSnippets, { props: { token: TOKEN, host: 'https://brain.example.com', serverName: 'brain' } })
+
+    await wrapper.find('[data-testid="mcp-tab-codex"]').trigger('click')
+    expect(wrapper.find('[data-testid="mcp-code-codex-cli"]').text()).toBe(`export JOTTER_MCP_TOKEN="${TOKEN}"`)
+    const toml = wrapper.find('[data-testid="mcp-code-codex-toml"]').text()
+    expect(toml).toContain('[mcp_servers.brain]')
+    expect(toml).toContain('url = "https://brain.example.com/api/mcp"')
+    expect(toml).toContain('bearer_token_env_var = "JOTTER_MCP_TOKEN"')
+    expect(toml).not.toContain(TOKEN)
+
+    await wrapper.find('[data-testid="mcp-tab-hermes"]').trigger('click')
+    const yaml = wrapper.find('[data-testid="mcp-code-hermes-yaml"]').text()
+    expect(yaml).toContain('  brain:')
+    expect(yaml).toContain(`Authorization: "Bearer ${TOKEN}"`)
+    expect(yaml).toContain('include: [get_brain_context')
+  })
 })
