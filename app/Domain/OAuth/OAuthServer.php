@@ -152,6 +152,7 @@ final class OAuthServer
         string $redirectUri,
         string $codeChallenge,
         ?string $resource,
+        ?int $userId = null,
     ): string {
         $scopes = array_values(array_intersect(self::GRANTABLE_SCOPES, $scopes));
         if (! in_array(CredentialContext::SCOPE_MCP_READ, $scopes, true)) {
@@ -160,10 +161,11 @@ final class OAuthServer
 
         $code = self::CODE_PREFIX.Str::random(48);
 
-        DB::transaction(function () use ($client, $tenantId, $subjectId, $workspaceIds, $scopes, $writePaths, $clientSlug, $expiresAt, $redirectUri, $codeChallenge, $resource, $code): void {
+        DB::transaction(function () use ($client, $tenantId, $subjectId, $userId, $workspaceIds, $scopes, $writePaths, $clientSlug, $expiresAt, $redirectUri, $codeChallenge, $resource, $code): void {
             $grant = OAuthGrant::create([
                 'tenant_id' => $tenantId,
                 'subject_id' => $subjectId,
+                'user_id' => $userId,
                 'oauth_client_id' => $client->id,
                 'workspace_ids' => array_values(array_map('intval', $workspaceIds)),
                 'scopes' => $scopes,
@@ -326,6 +328,7 @@ final class OAuthServer
             MachineToken::create([
                 'tenant_id' => $grant->tenant_id,
                 'subject_id' => $grant->subject_id,
+                'user_id' => $grant->user_id,
                 'name' => 'OAuth: '.$client->name,
                 'kind' => MachineToken::KIND_OAUTH,
                 'scopes' => $grant->scopes,

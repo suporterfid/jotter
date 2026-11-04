@@ -132,7 +132,8 @@ other agents must see goes into the brain.
    `diario/**`), keep the client slug (`claude`), choose a validity → **Allow**.
 
 Claude's callback `https://claude.ai/api/mcp/auth_callback` is in the default
-redirect allowlist. Revoke under the sidebar's link icon → **Connected apps**.
+redirect allowlist. Revoke under the sidebar's link icon → **Connected apps**;
+administrators can revoke anyone's connection under Administration → **Connected apps**.
 
 ## 6. ChatGPT (Developer Mode)
 

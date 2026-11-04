@@ -8,6 +8,7 @@ use App\Http\Controllers\OAuthTokenController;
 use App\Http\Middleware\EnsureOAuthEnabled;
 use App\Http\Controllers\PublicNoteShareController;
 use App\Http\Controllers\PublicShareAssetController;
+use App\Http\Controllers\SpaShellController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/llms.txt', [LlmsTxtController::class, 'globalLlmsTxt']);
@@ -34,6 +35,4 @@ Route::get('/share/{token}/attachments/{path}', [PublicNoteShareController::clas
 Route::get('/share/{token}', [PublicNoteShareController::class, 'show'])
     ->name('public.note-share');
 
-Route::get('/', function () {
-    return view('app');
-});
+Route::get('/', SpaShellController::class);

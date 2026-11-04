@@ -26,6 +26,7 @@ class MachineToken extends Model
     protected $fillable = [
         'tenant_id',
         'subject_id',
+        'user_id',
         'name',
         'kind',
         'scopes',
@@ -44,6 +45,7 @@ class MachineToken extends Model
     {
         return [
             'tenant_id' => 'integer',
+            'user_id' => 'integer',
             'scopes' => 'array',
             'workspace_ids' => 'array',
             'write_paths' => 'array',

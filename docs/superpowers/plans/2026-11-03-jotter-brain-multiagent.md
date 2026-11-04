@@ -276,9 +276,9 @@ Se o diff passar de cerca de 2.000 linhas, dividir em **5a** (metadados, DCR, au
 
 ## 7. Fechamento (Definition of Done do épico)
 
-- [ ] Os seis PRs mergeados com CI verde.
-- [ ] Os dois achados de segurança cobertos por teste de regressão.
+- [x] Os seis PRs mergeados com CI verde (#404–#409; suíte completa verde a cada PR).
+- [x] Os dois achados de segurança cobertos por teste de regressão.
 - [ ] Teste de fumaça passou nos cinco clientes (checklist do PR 6).
 - [ ] `brain-restrito` invisível para Claude web e ChatGPT, verificado.
-- [ ] `STATUS.md`, `BACKLOG.md`, `CHANGELOG.md`, `docs/mcp.md`, `docs/mcp-clients.md` e `docs/decisions.md` atualizados.
+- [x] `STATUS.md`, `BACKLOG.md`, `CHANGELOG.md`, `docs/mcp.md`, `docs/mcp-clients.md` e `docs/decisions.md` atualizados.
 - [ ] Revisão dos limites de rate agendada para duas semanas após o deploy.

@@ -84,7 +84,8 @@ final class MachineTokenResolver
         }
 
         /** @var User|null $user */
-        $user = User::query()->find($token->subject_id);
+        // user_id is set when the subject id is not the local user id (GrandpaSSOn).
+        $user = User::query()->find($token->user_id ?? $token->subject_id);
         if ($user === null || $user->is_active === false) {
             return null;
         }
@@ -92,7 +93,7 @@ final class MachineTokenResolver
         $this->touch($token);
 
         return new AuthenticatedSubject(
-            subjectId: (string) $user->id,
+            subjectId: (string) $token->subject_id,
             email: $user->email,
             name: $user->name,
             isAdmin: false,

@@ -47,7 +47,7 @@ class OidcAuthenticationTest extends TestCase
 
     public function test_callback_returns_to_a_pending_oauth_consent(): void
     {
-        $response = $this->withSession(['oauth.return_to' => '/oauth/authorize?client_id=jtc_x&state=s'])
+        $response = $this->withSession(['oauth.return_to' => ['path' => '/oauth/authorize?client_id=jtc_x&state=s', 'expires' => time() + 600]])
             ->get('/api/auth/oidc/callback?code=one-time-code&state=state');
 
         $this->assertStringEndsWith('/oauth/authorize?client_id=jtc_x&state=s', (string) $response->headers->get('Location'));
@@ -56,7 +56,7 @@ class OidcAuthenticationTest extends TestCase
 
     public function test_callback_ignores_a_return_to_outside_the_consent_screen(): void
     {
-        $this->withSession(['oauth.return_to' => 'https://evil.example/x'])
+        $this->withSession(['oauth.return_to' => ['path' => 'https://evil.example/x', 'expires' => time() + 600]])
             ->get('/api/auth/oidc/callback?code=one-time-code&state=state')
             ->assertRedirect('https://jotter.example.test');
     }

@@ -4,6 +4,13 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### OAuth follow-ups: admin Connected apps and GrandpaSSOn sign-in — 2026-11-04
+
+- **Administration → Connected apps**: a new tab lists every person's OAuth connections (client, redirect host, user, workspaces, scopes, client slug, last use, expiry) and revokes any of them, using the existing `/api/admin/oauth-grants` API.
+- **OAuth consent after a GrandpaSSOn sign-in**: GrandpaSSOn always returns to `APP_URL`, which dropped the `?return_to=` of the consent screen. The SPA shell route (`/`) now resumes a pending consent from the session once the browser session resolves. The remembered path is limited to `/oauth/authorize?…` and expires after ten minutes; the OIDC callback uses the same rule.
+- **Fix: OAuth tokens for GrandpaSSOn users.** With GrandpaSSOn the subject id is the SSO user's UUID, so the token resolver could not load the account and every OAuth access token answered 401. Grants and tokens now also store the local `user_id` (new nullable column on `oauth_grants` and `machine_tokens`, migration `2026_11_04_000002`); access checks still use the subject id, so memberships keyed by the SSO UUID apply. The admin grant list shows the right e-mail for these users.
+- Follow-ups filed as issues: WebDAV `ETag`/`If-Match` (#410), CIMD (#411), semantic search (#412).
+
 ### Five-client guide and OAuth doctor checks — 2026-11-04 (brain multi-agent epic, PR 6)
 
 - **`docs/mcp-clients.md` rewritten** for the brain: preparing the vault (`brain:init`, OAuth on), scoped manual tokens, and setup for Claude Code, Codex CLI/IDE, Hermes Agent, Claude web/Desktop/mobile (OAuth), and ChatGPT Developer Mode (OAuth, callback allowlist), plus Cursor and Claude Desktop via `mcp-remote`; the same three-step smoke test for every client; common errors for scopes, write paths, hash conflicts, 429, and OAuth.
