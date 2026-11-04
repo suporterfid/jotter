@@ -7,6 +7,7 @@ use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
+use App\Domain\Mcp\BrainTools;
 use App\Domain\Mcp\McpInstructions;
 use App\Domain\Mcp\McpNoteWriter;
 use App\Domain\Mcp\McpWriteResult;
@@ -167,6 +168,23 @@ final class McpController extends Controller
                 ->header('WWW-Authenticate', sprintf('Bearer error="insufficient_scope", scope="%s"', $requiredScope));
         }
 
+        if ($name === 'search') {
+            $query = trim((string) ($args['query'] ?? ''));
+            if ($query === '') {
+                return $this->toolError($id, 'query is required.');
+            }
+
+            return $this->toolJson($id, app(BrainTools::class)->search($subject, $query));
+        }
+
+        if ($name === 'fetch') {
+            $document = app(BrainTools::class)->fetch($subject, (string) ($args['id'] ?? ''));
+
+            return $document === null
+                ? $this->toolError($id, 'No note with that id. Use an id returned by search, shaped "<workspace_id>:<path>".')
+                : $this->toolJson($id, $document);
+        }
+
         $workspaceId = (int) ($args['workspace_id'] ?? 0);
         if ($workspaceId === 0) {
             $accessible = $this->accessibleWorkspaces($subject);
@@ -189,6 +207,10 @@ final class McpController extends Controller
 
         if (in_array($name, McpToolCatalog::WRITE_TOOLS, true)) {
             return $this->writeTool($name, $subject, $workspace, $args, $id);
+        }
+
+        if (in_array($name, ['get_brain_context', 'list_recent_changes', 'get_outgoing_links'], true)) {
+            return $this->brainTool($name, $subject, $workspace, $args, $id);
         }
 
         return match ($name) {
@@ -259,6 +281,52 @@ final class McpController extends Controller
         };
 
         return $this->writeResult($id, $result);
+    }
+
+    /**
+     * @param array<string, mixed> $args
+     */
+    private function brainTool(string $name, AuthenticatedSubject $subject, Workspace $workspace, array $args, mixed $id): JsonResponse
+    {
+        $brain = app(BrainTools::class);
+
+        if ($name === 'get_brain_context') {
+            return $this->toolJson($id, $brain->context($subject, $workspace));
+        }
+
+        if ($name === 'list_recent_changes') {
+            $since = null;
+            if (isset($args['since']) && (string) $args['since'] !== '') {
+                try {
+                    $since = \Carbon\CarbonImmutable::parse((string) $args['since']);
+                } catch (\Throwable) {
+                    return $this->toolError($id, 'since must be an ISO 8601 date-time, for example 2026-11-01T00:00:00Z.');
+                }
+            }
+
+            return $this->toolJson($id, ['changes' => $brain->recentChanges($subject, $workspace, $since, (int) ($args['limit'] ?? 20))]);
+        }
+
+        $note = Note::query()->where('workspace_id', $workspace->id)->where('path', (string) ($args['path'] ?? ''))->first();
+        if ($note === null || ! $this->noteAccess->canView($subject, $note)) {
+            return $this->toolError($id, 'Note not found.');
+        }
+
+        return $this->toolJson($id, ['links' => $brain->outgoingLinks($subject, $note)]);
+    }
+
+    /**
+     * Tool result whose text is the JSON payload (the shape OpenAI's
+     * search/fetch expect), also exposed as structuredContent.
+     *
+     * @param array<string, mixed> $payload
+     */
+    private function toolJson(mixed $id, array $payload): JsonResponse
+    {
+        return $this->result($id, [
+            'content' => [['type' => 'text', 'text' => (string) json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)]],
+            'structuredContent' => $payload,
+        ]);
     }
 
     private function writeResult(mixed $id, McpWriteResult $result): JsonResponse

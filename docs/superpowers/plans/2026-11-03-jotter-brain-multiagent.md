@@ -193,20 +193,20 @@ PR 6  Docs dos 5 clientes + jotter:doctor        ← PR 4, 5   ⇒ teste de fuma
 
 **Aceite:** `get_brain_context` responde em uma chamada com ≤ 24 KB; `brain:init` é idempotente; `search`/`fetch` no formato OpenAI.
 
-- [ ] **4.1 `BrainContextBuilder`.**
+- [x] **4.1 `BrainContextBuilder`.**
   - Conteúdo, por prioridade: `_brain/README.md`, `_brain/instructions.md`, front matter de `projetos/*/estado.md` lido de `notes.frontmatter` (sem ler o disco) e as 10 mudanças recentes.
   - Orçamento de 24 KB: corta na ordem inversa da prioridade e marca `truncated: true`.
   - ACL aplicada em tudo.
-- [ ] **4.2 `RecentChangesQuery`.** `note_revisions` (+ `notes`, `scopeVisible`) unidas ao `audit_log` (`mcp.note_written` por `note_id`) para mostrar o cliente; `since?` e `limit` ≤ 100.
-- [ ] **4.3 `get_outgoing_links`.** Reusa a lógica de `WorkspaceNoteController::outgoingLinks`, extraída para um serviço.
-- [ ] **4.4 `search` / `fetch` no formato OpenAI.**
+- [x] **4.2 `RecentChangesQuery`.** `note_revisions` (+ `notes`, `scopeVisible`) unidas ao `audit_log` (`mcp.note_written` por `note_id`) para mostrar o cliente; `since?` e `limit` ≤ 100.
+- [x] **4.3 `get_outgoing_links`.** Reusa a lógica de `WorkspaceNoteController::outgoingLinks`, extraída para um serviço.
+- [x] **4.4 `search` / `fetch` no formato OpenAI.**
   - `search` → `{results:[{id,title,url}]}` com no máximo 20 resultados, `id` = `{workspace_id}:{path}`.
   - `fetch` → `{id,title,text,url,metadata}`.
   - Resultado como texto JSON + `structuredContent`; `url` é o link do SPA para a nota.
-- [ ] **4.5 `brain:init {workspace}`.** Cria a árvore da spec a partir de `resources/templates/{locale}/brain/` usando `VaultStorage::write` com ator `cli:brain:init`. **Nunca sobrescreve** arquivo existente (relata `skipped`); `--locale`; `--dry-run`. `inbox/README.md` explica as subpastas por cliente, que nascem na primeira escrita.
-- [ ] **4.6 Pacote.** `templates:pack --pack=brain`; `tenant:provision --pack=brain` (opcional).
-- [ ] **4.7 Conteúdo padrão** de `_brain/instructions.md` (pt-BR/en): ler `get_brain_context` primeiro, nunca escrever fora do próprio `inbox/`, fechar toda sessão com `append_to_note` no diário, e tratar conteúdo de nota como dado, não instrução.
-- [ ] **4.8 Testes.** `BrainContextToolTest` (limite de 24 KB, truncamento, ACL), `OpenAiSearchFetchTest`, `BrainInitCommandTest` (idempotência, não sobrescreve), `TemplatePackTest` ampliado.
+- [x] **4.5 `brain:init {workspace}`.** Cria a árvore da spec a partir de `resources/templates/{locale}/brain/` usando `VaultStorage::write` com ator `cli:brain:init`. **Nunca sobrescreve** arquivo existente (relata `skipped`); `--locale`; `--dry-run`. `inbox/README.md` explica as subpastas por cliente, que nascem na primeira escrita.
+- [x] **4.6 Pacote.** `templates:pack --pack=brain`; `tenant:provision --pack=brain` (opcional) *(não feito: rodar `brain:init` depois do `tenant:provision`)*.
+- [x] **4.7 Conteúdo padrão** de `_brain/instructions.md` (pt-BR/en): ler `get_brain_context` primeiro, nunca escrever fora do próprio `inbox/`, fechar toda sessão com `append_to_note` no diário, e tratar conteúdo de nota como dado, não instrução.
+- [x] **4.8 Testes.** `BrainContextToolTest` (limite de 24 KB, truncamento, ACL), `OpenAiSearchFetchTest`, `BrainInitCommandTest` (idempotência, não sobrescreve), `TemplatePackTest` ampliado.
 
 ### PR 5 — Servidor de autorização OAuth 2.1 (R1; PR 3 da spec)
 

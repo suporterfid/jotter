@@ -658,6 +658,23 @@ onBeforeUnmount(() => {
 const WORKSPACE_STORAGE_KEY = 'jotter-active-workspace-id'
 const TENANT_STORAGE_KEY = 'jotter-active-tenant-id'
 
+// Deep link `/?workspace=<id>&note=<id>`: the `url` returned by the MCP
+// search/fetch tools, so a citation from an agent opens the note directly.
+function readNoteDeepLink(): { workspaceId: number; noteId: number } | null {
+  const params = new URLSearchParams(window.location.search)
+  const workspaceId = Number(params.get('workspace'))
+  const noteId = Number(params.get('note'))
+  if (!Number.isInteger(workspaceId) || workspaceId <= 0 || !Number.isInteger(noteId) || noteId <= 0) return null
+  return { workspaceId, noteId }
+}
+
+function clearNoteDeepLink(): void {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('workspace')
+  url.searchParams.delete('note')
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
 async function initWorkspace() {
   try {
     const tenantList = await getTenants()
@@ -686,8 +703,13 @@ async function initWorkspace() {
     const stored = localStorage.getItem(WORKSPACE_STORAGE_KEY)
     const storedId = stored !== null ? Number(stored) : null
     const storedIsValid = storedId !== null && list.some((ws) => ws.id === storedId)
+    const deepLink = readNoteDeepLink()
+    const deepLinkIsValid = deepLink !== null && list.some((ws) => ws.id === deepLink.workspaceId)
 
-    if (storedIsValid) {
+    if (deepLinkIsValid) {
+      activeWorkspaceId.value = deepLink.workspaceId
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, String(deepLink.workspaceId))
+    } else if (storedIsValid) {
       activeWorkspaceId.value = storedId as number
     } else if (list.length > 0) {
       activeWorkspaceId.value = list[0].id
@@ -697,6 +719,10 @@ async function initWorkspace() {
     loadLayout(activeWorkspaceId.value)
     await refreshNotesList()
     await restoreSecondaryNote()
+    if (deepLinkIsValid) {
+      clearNoteDeepLink()
+      await handleSelectNote(deepLink.noteId)
+    }
     await refreshNotifications()
   } catch (err) {
     console.error('Failed to initialize workspace:', err)

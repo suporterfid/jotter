@@ -81,7 +81,7 @@ final class McpProtocolTest extends TestCase
     {
         $tools = $this->rpc(['id' => 5, 'method' => 'tools/list'])->assertOk()->json('result.tools');
 
-        $this->assertSame(['list_workspaces', 'list_notes', 'read_note', 'search_notes', 'get_backlinks'], array_column($tools, 'name'));
+        $this->assertSame(['list_workspaces', 'list_notes', 'read_note', 'search_notes', 'get_backlinks', 'get_brain_context', 'list_recent_changes', 'get_outgoing_links', 'search', 'fetch'], array_column($tools, 'name'));
         foreach ($tools as $tool) {
             $this->assertSame('object', $tool['inputSchema']['type'], $tool['name']);
             $this->assertNotEmpty($tool['description']);

@@ -81,6 +81,36 @@ is in [mcp-clients.md](mcp-clients.md).
    index, and is what `update_note` expects.
 4. `search_notes`: Full-text title and content search with ranked snippets (`query`).
 5. `get_backlinks`: Incoming wikilinks to a `target` note (path or title).
+6. `get_brain_context`: **start here.** One call returns `_brain/README.md`,
+   `_brain/instructions.md`, the front matter of every `projetos/<slug>/estado.md`
+   (`status`, `proximo_passo`, `atualizado`, `dono`) and the 10 latest changes, trimmed
+   to 24 KB (recent changes first, then projects, then the texts; `truncated: true`).
+7. `list_recent_changes`: Latest revisions (`path`, `updated_at`, `actor`, and `client`
+   for agent writes, matched through `mcp.note_written`); `since?`, `limit` ≤ 100.
+8. `get_outgoing_links`: Wikilinks from a note `path`, resolved or not; ACL applied.
+9. `search` / `fetch`: the OpenAI connector shape, so ChatGPT and Deep Research (which
+   only call these two) can use the vault. `search {query}` → `{results: [{id, title, url}]}`
+   across every reachable workspace (≤ 20, `id` = `<workspace_id>:<path>`);
+   `fetch {id}` → `{id, title, text, url, metadata}`. `url` is the SPA deep link
+   `<APP_URL>/?workspace=<id>&note=<id>`.
+
+### The `brain` vault layout
+
+`php artisan brain:init <workspace> [--locale=pt-BR|en] [--dry-run]` writes the
+convention below and never overwrites an existing file (re-running is safe; audited as
+`brain.initialized`). `php artisan templates:pack --pack=brain` builds the same layout as
+a ZIP for the import endpoint. Folder names are identical in both locales so agent write
+paths stay `inbox/{client}/**` and `diario/**`.
+
+```text
+_brain/README.md            router: what exists and where to look (humans only)
+_brain/instructions.md      agent rules, also returned by initialize (humans only)
+projetos/<slug>/estado.md   status, latest decision, next step (front matter)
+decisoes/AAAA-MM-DD-<slug>.md
+diario/AAAA-MM-DD.md        agents only append
+inbox/<client>/             the only area where agents create and rewrite notes
+pessoas/<nome>.md
+```
 
 ### Write (`mcp:write`, only inside the token's write paths)
 

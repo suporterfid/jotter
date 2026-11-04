@@ -173,6 +173,64 @@ final class McpToolCatalog
                 ],
                 'annotations' => self::READ_ANNOTATIONS,
             ],
+            [
+                'name' => 'get_brain_context',
+                'title' => 'Get brain context',
+                'description' => 'Start here. One call returns the vault router (_brain/README.md), the agent rules (_brain/instructions.md), the state of every project (front matter of projetos/*/estado.md: status, proximo_passo, atualizado, dono) and the 10 latest changes, within 24 KB.',
+                'inputSchema' => ['type' => 'object', 'properties' => ['workspace_id' => $workspaceId], 'additionalProperties' => false],
+                'annotations' => self::READ_ANNOTATIONS,
+            ],
+            [
+                'name' => 'list_recent_changes',
+                'title' => 'List recent changes',
+                'description' => 'Latest note revisions, newest first: path, updated_at, actor and, for agent writes, the client.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'workspace_id' => $workspaceId,
+                        'since' => ['type' => 'string', 'description' => 'ISO 8601 date-time; only changes at or after it.'],
+                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => self::READ_ANNOTATIONS,
+            ],
+            [
+                'name' => 'get_outgoing_links',
+                'title' => 'Get outgoing links',
+                'description' => 'Wikilinks from one note (by path), resolved or not; links to notes you cannot see are omitted.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['workspace_id' => $workspaceId, 'path' => ['type' => 'string', 'description' => 'Note path relative to the vault root.']],
+                    'required' => ['path'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => self::READ_ANNOTATIONS,
+            ],
+            [
+                'name' => 'search',
+                'title' => 'Search',
+                'description' => 'Full-text search across every workspace you can read. Returns up to 20 results as {id, title, url}; pass an id to fetch.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['query' => ['type' => 'string', 'description' => 'Search terms.']],
+                    'required' => ['query'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => self::READ_ANNOTATIONS,
+            ],
+            [
+                'name' => 'fetch',
+                'title' => 'Fetch',
+                'description' => 'Full text of one note by the id returned by search ("<workspace_id>:<path>"): {id, title, text, url, metadata}.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'string', 'description' => 'Result id from search.']],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => self::READ_ANNOTATIONS,
+            ],
             ...self::writeDefinitions($workspaceId),
         ];
     }

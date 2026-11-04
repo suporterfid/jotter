@@ -4,6 +4,16 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Brain tools and the `brain` vault pack — 2026-11-04 (brain multi-agent epic, PR 4)
+
+- **`get_brain_context`**: one call returns the vault router, the agent rules, every project's state (front matter of `projetos/*/estado.md`), and the 10 latest changes, trimmed to 24 KB with a `truncated` flag (`App\Domain\Mcp\BrainTools`).
+- **`list_recent_changes`** (`since?`, `limit` ≤ 100): revisions with actor and, for agent writes, the MCP client (matched by the written SHA-256 in `mcp.note_written`).
+- **`get_outgoing_links`** over MCP; the REST endpoint now shares the same `App\Domain\Links\OutgoingLinks` service.
+- **`search` / `fetch` in the OpenAI connector shape** across every reachable workspace (`id` = `<workspace_id>:<path>`, `url` = SPA deep link), so ChatGPT Deep Research can use the brain.
+- **SPA deep link** `/?workspace=<id>&note=<id>` opens the note and cleans the URL.
+- **`brain:init <workspace>`** (`--locale`, `--dry-run`, `--json`) lays out `_brain/`, `projetos/`, `decisoes/`, `diario/`, `inbox/`, `pessoas/` from `resources/brain/{pt-BR,en}`; idempotent, never overwrites, audited as `brain.initialized`. **`templates:pack --pack=brain`** builds the same layout as an importable ZIP.
+- **Tests**: `BrainContextToolTest`, `OpenAiSearchFetchTest`, `BrainInitCommandTest`, updated `McpProtocolTest`; Vitest for the deep link.
+
 ### MCP write tools and optimistic concurrency — 2026-11-03 (brain multi-agent epic, PR 3)
 
 - **`create_note`, `append_to_note`, `update_note`** over MCP, listed only for tokens with `mcp:write` and confined to the token's write paths (`App\Domain\Mcp\McpNoteWriter`). `_brain/`, `.trash/`, `_resources/`, `_templates/`, `.obsidian/` are never writable; only `.md`; 256 KB per call; the tenant plan and the write budget (30/min, 500/day → 429) apply.

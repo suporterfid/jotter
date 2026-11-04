@@ -212,23 +212,7 @@ final class WorkspaceNoteController extends Controller
         $note = $this->scopedNote($workspace, $note);
         $this->noteAccess->assertView($subject, $note);
 
-        $links = $note->outgoingLinks()
-            ->where('type', 'wikilink')
-            ->with('targetNote')
-            ->get()
-            ->filter(fn ($link) => $link->targetNote === null || $this->noteAccess->canView($subject, $link->targetNote))
-            ->map(fn ($link) => [
-                'id' => $link->targetNote?->id,
-                'path' => $link->targetNote?->path,
-                'title' => $link->targetNote?->title,
-                'target_ref' => $link->target_ref,
-                'target_block' => $link->target_block,
-                'resolved' => $link->targetNote !== null,
-            ])
-            ->values()
-            ->all();
-
-        return response()->json(['data' => $links]);
+        return response()->json(['data' => (new \App\Domain\Links\OutgoingLinks($this->noteAccess))->for($subject, $note)]);
     }
 
     private function scopedNote(Workspace $workspace, int $noteId): Note
