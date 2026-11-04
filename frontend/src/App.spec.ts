@@ -72,6 +72,18 @@ beforeEach(() => {
 })
 
 describe('App Component', () => {
+  it('opens the note from a ?workspace=&note= deep link and clears it from the URL', async () => {
+    window.history.replaceState({}, '', '/?workspace=1&note=10')
+    vi.mocked(getNote).mockClear()
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(getNote).toHaveBeenCalledWith(1, 10)
+    expect(window.location.search).toBe('')
+    expect(wrapper.find('[data-pane-id="primary"]').attributes('data-active-note-id')).toBe('10')
+  })
+
   it('sends the base hash on save and offers reload/overwrite on a 409 conflict', async () => {
     localStorage.setItem('jotter-open-tabs:1', JSON.stringify({ openNoteIds: [10], activeNoteId: 10 }))
     const baseHash = 'a'.repeat(64)
