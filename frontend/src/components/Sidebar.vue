@@ -471,6 +471,17 @@
           </svg>
         </button>
         <button
+          class="btn-icon"
+          data-testid="connected-apps-btn"
+          :title="t('sidebar.connectedApps')"
+          @click="$emit('open-connected-apps')"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+        </button>
+        <button
           v-if="authProvider === 'local'"
           class="btn-icon"
           data-testid="change-password-btn"
@@ -572,6 +583,7 @@ const emit = defineEmits<{
   (e: 'switch-tenant', tenantId: number): void
   (e: 'toggle-admin-panel'): void
   (e: 'open-change-password'): void
+  (e: 'open-connected-apps'): void
   (e: 'open-notification-preferences'): void
 }>()
 

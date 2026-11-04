@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'title' => 'Connect :client',
+    'intro' => ':client wants to use your notes as :user. After you approve, it is sent back to :host.',
+    'loopback_warning' => 'This app runs on a computer (it returns to localhost). Approve only if you just started this connection yourself in a terminal or desktop app.',
+    'workspaces' => 'Workspaces it may reach',
+    'workspaces_help' => 'Nothing is selected by default. Pick only what this app needs; all must belong to the same organisation.',
+    'access' => 'Access',
+    'scope_read' => 'Read and search notes',
+    'scope_write' => 'Write notes, only inside the paths below',
+    'write_paths' => 'Write paths (one per line, "glob:operations")',
+    'write_paths_help' => '{client} is replaced by the slug below; ** crosses folders. _brain/, .trash/, _resources/ and _templates/ are never writable. Operations: create, append, update.',
+    'client_slug' => 'Client slug (used for {client} and in the audit log)',
+    'expires' => 'Access valid for',
+    'expiry' => ['30d' => '30 days', '90d' => '90 days', '180d' => '180 days', '1y' => '1 year', 'never' => 'Until I revoke it'],
+    'revoke_hint' => 'You can revoke this at any time under Connected apps.',
+    'approve' => 'Allow',
+    'deny' => 'Deny',
+    'error_title' => 'This connection request cannot be completed',
+    'error_unknown_client' => 'The app is not registered on this server. Start the connection again from the app.',
+    'error_redirect_mismatch' => 'The app asked to return to an address it did not register. For your safety nothing was sent.',
+    'error_request_expired' => 'This request expired or was already used. Start the connection again from the app.',
+    'error_pick_workspace' => 'Choose at least one workspace.',
+    'error_one_tenant' => 'All workspaces must belong to the same organisation.',
+];

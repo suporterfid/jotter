@@ -70,6 +70,40 @@ is in [mcp-clients.md](mcp-clients.md).
 - Failed authentication is audited as `mcp.auth_failed`; every method call as
   `mcp.method_called`.
 
+## OAuth 2.1 for web clients (Claude web, ChatGPT)
+
+Claude web/Desktop/mobile and ChatGPT connect by URL: they read the `WWW-Authenticate`
+header of the MCP 401, discover the server, register themselves, and send the person to a
+consent screen. Enable it with `JOTTER_OAUTH_ENABLED=true` (off by default; every route
+below answers 404 while off).
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /.well-known/oauth-protected-resource[/api/mcp]` | RFC 9728: `resource` = `<APP_URL>/api/mcp`, `authorization_servers` = `[<APP_URL>]` |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 metadata: code flow, PKCE `S256`, `none` / `client_secret_post` / `client_secret_basic` |
+| `POST /oauth/register` | RFC 7591 dynamic registration; every `redirect_uri` must match `JOTTER_OAUTH_REDIRECT_ALLOWLIST`; 10 per hour per IP |
+| `GET/POST /oauth/authorize` | Requires a browser session (local, OIDC, or GrandpaSSOn); PKCE `S256` mandatory; exact `redirect_uri` (loopback on any port); `resource` must be the MCP URL; consent screen |
+| `POST /oauth/token` | `authorization_code` (single use, 60 s) and `refresh_token` (rotating); RFC 6749 errors |
+| `POST /oauth/revoke` | RFC 7009; revoking a refresh token revokes its grant |
+
+- **Consent**: nothing pre-selected; the person picks workspaces (one organisation), read
+  is always on, write is optional with write paths pre-filled as
+  `inbox/{client}/**:create,append,update` and `diario/**:append`, a client slug, and a
+  validity (30 days … until revoked). Loopback redirects get an extra warning. Without a
+  session the request waits while the person signs in (SPA login or OIDC) and resumes.
+- **Tokens**: access `jt_oat_…` (1 hour, stored in `machine_tokens` with `kind=oauth`) and
+  refresh `jt_ort_…` (30 days, rotated on every use). OAuth grants only `mcp:read`,
+  `mcp:write`, `offline_access` — never `api:*` (decision D8). Replaying a used code or a
+  rotated refresh token revokes the whole grant.
+- **Connected apps**: everyone sees their grants in the sidebar (link icon → *Connected
+  apps*) with workspaces, scopes, last use and expiry, and can revoke them;
+  administrators list and revoke all grants through `GET/DELETE /api/admin/oauth-grants`.
+- `oauth:prune` (daily 02:45) deletes expired codes and tokens and idle DCR clients
+  without an active grant. Audit events: `oauth.client_registered`,
+  `oauth.grant_created`, `oauth.token_issued`, `oauth.grant_revoked`.
+- CIMD (client ID metadata documents) is not implemented; Claude and ChatGPT fall back to
+  dynamic registration.
+
 ## Tools
 
 ### Read (`mcp:read`)

@@ -46,6 +46,10 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/admin/machine-tokens', [\App\Http\Controllers\AdminMachineTokenController::class, 'index']);
     Route::post('/admin/machine-tokens', [\App\Http\Controllers\AdminMachineTokenController::class, 'store']);
     Route::delete('/admin/machine-tokens/{machineToken}', [\App\Http\Controllers\AdminMachineTokenController::class, 'destroy']);
+    Route::get('/admin/oauth-grants', [\App\Http\Controllers\OAuthGrantController::class, 'adminIndex']);
+    Route::delete('/admin/oauth-grants/{grant}', [\App\Http\Controllers\OAuthGrantController::class, 'adminDestroy'])->whereNumber('grant');
+    Route::get('/user/oauth-grants', [\App\Http\Controllers\OAuthGrantController::class, 'index']);
+    Route::delete('/user/oauth-grants/{grant}', [\App\Http\Controllers\OAuthGrantController::class, 'destroy'])->whereNumber('grant');
     Route::get('/workspaces/{workspace}/llms.txt', [LlmsTxtController::class, 'workspaceLlmsTxt']);
     Route::match(['PROPFIND', 'GET', 'PUT', 'MKCOL', 'DELETE', 'OPTIONS'], '/webdav/{workspace}/{path?}', [WebDavController::class, 'handle'])->where('path', '.*');
     Route::post('/workspaces/{workspace}/publish', [WorkspacePublishController::class, 'publish'])->middleware('workspace.write');

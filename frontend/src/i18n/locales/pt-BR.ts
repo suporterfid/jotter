@@ -111,6 +111,7 @@ export default {
     collapse: 'Recolher {title}',
   },
   sidebar: {
+    connectedApps: 'Apps conectados',
     expandSidebar: 'Expandir barra lateral',
     notifications: 'Notificações',
     noNotificationsYet: 'Nenhuma notificação ainda.',
@@ -426,6 +427,20 @@ export default {
     noBrokenLinks: 'Nenhum <code>[[wikilink]]</code> quebrado encontrado.',
     orphanNotes: 'Notas órfãs',
     noOrphans: 'Nenhuma nota órfã — toda nota tem pelo menos um link de entrada.',
+  },
+  connectedApps: {
+    heading: 'Apps conectados',
+    help: 'Apps de IA que você conectou por OAuth (Claude, ChatGPT…). Revogar um deles derruba os tokens na hora.',
+    loading: 'Carregando…',
+    empty: 'Nenhum app conectado.',
+    unnamed: 'App sem nome',
+    lastUsed: 'último uso',
+    expires: 'expira',
+    never: 'nunca',
+    revoke: 'Revogar',
+    revokeConfirm: 'Desconectar "{name}"? Ele para de funcionar na hora.',
+    failed: 'Não foi possível carregar ou atualizar os apps conectados.',
+    close: 'Fechar',
   },
   adminPanel: {
     requestFailed: 'A solicitação falhou.',

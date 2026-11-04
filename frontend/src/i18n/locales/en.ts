@@ -111,6 +111,7 @@ export default {
     collapse: 'Collapse {title}',
   },
   sidebar: {
+    connectedApps: 'Connected apps',
     expandSidebar: 'Expand sidebar',
     notifications: 'Notifications',
     noNotificationsYet: 'No notifications yet.',
@@ -426,6 +427,20 @@ export default {
     noBrokenLinks: 'No broken <code>[[wikilinks]]</code> found.',
     orphanNotes: 'Orphan Notes',
     noOrphans: 'No orphan notes — every note has at least one inbound link.',
+  },
+  connectedApps: {
+    heading: 'Connected apps',
+    help: 'AI apps you connected with OAuth (Claude, ChatGPT…). Revoking one stops its tokens immediately.',
+    loading: 'Loading…',
+    empty: 'No connected apps.',
+    unnamed: 'Unnamed app',
+    lastUsed: 'last used',
+    expires: 'expires',
+    never: 'never',
+    revoke: 'Revoke',
+    revokeConfirm: 'Disconnect "{name}"? It stops working immediately.',
+    failed: 'Could not load or update connected apps.',
+    close: 'Close',
   },
   adminPanel: {
     requestFailed: 'Request failed.',

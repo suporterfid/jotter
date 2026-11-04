@@ -35,6 +35,12 @@ final class OidcController extends Controller
         try {
             $this->authenticationService->authenticateCallback($request);
 
+            // Signing in to approve an OAuth connection: go back to its consent screen.
+            $returnTo = $request->hasSession() ? $request->session()->pull(\App\Http\Controllers\OAuthAuthorizeController::SESSION_RETURN_TO) : null;
+            if (is_string($returnTo) && str_starts_with($returnTo, '/oauth/authorize?')) {
+                return redirect(url($returnTo));
+            }
+
             return redirect()->away((string) config('jotter.oidc.post_login_redirect_uri', config('app.url')));
         } catch (OidcProtocolException|OidcAuthenticationException) {
             $this->recordFailure('callback_failed');

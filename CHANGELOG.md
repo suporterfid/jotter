@@ -4,6 +4,16 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Embedded OAuth 2.1 server for MCP — 2026-11-04 (brain multi-agent epic, PR 5)
+
+- **Claude web and ChatGPT connect by URL** once `JOTTER_OAUTH_ENABLED=true` (off by default): RFC 9728 protected-resource and RFC 8414 authorization-server metadata, RFC 7591 dynamic client registration (redirect URIs checked against `JOTTER_OAUTH_REDIRECT_ALLOWLIST`, 10/hour per IP), authorization code with mandatory PKCE `S256`, rotating refresh tokens with reuse revocation, RFC 7009 revocation. Opaque hashed tokens, no JWT or keys (`App\Domain\OAuth\OAuthServer`, `RedirectUriPolicy`).
+- **Consent screen** (Blade, branded, en/pt-BR): client name and redirect host, loopback warning, workspaces (none pre-selected, one organisation), optional write with pre-filled write paths, client slug, validity. Without a session the request resumes after SPA or OIDC login (`return_to` limited to `/oauth/authorize?…`).
+- **Access tokens** `jt_oat_` (1 h) are `machine_tokens` rows with `kind=oauth` and the grant's scopes, workspaces, and write paths, so MCP applies the same rules as manual tokens; OAuth never grants `api:*`. Refresh tokens `jt_ort_` (30 days) rotate; replaying a code or a rotated refresh token revokes the grant.
+- **Connected apps**: `GET/DELETE /api/user/oauth-grants` with a sidebar modal; `GET/DELETE /api/admin/oauth-grants` for administrators. Revoking a grant revokes its access and refresh tokens.
+- **`oauth:prune`** daily at 02:45. Migration `2026_11_04_000001` (idempotent) adds `oauth_clients`, `oauth_grants`, `oauth_auth_codes`, `oauth_refresh_tokens`, `machine_tokens.oauth_grant_id`, and the `machine_tokens.client_id` foreign key.
+- **Audit**: `oauth.client_registered`, `oauth.grant_created`, `oauth.token_issued`, `oauth.grant_revoked`.
+- **Tests**: `OAuthPkceFlowTest`, `OAuthRefreshRotationTest`, `OAuthMetadataTest`, `OAuthPruneCommandTest`, OIDC return tests; Vitest for `ConnectedAppsModal` and `oauthReturnTo`.
+
 ### Brain tools and the `brain` vault pack — 2026-11-04 (brain multi-agent epic, PR 4)
 
 - **`get_brain_context`**: one call returns the vault router, the agent rules, every project's state (front matter of `projetos/*/estado.md`), and the 10 latest changes, trimmed to 24 KB with a `truncated` flag (`App\Domain\Mcp\BrainTools`).
