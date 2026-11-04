@@ -29,6 +29,10 @@ enum AuditEvent: string
     case MCP_RATE_LIMITED = 'mcp.rate_limited';
     case MCP_NOTE_WRITTEN = 'mcp.note_written';
     case BRAIN_INITIALIZED = 'brain.initialized';
+    case OAUTH_CLIENT_REGISTERED = 'oauth.client_registered';
+    case OAUTH_GRANT_CREATED = 'oauth.grant_created';
+    case OAUTH_GRANT_REVOKED = 'oauth.grant_revoked';
+    case OAUTH_TOKEN_ISSUED = 'oauth.token_issued';
     case MCP_ORIGIN_REJECTED = 'mcp.origin_rejected';
     case MACHINE_TOKEN_CREATED = 'machine_token.created';
     case MACHINE_TOKEN_REVOKED = 'machine_token.revoked';

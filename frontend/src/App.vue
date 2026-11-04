@@ -61,12 +61,14 @@
       @switch-tenant="handleSwitchTenant"
       @toggle-admin-panel="isAdminPanelOpen = true"
       @open-change-password="isChangePasswordOpen = true"
+      @open-connected-apps="isConnectedAppsOpen = true"
       @open-notification-preferences="openNotificationPreferences"
     />
 
     <AdminPanel :is-open="isAdminPanelOpen" @close="handleCloseAdminPanel" />
 
     <ChangePasswordModal v-if="isChangePasswordOpen" @close="isChangePasswordOpen = false" />
+    <ConnectedAppsModal v-if="isConnectedAppsOpen" @close="isConnectedAppsOpen = false" />
 
     <NotificationPreferences
       :is-open="isNotificationPreferencesOpen"
@@ -361,6 +363,7 @@ import Sidebar from './components/Sidebar.vue'
 import EditorPane from './components/EditorPane.vue'
 import SearchResults from './components/SearchResults.vue'
 import LoginModal from './components/LoginModal.vue'
+import { resumeOAuthConsent } from './services/oauthReturn'
 import CommandPalette from './components/CommandPalette.vue'
 import GraphView from './components/GraphView.vue'
 import AttachmentsPanel from './components/AttachmentsPanel.vue'
@@ -373,6 +376,7 @@ import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import AdminPanel from './components/AdminPanel.vue'
 import ChangePasswordModal from './components/ChangePasswordModal.vue'
+import ConnectedAppsModal from './components/ConnectedAppsModal.vue'
 import NotificationPreferences from './components/NotificationPreferences.vue'
 import {
   getWorkspaces,
@@ -515,6 +519,7 @@ const currentUser = ref<AuthUser | null>(null)
 const backendVersion = ref<string | null>(null)
 const authProvider = ref<string | null>(null)
 const isChangePasswordOpen = ref(false)
+const isConnectedAppsOpen = ref(false)
 const isNotificationPreferencesOpen = ref(false)
 const notificationPreferencesUnsubscribeType = ref<NotificationType | null>(null)
 const showLoginModal = ref(false)
@@ -630,6 +635,7 @@ onMounted(async () => {
     currentUser.value = user
     if (user) {
       i18n.global.locale.value = user.locale as 'pt-BR' | 'en'
+      if (resumeOAuthConsent()) return
     }
   } catch {
     showLoginModal.value = true
@@ -805,6 +811,8 @@ async function handleDeleteNotification(notificationId: number) {
 async function handleLoginSuccess(user: AuthUser) {
   currentUser.value = user
   showLoginModal.value = false
+  // Signed in to approve an MCP connection: go back to the consent screen.
+  if (resumeOAuthConsent()) return
   await initWorkspace()
 }
 

@@ -42,6 +42,7 @@ final class SchedulerRegistrationTest extends TestCase
             'vault:purge-trash',
             'vault:prune-revisions',
             'audit:prune',
+            'oauth:prune',
             'tenant:expire-trials',
             'jotter:scheduler-heartbeat',
         ] as $expected) {

@@ -42,6 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
             EnforceCredentialAudience::class,
         ]);
 
+        // OAuth machine endpoints are called by MCP clients, not by our forms.
+        $middleware->validateCsrfTokens(except: ['oauth/register', 'oauth/token', 'oauth/revoke']);
+
         // Markdown is canonical file content: preserve intentional whitespace and empty notes.
         // MCP tools carry it nested in the JSON-RPC body (params.arguments.content);
         // the write tools hash exactly what they write, so it must arrive untouched.

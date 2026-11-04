@@ -214,38 +214,38 @@ PR 6  Docs dos 5 clientes + jotter:doctor        ← PR 4, 5   ⇒ teste de fuma
 
 Se o diff passar de cerca de 2.000 linhas, dividir em **5a** (metadados, DCR, authorize/token/revoke, testes de protocolo) e **5b** (Apps conectados, prune, Playwright).
 
-- [ ] **5.1 Config** `jotter.oauth`: `enabled`, `redirect_allowlist` (env `JOTTER_OAUTH_REDIRECT_ALLOWLIST`, padrão: callback do Claude + loopback `localhost`/`127.0.0.1`), TTLs (código 60 s, acesso 1 h, refresh 30 d), `register_per_hour=10`. Documentar em `.env.example`.
-- [ ] **5.2 Migrações.** `oauth_clients`, `oauth_auth_codes`, `oauth_grants`, `oauth_refresh_tokens` (colunas da spec, só hashes) e a FK `machine_tokens.client_id` → `oauth_clients.id` com `nullOnDelete` (G8).
-- [ ] **5.3 Metadados.**
+- [x] **5.1 Config** `jotter.oauth`: `enabled`, `redirect_allowlist` (env `JOTTER_OAUTH_REDIRECT_ALLOWLIST`, padrão: callback do Claude + loopback `localhost`/`127.0.0.1`), TTLs (código 60 s, acesso 1 h, refresh 30 d), `register_per_hour=10`. Documentar em `.env.example`.
+- [x] **5.2 Migrações.** `oauth_clients`, `oauth_auth_codes`, `oauth_grants`, `oauth_refresh_tokens` (colunas da spec, só hashes) e a FK `machine_tokens.client_id` → `oauth_clients.id` com `nullOnDelete` (G8).
+- [x] **5.3 Metadados.**
   - `GET /.well-known/oauth-protected-resource` e `/.well-known/oauth-protected-resource/api/mcp` (RFC 9728).
   - `GET /.well-known/oauth-authorization-server` (RFC 8414) com os campos da spec.
   - Rotas em `routes/web.php`, sem sessão. O `.htaccess` atual já encaminha para `index.php` o que não é arquivo nem diretório. Confirmar no deploy que o AutoSSL não cria um arquivo com esse nome.
-- [ ] **5.4 DCR** `POST /oauth/register` (JSON, RFC 7591). Cada `redirect_uri` precisa casar com a allowlist. Loopback é aceito em qualquer porta (RFC 8252 §7.3), com o caminho exato. Rate limit de 10/h por IP; `client_secret` só para `client_secret_post|basic`, guardado como hash.
-- [ ] **5.5 Authorize** `GET /oauth/authorize`.
+- [x] **5.4 DCR** `POST /oauth/register` (JSON, RFC 7591). Cada `redirect_uri` precisa casar com a allowlist. Loopback é aceito em qualquer porta (RFC 8252 §7.3), com o caminho exato. Rate limit de 10/h por IP; `client_secret` só para `client_secret_post|basic`, guardado como hash.
+- [x] **5.5 Authorize** `GET /oauth/authorize`.
   - Valida `client_id`, `redirect_uri` exato, `response_type=code`, PKCE `S256` obrigatório, `state`, e `resource` (se vier) igual a `{APP_URL}/api/mcp`.
   - Sem sessão: guarda `url.intended` e redireciona para `/?login=1&return_to=…`. O `LoginModal`/`App.vue` volta só para caminho relativo que começa com `/oauth/authorize`, e o `OidcController::callback` passa a respeitar `url.intended` (G6).
   - O cookie de sessão `lax` (`config/session.php`) já funciona no GET de topo vindo do claude.ai.
-- [ ] **5.6 Consentimento** (Blade com marca do tenant, en/pt-BR, CSRF ativo):
+- [x] **5.6 Consentimento** (Blade com marca do tenant, en/pt-BR, CSRF ativo):
   - Nome do cliente e host do redirect em destaque, com aviso extra para loopback.
   - Workspaces marcáveis, só memberships explícitas, nenhum marcado por padrão.
   - Leitura marcada, escrita opcional.
   - Caminhos pré-preenchidos `inbox/{client}/**` (create/append/update) e `diario/**` (append), com `client_slug` editável sugerido a partir do `client_name`.
   - Validade da concessão.
   - Aprovar cria `oauth_grants` e emite o código (hash, 60 s, uso único).
-- [ ] **5.7 Token** `POST /oauth/token` (form-urlencoded, sem CSRF):
+- [x] **5.7 Token** `POST /oauth/token` (form-urlencoded, sem CSRF):
   - `authorization_code`: verifica PKCE e `redirect_uri`; código reusado → revoga a concessão inteira.
   - `refresh_token`: rotação; reuso de refresh já trocado → revoga concessão, refresh e tokens de acesso.
   - Emite `jt_oat_` em `machine_tokens` (`kind=oauth`, escopos/workspaces/write_paths/client da concessão, `expires_at` +1 h) e `jt_ort_` em `oauth_refresh_tokens`.
   - Erros no formato RFC 6749. Rate limit de 60/min por IP.
-- [ ] **5.8 Revoke** `POST /oauth/revoke` (RFC 7009: sempre 200).
-- [ ] **5.9 CSRF.** `validateCsrfTokens(except: ['oauth/register', 'oauth/token', 'oauth/revoke'])` em `bootstrap/app.php`.
-- [ ] **5.10 Apps conectados.**
+- [x] **5.8 Revoke** `POST /oauth/revoke` (RFC 7009: sempre 200).
+- [x] **5.9 CSRF.** `validateCsrfTokens(except: ['oauth/register', 'oauth/token', 'oauth/revoke'])` em `bootstrap/app.php`.
+- [x] **5.10 Apps conectados.** *(entregue sem a aba no `AdminPanel`: a API de admin existe; a aba fica no BACKLOG)*
   - `GET/DELETE /api/user/oauth-grants[/{id}]` (só sessão; credencial já é recusada em `/api/user/*` pelo PR 1) e `GET/DELETE /api/admin/oauth-grants`.
   - `ConnectedAppsModal.vue` aberto pelo rodapé do usuário (padrão do `ChangePasswordModal`) e uma aba no `AdminPanel`.
   - Revogar derruba refresh e tokens de acesso juntos.
-- [ ] **5.11 `oauth:prune`** diário em `routes/console.php`: clientes sem uso há 30 dias, códigos e refresh expirados, `machine_tokens` OAuth expirados. Atualizar a tabela de `docs/deployment.md` e o `SchedulerRegistrationTest`.
-- [ ] **5.12 Testes.** `OAuthMetadataTest`, `OAuthPkceFlowTest`, `OAuthRefreshRotationTest`, `OAuthRedirectAllowlistTest`, `OAuthDisabledTest`, `OAuthPruneCommandTest`, `ConnectedAppsModal.spec.ts`, Playwright do consentimento (login → consentir → código → token → `tools/list`).
-- [ ] **5.13 Docs.** `docs/mcp.md` § OAuth; `docs/deployment.md` (env, WAF/IP Anthropic `160.79.104.0/21` e faixa da OpenAI liberadas em `/.well-known` e `/oauth/*`).
+- [x] **5.11 `oauth:prune`** diário em `routes/console.php`: clientes sem uso há 30 dias, códigos e refresh expirados, `machine_tokens` OAuth expirados. Atualizar a tabela de `docs/deployment.md` e o `SchedulerRegistrationTest`.
+- [x] **5.12 Testes.** *(sem o Playwright do consentimento, que precisa da stack Docker completa; fica no BACKLOG)* `OAuthMetadataTest`, `OAuthPkceFlowTest`, `OAuthRefreshRotationTest`, `OAuthRedirectAllowlistTest`, `OAuthDisabledTest`, `OAuthPruneCommandTest`, `ConnectedAppsModal.spec.ts`, Playwright do consentimento (login → consentir → código → token → `tools/list`).
+- [x] **5.13 Docs.** `docs/mcp.md` § OAuth; `docs/deployment.md` (env, WAF/IP Anthropic `160.79.104.0/21` e faixa da OpenAI liberadas em `/.well-known` e `/oauth/*`).
 
 ### PR 6 — Clientes, doctor e fechamento
 

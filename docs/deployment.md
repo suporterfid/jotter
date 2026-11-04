@@ -135,6 +135,7 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:purge-trash` | daily 02:00 | Permanently deletes notes past the trash retention period. |
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
+| `oauth:prune` | daily 02:45 | Deletes expired OAuth codes and tokens, and idle OAuth clients without active grants. |
 | `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
 | `queue:work --stop-when-empty --max-time=50` | every minute, only when `QUEUE_CONNECTION=database` | Drains a database queue without a daemon. Mail is synchronous by default, so this is normally not registered. |
 
@@ -161,6 +162,25 @@ not fetch external content server-side; authenticated previews generate an
 
 Published static sites and the WYSIWYG editor intentionally render these URLs as
 ordinary links, so publishing never creates an external iframe.
+
+## OAuth for MCP web clients (Claude web, ChatGPT)
+
+Off by default. To let Claude web/Desktop/mobile and ChatGPT connect by URL:
+
+```dotenv
+JOTTER_OAUTH_ENABLED=true
+# Claude web + loopback clients by default; append ChatGPT's callback from its connector screen.
+JOTTER_OAUTH_REDIRECT_ALLOWLIST=https://claude.ai/api/mcp/auth_callback,http://localhost:*/*,http://127.0.0.1:*/*
+```
+
+- `APP_URL` must be the public HTTPS origin: it becomes the OAuth issuer and the MCP
+  resource (`<APP_URL>/api/mcp`).
+- `/.well-known/oauth-*` and `/oauth/*` are ordinary Laravel routes; the stock
+  `public/.htaccess` already sends them to `index.php` (AutoSSL's
+  `.well-known/acme-challenge/` folder does not interfere). If a WAF or IP block sits in
+  front of the site, allow Anthropic's egress range `160.79.104.0/21` and OpenAI's
+  published ranges on `/api/mcp`, `/.well-known/*` and `/oauth/*`.
+- The daily `oauth:prune` job (scheduler table above) keeps the OAuth tables small.
 
 ## Generic OIDC SSO
 

@@ -53,6 +53,7 @@ return [
     'plan_seat_limit_reached' => 'Seat limit reached: this plan allows :seats member(s). Remove a member or upgrade the plan.',
     'machine_token_revoked' => 'Machine token revoked.',
     'credential_insufficient_scope' => 'This token lacks the :scope scope for this request.',
+    'oauth_grant_revoked' => 'App disconnected; its tokens no longer work.',
     'note_changed_conflict' => 'Someone else changed this note since you opened it; nothing was saved.',
     'note_locked' => 'The note is being saved by someone else; try again in a moment.',
     'credential_not_allowed' => 'Tokens cannot be used for this request; sign in instead.',

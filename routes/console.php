@@ -42,6 +42,7 @@ Schedule::command('vault:reindex', ['--all'])->hourly()->withoutOverlapping(55);
 Schedule::command('vault:purge-trash')->dailyAt('02:00')->withoutOverlapping(60);
 Schedule::command('vault:prune-revisions', ['--days=30'])->dailyAt('02:15')->withoutOverlapping(60);
 Schedule::command('audit:prune', ['--days=90'])->dailyAt('02:30')->withoutOverlapping(60);
+Schedule::command('oauth:prune')->dailyAt('02:45')->withoutOverlapping(60);
 
 // Hosted mode only: trial reminders (3 days before), then trials past their
 // deadline become read_only (audited) and owners are e-mailed once. A

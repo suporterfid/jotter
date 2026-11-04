@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'title' => 'Conectar :client',
+    'intro' => ':client quer usar suas notas como :user. Depois que você aprovar, ele volta para :host.',
+    'loopback_warning' => 'Este app roda num computador (volta para localhost). Aprove só se você acabou de iniciar esta conexão num terminal ou app de desktop.',
+    'workspaces' => 'Workspaces que ele pode acessar',
+    'workspaces_help' => 'Nada vem marcado. Escolha só o que este app precisa; todos devem ser da mesma organização.',
+    'access' => 'Acesso',
+    'scope_read' => 'Ler e buscar notas',
+    'scope_write' => 'Escrever notas, só dentro dos caminhos abaixo',
+    'write_paths' => 'Caminhos de escrita (um por linha, "glob:operações")',
+    'write_paths_help' => '{client} vira o identificador abaixo; ** atravessa pastas. _brain/, .trash/, _resources/ e _templates/ nunca aceitam escrita. Operações: create, append, update.',
+    'client_slug' => 'Identificador do cliente (usado em {client} e na auditoria)',
+    'expires' => 'Acesso válido por',
+    'expiry' => ['30d' => '30 dias', '90d' => '90 dias', '180d' => '180 dias', '1y' => '1 ano', 'never' => 'Até eu revogar'],
+    'revoke_hint' => 'Você pode revogar a qualquer momento em Apps conectados.',
+    'approve' => 'Permitir',
+    'deny' => 'Negar',
+    'error_title' => 'Não foi possível concluir este pedido de conexão',
+    'error_unknown_client' => 'O app não está registrado neste servidor. Comece a conexão de novo pelo app.',
+    'error_redirect_mismatch' => 'O app pediu para voltar a um endereço que ele não registrou. Por segurança, nada foi enviado.',
+    'error_request_expired' => 'Este pedido expirou ou já foi usado. Comece a conexão de novo pelo app.',
+    'error_pick_workspace' => 'Escolha pelo menos um workspace.',
+    'error_one_tenant' => 'Todos os workspaces devem ser da mesma organização.',
+];

@@ -53,6 +53,7 @@ return [
     'plan_seat_limit_reached' => 'Limite de assentos atingido: este plano permite :seats membro(s). Remova um membro ou atualize o plano.',
     'machine_token_revoked' => 'Token de máquina revogado.',
     'credential_insufficient_scope' => 'Este token não tem o escopo :scope exigido por esta requisição.',
+    'oauth_grant_revoked' => 'App desconectado; os tokens dele deixaram de funcionar.',
     'note_changed_conflict' => 'Outra pessoa alterou esta nota desde que você a abriu; nada foi salvo.',
     'note_locked' => 'A nota está sendo salva por outra pessoa; tente de novo em instantes.',
     'credential_not_allowed' => 'Tokens não podem ser usados nesta requisição; entre com seu usuário.',

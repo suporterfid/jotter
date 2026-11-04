@@ -85,6 +85,20 @@ return [
      */
     'oauth' => [
         'enabled' => (bool) env('JOTTER_OAUTH_ENABLED', false),
+        // Comma-separated redirect URIs a client may register. `*` matches any
+        // port (`http://localhost:*/*`) or any path. Claude web's callback and
+        // loopback clients (Claude Code, Codex, Hermes) are allowed by default;
+        // add ChatGPT's callback as shown on its connector screen.
+        'redirect_allowlist' => array_values(array_filter(array_map('trim', explode(',', (string) env(
+            'JOTTER_OAUTH_REDIRECT_ALLOWLIST',
+            'https://claude.ai/api/mcp/auth_callback,http://localhost:*/*,http://127.0.0.1:*/*',
+        ))))),
+        'code_ttl_seconds' => 60,
+        'access_ttl_seconds' => (int) env('JOTTER_OAUTH_ACCESS_TTL', 3600),
+        'refresh_ttl_days' => (int) env('JOTTER_OAUTH_REFRESH_TTL_DAYS', 30),
+        'registrations_per_hour' => (int) env('JOTTER_OAUTH_REGISTRATIONS_PER_HOUR', 10),
+        'token_requests_per_minute' => 60,
+        'client_idle_days' => 30,
     ],
 
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
