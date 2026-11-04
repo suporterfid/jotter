@@ -1,7 +1,7 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote, queueWorkspacePdfExport, getWorkspacePdfExport, downloadWorkspacePdfExport } from './services/api'
+import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, updateNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote, queueWorkspacePdfExport, getWorkspacePdfExport, downloadWorkspacePdfExport } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -72,6 +72,41 @@ beforeEach(() => {
 })
 
 describe('App Component', () => {
+  it('sends the base hash on save and offers reload/overwrite on a 409 conflict', async () => {
+    localStorage.setItem('jotter-open-tabs:1', JSON.stringify({ openNoteIds: [10], activeNoteId: 10 }))
+    const baseHash = 'a'.repeat(64)
+    const previousGetNote = vi.mocked(getNote).getMockImplementation()
+    vi.mocked(getNote).mockImplementation(async () => ({
+      id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null,
+      updated_at: '2026-07-27T00:00:00Z', content: '# Welcome', backlinks: [], content_hash: baseHash,
+    }))
+    vi.mocked(updateNote).mockReset()
+    vi.mocked(updateNote).mockRejectedValueOnce({ response: { status: 409, data: { current_sha256: 'c'.repeat(64) } } })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    wrapper.findComponent({ name: 'EditorPane' }).vm.$emit('update-note', 10, '# Mine')
+    await flushPromises()
+
+    expect(updateNote).toHaveBeenCalledWith(1, 10, '# Mine', baseHash)
+    expect(wrapper.find('[data-testid="note-conflict-banner"]').exists()).toBe(true)
+
+    // Further autosaves while the conflict is open are held back.
+    wrapper.findComponent({ name: 'EditorPane' }).vm.$emit('update-note', 10, '# Mine, newer')
+    await flushPromises()
+    expect(updateNote).toHaveBeenCalledTimes(1)
+
+    vi.mocked(updateNote).mockResolvedValueOnce({ id: 10, path: 'welcome.md', title: 'Welcome Note', frontmatter: null, sort_position: null, updated_at: '2026-07-27T00:00:00Z', content_hash: 'b'.repeat(64) })
+    await wrapper.find('[data-testid="note-conflict-overwrite"]').trigger('click')
+    await flushPromises()
+
+    expect(updateNote).toHaveBeenLastCalledWith(1, 10, '# Mine, newer')
+    expect(wrapper.find('[data-testid="note-conflict-banner"]').exists()).toBe(false)
+
+    if (previousGetNote) vi.mocked(getNote).mockImplementation(previousGetNote)
+  })
+
   it('keeps primary and secondary active notes independent in split mode', async () => {
     localStorage.setItem(
       'jotter-open-tabs:1',

@@ -584,6 +584,9 @@ export default {
   app: {
     toggleSidebar: 'Alternar barra lateral',
     dismissError: 'Descartar erro',
+    noteConflict: 'Esta nota foi alterada em outro lugar (um agente, o Obsidian ou outra aba) desde que você a abriu. Suas últimas edições não foram salvas.',
+    noteConflictReload: 'Recarregar a versão deles',
+    noteConflictOverwrite: 'Manter a minha e sobrescrever',
     dismissMessage: 'Descartar mensagem',
     open: 'Abrir',
     noNoteSelected: 'Nenhuma nota selecionada',

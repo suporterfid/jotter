@@ -17,6 +17,9 @@ use App\Domain\Auth\CredentialContext;
 final class McpToolCatalog
 {
     public const READ_ANNOTATIONS = ['readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false];
+    public const ADDITIVE_WRITE_ANNOTATIONS = ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false];
+    public const REPLACING_WRITE_ANNOTATIONS = ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => false, 'openWorldHint' => false];
+    public const WRITE_TOOLS = ['create_note', 'append_to_note', 'update_note'];
 
     /**
      * @param list<array<string, mixed>>|null $tools override for tests; each tool may carry `requiredScope`
@@ -128,12 +131,21 @@ final class McpToolCatalog
             [
                 'name' => 'read_note',
                 'title' => 'Read note',
-                'description' => 'Read the canonical Markdown of one note by its vault path (for example "guides/setup.md").',
+                'description' => 'Read the canonical Markdown of one note by its vault path (for example "guides/setup.md"). structuredContent carries the sha256 that update_note needs.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => ['workspace_id' => $workspaceId, 'path' => ['type' => 'string', 'description' => 'Note path relative to the vault root.']],
                     'required' => ['path'],
                     'additionalProperties' => false,
+                ],
+                'outputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'path' => ['type' => 'string'],
+                        'sha256' => ['type' => 'string', 'description' => 'SHA-256 of the file on disk; pass it to update_note as expected_sha256.'],
+                        'updated_at' => ['type' => ['string', 'null']],
+                    ],
+                    'required' => ['path', 'sha256'],
                 ],
                 'annotations' => self::READ_ANNOTATIONS,
             ],
@@ -160,6 +172,89 @@ final class McpToolCatalog
                     'additionalProperties' => false,
                 ],
                 'annotations' => self::READ_ANNOTATIONS,
+            ],
+            ...self::writeDefinitions($workspaceId),
+        ];
+    }
+
+    /**
+     * @param array<string, string> $workspaceId
+     * @return list<array<string, mixed>>
+     */
+    private static function writeDefinitions(array $workspaceId): array
+    {
+        $path = ['type' => 'string', 'description' => 'Note path relative to the vault root, ending in .md. Must match one of this token\'s write paths.'];
+        $content = ['type' => 'string', 'description' => 'Markdown, at most 256 KB.'];
+        $writeOutput = [
+            'type' => 'object',
+            'properties' => [
+                'status' => ['type' => 'string', 'enum' => ['written', 'duplicate']],
+                'created' => ['type' => 'boolean'],
+                'path' => ['type' => 'string'],
+                'sha256' => ['type' => ['string', 'null']],
+                'bytes' => ['type' => 'integer'],
+            ],
+            'required' => ['status', 'path'],
+        ];
+
+        return [
+            [
+                'name' => 'create_note',
+                'title' => 'Create note',
+                'description' => 'Create a new note. With if_exists="suffix" an existing path becomes name-2.md, name-3.md… instead of failing. Only inside the token\'s write paths.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'workspace_id' => $workspaceId,
+                        'path' => $path,
+                        'content' => $content,
+                        'if_exists' => ['type' => 'string', 'enum' => ['fail', 'suffix'], 'default' => 'fail'],
+                    ],
+                    'required' => ['path', 'content'],
+                    'additionalProperties' => false,
+                ],
+                'outputSchema' => $writeOutput,
+                'annotations' => self::ADDITIVE_WRITE_ANNOTATIONS,
+                'requiredScope' => CredentialContext::SCOPE_MCP_WRITE,
+            ],
+            [
+                'name' => 'append_to_note',
+                'title' => 'Append to note',
+                'description' => 'Append Markdown at the end of a note, or at the end of the section under `heading` (created when missing). Creates the note when it does not exist. Repeating the same idempotency_key within 24 hours does nothing.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'workspace_id' => $workspaceId,
+                        'path' => $path,
+                        'content' => $content,
+                        'heading' => ['type' => 'string', 'description' => 'Heading text (without #) whose section receives the content.'],
+                        'idempotency_key' => ['type' => 'string', 'maxLength' => 200],
+                    ],
+                    'required' => ['path', 'content'],
+                    'additionalProperties' => false,
+                ],
+                'outputSchema' => $writeOutput,
+                'annotations' => self::ADDITIVE_WRITE_ANNOTATIONS,
+                'requiredScope' => CredentialContext::SCOPE_MCP_WRITE,
+            ],
+            [
+                'name' => 'update_note',
+                'title' => 'Replace note',
+                'description' => 'Replace a note\'s whole content, only if its current SHA-256 still equals expected_sha256 (from read_note). On a mismatch nothing is written and the current hash is returned.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'workspace_id' => $workspaceId,
+                        'path' => $path,
+                        'content' => $content,
+                        'expected_sha256' => ['type' => 'string', 'pattern' => '^[0-9a-f]{64}$'],
+                    ],
+                    'required' => ['path', 'content', 'expected_sha256'],
+                    'additionalProperties' => false,
+                ],
+                'outputSchema' => $writeOutput,
+                'annotations' => self::REPLACING_WRITE_ANNOTATIONS,
+                'requiredScope' => CredentialContext::SCOPE_MCP_WRITE,
             ],
         ];
     }

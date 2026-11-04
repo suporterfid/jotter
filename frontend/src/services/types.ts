@@ -30,6 +30,8 @@ export interface NoteMeta {
   frontmatter: Record<string, unknown> | null
   sort_position: number | null
   updated_at: string
+  /** SHA-256 of the note file; send it back as base_sha256 to detect concurrent edits. */
+  content_hash?: string
   watching?: boolean
   access?: NoteAccessMeta | null
   review?: NoteReviewSummary | null

@@ -220,6 +220,7 @@
             @click="handleMergeSecondary"
           >{{ t('splitPane.merge') }}</button>
           <EditorPane
+            :key="`primary-${editorReloadNonce}`"
             pane-id="primary"
             :tabs="openTabsList"
             :active-id="activeNoteId"
@@ -236,6 +237,7 @@
           />
           <div class="split-editor-divider" role="separator" aria-hidden="true"></div>
           <EditorPane
+            :key="`secondary-${editorReloadNonce}`"
             pane-id="secondary"
             :tabs="secondaryTabsList"
             :active-id="secondaryActiveNoteId"
@@ -253,6 +255,7 @@
         </div>
         <EditorPane
           v-else
+          :key="`primary-${editorReloadNonce}`"
           pane-id="primary"
           :tabs="openTabsList"
           :active-id="activeNoteId"
@@ -288,6 +291,17 @@
          first, more later) teleport their markup here so they slide over
          the note as an overlay instead of unmounting or pushing it. -->
     <div id="app-right-drawer"></div>
+
+    <!-- Save conflict (409): the file changed on disk since this note was loaded. -->
+    <div v-if="noteConflict" class="error-banner" data-testid="note-conflict-banner" role="alert">
+      <span>{{ t('app.noteConflict') }}</span>
+      <button type="button" class="error-banner-dismiss" data-testid="note-conflict-reload" @click="resolveNoteConflictReload">
+        {{ t('app.noteConflictReload') }}
+      </button>
+      <button type="button" class="error-banner-dismiss" data-testid="note-conflict-overwrite" @click="resolveNoteConflictOverwrite">
+        {{ t('app.noteConflictOverwrite') }}
+      </button>
+    </div>
 
     <!-- Error Banner -->
     <div v-if="errorMessage" class="error-banner" data-testid="error-banner" role="alert">
@@ -587,6 +601,12 @@ const availableTagsForSearch = computed(() => {
 })
 
 const errorMessage = ref<string | null>(null)
+
+// Optimistic concurrency for saves: the hash each note had when it was loaded
+// (or last saved from here). A 409 means someone else changed the file.
+const noteBaseHashes = new Map<number, string>()
+const noteConflict = ref<{ noteId: number; content: string } | null>(null)
+const editorReloadNonce = ref(0)
 const successMessage = ref<string | null>(null)
 const successLink = ref<string | null>(null)
 const paneNoteRequestIds: Record<PaneId, number> = { primary: 0, secondary: 0 }
@@ -820,6 +840,7 @@ async function loadNoteInPane(paneId: PaneId, noteId: number) {
   try {
     const detail = await getNote(activeWorkspaceId.value, noteId)
     if (requestId !== paneNoteRequestIds[paneId]) return
+    if (detail.content_hash) noteBaseHashes.set(detail.id, detail.content_hash)
     if (paneId === 'primary') activeNoteDetail.value = detail
     else secondaryNoteDetail.value = detail
 
@@ -1481,11 +1502,47 @@ async function handleDailyNote() {
 
 async function handleUpdateNote(noteId: number, content: string) {
   if (!activeWorkspaceId.value) return
+  // While a conflict is open, keep the newest local text and stop autosaving it.
+  if (noteConflict.value?.noteId === noteId) {
+    noteConflict.value = { noteId, content }
+    return
+  }
   try {
-    await updateNote(activeWorkspaceId.value, noteId, content)
+    const saved = await updateNote(activeWorkspaceId.value, noteId, content, noteBaseHashes.get(noteId))
+    if (saved?.content_hash) noteBaseHashes.set(noteId, saved.content_hash)
+    await refreshNotesList()
+  } catch (err: any) {
+    if (err?.response?.status === 409) {
+      noteConflict.value = { noteId, content }
+      return
+    }
+    console.error('Failed to update note:', err)
+  }
+}
+
+async function resolveNoteConflictReload() {
+  const conflict = noteConflict.value
+  if (!conflict) return
+  noteConflict.value = null
+  noteBaseHashes.delete(conflict.noteId)
+  // Remount the editors so they take the server's content for the same note id.
+  editorReloadNonce.value++
+  if (activeNoteId.value === conflict.noteId) await loadNoteInPane('primary', conflict.noteId)
+  if (secondaryActiveNoteId.value === conflict.noteId) await loadNoteInPane('secondary', conflict.noteId)
+}
+
+async function resolveNoteConflictOverwrite() {
+  const conflict = noteConflict.value
+  if (!conflict || !activeWorkspaceId.value) return
+  noteConflict.value = null
+  try {
+    // Explicit human choice: save without a base hash, replacing the other version.
+    const saved = await updateNote(activeWorkspaceId.value, conflict.noteId, conflict.content)
+    if (saved?.content_hash) noteBaseHashes.set(conflict.noteId, saved.content_hash)
     await refreshNotesList()
   } catch (err) {
-    console.error('Failed to update note:', err)
+    console.error('Failed to overwrite note:', err)
+    errorMessage.value = t('app.noteConflict')
   }
 }
 

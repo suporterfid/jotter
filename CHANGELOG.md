@@ -4,6 +4,17 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### MCP write tools and optimistic concurrency — 2026-11-03 (brain multi-agent epic, PR 3)
+
+- **`create_note`, `append_to_note`, `update_note`** over MCP, listed only for tokens with `mcp:write` and confined to the token's write paths (`App\Domain\Mcp\McpNoteWriter`). `_brain/`, `.trash/`, `_resources/`, `_templates/`, `.obsidian/` are never writable; only `.md`; 256 KB per call; the tenant plan and the write budget (30/min, 500/day → 429) apply.
+- **Glob matching** of write paths by `WritePathPolicy` (own translation: `**` crosses folders, `*`/`?` stay in one segment, `{client}` = client slug) instead of `fnmatch`, whose `FNM_PATHNAME` mode does not treat `**` as recursive.
+- **Concurrency**: per-note `Cache::lock` keyed by `sha1(path)`; `update_note` compares `expected_sha256` with the hash of the file on disk inside the lock, so out-of-band edits not yet reindexed are never overwritten. `append_to_note` supports a `heading` section (`MarkdownSectionAppender`) and a 24 h `idempotency_key`.
+- **`read_note`** returns `structuredContent {path, sha256, updated_at}` plus an `outputSchema`; write tools publish `outputSchema` and write annotations (`update_note` is `destructiveHint: true`).
+- **Audit** `mcp.note_written` with tool, token, client, path, bytes, and SHA-256 before/after; every write still creates a revision.
+- **REST**: `PUT /notes/{id}` accepts `base_sha256` and answers 409 `{current_sha256}` on a stale base (423 if the note is locked); `GET` and the save response include `content_hash` (the `GET` value is hashed from disk). The editor sends it on every autosave and shows a conflict banner with "reload" / "overwrite".
+- **Fix**: MCP tool `content` (`params.arguments.content`) is no longer trimmed or turned into `null` by the request middleware, so written bytes and hashes match what the agent sent.
+- **Tests**: `McpWriteToolsTest`, `NoteOptimisticConcurrencyTest`, `WritePathPolicyTest`, `MarkdownSectionAppenderTest`, updated `McpToolCatalogTest`; Vitest for the conflict flow.
+
 ### MCP protocol polish and rate limits — 2026-11-03 (brain multi-agent epic, PR 2)
 
 - **Protocol `2025-11-25`** negotiated first; an unsupported `MCP-Protocol-Version` header answers 400; a foreign browser `Origin` answers 403 (`mcp.origin_rejected`, extra origins via `JOTTER_MCP_ALLOWED_ORIGINS`).

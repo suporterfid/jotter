@@ -43,10 +43,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Markdown is canonical file content: preserve intentional whitespace and empty notes.
-        $middleware->trimStrings(except: ['content']);
+        // MCP tools carry it nested in the JSON-RPC body (params.arguments.content);
+        // the write tools hash exactly what they write, so it must arrive untouched.
+        $middleware->trimStrings(except: ['content', 'params.arguments.content']);
         $middleware->convertEmptyStringsToNull(except: [
             fn (Request $request): bool => $request->is('api/workspaces/*/notes*')
                 && $request->has('content'),
+            fn (Request $request): bool => $request->is('api/mcp'),
         ]);
 
         $middleware->alias([
