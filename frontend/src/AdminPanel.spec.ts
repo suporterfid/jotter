@@ -279,4 +279,46 @@ describe('AdminPanel Component', () => {
     })
     expect(wrapper.find('[data-testid="admin-mcp-token-value"]').text()).toBe('jt_mkt_x')
   })
+  it('lists every OAuth connection under Connected apps and revokes one', async () => {
+    const grants = [
+      { id: 4, client_name: 'Claude', redirect_hosts: ['claude.ai'], user_email: 'joe@acme.test', workspaces: ['brain'], scopes: ['mcp:read', 'mcp:write'], client_slug: 'claude', created_at: null, expires_at: null, last_used_at: null },
+      { id: 5, client_name: null, redirect_hosts: ['chatgpt.com'], user_email: null, workspaces: ['brain'], scopes: ['mcp:read'], client_slug: null, created_at: null, expires_at: null, last_used_at: null },
+    ]
+    apiGet.mockImplementation((url: string) =>
+      Promise.resolve({ data: { data: url === '/admin/oauth-grants' ? grants : [] } }),
+    )
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    expect(apiGet).not.toHaveBeenCalledWith('/admin/oauth-grants')
+
+    await wrapper.find('[data-testid="admin-tab-apps"]').trigger('click')
+    await flushPromises()
+
+    expect(apiGet).toHaveBeenCalledWith('/admin/oauth-grants')
+    expect(wrapper.find('[data-testid="admin-app-4"]').text()).toContain('Claude')
+    expect(wrapper.find('[data-testid="admin-app-4"]').text()).toContain('joe@acme.test')
+    expect(wrapper.find('[data-testid="admin-app-detail-4"]').text().replace(/\s+/g, ' ')).toContain('claude.ai · brain · mcp:read mcp:write · claude')
+    expect(wrapper.find('[data-testid="admin-app-5"]').text()).toContain('Unnamed app')
+    expect(wrapper.find('[data-testid="admin-app-5"]').text()).toContain('unknown user')
+
+    grants.splice(0, 1)
+    await wrapper.find('[data-testid="admin-app-revoke-4"]').trigger('click')
+    await flushPromises()
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('joe@acme.test'))
+    expect(apiDelete).toHaveBeenCalledWith('/admin/oauth-grants/4')
+    expect(wrapper.find('[data-testid="admin-app-4"]').exists()).toBe(false)
+    confirmSpy.mockRestore()
+  })
+
+  it('shows an empty state when nobody connected an app', async () => {
+    const wrapper = mount(AdminPanel, { props: { isOpen: true } })
+    await wrapper.find('[data-testid="admin-tab-apps"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="admin-apps-empty"]').text()).toBe('No connected apps.')
+  })
 })

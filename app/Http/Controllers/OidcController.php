@@ -7,6 +7,7 @@ use App\Domain\Auth\Oidc\OidcAuthenticationService;
 use App\Domain\Auth\Oidc\OidcProtocolException;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\OAuth\OAuthLoginReturn;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -36,8 +37,8 @@ final class OidcController extends Controller
             $this->authenticationService->authenticateCallback($request);
 
             // Signing in to approve an OAuth connection: go back to its consent screen.
-            $returnTo = $request->hasSession() ? $request->session()->pull(\App\Http\Controllers\OAuthAuthorizeController::SESSION_RETURN_TO) : null;
-            if (is_string($returnTo) && str_starts_with($returnTo, '/oauth/authorize?')) {
+            $returnTo = OAuthLoginReturn::pull($request);
+            if ($returnTo !== null) {
                 return redirect(url($returnTo));
             }
 

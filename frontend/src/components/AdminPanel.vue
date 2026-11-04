@@ -32,6 +32,13 @@
         >
           {{ t('adminPanel.mcpTokens') }}
         </button>
+        <button
+          :class="['tab-btn', { active: activeTab === 'apps' }]"
+          data-testid="admin-tab-apps"
+          @click="activeTab = 'apps'"
+        >
+          {{ t('adminPanel.connectedApps') }}
+        </button>
       </div>
 
       <div v-if="error" class="admin-error-banner">
@@ -213,6 +220,32 @@
           </li>
         </ul>
       </div>
+
+      <div v-if="activeTab === 'apps'" class="tab-content" data-testid="admin-apps-tab">
+        <h3>{{ t('adminPanel.connectedApps') }}</h3>
+        <p class="admin-note">{{ t('adminPanel.connectedAppsHelp') }}</p>
+        <p v-if="grantsLoading && oauthGrants.length === 0" class="admin-note">{{ t('connectedApps.loading') }}</p>
+        <p v-else-if="oauthGrants.length === 0" class="admin-note" data-testid="admin-apps-empty">{{ t('connectedApps.empty') }}</p>
+        <ul class="admin-list">
+          <li v-for="grant in oauthGrants" :key="grant.id" class="admin-list-item" :data-testid="`admin-app-${grant.id}`">
+            <span>
+              <strong>{{ grant.client_name || t('connectedApps.unnamed') }}</strong>
+              — {{ grant.user_email || t('adminPanel.connectedAppsUnknownUser') }}
+              <br />
+              <small class="admin-note" :data-testid="`admin-app-detail-${grant.id}`">
+                {{ grant.redirect_hosts.join(', ') }}
+                · {{ grant.workspaces.join(', ') }} · {{ grant.scopes.join(' ') }}
+                <template v-if="grant.client_slug"> · {{ grant.client_slug }}</template>
+                · {{ t('connectedApps.lastUsed') }}: {{ grant.last_used_at ? formatDate(grant.last_used_at) : t('connectedApps.never') }}
+                · {{ t('connectedApps.expires') }}: {{ grant.expires_at ? formatDate(grant.expires_at) : t('connectedApps.never') }}
+              </small>
+            </span>
+            <button class="warning-btn" :disabled="loading" :data-testid="`admin-app-revoke-${grant.id}`" @click="revokeOAuthGrant(grant)">
+              {{ t('connectedApps.revoke') }}
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
@@ -229,7 +262,7 @@ const { t } = useI18n()
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits(['close'])
 
-const activeTab = ref<'workspaces' | 'members' | 'users' | 'mcp'>('workspaces')
+const activeTab = ref<'workspaces' | 'members' | 'users' | 'mcp' | 'apps'>('workspaces')
 const error = ref('')
 const loading = ref(false)
 
@@ -348,6 +381,53 @@ async function createMcpToken() {
     loading.value = false
   }
 }
+
+interface OAuthGrantRow {
+  id: number
+  client_name: string | null
+  redirect_hosts: string[]
+  user_email: string | null
+  workspaces: string[]
+  scopes: string[]
+  client_slug: string | null
+  expires_at: string | null
+  last_used_at: string | null
+}
+
+// Every person's OAuth connections (Claude web, ChatGPT…); each person also
+// sees their own under the sidebar's Connected apps.
+const oauthGrants = ref<OAuthGrantRow[]>([])
+const grantsLoading = ref(false)
+
+async function fetchOAuthGrants() {
+  grantsLoading.value = true
+  try {
+    const response = await api.get<{ data: OAuthGrantRow[] }>('/admin/oauth-grants')
+    oauthGrants.value = response.data.data
+  } catch (e) {
+    error.value = extractErrorMessage(e, t('connectedApps.failed'))
+  } finally {
+    grantsLoading.value = false
+  }
+}
+
+async function revokeOAuthGrant(grant: OAuthGrantRow) {
+  const name = grant.client_name || t('connectedApps.unnamed')
+  if (!confirm(t('adminPanel.connectedAppsRevokeConfirm', { name, email: grant.user_email ?? '?' }))) return
+  loading.value = true
+  try {
+    await api.delete(`/admin/oauth-grants/${grant.id}`)
+    await fetchOAuthGrants()
+  } catch (e) {
+    error.value = extractErrorMessage(e, t('connectedApps.failed'))
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'apps' && props.isOpen) fetchOAuthGrants()
+})
 
 async function revokeMcpToken(token: MachineTokenRow) {
   if (!confirm(t('adminPanel.mcpRevokeConfirm', { name: token.name }))) return

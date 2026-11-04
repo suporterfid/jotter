@@ -447,6 +447,10 @@ export default {
   adminPanel: {
     requestFailed: 'A solicitação falhou.',
     mcpTokens: "Tokens MCP",
+    connectedApps: 'Apps conectados',
+    connectedAppsHelp: 'Conexões OAuth (Claude web, ChatGPT…) de todos os usuários. Revogar uma corta os tokens na hora; cada pessoa também vê as suas em Apps conectados, na barra lateral.',
+    connectedAppsUnknownUser: 'usuário desconhecido',
+    connectedAppsRevokeConfirm: 'Desconectar "{name}" de {email}? Ele para de funcionar na hora.',
     mcpCreateToken: "Emitir token de máquina",
     mcpTokenHelp: "O token age como o usuário selecionado, restrito aos workspaces e escopos escolhidos abaixo. Só o hash é armazenado.",
     mcpWorkspaces: "Workspaces",

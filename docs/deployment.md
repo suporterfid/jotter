@@ -181,6 +181,11 @@ JOTTER_OAUTH_REDIRECT_ALLOWLIST=https://claude.ai/api/mcp/auth_callback,http://l
   front of the site, allow Anthropic's egress range `160.79.104.0/21` and OpenAI's
   published ranges on `/api/mcp`, `/.well-known/*` and `/oauth/*`.
 - The daily `oauth:prune` job (scheduler table above) keeps the OAuth tables small.
+- Any sign-in mode works on the consent screen. With `JOTTER_AUTH_PROVIDER=grandpasson`
+  the broker returns to `APP_URL`, and Jotter resumes the pending consent from there
+  (for ten minutes after the client started the connection).
+- Administrators see and revoke every connection under Administration → **Connected
+  apps**; each person sees their own under the sidebar's link icon.
 
 ## Generic OIDC SSO
 

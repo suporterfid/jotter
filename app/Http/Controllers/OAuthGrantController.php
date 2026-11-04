@@ -65,7 +65,8 @@ final class OAuthGrantController extends Controller
             ->groupBy('oauth_grant_id')
             ->pluck('last_used_at', 'oauth_grant_id');
         $workspaces = Workspace::query()->whereIn('id', $grants->pluck('workspace_ids')->flatten()->unique())->pluck('slug', 'id');
-        $users = User::query()->whereIn('id', $grants->pluck('subject_id')->filter(static fn ($id): bool => ctype_digit((string) $id)))->pluck('email', 'id');
+        $userIdOf = static fn (OAuthGrant $grant): ?int => $grant->user_id ?? (ctype_digit((string) $grant->subject_id) ? (int) $grant->subject_id : null);
+        $users = User::query()->whereIn('id', $grants->map($userIdOf)->filter())->pluck('email', 'id');
 
         return $grants->map(static fn (OAuthGrant $grant): array => [
             'id' => $grant->id,
@@ -74,7 +75,7 @@ final class OAuthGrantController extends Controller
                 static fn ($uri): ?string => parse_url((string) $uri, PHP_URL_HOST) ?: null,
                 (array) ($grant->client?->redirect_uris ?? []),
             )))),
-            'user_email' => $users->get((int) $grant->subject_id),
+            'user_email' => $users->get((int) $userIdOf($grant)),
             'workspaces' => array_values(array_map(static fn ($id): string => (string) ($workspaces->get($id) ?? "#{$id}"), (array) $grant->workspace_ids)),
             'scopes' => $grant->scopes,
             'client_slug' => $grant->client_slug,

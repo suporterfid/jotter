@@ -8,6 +8,7 @@ use App\Domain\Auth\CredentialContext;
 use App\Domain\Auth\InvalidMachineTokenOptions;
 use App\Domain\Auth\MachineTokenOptions;
 use App\Domain\Auth\Providers\LocalIdentityProvider;
+use App\Domain\OAuth\OAuthLoginReturn;
 use App\Domain\OAuth\OAuthServer;
 use App\Domain\OAuth\RedirectUriPolicy;
 use App\Models\OAuthClient;
@@ -32,7 +33,6 @@ use Illuminate\Support\Str;
  */
 final class OAuthAuthorizeController extends Controller
 {
-    public const SESSION_RETURN_TO = 'oauth.return_to';
     private const SESSION_PENDING = 'oauth.pending.';
     private const PENDING_TTL_SECONDS = 600;
     private const EXPIRY_OPTIONS = ['30d', '90d', '180d', '1y', 'never'];
@@ -73,7 +73,7 @@ final class OAuthAuthorizeController extends Controller
         $subject = $this->subject($request);
         if ($subject === null) {
             $returnTo = '/oauth/authorize?'.(string) $request->getQueryString();
-            $request->session()->put(self::SESSION_RETURN_TO, $returnTo);
+            OAuthLoginReturn::remember($request, $returnTo);
 
             return redirect()->to(rtrim(url('/'), '/').'/?login=1&return_to='.rawurlencode($returnTo));
         }
@@ -89,7 +89,7 @@ final class OAuthAuthorizeController extends Controller
             'resource' => $resource,
             'expires' => time() + self::PENDING_TTL_SECONDS,
         ]);
-        $request->session()->forget(self::SESSION_RETURN_TO);
+        OAuthLoginReturn::forget($request);
 
         return $this->consent($request, $subject, $client, $pendingId, [
             'workspace_ids' => [],
@@ -181,6 +181,7 @@ final class OAuthAuthorizeController extends Controller
             redirectUri: $pending['redirect_uri'],
             codeChallenge: $pending['code_challenge'],
             resource: $pending['resource'],
+            userId: (int) $user->id,
         );
 
         return redirect()->away($this->withQuery($pending['redirect_uri'], array_filter([
