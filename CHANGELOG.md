@@ -4,6 +4,13 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Five-client guide and OAuth doctor checks — 2026-11-04 (brain multi-agent epic, PR 6)
+
+- **`docs/mcp-clients.md` rewritten** for the brain: preparing the vault (`brain:init`, OAuth on), scoped manual tokens, and setup for Claude Code, Codex CLI/IDE, Hermes Agent, Claude web/Desktop/mobile (OAuth), and ChatGPT Developer Mode (OAuth, callback allowlist), plus Cursor and Claude Desktop via `mcp-remote`; the same three-step smoke test for every client; common errors for scopes, write paths, hash conflicts, 429, and OAuth.
+- **Token snippets** in Administration → MCP tokens gain Codex (`config.toml` with `bearer_token_env_var`) and Hermes (`config.yaml` with `tools.include`).
+- **`jotter:doctor`**: when OAuth is enabled, checks the issuer is HTTPS, the metadata and OAuth routes are registered (in-process, no HTTP call to itself), the redirect allowlist is non-empty and only https or loopback, and `oauth:prune` is scheduled; reports "disabled" otherwise.
+- README and `/llms.txt` describe the brain, scoped tokens, write tools, and OAuth.
+
 ### Embedded OAuth 2.1 server for MCP — 2026-11-04 (brain multi-agent epic, PR 5)
 
 - **Claude web and ChatGPT connect by URL** once `JOTTER_OAUTH_ENABLED=true` (off by default): RFC 9728 protected-resource and RFC 8414 authorization-server metadata, RFC 7591 dynamic client registration (redirect URIs checked against `JOTTER_OAUTH_REDIRECT_ALLOWLIST`, 10/hour per IP), authorization code with mandatory PKCE `S256`, rotating refresh tokens with reuse revocation, RFC 7009 revocation. Opaque hashed tokens, no JWT or keys (`App\Domain\OAuth\OAuthServer`, `RedirectUriPolicy`).

@@ -251,9 +251,9 @@ Se o diff passar de cerca de 2.000 linhas, dividir em **5a** (metadados, DCR, au
 
 **Aceite:** o teste de fumaça da spec passa nos cinco clientes contra o deployment real, com checklist manual registrado no PR.
 
-- [ ] **6.1** `docs/mcp-clients.md` com os blocos da spec para Claude Code, Codex, Hermes, Claude web e ChatGPT, mais "erros comuns" (401 sem OAuth ligado, 403 `insufficient_scope`, 429).
-- [ ] **6.2** `McpClientSnippets.vue` ganha Codex (`config.toml`) e Hermes (`config.yaml`, com `tools.include`).
-- [ ] **6.3** `jotter:doctor`, verificado internamente via kernel (sem HTTP para si mesmo, que alguns hosts bloqueiam):
+- [x] **6.1** `docs/mcp-clients.md` com os blocos da spec para Claude Code, Codex, Hermes, Claude web e ChatGPT, mais "erros comuns" (401 sem OAuth ligado, 403 `insufficient_scope`, 429).
+- [x] **6.2** `McpClientSnippets.vue` ganha Codex (`config.toml`) e Hermes (`config.yaml`, com `tools.include`).
+- [x] **6.3** `jotter:doctor`, verificado internamente via kernel (sem HTTP para si mesmo, que alguns hosts bloqueiam):
   - `/.well-known/*` responde quando `oauth.enabled`;
   - a allowlist só tem `https://` ou loopback;
   - `APP_URL` é `https`;

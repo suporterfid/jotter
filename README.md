@@ -24,12 +24,16 @@ See [STATUS.md](STATUS.md) for the authoritative current state and [BACKLOG.md](
 
 ## Use with AI agents (MCP)
 
-Jotter is an MCP server: Claude Code, Cursor, Claude Desktop, and any other
-Model Context Protocol client can list, read, search, and follow backlinks
-across the workspaces a token is allowed to see — read-only, per-user
-authorization, every call audited.
+Jotter is an MCP server and can be the shared **brain** of several assistants:
+Claude Code, Codex, Hermes, Cursor, Claude web/Desktop/mobile, and ChatGPT read,
+search, and follow links, and write only inside the paths their token allows
+(their own `inbox/`, append-only `diario/`). Tokens are scoped by workspace and
+scope, edits are protected by content hashes, and every call is audited. Claude
+web and ChatGPT connect by URL through the built-in OAuth 2.1 server
+(`JOTTER_OAUTH_ENABLED=true`); `php artisan brain:init <workspace>` lays out the
+brain vault.
 
-1. Administration → **MCP tokens** → issue a token (or `php artisan mcp:token you@example.com`).
+1. Administration → **MCP tokens** → issue a token (or `php artisan mcp:token you@example.com --workspace=<slug>`).
 2. Paste the generated snippet, e.g. for Claude Code:
 
    ```sh
@@ -39,8 +43,8 @@ authorization, every call audited.
 
 3. Ask the assistant to "list my notes".
 
-Step-by-step for each client, `.mcp.json` / `.cursor/mcp.json` /
-`claude_desktop_config.json` blocks, and common errors:
+Step-by-step for each client (terminal clients by token, Claude web and ChatGPT by
+OAuth), configuration blocks, the smoke test, and common errors:
 [docs/mcp-clients.md](docs/mcp-clients.md). Server reference:
 [docs/mcp.md](docs/mcp.md). Migrating an existing vault? See
 [docs/migrate-from-obsidian.md](docs/migrate-from-obsidian.md) and
@@ -72,7 +76,7 @@ host and operating them over SSH: [docs/hosted-operations.md](docs/hosted-operat
 - [Decision Record](docs/decisions.md)
 - [Visual Identity Specification](docs/visual-identity.md)
 - [Model Context Protocol (MCP)](docs/mcp.md) — server reference
-- [Connect AI clients (Claude Code, Cursor, Claude Desktop)](docs/mcp-clients.md)
+- [Connect AI clients (Claude Code, Codex, Hermes, Claude web, ChatGPT, Cursor)](docs/mcp-clients.md)
 - [Migrate from Obsidian](docs/migrate-from-obsidian.md) · [Migrate from Notion](docs/migrate-from-notion.md)
 - [Deployment](docs/deployment.md)
 - [Hosted operations](docs/hosted-operations.md)
