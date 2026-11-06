@@ -178,7 +178,8 @@ The REST API offers the same protection to people: `PUT /api/workspaces/{id}/not
 accepts an optional `base_sha256` (the `content_hash` returned by `GET` and by the
 previous save) and answers 409 `{current_sha256}` when the file changed in between. The
 editor sends it on every autosave and, on 409, offers "reload their version" or "keep
-mine and overwrite".
+mine and overwrite". WebDAV (Obsidian) does the same with `ETag` / `If-Match` and 412;
+see [migrate-from-obsidian.md](migrate-from-obsidian.md#conflicts-with-agents-and-the-web-editor).
 
 ## History: write tools deferral (superseded)
 

@@ -4,6 +4,12 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### WebDAV `ETag` / `If-Match` (#410) — 2026-11-06
+
+- WebDAV files carry a strong `ETag`, the SHA-256 of the bytes on disk (the same value as MCP `sha256` and REST `content_hash`), on `GET`/`HEAD`, `PROPFIND` (`getetag`) and every successful `PUT`.
+- `PUT` and `DELETE` with `If-Match` succeed only when the tag still matches, otherwise **412** with the current `ETag`; `If-None-Match: *` creates only. The check runs under the per-note lock the MCP tools and the editor take (423 when it is busy). `GET` answers 304 to a matching `If-None-Match`. `HEAD` is now served.
+- A `PUT` without conditional headers still overwrites and still answers 201.
+
 ### Fix: manual MCP tokens for GrandpaSSOn users (#414) — 2026-11-06
 
 - A GrandpaSSOn sign-in now links the SSO user's UUID to the local account in `identities` (provider `grandpasson`), as OIDC already did. Manual tokens resolve the local user id, so memberships stored under the UUID now apply to them; before, `list_workspaces` came back empty for those people.
