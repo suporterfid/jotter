@@ -117,7 +117,7 @@ final class McpTokenCommand extends Command
             return $tenant;
         }
 
-        $tenantIds = Membership::query()->where('subject_id', (string) $user->id)->distinct()->pluck('tenant_id');
+        $tenantIds = Membership::query()->whereIn('subject_id', $user->membershipSubjectIds())->distinct()->pluck('tenant_id');
         if ($tenantIds->count() === 1) {
             return Tenant::query()->find($tenantIds->first());
         }

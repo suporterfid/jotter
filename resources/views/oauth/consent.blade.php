@@ -3,6 +3,9 @@
 @section('content')
     <h1>{{ __('oauth.title', ['client' => $client->name]) }}</h1>
     <p>{!! __('oauth.intro', ['client' => '<strong>'.e($client->name).'</strong>', 'host' => '<strong>'.e($redirectHost).'</strong>', 'user' => e($subject->email)]) !!}</p>
+    @if ($clientHost)
+        <p class="muted" data-testid="oauth-client-host">{!! __('oauth.client_host', ['host' => '<strong>'.e($clientHost).'</strong>']) !!}</p>
+    @endif
     @if ($isLoopback)
         <p class="warn" role="note">{{ __('oauth.loopback_warning') }}</p>
     @endif

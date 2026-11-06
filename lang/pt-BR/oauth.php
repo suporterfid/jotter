@@ -18,6 +18,8 @@ return [
     'approve' => 'Permitir',
     'deny' => 'Negar',
     'error_title' => 'Não foi possível concluir este pedido de conexão',
+    'client_host' => 'Este app é identificado por um documento publicado em :host. Aprove só se confiar nesse site.',
+    'error_client_metadata' => 'Não foi possível verificar o app: :reason Comece a conexão de novo ou fale com o operador.',
     'error_unknown_client' => 'O app não está registrado neste servidor. Comece a conexão de novo pelo app.',
     'error_redirect_mismatch' => 'O app pediu para voltar a um endereço que ele não registrou. Por segurança, nada foi enviado.',
     'error_request_expired' => 'Este pedido expirou ou já foi usado. Comece a conexão de novo pelo app.',

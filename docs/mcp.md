@@ -81,7 +81,7 @@ below answers 404 while off).
 | --- | --- |
 | `GET /.well-known/oauth-protected-resource[/api/mcp]` | RFC 9728: `resource` = `<APP_URL>/api/mcp`, `authorization_servers` = `[<APP_URL>]` |
 | `GET /.well-known/oauth-authorization-server` | RFC 8414 metadata: code flow, PKCE `S256`, `none` / `client_secret_post` / `client_secret_basic` |
-| `POST /oauth/register` | RFC 7591 dynamic registration; every `redirect_uri` must match `JOTTER_OAUTH_REDIRECT_ALLOWLIST`; 10 per hour per IP |
+| `POST /oauth/register` | RFC 7591 dynamic registration (not needed by clients using a metadata document URL); every `redirect_uri` must match `JOTTER_OAUTH_REDIRECT_ALLOWLIST`; 10 per hour per IP |
 | `GET/POST /oauth/authorize` | Requires a browser session (local, OIDC, or GrandpaSSOn); PKCE `S256` mandatory; exact `redirect_uri` (loopback on any port); `resource` must be the MCP URL; consent screen |
 | `POST /oauth/token` | `authorization_code` (single use, 60 s) and `refresh_token` (rotating); RFC 6749 errors |
 | `POST /oauth/revoke` | RFC 7009; revoking a refresh token revokes its grant |
@@ -101,8 +101,23 @@ below answers 404 while off).
 - `oauth:prune` (daily 02:45) deletes expired codes and tokens and idle DCR clients
   without an active grant. Audit events: `oauth.client_registered`,
   `oauth.grant_created`, `oauth.token_issued`, `oauth.grant_revoked`.
-- CIMD (client ID metadata documents) is not implemented; Claude and ChatGPT fall back to
-  dynamic registration.
+- **Client ID Metadata Documents (CIMD)**: metadata announces
+  `client_id_metadata_document_supported`. A client may skip registration and send an
+  `https://` URL as `client_id`. Jotter fetches that JSON document, checks that its
+  `client_id` equals the URL, that every `redirect_uri` passes
+  `JOTTER_OAUTH_REDIRECT_ALLOWLIST`, and that it is a public client
+  (`token_endpoint_auth_method: none`), then caches it as an `oauth_clients` row with
+  `kind=cimd`. The cache honors `Cache-Control: max-age` between 5 minutes and 24 hours
+  (1 hour by default) and is refreshed when it expires.
+  - The fetch is limited to https on port 443, to host names whose every address is
+    public (no private, loopback, link-local or CGNAT ranges), with the connection pinned
+    to the checked address. It follows no redirects, takes at most 5 s and reads at most
+    5 KB.
+  - The consent screen names the host that published the document, because `client_name`
+    is only what the document claims.
+  - Clients without CIMD keep using dynamic registration. Turn CIMD off with
+    `JOTTER_OAUTH_CIMD_ENABLED=false`; `jotter:doctor` warns when outbound HTTPS does not
+    work.
 
 ## Tools
 
@@ -114,6 +129,10 @@ below answers 404 while off).
    `{path, sha256, updated_at}`; `sha256` is computed from the file on disk, not the
    index, and is what `update_note` expects.
 4. `search_notes`: Full-text title and content search with ranked snippets (`query`).
+   `semantic_search {query, limit?}` searches by meaning in workspaces that opted in
+   (#412). It returns `{mode, reason, results: [{id, path, title, snippet, score}]}` and
+   falls back to full text (`mode: "fulltext"`) when semantic search is unavailable. See
+   *Semantic search* below.
 5. `get_backlinks`: Incoming wikilinks to a `target` note (path or title).
 6. `get_brain_context`: **start here.** One call returns `_brain/README.md`,
    `_brain/instructions.md`, the front matter of every `projetos/<slug>/estado.md`
@@ -127,6 +146,29 @@ below answers 404 while off).
    across every reachable workspace (≤ 20, `id` = `<workspace_id>:<path>`);
    `fetch {id}` → `{id, title, text, url, metadata}`. `url` is the SPA deep link
    `<APP_URL>/?workspace=<id>&note=<id>`.
+
+### Semantic search
+
+Off by default and opt-in per workspace (decision in `docs/decisions.md`):
+
+```dotenv
+JOTTER_SEMANTIC_ENABLED=true
+JOTTER_EMBEDDINGS_URL=https://api.openai.com/v1   # or http://127.0.0.1:11434/v1 (Ollama)
+JOTTER_EMBEDDINGS_API_KEY=sk-…                    # empty for a local provider
+JOTTER_EMBEDDINGS_MODEL=text-embedding-3-small
+JOTTER_EMBEDDINGS_DIMENSIONS=512                  # 0 for the model's default size
+```
+
+```sh
+php artisan semantic:index --workspace=brain --enable   # sends brain's note text to the provider
+php artisan semantic:index --workspace=brain --disable  # stops and deletes brain's index
+php artisan semantic:index --rebuild                    # recreate the index from the notes
+```
+
+The scheduler embeds up to 100 changed notes every five minutes, so a large vault takes
+a few runs to be fully searchable; `jotter:doctor` shows the progress. Never opt in a
+workspace whose text must not reach the provider, such as `brain-restrito`, unless the
+provider runs on the same machine.
 
 ### The `brain` vault layout
 
@@ -178,7 +220,8 @@ The REST API offers the same protection to people: `PUT /api/workspaces/{id}/not
 accepts an optional `base_sha256` (the `content_hash` returned by `GET` and by the
 previous save) and answers 409 `{current_sha256}` when the file changed in between. The
 editor sends it on every autosave and, on 409, offers "reload their version" or "keep
-mine and overwrite".
+mine and overwrite". WebDAV (Obsidian) does the same with `ETag` / `If-Match` and 412;
+see [migrate-from-obsidian.md](migrate-from-obsidian.md#conflicts-with-agents-and-the-web-editor).
 
 ## History: write tools deferral (superseded)
 

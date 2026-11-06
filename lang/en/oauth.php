@@ -18,6 +18,8 @@ return [
     'approve' => 'Allow',
     'deny' => 'Deny',
     'error_title' => 'This connection request cannot be completed',
+    'client_host' => 'This app is identified by a document published at :host. Approve only if you trust that site.',
+    'error_client_metadata' => 'The app could not be verified: :reason Start the connection again, or ask the operator.',
     'error_unknown_client' => 'The app is not registered on this server. Start the connection again from the app.',
     'error_redirect_mismatch' => 'The app asked to return to an address it did not register. For your safety nothing was sent.',
     'error_request_expired' => 'This request expired or was already used. Start the connection again from the app.',

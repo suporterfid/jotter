@@ -12,12 +12,24 @@ use App\Domain\Vault\VaultPathGuard;
 use App\Domain\Vault\VaultStorage;
 use App\Models\Note;
 use App\Models\Workspace;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 
+/**
+ * WebDAV for Obsidian sync clients. Files carry a strong ETag (the SHA-256 of
+ * the bytes on disk, the same value as MCP `sha256` and REST `content_hash`),
+ * and PUT/DELETE honor If-Match / If-None-Match under the per-note lock the
+ * MCP write tools and the REST editor take (#410). Without a conditional
+ * header a PUT overwrites, as before.
+ */
 final class WebDavController extends Controller
 {
+    private const LOCK_SECONDS = 10;
+    private const LOCK_WAIT_SECONDS = 5;
+
     public function __construct(
         private readonly IdentityProvider $identityProvider,
         private readonly VaultPathGuard $pathGuard,
@@ -74,7 +86,7 @@ final class WebDavController extends Controller
             ->where('path', $targetPath)
             ->first();
         if ($note !== null) {
-            if (in_array($method, ['GET', 'PROPFIND'], true)) {
+            if (in_array($method, ['GET', 'HEAD', 'PROPFIND'], true)) {
                 $this->noteAccess->assertView($subject, $note);
             } elseif (in_array($method, ['PUT', 'DELETE'], true)) {
                 $this->noteAccess->assertEdit($subject, $note);
@@ -91,10 +103,12 @@ final class WebDavController extends Controller
 
         return match ($method) {
             'PROPFIND' => $this->handlePropfind($fullPath, $targetPath),
-            'GET' => $this->handleGet($fullPath),
-            'PUT' => $this->handlePut($workspace, $targetPath, $request->getContent(), $subject->subjectId),
+            'GET', 'HEAD' => $this->handleGet($request, $fullPath),
+            'PUT' => $this->conditionally($request, $workspace, $targetPath, $fullPath,
+                fn (): Response => $this->handlePut($workspace, $targetPath, $request->getContent(), $subject->subjectId)),
             'MKCOL' => $this->handleMkcol($fullPath),
-            'DELETE' => $this->handleDelete($workspace, $targetPath),
+            'DELETE' => $this->conditionally($request, $workspace, $targetPath, $fullPath,
+                fn (): Response => $this->handleDelete($workspace, $targetPath)),
             'OPTIONS' => response('', 200, ['Allow' => 'OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, MKCOL', 'DAV' => '1, 2']),
             default => response("Method {$request->method()} not implemented", 405),
         };
@@ -111,6 +125,7 @@ final class WebDavController extends Controller
             '      <d:prop>'."\n".
             '        <d:resourcetype>'.($isDir ? '<d:collection/>' : '').'</d:resourcetype>'."\n".
             '        <d:displayname>'.htmlspecialchars(basename($relativePath)).'</d:displayname>'."\n".
+            (is_file($fullPath) ? '        <d:getetag>'.htmlspecialchars(self::etagOf($fullPath)).'</d:getetag>'."\n" : '').
             '      </d:prop>'."\n".
             '      <d:status>HTTP/1.1 200 OK</d:status>'."\n".
             '    </d:propstat>'."\n".
@@ -120,14 +135,21 @@ final class WebDavController extends Controller
         return response($xml, 207, ['Content-Type' => 'application/xml; charset=utf-8']);
     }
 
-    private function handleGet(string $fullPath): Response
+    private function handleGet(Request $request, string $fullPath): Response
     {
         if (! file_exists($fullPath) || is_dir($fullPath)) {
             return response('Not found', 404);
         }
 
-        return response(file_get_contents($fullPath), 200, [
+        $contents = (string) file_get_contents($fullPath);
+        $etag = self::etag($contents);
+        if (self::listMatches((string) $request->header('If-None-Match', ''), $etag, weak: true)) {
+            return response('', 304, ['ETag' => $etag]);
+        }
+
+        return response($contents, 200, [
             'Content-Type' => 'text/markdown; charset=utf-8',
+            'ETag' => $etag,
         ]);
     }
 
@@ -135,7 +157,93 @@ final class WebDavController extends Controller
     {
         $this->storage->write($workspace, $relativePath, $content, $actorId);
 
-        return response('', 201);
+        // 201 even on overwrite, as before #410: sync clients already rely on it.
+        return response('', 201, ['ETag' => self::etag($content)]);
+    }
+
+    /**
+     * Runs a write, first checking If-Match / If-None-Match (RFC 9110 §13.1)
+     * against the file on disk. With either header the check and the write
+     * happen under the per-note lock; a failed precondition answers 412 and
+     * leaves the file untouched.
+     *
+     * @param callable(): Response $write
+     */
+    private function conditionally(Request $request, Workspace $workspace, string $relativePath, string $fullPath, callable $write): Response
+    {
+        $ifMatch = trim((string) $request->header('If-Match', ''));
+        $ifNoneMatch = trim((string) $request->header('If-None-Match', ''));
+
+        if ($ifMatch === '' && $ifNoneMatch === '') {
+            return $write();
+        }
+
+        $guarded = function () use ($ifMatch, $ifNoneMatch, $fullPath, $write): Response {
+            clearstatcache(true, $fullPath);
+            $current = is_file($fullPath) ? self::etagOf($fullPath) : null;
+
+            // If-Match: "*" needs the file; a tag list needs a strong match.
+            if ($ifMatch !== '' && ($current === null || ! self::listMatches($ifMatch, $current, weak: false))) {
+                return self::preconditionFailed($current);
+            }
+            // If-None-Match: "*" means create only; a tag list must not match.
+            if ($ifNoneMatch !== '' && $current !== null && self::listMatches($ifNoneMatch, $current, weak: true)) {
+                return self::preconditionFailed($current);
+            }
+
+            return $write();
+        };
+
+        try {
+            return Cache::lock('note:'.$workspace->id.':'.sha1($relativePath), self::LOCK_SECONDS)->block(self::LOCK_WAIT_SECONDS, $guarded);
+        } catch (LockTimeoutException) {
+            return response('The note is being written by someone else; retry in a few seconds.', 423);
+        }
+    }
+
+    private static function preconditionFailed(?string $current): Response
+    {
+        return response('The file changed since you read it.', 412, $current !== null ? ['ETag' => $current] : []);
+    }
+
+    private static function etag(string $contents): string
+    {
+        return '"'.hash('sha256', $contents).'"';
+    }
+
+    private static function etagOf(string $fullPath): string
+    {
+        return self::etag((string) file_get_contents($fullPath));
+    }
+
+    /**
+     * Whether a comma-separated entity-tag list (or "*") matches $etag. Strong
+     * comparison treats W/ tags as non-matching; weak comparison ignores W/.
+     */
+    private static function listMatches(string $header, string $etag, bool $weak): bool
+    {
+        $header = trim($header);
+        if ($header === '') {
+            return false;
+        }
+        if ($header === '*') {
+            return true;
+        }
+
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if (str_starts_with($candidate, 'W/')) {
+                if (! $weak) {
+                    continue;
+                }
+                $candidate = substr($candidate, 2);
+            }
+            if (hash_equals($etag, $candidate)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function handleDelete(Workspace $workspace, string $relativePath): Response

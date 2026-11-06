@@ -64,6 +64,22 @@ class User extends Authenticatable
         return $this->hasMany(Identity::class);
     }
 
+    /**
+     * Every subject id a membership may name for this account: the local id,
+     * the e-mail, and linked SSO identities (OIDC `iss|sub`, GrandpaSSOn UUID).
+     * Mirrors LocalIdentityProvider::resolveSubjectIds().
+     *
+     * @return list<string>
+     */
+    public function membershipSubjectIds(): array
+    {
+        return array_values(array_unique(array_filter([
+            (string) $this->id,
+            (string) $this->email,
+            ...$this->identities()->pluck('subject_id')->map(static fn ($id): string => (string) $id)->all(),
+        ])));
+    }
+
     public function workspaceGroups(): BelongsToMany
     {
         return $this->belongsToMany(WorkspaceGroup::class, 'workspace_group_members')

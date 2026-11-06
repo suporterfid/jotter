@@ -13,7 +13,13 @@ class Workspace extends Model
         'slug',
         'name',
         'vault_path',
+        'semantic_search',
     ];
+
+    protected function casts(): array
+    {
+        return ['semantic_search' => 'boolean'];
+    }
 
     public function tenant(): BelongsTo
     {

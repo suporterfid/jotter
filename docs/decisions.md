@@ -226,3 +226,28 @@ One Jotter deployment is to serve as the shared "brain" of several AI clients (C
 - Scoped opaque tokens with a provider decorator: selected.
 
 ---
+
+## Decision — Opt-in semantic search over a rebuildable embeddings projection (#412)
+
+**Decided 2026-11-06.** The brain spec listed semantic search as a v1 non-goal, a candidate for TaskConnect, because embeddings seemed to need a long-running process (spec §4: no daemon, no `exec`, short execution limits). This entry records how it fits those constraints anyway.
+
+### Question
+
+Where are embeddings computed and stored, how do they stay current without a worker, and how is note privacy kept when text must reach an embedding model?
+
+### Selected contract
+
+- **Computed by an external, OpenAI-compatible `/embeddings` endpoint** (`JOTTER_EMBEDDINGS_URL`). That can be OpenAI, a local Ollama or LM Studio, or any compatible gateway, TaskConnect included. Jotter runs no model; the provider is a configuration seam (`EmbeddingProvider`).
+- **Stored in MySQL as a projection** (`note_embeddings`: one row per chunk, L2-normalised float32 vector, the note's `content_hash` and the model at embedding time). It is derived from the notes' indexed text like the rest of MySQL (spec §1): `semantic:index --rebuild` deletes and recreates it, and nothing in it is a source of truth.
+- **Indexing never runs in a web request.** The scheduler runs `semantic:index --limit=100` every five minutes, the same cron pattern as `pdf:process-exports`. Each run embeds at most 100 notes whose `content_hash` or model changed, so a large vault converges over several runs within shared-hosting time limits. A provider error stops the run, and the next one retries. The `JobDispatcher` seam is not needed for this; moving the work to TaskConnect later means pointing the provider URL at it, or replacing the command's executor.
+- **A query makes one short embedding call** (5 s timeout) and compares vectors in PHP, with a dot product over at most `JOTTER_SEMANTIC_MAX_CHUNKS` (20,000) chunks, because MySQL 8 has no vector index. The default 512 dimensions keep that well under a second. When semantic search is off, the workspace has not opted in, the index is empty, or the call fails, the tool falls back to FULLTEXT and says so (`mode: "fulltext"`, `reason`).
+- **Privacy: opt-in twice.** `JOTTER_SEMANTIC_ENABLED=false` by default, and each workspace stays off until `semantic:index --workspace=<slug> --enable`. Note text, including query text, is sent to the provider only for opted-in workspaces. Opting out deletes that workspace's rows; turning the feature off globally deletes all of them on the next run. A restricted workspace (for example `brain-restrito`) is simply never opted in, or uses a provider on the same machine.
+- **Access:** results are filtered with `NoteAccess::scopeVisible` before scoring, and the MCP tool goes through the same workspace authorization as `search_notes`, so a token's workspace list and note ACLs both apply.
+
+### Options considered
+
+- MySQL 9 `VECTOR` type or a vector database: rejected for now; shared hosting runs MySQL 8 and cannot host another service.
+- Embedding on save, inside the request: rejected; it adds provider latency and failures to every save.
+- Embedding the vault on disk in a worker or a TaskConnect job: possible later through the provider seam; not needed to ship.
+- Scheduler-driven, bounded indexing with an opt-in per workspace and a FULLTEXT fallback: selected.
+

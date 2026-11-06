@@ -8,6 +8,8 @@ use App\Domain\Auth\CredentialContext;
 use App\Domain\Auth\InvalidMachineTokenOptions;
 use App\Domain\Auth\MachineTokenOptions;
 use App\Domain\Auth\Providers\LocalIdentityProvider;
+use App\Domain\OAuth\ClientMetadataDocuments;
+use App\Domain\OAuth\OAuthError;
 use App\Domain\OAuth\OAuthLoginReturn;
 use App\Domain\OAuth\OAuthServer;
 use App\Domain\OAuth\RedirectUriPolicy;
@@ -45,7 +47,11 @@ final class OAuthAuthorizeController extends Controller
 
     public function show(Request $request): Response|RedirectResponse
     {
-        $client = OAuthClient::query()->where('client_id', (string) $request->query('client_id', ''))->first();
+        try {
+            $client = $this->findClient((string) $request->query('client_id', ''));
+        } catch (OAuthError $error) {
+            return $this->errorPage('oauth.error_client_metadata', ['reason' => $error->description]);
+        }
         $redirectUri = (string) $request->query('redirect_uri', '');
 
         // Until client and redirect_uri are verified, errors are shown here,
@@ -205,6 +211,9 @@ final class OAuthAuthorizeController extends Controller
             'brand' => Branding::configured(),
             'client' => $client,
             'redirectHost' => $redirectHost,
+            // A metadata document client is vouched for by the host serving it;
+            // client_name is only what that document claims.
+            'clientHost' => $client->kind === OAuthClient::KIND_CIMD ? (string) parse_url($client->client_id, PHP_URL_HOST) : null,
             'isLoopback' => $this->redirects->isLoopbackUri($pendingRedirect),
             'workspaces' => $this->offeredWorkspaces($subject),
             'tenants' => Tenant::query()->get(['id', 'name', 'slug'])->keyBy('id'),
@@ -216,9 +225,28 @@ final class OAuthAuthorizeController extends Controller
         ], $errors === [] ? 200 : 422, ['Cache-Control' => 'no-store', 'X-Frame-Options' => 'DENY']);
     }
 
-    private function errorPage(string $messageKey): Response
+    /**
+     * @param array<string, string> $replace
+     */
+    private function errorPage(string $messageKey, array $replace = []): Response
     {
-        return response()->view('oauth.error', ['brand' => Branding::configured(), 'message' => __($messageKey)], 400, ['Cache-Control' => 'no-store']);
+        return response()->view('oauth.error', ['brand' => Branding::configured(), 'message' => __($messageKey, $replace)], 400, ['Cache-Control' => 'no-store']);
+    }
+
+    /**
+     * A registered (DCR) client, or, when client_id is an https URL, the client
+     * described by its metadata document (#411), fetched or taken from cache.
+     */
+    private function findClient(string $clientId): ?OAuthClient
+    {
+        if ($clientId === '') {
+            return null;
+        }
+        if (ClientMetadataDocuments::enabled() && ClientMetadataDocuments::isMetadataUrl($clientId)) {
+            return app(ClientMetadataDocuments::class)->resolve($clientId);
+        }
+
+        return OAuthClient::query()->where('client_id', $clientId)->where('kind', OAuthClient::KIND_DCR)->first();
     }
 
     private function redirectError(string $redirectUri, string $error, string $description, ?string $state): RedirectResponse

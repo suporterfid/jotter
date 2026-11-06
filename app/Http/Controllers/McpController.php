@@ -217,6 +217,7 @@ final class McpController extends Controller
             'list_notes' => $this->listNotes($subject, $workspaceId, $args, $id),
             'read_note' => $this->readNote($subject, $workspace, $args, $id),
             'search_notes' => $this->searchNotes($subject, $workspace, $args, $id),
+            'semantic_search' => $this->semanticSearch($subject, $workspace, $args, $id),
             default => $this->backlinks($subject, $workspaceId, $args, $id),
         };
     }
@@ -353,6 +354,16 @@ final class McpController extends Controller
         $results = app(WorkspaceSearch::class)->search($workspace, $query, $subject);
 
         return $this->toolText($id, $results);
+    }
+
+    private function semanticSearch(AuthenticatedSubject $subject, Workspace $workspace, array $args, mixed $id): JsonResponse
+    {
+        $query = trim((string) ($args['query'] ?? ''));
+        if ($query === '') {
+            return $this->toolError($id, 'query is required.');
+        }
+
+        return $this->toolJson($id, app(\App\Domain\Semantic\SemanticSearch::class)->search($subject, $workspace, $query, (int) ($args['limit'] ?? 10)));
     }
 
     private function backlinks(AuthenticatedSubject $subject, int $workspaceId, array $args, mixed $id): JsonResponse

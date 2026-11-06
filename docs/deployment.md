@@ -135,6 +135,7 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:purge-trash` | daily 02:00 | Permanently deletes notes past the trash retention period. |
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
+| `semantic:index --limit=100` | every 5 minutes | Embeds changed notes of workspaces that opted in to semantic search; clears the index while `JOTTER_SEMANTIC_ENABLED=false` (see `docs/mcp.md`). |
 | `oauth:prune` | daily 02:45 | Deletes expired OAuth codes and tokens, and idle OAuth clients without active grants. |
 | `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
 | `queue:work --stop-when-empty --max-time=50` | every minute, only when `QUEUE_CONNECTION=database` | Drains a database queue without a daemon. Mail is synchronous by default, so this is normally not registered. |
@@ -181,6 +182,16 @@ JOTTER_OAUTH_REDIRECT_ALLOWLIST=https://claude.ai/api/mcp/auth_callback,http://l
   front of the site, allow Anthropic's egress range `160.79.104.0/21` and OpenAI's
   published ranges on `/api/mcp`, `/.well-known/*` and `/oauth/*`.
 - The daily `oauth:prune` job (scheduler table above) keeps the OAuth tables small.
+- Clients that identify themselves with a metadata document URL (CIMD) need outbound
+  HTTPS from the server, so the server can fetch that URL. `jotter:doctor` tests it
+  (`JOTTER_OAUTH_CIMD_PROBE_URL`, `https://claude.ai/` by default). Where the host blocks
+  outbound connections, set `JOTTER_OAUTH_CIMD_ENABLED=false`; clients then use dynamic
+  registration.
+- With `JOTTER_AUTH_PROVIDER=grandpasson`, a membership's subject may be the person's
+  GrandpaSSOn user UUID, their e-mail, or their local user id. Each sign-in links the
+  UUID to the local account (`identities`, provider `grandpasson`), so manual MCP tokens
+  and OAuth tokens both reach memberships stored under the UUID. Someone who has not
+  signed in since this release gets the link on their next sign-in.
 - Any sign-in mode works on the consent screen. With `JOTTER_AUTH_PROVIDER=grandpasson`
   the broker returns to `APP_URL`, and Jotter resumes the pending consent from there
   (for ten minutes after the client started the connection).

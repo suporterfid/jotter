@@ -4,6 +4,32 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Semantic search, opt-in (#412) — 2026-11-06
+
+- New MCP read tool **`semantic_search`** searches by meaning in workspaces that opted in. It returns `{mode, reason, results}` with the best passage and a score per note, and falls back to full-text search (`mode: "fulltext"`) when semantic search is off, the workspace has not opted in, the index is empty, or the provider fails.
+- Embeddings come from any OpenAI-compatible `/embeddings` endpoint (`JOTTER_EMBEDDINGS_*`: OpenAI, Ollama, LM Studio…) and are stored in the rebuildable `note_embeddings` table (migration `2026_11_06_000002`, which also adds `workspaces.semantic_search`).
+- `semantic:index` runs from the scheduler every five minutes and embeds at most 100 changed notes per run, never in a web request. `--workspace=<slug> --enable|--disable` opts a workspace in or out (opting out deletes its index), and `--rebuild` recreates the index.
+- Off by default (`JOTTER_SEMANTIC_ENABLED=false`); with it off, any existing index is deleted. Results respect note ACLs and the token's workspace list. `jotter:doctor` reports which workspaces send text to which provider and how much is indexed. Decision recorded in `docs/decisions.md`.
+
+### OAuth Client ID Metadata Documents (#411) — 2026-11-06
+
+- The OAuth server accepts an `https://` URL as `client_id` (CIMD, as recommended by MCP 2025-11-25) and announces `client_id_metadata_document_supported`. The document is fetched, checked (its `client_id` equals the URL, the redirect URIs pass the allowlist, it is a public client) and cached in `oauth_clients` (`kind=cimd`, TTL from `Cache-Control` between 5 min and 24 h).
+- SSRF guards: https on port 443 only, no IP-literal hosts, every resolved address must be public (private, loopback, link-local, CGNAT and IPv4-mapped ranges refused), the connection is pinned to the checked address, no redirects, 5 s timeout, 5 KB cap.
+- The consent screen shows the host that published the document. Errors are shown on the error page with the reason; nothing is cached on failure.
+- `jotter:doctor` warns when outbound HTTPS fails. `JOTTER_OAUTH_CIMD_ENABLED=false` turns CIMD off; dynamic registration keeps working either way. Migration `2026_11_06_000001` widens `oauth_clients.client_id` to 512 characters and adds `kind` and `metadata_expires_at`.
+
+### WebDAV `ETag` / `If-Match` (#410) — 2026-11-06
+
+- WebDAV files carry a strong `ETag`, the SHA-256 of the bytes on disk (the same value as MCP `sha256` and REST `content_hash`), on `GET`/`HEAD`, `PROPFIND` (`getetag`) and every successful `PUT`.
+- `PUT` and `DELETE` with `If-Match` succeed only when the tag still matches, otherwise **412** with the current `ETag`; `If-None-Match: *` creates only. The check runs under the per-note lock the MCP tools and the editor take (423 when it is busy). `GET` answers 304 to a matching `If-None-Match`. `HEAD` is now served.
+- A `PUT` without conditional headers still overwrites and still answers 201.
+
+### Fix: manual MCP tokens for GrandpaSSOn users (#414) — 2026-11-06
+
+- A GrandpaSSOn sign-in now links the SSO user's UUID to the local account in `identities` (provider `grandpasson`), as OIDC already did. Manual tokens resolve the local user id, so memberships stored under the UUID now apply to them; before, `list_workspaces` came back empty for those people.
+- `mcp:token` infers the tenant from every subject id of the account (local id, e-mail, linked identities), not only the local id.
+- The link is written only when missing or pointing at another account, so a normal request adds one read. People who have not signed in since the upgrade get it on their next sign-in.
+
 ### OAuth follow-ups: admin Connected apps and GrandpaSSOn sign-in — 2026-11-04
 
 - **Administration → Connected apps**: a new tab lists every person's OAuth connections (client, redirect host, user, workspaces, scopes, client slug, last use, expiry) and revokes any of them, using the existing `/api/admin/oauth-grants` API.

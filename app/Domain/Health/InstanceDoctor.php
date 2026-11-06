@@ -81,6 +81,7 @@ final class InstanceDoctor
             $this->checkMailFrom(),
             $this->checkScheduler(),
             ...$this->checkOAuth(),
+            $this->checkSemantic(),
         ];
 
         return new DoctorReport(
@@ -154,7 +155,60 @@ final class InstanceDoctor
             ? DoctorCheck::pass('oauth_prune', 'oauth:prune scheduled', false, 'Daily at 02:45.')
             : DoctorCheck::fail('oauth_prune', 'oauth:prune scheduled', false, 'oauth:prune is not in the schedule; expired OAuth codes and tokens will accumulate.');
 
+        $checks[] = $this->checkOutboundHttps();
+
         return $checks;
+    }
+
+    /**
+     * Client ID Metadata Documents (#411) need the server to fetch the client's
+     * https URL. One short request to a public host tells whether outbound
+     * HTTPS works from this hosting account; any HTTP answer counts.
+     */
+    private function checkOutboundHttps(): DoctorCheck
+    {
+        if (! \App\Domain\OAuth\ClientMetadataDocuments::enabled()) {
+            return DoctorCheck::pass('oauth_cimd', 'OAuth client metadata documents', false, 'Disabled (JOTTER_OAUTH_CIMD_ENABLED=false); clients use dynamic registration.');
+        }
+
+        $probe = (string) config('jotter.oauth.cimd.probe_url', 'https://claude.ai/');
+        try {
+            $status = \Illuminate\Support\Facades\Http::timeout(5)->connectTimeout(3)->withOptions(['allow_redirects' => false])->head($probe)->status();
+        } catch (\Throwable $exception) {
+            return DoctorCheck::fail('oauth_cimd', 'OAuth client metadata documents', false, sprintf('Outbound HTTPS to %s failed (%s); clients that use metadata documents cannot connect, dynamic registration still works. Allow outbound HTTPS or set JOTTER_OAUTH_CIMD_ENABLED=false.', $probe, class_basename($exception)), ['probe_url' => $probe]);
+        }
+
+        return DoctorCheck::pass('oauth_cimd', 'OAuth client metadata documents', false, sprintf('Outbound HTTPS works (%s answered %d).', $probe, $status), ['probe_url' => $probe, 'status' => $status]);
+    }
+
+    /**
+     * Semantic search (#412): off by default. When on, says which workspaces
+     * send note text to the embedding provider and how far the index is.
+     */
+    private function checkSemantic(): DoctorCheck
+    {
+        if (! \App\Domain\Semantic\SemanticIndexer::enabled()) {
+            return DoctorCheck::pass('semantic_search', 'Semantic search', false, 'Disabled (JOTTER_SEMANTIC_ENABLED=false); semantic_search falls back to full-text search.');
+        }
+
+        $baseUrl = (string) config('jotter.semantic.base_url', '');
+        $host = (string) (parse_url($baseUrl, PHP_URL_HOST) ?? '');
+        $scheme = (string) (parse_url($baseUrl, PHP_URL_SCHEME) ?? '');
+        if ($host === '' || ($scheme !== 'https' && ! in_array($host, ['localhost', '127.0.0.1', '::1'], true))) {
+            return DoctorCheck::fail('semantic_search', 'Semantic search', false, sprintf("JOTTER_EMBEDDINGS_URL is '%s'; use https, or http only to a provider on this machine.", $baseUrl), ['base_url' => $baseUrl]);
+        }
+
+        $workspaces = \App\Models\Workspace::query()->where('semantic_search', true)->pluck('slug')->all();
+        if ($workspaces === []) {
+            return DoctorCheck::fail('semantic_search', 'Semantic search', false, 'Enabled, but no workspace opted in. Run: php artisan semantic:index --workspace=<slug> --enable', ['base_url' => $baseUrl]);
+        }
+
+        $chunks = \App\Models\NoteEmbedding::query()->count();
+        $indexedNotes = \App\Models\NoteEmbedding::query()->distinct()->count('note_id');
+
+        return DoctorCheck::pass('semantic_search', 'Semantic search', false, sprintf('Workspaces %s send note text to %s; %d note(s) indexed (%d chunks).', implode(', ', $workspaces), $host, $indexedNotes, $chunks), [
+            'workspaces' => $workspaces, 'provider_host' => $host, 'model' => (string) config('jotter.semantic.model'), 'indexed_notes' => $indexedNotes, 'chunks' => $chunks,
+        ]);
     }
 
     private function isProduction(): bool

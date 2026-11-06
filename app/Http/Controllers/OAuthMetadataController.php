@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\OAuth\ClientMetadataDocuments;
 use App\Domain\OAuth\OAuthServer;
 use Illuminate\Http\JsonResponse;
 
@@ -40,6 +41,7 @@ final class OAuthMetadataController extends Controller
             'revocation_endpoint_auth_methods_supported' => OAuthServer::AUTH_METHODS,
             'scopes_supported' => OAuthServer::SUPPORTED_SCOPES,
             'authorization_response_iss_parameter_supported' => true,
+            'client_id_metadata_document_supported' => ClientMetadataDocuments::enabled(),
         ]);
     }
 
