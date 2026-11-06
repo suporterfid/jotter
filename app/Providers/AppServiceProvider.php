@@ -33,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(\App\Domain\OAuth\HostResolver::class, \App\Domain\OAuth\DnsHostResolver::class);
+        $this->app->bind(\App\Domain\Semantic\Contracts\EmbeddingProvider::class, \App\Domain\Semantic\OpenAiCompatibleEmbeddings::class);
 
         $this->app->singleton(\App\Domain\Jobs\Contracts\JobDispatcher::class, function (): \App\Domain\Jobs\Contracts\JobDispatcher {
             $dispatcher = config('jotter.job_dispatcher', 'local');

@@ -38,6 +38,10 @@ Schedule::command('analytics:rollup')->everyFiveMinutes()->withoutOverlapping(10
 // Hourly: reconcile the on-disk vaults into the MySQL projection.
 Schedule::command('vault:reindex', ['--all'])->hourly()->withoutOverlapping(55);
 
+// Semantic search (#412): embed changed notes of opted-in workspaces, a bounded
+// batch per run. A no-op (and it clears any index) while JOTTER_SEMANTIC_ENABLED=false.
+Schedule::command('semantic:index', ['--limit=100'])->everyFiveMinutes()->withoutOverlapping(10);
+
 // Nightly retention (spread out so they never share a minute).
 Schedule::command('vault:purge-trash')->dailyAt('02:00')->withoutOverlapping(60);
 Schedule::command('vault:prune-revisions', ['--days=30'])->dailyAt('02:15')->withoutOverlapping(60);

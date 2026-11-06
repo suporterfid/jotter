@@ -114,6 +114,30 @@ return [
         ],
     ],
 
+    // Semantic search (#412, docs/decisions.md). Off unless JOTTER_SEMANTIC_ENABLED
+    // and opted in per workspace (`php artisan semantic:index --workspace=<slug> --enable`).
+    // Embeddings come from an OpenAI-compatible /embeddings endpoint (OpenAI, a
+    // local Ollama or LM Studio, or any compatible gateway); note text is sent
+    // there only for opted-in workspaces. Indexing runs from the scheduler, never
+    // during a web request; a query makes one short embedding call and falls
+    // back to full-text search when it fails.
+    'semantic' => [
+        'enabled' => (bool) env('JOTTER_SEMANTIC_ENABLED', false),
+        'base_url' => env('JOTTER_EMBEDDINGS_URL', 'https://api.openai.com/v1'),
+        'api_key' => env('JOTTER_EMBEDDINGS_API_KEY'),
+        'model' => env('JOTTER_EMBEDDINGS_MODEL', 'text-embedding-3-small'),
+        // Requested vector size when the model supports it (OpenAI v3 models);
+        // smaller vectors keep the in-PHP similarity scan fast. 0 = model default.
+        'dimensions' => (int) env('JOTTER_EMBEDDINGS_DIMENSIONS', 512),
+        'index_timeout_seconds' => 30,
+        'query_timeout_seconds' => 5,
+        'chunk_chars' => 1500,
+        'chunk_overlap_chars' => 200,
+        'batch_size' => 32,
+        // Upper bound on chunks compared per query (MySQL 8 has no vector index).
+        'max_chunks_scanned' => (int) env('JOTTER_SEMANTIC_MAX_CHUNKS', 20000),
+    ],
+
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 

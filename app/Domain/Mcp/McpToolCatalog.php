@@ -162,6 +162,22 @@ final class McpToolCatalog
                 'annotations' => self::READ_ANNOTATIONS,
             ],
             [
+                'name' => 'semantic_search',
+                'title' => 'Semantic search',
+                'description' => 'Search notes by meaning rather than exact words (for questions such as "what did we decide about billing?"). Returns the best matching notes with the matching passage and a score. When semantic search is not available for the workspace it falls back to full-text search and says so in "mode" and "reason".',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'workspace_id' => $workspaceId,
+                        'query' => ['type' => 'string', 'description' => 'A question or description of what you are looking for.'],
+                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 25, 'description' => 'Results to return (default 10).'],
+                    ],
+                    'required' => ['query'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => self::READ_ANNOTATIONS,
+            ],
+            [
                 'name' => 'get_backlinks',
                 'title' => 'Get backlinks',
                 'description' => 'Notes that link to a target note, identified by path or title.',

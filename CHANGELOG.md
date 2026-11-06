@@ -4,6 +4,13 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Semantic search, opt-in (#412) — 2026-11-06
+
+- New MCP read tool **`semantic_search`** searches by meaning in workspaces that opted in. It returns `{mode, reason, results}` with the best passage and a score per note, and falls back to full-text search (`mode: "fulltext"`) when semantic search is off, the workspace has not opted in, the index is empty, or the provider fails.
+- Embeddings come from any OpenAI-compatible `/embeddings` endpoint (`JOTTER_EMBEDDINGS_*`: OpenAI, Ollama, LM Studio…) and are stored in the rebuildable `note_embeddings` table (migration `2026_11_06_000002`, which also adds `workspaces.semantic_search`).
+- `semantic:index` runs from the scheduler every five minutes and embeds at most 100 changed notes per run, never in a web request. `--workspace=<slug> --enable|--disable` opts a workspace in or out (opting out deletes its index), and `--rebuild` recreates the index.
+- Off by default (`JOTTER_SEMANTIC_ENABLED=false`); with it off, any existing index is deleted. Results respect note ACLs and the token's workspace list. `jotter:doctor` reports which workspaces send text to which provider and how much is indexed. Decision recorded in `docs/decisions.md`.
+
 ### OAuth Client ID Metadata Documents (#411) — 2026-11-06
 
 - The OAuth server accepts an `https://` URL as `client_id` (CIMD, as recommended by MCP 2025-11-25) and announces `client_id_metadata_document_supported`. The document is fetched, checked (its `client_id` equals the URL, the redirect URIs pass the allowlist, it is a public client) and cached in `oauth_clients` (`kind=cimd`, TTL from `Cache-Control` between 5 min and 24 h).

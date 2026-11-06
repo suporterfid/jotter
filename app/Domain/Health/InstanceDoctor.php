@@ -81,6 +81,7 @@ final class InstanceDoctor
             $this->checkMailFrom(),
             $this->checkScheduler(),
             ...$this->checkOAuth(),
+            $this->checkSemantic(),
         ];
 
         return new DoctorReport(
@@ -178,6 +179,36 @@ final class InstanceDoctor
         }
 
         return DoctorCheck::pass('oauth_cimd', 'OAuth client metadata documents', false, sprintf('Outbound HTTPS works (%s answered %d).', $probe, $status), ['probe_url' => $probe, 'status' => $status]);
+    }
+
+    /**
+     * Semantic search (#412): off by default. When on, says which workspaces
+     * send note text to the embedding provider and how far the index is.
+     */
+    private function checkSemantic(): DoctorCheck
+    {
+        if (! \App\Domain\Semantic\SemanticIndexer::enabled()) {
+            return DoctorCheck::pass('semantic_search', 'Semantic search', false, 'Disabled (JOTTER_SEMANTIC_ENABLED=false); semantic_search falls back to full-text search.');
+        }
+
+        $baseUrl = (string) config('jotter.semantic.base_url', '');
+        $host = (string) (parse_url($baseUrl, PHP_URL_HOST) ?? '');
+        $scheme = (string) (parse_url($baseUrl, PHP_URL_SCHEME) ?? '');
+        if ($host === '' || ($scheme !== 'https' && ! in_array($host, ['localhost', '127.0.0.1', '::1'], true))) {
+            return DoctorCheck::fail('semantic_search', 'Semantic search', false, sprintf("JOTTER_EMBEDDINGS_URL is '%s'; use https, or http only to a provider on this machine.", $baseUrl), ['base_url' => $baseUrl]);
+        }
+
+        $workspaces = \App\Models\Workspace::query()->where('semantic_search', true)->pluck('slug')->all();
+        if ($workspaces === []) {
+            return DoctorCheck::fail('semantic_search', 'Semantic search', false, 'Enabled, but no workspace opted in. Run: php artisan semantic:index --workspace=<slug> --enable', ['base_url' => $baseUrl]);
+        }
+
+        $chunks = \App\Models\NoteEmbedding::query()->count();
+        $indexedNotes = \App\Models\NoteEmbedding::query()->distinct()->count('note_id');
+
+        return DoctorCheck::pass('semantic_search', 'Semantic search', false, sprintf('Workspaces %s send note text to %s; %d note(s) indexed (%d chunks).', implode(', ', $workspaces), $host, $indexedNotes, $chunks), [
+            'workspaces' => $workspaces, 'provider_host' => $host, 'model' => (string) config('jotter.semantic.model'), 'indexed_notes' => $indexedNotes, 'chunks' => $chunks,
+        ]);
     }
 
     private function isProduction(): bool

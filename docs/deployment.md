@@ -135,6 +135,7 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:purge-trash` | daily 02:00 | Permanently deletes notes past the trash retention period. |
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
+| `semantic:index --limit=100` | every 5 minutes | Embeds changed notes of workspaces that opted in to semantic search; clears the index while `JOTTER_SEMANTIC_ENABLED=false` (see `docs/mcp.md`). |
 | `oauth:prune` | daily 02:45 | Deletes expired OAuth codes and tokens, and idle OAuth clients without active grants. |
 | `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
 | `queue:work --stop-when-empty --max-time=50` | every minute, only when `QUEUE_CONNECTION=database` | Drains a database queue without a daemon. Mail is synchronous by default, so this is normally not registered. |

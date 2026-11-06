@@ -129,6 +129,10 @@ below answers 404 while off).
    `{path, sha256, updated_at}`; `sha256` is computed from the file on disk, not the
    index, and is what `update_note` expects.
 4. `search_notes`: Full-text title and content search with ranked snippets (`query`).
+   `semantic_search {query, limit?}` searches by meaning in workspaces that opted in
+   (#412). It returns `{mode, reason, results: [{id, path, title, snippet, score}]}` and
+   falls back to full text (`mode: "fulltext"`) when semantic search is unavailable. See
+   *Semantic search* below.
 5. `get_backlinks`: Incoming wikilinks to a `target` note (path or title).
 6. `get_brain_context`: **start here.** One call returns `_brain/README.md`,
    `_brain/instructions.md`, the front matter of every `projetos/<slug>/estado.md`
@@ -142,6 +146,29 @@ below answers 404 while off).
    across every reachable workspace (≤ 20, `id` = `<workspace_id>:<path>`);
    `fetch {id}` → `{id, title, text, url, metadata}`. `url` is the SPA deep link
    `<APP_URL>/?workspace=<id>&note=<id>`.
+
+### Semantic search
+
+Off by default and opt-in per workspace (decision in `docs/decisions.md`):
+
+```dotenv
+JOTTER_SEMANTIC_ENABLED=true
+JOTTER_EMBEDDINGS_URL=https://api.openai.com/v1   # or http://127.0.0.1:11434/v1 (Ollama)
+JOTTER_EMBEDDINGS_API_KEY=sk-…                    # empty for a local provider
+JOTTER_EMBEDDINGS_MODEL=text-embedding-3-small
+JOTTER_EMBEDDINGS_DIMENSIONS=512                  # 0 for the model's default size
+```
+
+```sh
+php artisan semantic:index --workspace=brain --enable   # sends brain's note text to the provider
+php artisan semantic:index --workspace=brain --disable  # stops and deletes brain's index
+php artisan semantic:index --rebuild                    # recreate the index from the notes
+```
+
+The scheduler embeds up to 100 changed notes every five minutes, so a large vault takes
+a few runs to be fully searchable; `jotter:doctor` shows the progress. Never opt in a
+workspace whose text must not reach the provider, such as `brain-restrito`, unless the
+provider runs on the same machine.
 
 ### The `brain` vault layout
 
