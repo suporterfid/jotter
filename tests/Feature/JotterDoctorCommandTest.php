@@ -156,8 +156,10 @@ final class JotterDoctorCommandTest extends TestCase
         $this->assertSame('pass', $byId['oauth']['status']);
         $this->assertArrayNotHasKey('oauth_metadata', $byId);
 
+        \Illuminate\Support\Facades\Http::fake(['https://claude.ai/*' => \Illuminate\Support\Facades\Http::response('', 200)]);
         config(['jotter.oauth.enabled' => true]);
         $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+        $this->assertSame('pass', $byId['oauth_cimd']['status']);
         $this->assertSame('pass', $byId['oauth_issuer']['status']);
         $this->assertSame('pass', $byId['oauth_metadata']['status']);
         $this->assertSame('pass', $byId['oauth_redirect_allowlist']['status']);
@@ -171,5 +173,19 @@ final class JotterDoctorCommandTest extends TestCase
         config(['app.url' => 'http://brain.example.com']);
         $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
         $this->assertSame('fail', $byId['oauth_issuer']['status']);
+    }
+
+    public function test_doctor_reports_when_outbound_https_for_client_metadata_documents_fails(): void
+    {
+        \Illuminate\Support\Facades\Http::fake(static fn () => throw new \Illuminate\Http\Client\ConnectionException('blocked'));
+        config(['jotter.oauth.enabled' => true, 'app.url' => 'https://brain.example.com']);
+
+        $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+        $this->assertSame('warn', $byId['oauth_cimd']['status']);
+        $this->assertSame('warning', $byId['oauth_cimd']['severity']);
+
+        config(['jotter.oauth.cimd.enabled' => false]);
+        $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+        $this->assertSame('pass', $byId['oauth_cimd']['status']);
     }
 }

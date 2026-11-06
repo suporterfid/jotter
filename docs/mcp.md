@@ -81,7 +81,7 @@ below answers 404 while off).
 | --- | --- |
 | `GET /.well-known/oauth-protected-resource[/api/mcp]` | RFC 9728: `resource` = `<APP_URL>/api/mcp`, `authorization_servers` = `[<APP_URL>]` |
 | `GET /.well-known/oauth-authorization-server` | RFC 8414 metadata: code flow, PKCE `S256`, `none` / `client_secret_post` / `client_secret_basic` |
-| `POST /oauth/register` | RFC 7591 dynamic registration; every `redirect_uri` must match `JOTTER_OAUTH_REDIRECT_ALLOWLIST`; 10 per hour per IP |
+| `POST /oauth/register` | RFC 7591 dynamic registration (not needed by clients using a metadata document URL); every `redirect_uri` must match `JOTTER_OAUTH_REDIRECT_ALLOWLIST`; 10 per hour per IP |
 | `GET/POST /oauth/authorize` | Requires a browser session (local, OIDC, or GrandpaSSOn); PKCE `S256` mandatory; exact `redirect_uri` (loopback on any port); `resource` must be the MCP URL; consent screen |
 | `POST /oauth/token` | `authorization_code` (single use, 60 s) and `refresh_token` (rotating); RFC 6749 errors |
 | `POST /oauth/revoke` | RFC 7009; revoking a refresh token revokes its grant |
@@ -101,8 +101,23 @@ below answers 404 while off).
 - `oauth:prune` (daily 02:45) deletes expired codes and tokens and idle DCR clients
   without an active grant. Audit events: `oauth.client_registered`,
   `oauth.grant_created`, `oauth.token_issued`, `oauth.grant_revoked`.
-- CIMD (client ID metadata documents) is not implemented; Claude and ChatGPT fall back to
-  dynamic registration.
+- **Client ID Metadata Documents (CIMD)**: metadata announces
+  `client_id_metadata_document_supported`. A client may skip registration and send an
+  `https://` URL as `client_id`. Jotter fetches that JSON document, checks that its
+  `client_id` equals the URL, that every `redirect_uri` passes
+  `JOTTER_OAUTH_REDIRECT_ALLOWLIST`, and that it is a public client
+  (`token_endpoint_auth_method: none`), then caches it as an `oauth_clients` row with
+  `kind=cimd`. The cache honors `Cache-Control: max-age` between 5 minutes and 24 hours
+  (1 hour by default) and is refreshed when it expires.
+  - The fetch is limited to https on port 443, to host names whose every address is
+    public (no private, loopback, link-local or CGNAT ranges), with the connection pinned
+    to the checked address. It follows no redirects, takes at most 5 s and reads at most
+    5 KB.
+  - The consent screen names the host that published the document, because `client_name`
+    is only what the document claims.
+  - Clients without CIMD keep using dynamic registration. Turn CIMD off with
+    `JOTTER_OAUTH_CIMD_ENABLED=false`; `jotter:doctor` warns when outbound HTTPS does not
+    work.
 
 ## Tools
 

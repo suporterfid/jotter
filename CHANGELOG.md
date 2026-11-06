@@ -4,6 +4,13 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### OAuth Client ID Metadata Documents (#411) — 2026-11-06
+
+- The OAuth server accepts an `https://` URL as `client_id` (CIMD, as recommended by MCP 2025-11-25) and announces `client_id_metadata_document_supported`. The document is fetched, checked (its `client_id` equals the URL, the redirect URIs pass the allowlist, it is a public client) and cached in `oauth_clients` (`kind=cimd`, TTL from `Cache-Control` between 5 min and 24 h).
+- SSRF guards: https on port 443 only, no IP-literal hosts, every resolved address must be public (private, loopback, link-local, CGNAT and IPv4-mapped ranges refused), the connection is pinned to the checked address, no redirects, 5 s timeout, 5 KB cap.
+- The consent screen shows the host that published the document. Errors are shown on the error page with the reason; nothing is cached on failure.
+- `jotter:doctor` warns when outbound HTTPS fails. `JOTTER_OAUTH_CIMD_ENABLED=false` turns CIMD off; dynamic registration keeps working either way. Migration `2026_11_06_000001` widens `oauth_clients.client_id` to 512 characters and adds `kind` and `metadata_expires_at`.
+
 ### WebDAV `ETag` / `If-Match` (#410) — 2026-11-06
 
 - WebDAV files carry a strong `ETag`, the SHA-256 of the bytes on disk (the same value as MCP `sha256` and REST `content_hash`), on `GET`/`HEAD`, `PROPFIND` (`getetag`) and every successful `PUT`.

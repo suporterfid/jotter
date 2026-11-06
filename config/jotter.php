@@ -99,6 +99,19 @@ return [
         'registrations_per_hour' => (int) env('JOTTER_OAUTH_REGISTRATIONS_PER_HOUR', 10),
         'token_requests_per_minute' => 60,
         'client_idle_days' => 30,
+        // Client ID Metadata Documents (#411): a client_id that is an https URL
+        // is fetched and validated instead of registered. Needs outbound HTTPS
+        // from the server (jotter:doctor checks it). Fetches refuse private and
+        // loopback addresses, redirects, and bodies over max_bytes.
+        'cimd' => [
+            'enabled' => (bool) env('JOTTER_OAUTH_CIMD_ENABLED', true),
+            'timeout_seconds' => 5,
+            'max_bytes' => 5120,
+            'default_ttl_seconds' => 3600,
+            'min_ttl_seconds' => 300,
+            'max_ttl_seconds' => 86400,
+            'probe_url' => env('JOTTER_OAUTH_CIMD_PROBE_URL', 'https://claude.ai/'),
+        ],
     ],
 
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),

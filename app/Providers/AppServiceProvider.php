@@ -32,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Domain\Auth\CredentialScopedIdentityProvider($inner);
         });
 
+        $this->app->bind(\App\Domain\OAuth\HostResolver::class, \App\Domain\OAuth\DnsHostResolver::class);
+
         $this->app->singleton(\App\Domain\Jobs\Contracts\JobDispatcher::class, function (): \App\Domain\Jobs\Contracts\JobDispatcher {
             $dispatcher = config('jotter.job_dispatcher', 'local');
 

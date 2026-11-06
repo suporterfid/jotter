@@ -181,6 +181,11 @@ JOTTER_OAUTH_REDIRECT_ALLOWLIST=https://claude.ai/api/mcp/auth_callback,http://l
   front of the site, allow Anthropic's egress range `160.79.104.0/21` and OpenAI's
   published ranges on `/api/mcp`, `/.well-known/*` and `/oauth/*`.
 - The daily `oauth:prune` job (scheduler table above) keeps the OAuth tables small.
+- Clients that identify themselves with a metadata document URL (CIMD) need outbound
+  HTTPS from the server, so the server can fetch that URL. `jotter:doctor` tests it
+  (`JOTTER_OAUTH_CIMD_PROBE_URL`, `https://claude.ai/` by default). Where the host blocks
+  outbound connections, set `JOTTER_OAUTH_CIMD_ENABLED=false`; clients then use dynamic
+  registration.
 - With `JOTTER_AUTH_PROVIDER=grandpasson`, a membership's subject may be the person's
   GrandpaSSOn user UUID, their e-mail, or their local user id. Each sign-in links the
   UUID to the local account (`identities`, provider `grandpasson`), so manual MCP tokens

@@ -154,7 +154,30 @@ final class InstanceDoctor
             ? DoctorCheck::pass('oauth_prune', 'oauth:prune scheduled', false, 'Daily at 02:45.')
             : DoctorCheck::fail('oauth_prune', 'oauth:prune scheduled', false, 'oauth:prune is not in the schedule; expired OAuth codes and tokens will accumulate.');
 
+        $checks[] = $this->checkOutboundHttps();
+
         return $checks;
+    }
+
+    /**
+     * Client ID Metadata Documents (#411) need the server to fetch the client's
+     * https URL. One short request to a public host tells whether outbound
+     * HTTPS works from this hosting account; any HTTP answer counts.
+     */
+    private function checkOutboundHttps(): DoctorCheck
+    {
+        if (! \App\Domain\OAuth\ClientMetadataDocuments::enabled()) {
+            return DoctorCheck::pass('oauth_cimd', 'OAuth client metadata documents', false, 'Disabled (JOTTER_OAUTH_CIMD_ENABLED=false); clients use dynamic registration.');
+        }
+
+        $probe = (string) config('jotter.oauth.cimd.probe_url', 'https://claude.ai/');
+        try {
+            $status = \Illuminate\Support\Facades\Http::timeout(5)->connectTimeout(3)->withOptions(['allow_redirects' => false])->head($probe)->status();
+        } catch (\Throwable $exception) {
+            return DoctorCheck::fail('oauth_cimd', 'OAuth client metadata documents', false, sprintf('Outbound HTTPS to %s failed (%s); clients that use metadata documents cannot connect, dynamic registration still works. Allow outbound HTTPS or set JOTTER_OAUTH_CIMD_ENABLED=false.', $probe, class_basename($exception)), ['probe_url' => $probe]);
+        }
+
+        return DoctorCheck::pass('oauth_cimd', 'OAuth client metadata documents', false, sprintf('Outbound HTTPS works (%s answered %d).', $probe, $status), ['probe_url' => $probe, 'status' => $status]);
     }
 
     private function isProduction(): bool
