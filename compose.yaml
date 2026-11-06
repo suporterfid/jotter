@@ -29,6 +29,8 @@ services:
       DB_USERNAME: ${DB_USERNAME?DB_USERNAME must be set in .env}
       DB_PASSWORD: ${DB_PASSWORD?DB_PASSWORD must be set in .env}
       JOTTER_RELEASE_ZIP: ${JOTTER_RELEASE_ZIP:-}
+      # `jt e2e` exports true so the OAuth consent spec runs; otherwise .env decides.
+      JOTTER_OAUTH_ENABLED: ${JOTTER_OAUTH_ENABLED:-false}
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 80) ? 0 : 1);"]
       interval: 2s
