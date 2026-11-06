@@ -6,6 +6,7 @@ use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\GrandpaSson\HttpIntrospectionClient;
 use App\Domain\Auth\GrandpaSson\IntrospectionClientInterface;
+use App\Models\Identity;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
@@ -135,6 +136,8 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
                 ),
             );
 
+            $this->rememberIdentity($user, (string) $ssoUser->id);
+
             return new AuthenticatedSubject(
                 subjectId: (string) $ssoUser->id,
                 email: $ssoUser->primary_email,
@@ -147,6 +150,30 @@ final class GrandpaSSOnIdentityProvider implements IdentityProvider
         } catch (\Throwable) {
             // Missing table / DB error / GrandpaSSOn not deployed alongside this app
             return null;
+        }
+    }
+
+    /**
+     * Links the SSO user's UUID to the local account in `identities`, as the
+     * OIDC provider does, so credentials resolved by the local user id (manual
+     * MCP tokens) still match memberships stored under the UUID. Writes only
+     * when the link is missing or points at another account (the e-mail
+     * changed at GrandpaSSOn), so a normal request costs one read.
+     */
+    private function rememberIdentity(User $user, string $ssoUserId): void
+    {
+        $linked = Identity::query()->where('provider', 'grandpasson')->where('subject_id', $ssoUserId)->value('user_id');
+        if ($linked !== null && (int) $linked === (int) $user->id) {
+            return;
+        }
+
+        try {
+            Identity::query()->updateOrCreate(
+                ['provider' => 'grandpasson', 'subject_id' => $ssoUserId],
+                ['user_id' => $user->id],
+            );
+        } catch (\Illuminate\Database\QueryException) {
+            // Two first requests racing on the unique key: the other one wrote it.
         }
     }
 

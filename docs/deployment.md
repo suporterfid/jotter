@@ -181,6 +181,11 @@ JOTTER_OAUTH_REDIRECT_ALLOWLIST=https://claude.ai/api/mcp/auth_callback,http://l
   front of the site, allow Anthropic's egress range `160.79.104.0/21` and OpenAI's
   published ranges on `/api/mcp`, `/.well-known/*` and `/oauth/*`.
 - The daily `oauth:prune` job (scheduler table above) keeps the OAuth tables small.
+- With `JOTTER_AUTH_PROVIDER=grandpasson`, a membership's subject may be the person's
+  GrandpaSSOn user UUID, their e-mail, or their local user id. Each sign-in links the
+  UUID to the local account (`identities`, provider `grandpasson`), so manual MCP tokens
+  and OAuth tokens both reach memberships stored under the UUID. Someone who has not
+  signed in since this release gets the link on their next sign-in.
 - Any sign-in mode works on the consent screen. With `JOTTER_AUTH_PROVIDER=grandpasson`
   the broker returns to `APP_URL`, and Jotter resumes the pending consent from there
   (for ten minutes after the client started the connection).

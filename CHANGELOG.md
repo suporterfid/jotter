@@ -4,6 +4,12 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Fix: manual MCP tokens for GrandpaSSOn users (#414) — 2026-11-06
+
+- A GrandpaSSOn sign-in now links the SSO user's UUID to the local account in `identities` (provider `grandpasson`), as OIDC already did. Manual tokens resolve the local user id, so memberships stored under the UUID now apply to them; before, `list_workspaces` came back empty for those people.
+- `mcp:token` infers the tenant from every subject id of the account (local id, e-mail, linked identities), not only the local id.
+- The link is written only when missing or pointing at another account, so a normal request adds one read. People who have not signed in since the upgrade get it on their next sign-in.
+
 ### OAuth follow-ups: admin Connected apps and GrandpaSSOn sign-in — 2026-11-04
 
 - **Administration → Connected apps**: a new tab lists every person's OAuth connections (client, redirect host, user, workspaces, scopes, client slug, last use, expiry) and revokes any of them, using the existing `/api/admin/oauth-grants` API.
