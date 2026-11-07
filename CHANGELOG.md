@@ -4,6 +4,11 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Playwright E2E of the OAuth consent screen — 2026-11-06
+
+- `frontend/e2e/oauth-consent.spec.ts` drives the consent screen in a real browser. A signed-in administrator registers a client (DCR), gets nothing pre-selected, is refused without a workspace, grants one workspace, and the client exchanges the code (PKCE) for a token whose `list_workspaces` shows only that workspace. Revoking it under Administration → Connected apps then makes the token answer 401. Without a session, the request goes to the SPA login, comes back to the consent screen after sign-in, and a denial returns `access_denied` with the client's `state`.
+- `jt e2e` (both `scripts/jt.sh` and `scripts/jt.ps1`) turns on `JOTTER_OAUTH_ENABLED` for its stack; elsewhere, `compose.yaml` leaves it to `.env` (off by default). The spec skips with a message when OAuth is off.
+
 ### Semantic search, opt-in (#412) — 2026-11-06
 
 - New MCP read tool **`semantic_search`** searches by meaning in workspaces that opted in. It returns `{mode, reason, results}` with the best passage and a score per note, and falls back to full-text search (`mode: "fulltext"`) when semantic search is off, the workspace has not opted in, the index is empty, or the provider fails.

@@ -101,6 +101,9 @@ cmd_test() {
 
 cmd_e2e() {
   bootstrap
+  # The OAuth consent spec (frontend/e2e/oauth-consent.spec.ts) needs the
+  # embedded OAuth server; it is off by default everywhere else.
+  export JOTTER_OAUTH_ENABLED=true
   compose run --rm app php artisan migrate:fresh --seed --force
   compose up -d --build --wait app
   compose run --rm app php artisan platform:bootstrap-admin admin@example.com password12345 || true

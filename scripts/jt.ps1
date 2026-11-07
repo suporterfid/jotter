@@ -177,6 +177,9 @@ switch ($Verb) {
     }
     'e2e' {
         Invoke-Bootstrap
+        # The OAuth consent spec (frontend/e2e/oauth-consent.spec.ts) needs the
+        # embedded OAuth server; it is off by default everywhere else.
+        $env:JOTTER_OAUTH_ENABLED = 'true'
         Invoke-Compose -Arguments @(
             'run', '--rm', 'app',
             'php', 'artisan', 'migrate:fresh', '--seed', '--force'
