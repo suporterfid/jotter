@@ -343,4 +343,30 @@ describe('AdminPanel Component', () => {
 
     expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'Brain', slug: 'brain', storage_quota_mb: 0 })
   })
+  it('lists pending sign-up requests apart and approves or rejects them (#390)', async () => {
+    type Row = { id: number; name: string; email: string; is_admin: boolean; is_active: boolean; signup_status: string | null; signup_requested_at?: string }
+    let users: Row[] = [
+      { id: 1, name: 'Admin', email: 'admin@acme.test', is_admin: true, is_active: true, signup_status: null },
+      { id: 9, name: 'Maria', email: 'maria@example.com', is_admin: false, is_active: false, signup_status: 'pending', signup_requested_at: '2026-11-08T10:00:00Z' },
+    ]
+    apiGet.mockImplementation((url: string) => Promise.resolve({ data: { data: url === '/admin/users' ? users : [] } }))
+    apiPost.mockImplementation((url: string) => {
+      if (url === '/admin/users/9/approve') users = users.map((u) => (u.id === 9 ? { ...u, is_active: true, signup_status: 'approved' } : u))
+      return Promise.resolve({ data: { data: {} } })
+    })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="admin-pending-badge"]').text()).toBe('1')
+
+    const usersTab = wrapper.findAll('.tab-btn').find((b) => b.text().startsWith('Users'))!
+    await usersTab.trigger('click')
+    expect(wrapper.find('[data-testid="admin-pending-9"]').text()).toContain('maria@example.com')
+
+    await wrapper.find('[data-testid="admin-approve-9"]').trigger('click')
+    await flushPromises()
+    expect(apiPost).toHaveBeenCalledWith('/admin/users/9/approve')
+    expect(wrapper.find('[data-testid="admin-pending-signups"]').exists()).toBe(false)
+  })
 })

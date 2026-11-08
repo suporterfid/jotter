@@ -138,6 +138,21 @@ return [
         'max_chunks_scanned' => (int) env('JOTTER_SEMANTIC_MAX_CHUNKS', 20000),
     ],
 
+    // Self sign-up with administrator approval (#390). Local authentication only
+    // (OIDC and GrandpaSSOn manage accounts themselves). Off by default.
+    'signup' => [
+        'enabled' => (bool) env('JOTTER_SIGNUP_ENABLED', false),
+        // Optional: comma-separated e-mail domains allowed to ask (empty = any).
+        'allowed_domains' => array_values(array_filter(array_map(
+            static fn (string $domain): string => strtolower(trim($domain)),
+            explode(',', (string) env('JOTTER_SIGNUP_ALLOWED_DOMAINS', '')),
+        ))),
+        // Optional: on approval, add the person to this workspace (slug) with this role.
+        'default_workspace' => env('JOTTER_SIGNUP_DEFAULT_WORKSPACE'),
+        'default_role' => env('JOTTER_SIGNUP_DEFAULT_ROLE', 'viewer'),
+        'requests_per_hour' => (int) env('JOTTER_SIGNUP_REQUESTS_PER_HOUR', 5),
+    ],
+
     // Workspace storage quota (#390). Per-workspace override: workspaces.storage_quota_mb
     // (`php artisan workspace:storage <slug> --quota=<MB>`; 0 = unlimited). Only growth is
     // refused (507); editing within the size and deleting always work.

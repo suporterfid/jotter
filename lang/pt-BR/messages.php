@@ -59,4 +59,11 @@ return [
     'credential_not_allowed' => 'Tokens não podem ser usados nesta requisição; entre com seu usuário.',
     'machine_token_invalid_options' => 'Opções inválidas para o token de máquina.',
     'storage_quota_exceeded' => 'Este workspace está cheio: :used de :limit usados. Apague notas ou anexos, ou peça a um administrador para aumentar a cota.',
+    'signup_disabled' => 'O cadastro não está disponível neste servidor.',
+    'signup_received' => 'Pedido recebido. Se for aprovado, você receberá um e-mail e poderá entrar.',
+    'signup_pending' => 'Sua conta está aguardando a aprovação de um administrador.',
+    'signup_domain_not_allowed' => 'Neste servidor, o cadastro é limitado a alguns domínios de e-mail.',
+    'signup_terms_required' => 'Aceite os termos de uso e a política de privacidade para continuar.',
+    'signup_not_pending' => 'Esta conta não tem pedido de cadastro pendente.',
+    'too_many_attempts' => 'Muitas tentativas. Tente de novo mais tarde.',
 ];

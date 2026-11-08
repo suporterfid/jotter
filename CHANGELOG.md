@@ -4,6 +4,12 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Self sign-up with administrator approval (#390) — 2026-11-08
+
+- With `JOTTER_SIGNUP_ENABLED=true` (local authentication only), the sign-in screen offers **Create an account**. `POST /api/auth/register` creates an inactive account (`signup_status=pending`) and e-mails every active administrator. The answer is identical for e-mails that already have an account, and requests are limited per IP (`JOTTER_SIGNUP_REQUESTS_PER_HOUR`, 5).
+- Administration → Users lists pending requests with **Approve** (activates the account, adds `JOTTER_SIGNUP_DEFAULT_WORKSPACE` with `JOTTER_SIGNUP_DEFAULT_ROLE` when set, e-mails the person) and **Reject** (e-mails the person and deletes the request). New endpoints: `POST /api/admin/users/{user}/approve|reject`.
+- A pending person who signs in with the right password gets "waiting for approval" (403). `JOTTER_SIGNUP_ALLOWED_DOMAINS` limits who may ask. When the operator publishes terms or privacy URLs, accepting them is required and recorded (`terms_accepted_at`). Migration `2026_11_08_000002`; audit events `signup.requested|approved|rejected`.
+
 ### Workspace storage quotas (#390) — 2026-11-08
 
 - Each workspace has a storage quota: `JOTTER_WORKSPACE_QUOTA_MB` (default **1024**, 0 = unlimited). It can be overridden per workspace in Administration → Workspaces or with `php artisan workspace:storage <slug> --quota=<MB|0|default>`. Migration `2026_11_08_000001` adds `storage_quota_mb`, `storage_bytes` and `storage_measured_at` to `workspaces`.

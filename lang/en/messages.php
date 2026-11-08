@@ -59,4 +59,11 @@ return [
     'credential_not_allowed' => 'Tokens cannot be used for this request; sign in instead.',
     'machine_token_invalid_options' => 'Invalid machine token options.',
     'storage_quota_exceeded' => 'This workspace is full: :used of :limit used. Delete notes or attachments, or ask an administrator to raise the quota.',
+    'signup_disabled' => 'Sign-up is not available on this server.',
+    'signup_received' => 'Request received. If it is approved, you will get an e-mail and can sign in.',
+    'signup_pending' => 'Your account is waiting for an administrator to approve it.',
+    'signup_domain_not_allowed' => 'Sign-up is limited to some e-mail domains on this server.',
+    'signup_terms_required' => 'Accept the terms of use and the privacy policy to continue.',
+    'signup_not_pending' => 'This account has no pending sign-up request.',
+    'too_many_attempts' => 'Too many attempts. Try again later.',
 ];

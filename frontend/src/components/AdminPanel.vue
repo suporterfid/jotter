@@ -24,6 +24,7 @@
           @click="activeTab = 'users'"
         >
           {{ t('adminPanel.users') }}
+          <span v-if="pendingSignups.length" class="tab-badge" data-testid="admin-pending-badge">{{ pendingSignups.length }}</span>
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'mcp' }]"
@@ -127,6 +128,23 @@
 
       <!-- Users Tab -->
       <div v-if="activeTab === 'users'" class="tab-content">
+        <template v-if="pendingSignups.length">
+          <h3>{{ t('adminPanel.pendingSignups') }}</h3>
+          <p class="admin-note">{{ t('adminPanel.pendingSignupsHelp') }}</p>
+          <ul class="admin-list" data-testid="admin-pending-signups">
+            <li v-for="u in pendingSignups" :key="u.id" class="admin-list-item" :data-testid="`admin-pending-${u.id}`">
+              <span>
+                <strong>{{ u.name }}</strong> ({{ u.email }})
+                <small v-if="u.signup_requested_at" class="admin-note"> · {{ formatDate(u.signup_requested_at) }}</small>
+              </span>
+              <div class="btn-group">
+                <button class="success-btn" :disabled="loading" :data-testid="`admin-approve-${u.id}`" @click="decideSignup(u, 'approve')">{{ t('adminPanel.approve') }}</button>
+                <button class="danger-btn" :disabled="loading" :data-testid="`admin-reject-${u.id}`" @click="decideSignup(u, 'reject')">{{ t('adminPanel.reject') }}</button>
+              </div>
+            </li>
+          </ul>
+        </template>
+
         <h3>{{ t('adminPanel.createLocalUser') }}</h3>
         <form @submit.prevent="createUser" class="admin-form">
           <input v-model="newUser.name" :placeholder="t('adminPanel.fullName')" required />
@@ -140,7 +158,7 @@
 
         <h3>{{ t('adminPanel.usersList') }}</h3>
         <ul class="admin-list">
-          <li v-for="u in users" :key="u.id" class="admin-list-item">
+          <li v-for="u in activeOrInactiveUsers" :key="u.id" class="admin-list-item">
             <span><strong>{{ u.name }}</strong> ({{ u.email }}) <em v-if="!u.is_active">{{ t('adminPanel.deactivatedTag') }}</em></span>
             <div class="btn-group">
               <button class="secondary-btn" data-testid="admin-reset-password-btn" :disabled="loading" @click="resetPassword(u)">{{ t('adminPanel.resetPassword') }}</button>
@@ -501,6 +519,24 @@ async function fetchMembers() {
   }
 }
 
+// Self sign-up requests waiting for a decision (#390).
+const pendingSignups = computed(() => users.value.filter((u: { signup_status?: string | null }) => u.signup_status === 'pending'))
+const activeOrInactiveUsers = computed(() => users.value.filter((u: { signup_status?: string | null }) => u.signup_status !== 'pending'))
+
+async function decideSignup(u: { id: number; name: string; email: string }, decision: 'approve' | 'reject') {
+  if (decision === 'reject' && !confirm(t('adminPanel.rejectConfirm', { name: u.name, email: u.email }))) return
+  loading.value = true
+  error.value = ''
+  try {
+    await api.post(`/admin/users/${u.id}/${decision}`)
+    await fetchUsers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, t('adminPanel.failedUpdateUser'))
+  } finally {
+    loading.value = false
+  }
+}
+
 async function fetchUsers() {
   try {
     const response = await api.get<{ data: any[] }>('/admin/users')
@@ -647,6 +683,17 @@ watch(() => props.isOpen, (val) => {
 </script>
 
 <style scoped>
+.tab-badge {
+  display: inline-block;
+  min-width: 1.25rem;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--color-warning-fg);
+  background: var(--color-warning-bg);
+}
+
 .admin-modal-overlay {
   position: fixed;
   top: 0;

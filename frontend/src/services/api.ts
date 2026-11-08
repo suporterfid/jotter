@@ -66,6 +66,22 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return response.data.data
 }
 
+export interface SignupRequest {
+  name: string
+  email: string
+  password: string
+  password_confirmation: string
+  accept_terms?: boolean
+  locale?: string
+}
+
+/** Self sign-up (#390): creates a pending account an administrator must approve. */
+export async function register(request: SignupRequest): Promise<string> {
+  await getCsrfCookie().catch(() => {})
+  const response = await api.post<{ message: string }>('/auth/register', request)
+  return response.data.message
+}
+
 export async function logout(): Promise<void> {
   await api.post('/auth/logout')
 }
@@ -97,6 +113,8 @@ export async function getMe(): Promise<AuthUser | null> {
 export interface AuthConfig {
   provider: 'local' | 'grandpasson' | 'oidc'
   sso_login_url: string | null
+  /** Self sign-up with approval is on (#390). */
+  signup_enabled?: boolean
   version: string | null
   external_embed_domains?: string[]
   brand?: BrandConfig

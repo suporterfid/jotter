@@ -203,6 +203,33 @@ can run at the same time, and what happens with big jobs.
 - Storage quotas (when enabled) are checked against the extracted size; see *Workspace
   storage quotas*.
 
+## Self sign-up with approval
+
+Off by default; accounts are created by administrators. To let people ask for an account:
+
+```dotenv
+JOTTER_SIGNUP_ENABLED=true
+JOTTER_SIGNUP_ALLOWED_DOMAINS=           # optional: example.com,example.org
+JOTTER_SIGNUP_DEFAULT_WORKSPACE=         # optional: workspace slug added on approval
+JOTTER_SIGNUP_DEFAULT_ROLE=viewer        # viewer or editor
+JOTTER_SIGNUP_REQUESTS_PER_HOUR=5        # per IP
+```
+
+- The sign-in screen gains **Create an account** (name, e-mail, password). The account is
+  created **inactive**, and every active administrator gets an e-mail. Nobody can sign in
+  until an administrator approves the request.
+- Administration → Users lists pending requests apart, with **Approve** and **Reject**.
+  Approving turns the account on, adds the default workspace membership when configured,
+  and e-mails the person. Rejecting e-mails them and **deletes** the request, so their
+  data is not kept.
+- The form answers the same way whether or not the e-mail already has an account, so it
+  cannot be used to find out who has one. A pending person who signs in with the right
+  password is told that approval is pending; a wrong password gets the usual error.
+- When `JOTTER_BRAND_TERMS_URL` or `JOTTER_BRAND_PRIVACY_URL` is set, the form requires
+  accepting them and records `terms_accepted_at`.
+- Only with `JOTTER_AUTH_PROVIDER=local`: OIDC and GrandpaSSOn manage their own accounts.
+- Audit events: `signup.requested`, `signup.approved`, `signup.rejected`.
+
 ## Workspace storage quotas
 
 Each workspace has a storage quota, so one vault cannot fill the hosting account.

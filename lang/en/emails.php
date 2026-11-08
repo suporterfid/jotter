@@ -19,6 +19,21 @@ return [
         'mcp_guide' => 'MCP guide',
         'trial' => '{1} Your trial lasts 1 day.|[2,*] Your trial lasts :days days; we will remind you before it ends.',
     ],
+    'signup_requested' => [
+        'subject' => ':name asked for an account',
+        'body' => ':name (:email) asked for an account on :brand. Their access stays off until an administrator approves it.',
+        'button' => 'Open :brand',
+        'where' => 'Approve or reject the request under Administration → Users.',
+    ],
+    'signup_approved' => [
+        'subject' => 'Your :brand account was approved',
+        'body' => 'An administrator approved your :brand account. You can now sign in with the e-mail and password you chose.',
+        'login_button' => 'Sign in',
+    ],
+    'signup_rejected' => [
+        'subject' => 'Your :brand account request',
+        'body' => 'Your request for a :brand account was not approved, and the data you sent has been deleted. If you think this is a mistake, contact the administrator of this site.',
+    ],
     'password_reset' => [
         'subject' => 'Your :brand password was reset',
         'body' => 'An administrator has reset the password of your :brand account. Use the new password they shared with you to sign in, then choose a password of your own.',
