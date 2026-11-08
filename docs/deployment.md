@@ -146,6 +146,62 @@ options. Hosted-mode plan state is changed with `php artisan tenant:plan <slug>`
 and inspected with `php artisan tenant:show <slug>` (see `docs/architecture.md`,
 "Hosted mode").
 
+## Concurrency and long-running work
+
+Jotter runs with no daemon and no worker process (spec §4). Everything that is not a web
+request is a bounded batch started by the single `schedule:run` cron entry. Here is what
+can run at the same time, and what happens with big jobs.
+
+**Background work**
+
+- `JobDispatcher` (`JOTTER_JOB_DISPATCHER=local`) only records a job; it does not run it.
+  The scheduled commands in the table above are the executors: each run picks up a
+  bounded batch (100 digest notifications, 50 e-mails, 10 PDF exports
+  (`jotter.pdf.process_batch_size`), 100 notes for semantic search), and the next minute
+  continues where it stopped.
+- Every scheduled command uses `withoutOverlapping(...)`: if a run is still going when cron
+  fires again, the new run is skipped, never doubled. The lock lives in the cache store
+  (`CACHE_STORE=database` by default) and expires after the minutes shown in
+  `routes/console.php` (10 for minute jobs, 55 for the hourly reindex), so a run killed
+  by the host does not block the job forever.
+- No application job implements `ShouldQueue` today, and mail is sent synchronously. The
+  `queue:work --stop-when-empty --max-time=50` entry only runs when
+  `QUEUE_CONNECTION=database`. It drains whatever an operator or package queues and exits;
+  it is not a resident worker.
+- CLI commands run without PHP's web `max_execution_time` (the CLI default is unlimited),
+  so heavy operations belong there: `vault:import`, `vault:reindex`, `tenant:export`,
+  `jotter:backup`, `jotter:restore`.
+
+**Web requests and writes**
+
+- Request concurrency is the host's limit on PHP processes ("entry processes" on
+  CloudLinux/cPanel, often 20–30). A request that runs long, such as a large import, holds
+  one of those processes until it ends.
+- Writes to the same note are serialized by a per-note lock: 10 s TTL, up to 5 s wait,
+  stored in the cache. The MCP write tools, the editor's `base_sha256` saves, and WebDAV
+  writes with `If-Match` take it. A busy lock answers 423 (WebDAV, REST) or a retryable tool
+  error (MCP). Writes without a precondition are last-writer-wins, and the previous
+  version stays in the revision history.
+- MCP is limited per token (`JOTTER_MCP_CALLS_PER_MINUTE=120`, `…_WRITES_PER_MINUTE=30`,
+  `…_WRITES_PER_DAY=500`); `/oauth/register` allows 10 per hour per IP.
+
+**Large imports**
+
+- The web import (`POST /api/workspaces/{id}/import`, the "Import" dialog) accepts a ZIP of
+  up to **50 MB**. It then extracts and reindexes **inside the request**. Two host limits
+  apply first: `upload_max_filesize` / `post_max_size` (often 2–64 MB on shared hosting),
+  then `max_execution_time` (often 30–60 s).
+- If the request is cut short, the files extracted so far stay in the vault, and nothing
+  is half-written inside a single file. The index catches up at the next hourly
+  `vault:reindex`, or right away with `php artisan vault:reindex --workspace=<id>`.
+  Running the same import again is safe: existing notes are skipped unless you tick
+  "overwrite".
+- For vaults over a few thousand notes or tens of MB, import over SSH instead:
+  `php artisan vault:import <workspace> archive.zip [--overwrite] [--source=obsidian|notion]`.
+  It has no time limit and reindexes at the end.
+- Storage quotas (when enabled) are checked against the extracted size; see *Workspace
+  storage quotas*.
+
 ## Backup and restore
 
 Jotter keeps two things: the **vaults** (`.md` files and attachments on disk, the source
