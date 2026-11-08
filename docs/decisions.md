@@ -251,3 +251,21 @@ Where are embeddings computed and stored, how do they stay current without a wor
 - Embedding the vault on disk in a worker or a TaskConnect job: possible later through the provider seam; not needed to ship.
 - Scheduler-driven, bounded indexing with an opt-in per workspace and a FULLTEXT fallback: selected.
 
+
+---
+
+## Decision — Jotter stays MIT-licensed; no dual license (#390)
+
+**Decided 2026-11-08 by the owner.** The 2026-08-31 triage (#390, item 5) noted that `LICENSE` is MIT, which allows anyone to resell the software, and asked for a decision if a paid self-hosted licence was ever intended.
+
+### Selected contract
+
+- Jotter remains under the **MIT License** for all of its code, including the hosted-mode features (plan/trial gates, branding, provisioning).
+- There is no dual licence and no proprietary add-on. Revenue, if any, comes from operating hosted instances and from support, not from licensing the code.
+- New code contributed to this repository is MIT. A future paid component would need a superseding decision entry and would have to live outside this repository.
+
+### Options considered
+
+- Dual licence (AGPL + commercial): rejected; it restricts the self-hosting audience the product is built for (shared hosting, "the cPanel your grandpa never gave up").
+- Open core with a proprietary add-on: rejected for now; there is no add-on worth separating, and two codebases double the maintenance on shared hosting.
+- Keep MIT: selected.
