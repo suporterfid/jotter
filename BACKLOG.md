@@ -36,6 +36,16 @@ Spec: `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md`. Pla
 
 ~~Follow-ups filed as issues~~ **Delivered 2026-11-06** (see CHANGELOG): WebDAV `ETag`/`If-Match`, so Obsidian writes get the same conflict protection ([#410](https://github.com/suporterfid/jotter/issues/410)); Client ID Metadata Documents in the OAuth server ([#411](https://github.com/suporterfid/jotter/issues/411)); opt-in semantic search over a rebuildable embeddings projection ([#412](https://github.com/suporterfid/jotter/issues/412), decision in `docs/decisions.md`); and manual MCP tokens for GrandpaSSOn users ([#414](https://github.com/suporterfid/jotter/issues/414)). Still open: check whether Remotely Save sends `If-Match`, and a live run of semantic search against a real provider.
 
+## Triage #390 (2026-08-31) — delivered 2026-11-08
+
+- ~~Self sign-up~~ **Delivered:** opt-in sign-up with administrator approval (`JOTTER_SIGNUP_ENABLED`).
+- ~~Storage quota~~ **Delivered:** per-workspace quota, default 1 GiB, warning at 80%, 507 on growth.
+- ~~Backup~~ **Delivered:** `jotter:backup` / `jotter:restore` and the runbook in `docs/deployment.md`.
+- **Terms and privacy:** drafts in `docs/legal/` waiting for the owner's review; publishing them is configuration (`JOTTER_BRAND_TERMS_URL` / `JOTTER_BRAND_PRIVACY_URL`).
+- ~~Licence strategy~~ **Decided:** stays MIT (`docs/decisions.md`).
+- ~~Queue worker~~ **Documented:** concurrency and large imports in `docs/deployment.md`.
+- **Follow-up (LGPD, P2):** there is no self-service way to change one's name or delete one's account, and no administrator action that deletes a user. The privacy draft says the operator handles these requests by hand for now. Suggested next step: an administrator "delete user" action, covering memberships, tokens, grants and an anonymised audit trail, plus name editing in the profile.
+
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 
 - **Doctor thresholds.** Disk-space (100 MiB critical / 1 GiB warning) and scheduler age (5 minutes) are constants on `InstanceDoctor`; make them configurable only if a host proves them wrong.

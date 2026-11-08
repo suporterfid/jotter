@@ -4,6 +4,10 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Terms of use and privacy policy drafts (#390) — 2026-11-08
+
+- `docs/legal/termos-de-uso.rascunho.md` and `docs/legal/politica-de-privacidade.rascunho.md` are pt-BR drafts (LGPD) for the operator to review. They describe the data Jotter actually keeps, the default retention periods and the possible processors. Nothing is published. Configuring `JOTTER_BRAND_TERMS_URL` / `JOTTER_BRAND_PRIVACY_URL` shows the links and makes sign-up require acceptance.
+
 ### Self sign-up with administrator approval (#390) — 2026-11-08
 
 - With `JOTTER_SIGNUP_ENABLED=true` (local authentication only), the sign-in screen offers **Create an account**. `POST /api/auth/register` creates an inactive account (`signup_status=pending`) and e-mails every active administrator. The answer is identical for e-mails that already have an account, and requests are limited per IP (`JOTTER_SIGNUP_REQUESTS_PER_HOUR`, 5).
