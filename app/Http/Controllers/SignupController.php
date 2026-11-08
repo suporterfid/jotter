@@ -43,7 +43,7 @@ final class SignupController extends Controller
             return response()->json(['message' => __('messages.too_many_attempts')], 429, ['Retry-After' => (string) RateLimiter::availableIn($key)]);
         }
 
-        $termsRequired = (string) config('jotter.terms_url', '') !== '' || (string) config('jotter.privacy_url', '') !== '';
+        $termsRequired = (string) config('jotter.brand.terms_url', '') !== '' || (string) config('jotter.brand.privacy_url', '') !== '';
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
             'email' => ['required', 'string', 'email', 'max:191'],

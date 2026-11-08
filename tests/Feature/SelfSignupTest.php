@@ -26,7 +26,7 @@ final class SelfSignupTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['jotter.auth_bypass' => false, 'jotter.auth_provider' => 'local', 'jotter.signup.enabled' => true, 'jotter.terms_url' => null, 'jotter.privacy_url' => null]);
+        config(['jotter.auth_bypass' => false, 'jotter.auth_provider' => 'local', 'jotter.signup.enabled' => true, 'jotter.brand.terms_url' => null, 'jotter.brand.privacy_url' => null]);
         RateLimiter::clear('signup:127.0.0.1');
         Mail::fake();
         $this->admin = User::factory()->create(['is_admin' => true, 'email' => 'admin@acme.test']);
@@ -142,7 +142,7 @@ final class SelfSignupTest extends TestCase
 
     public function test_terms_must_be_accepted_when_the_operator_publishes_them(): void
     {
-        config(['jotter.terms_url' => 'https://example.com/termos', 'jotter.privacy_url' => 'https://example.com/privacidade']);
+        config(['jotter.brand.terms_url' => 'https://example.com/termos', 'jotter.brand.privacy_url' => 'https://example.com/privacidade']);
 
         $this->register()->assertStatus(422)->assertJsonValidationErrors('accept_terms');
         $this->register(['accept_terms' => true])->assertStatus(202);
