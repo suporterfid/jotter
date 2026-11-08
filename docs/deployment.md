@@ -136,6 +136,7 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
 | `semantic:index --limit=100` | every 5 minutes | Embeds changed notes of workspaces that opted in to semantic search; clears the index while `JOTTER_SEMANTIC_ENABLED=false` (see `docs/mcp.md`). |
+| `jotter:backup` | daily 01:30, only when `JOTTER_BACKUP_DAILY=true` | Writes one ZIP with every Jotter table and vault file to `JOTTER_BACKUP_PATH` and keeps the newest `JOTTER_BACKUP_KEEP` (see *Backup and restore*). |
 | `oauth:prune` | daily 02:45 | Deletes expired OAuth codes and tokens, and idle OAuth clients without active grants. |
 | `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
 | `queue:work --stop-when-empty --max-time=50` | every minute, only when `QUEUE_CONNECTION=database` | Drains a database queue without a daemon. Mail is synchronous by default, so this is normally not registered. |
@@ -144,6 +145,62 @@ The individual commands below remain available for one-off runs with different
 options. Hosted-mode plan state is changed with `php artisan tenant:plan <slug>`
 and inspected with `php artisan tenant:show <slug>` (see `docs/architecture.md`,
 "Hosted mode").
+
+## Backup and restore
+
+Jotter keeps two things: the **vaults** (`.md` files and attachments on disk, the source
+of truth) and the **MySQL database** (users, memberships, ACLs, comments, revisions,
+tokens, OAuth grants, settings, plus a search index rebuilt from the vaults).
+`jotter:backup` saves both in one ZIP, in pure PHP: no `mysqldump`, no `exec`, so it runs
+from the same cron as everything else.
+
+```sh
+php artisan jotter:backup                 # storage/app/private/backups/jotter-backup-<timestamp>.zip
+php artisan jotter:backup --to=/home/u/backups/jotter.zip
+php artisan jotter:backup --no-vaults     # database only (small, quick)
+```
+
+```dotenv
+JOTTER_BACKUP_DAILY=true                  # schedule it every night at 01:30
+JOTTER_BACKUP_KEEP=7                      # newest archives kept in the folder
+JOTTER_BACKUP_PATH=                       # default storage/app/private/backups
+```
+
+- The ZIP holds password hashes, token hashes and every note. It is written outside the
+  document root (the command refuses `public/`). **Copy it off the server**, for
+  example by downloading it over SFTP or with the host's remote backup: a backup on the
+  same disk does not survive that disk.
+- Left out on purpose: sessions, cache, queue tables, password-reset tokens, and the
+  semantic-search index (`note_embeddings`), which `semantic:index` rebuilds.
+- Only this installation's tables are read (those with `DB_PREFIX`), never GrandpaSSOn's
+  tables that may share the database.
+- `jotter:doctor` reports the newest archive; with `JOTTER_BACKUP_DAILY=true` it warns
+  when that archive is more than 48 hours old.
+- cPanel's own backups (Files + MySQL) remain a good second copy. `jotter:backup` adds an
+  archive you can restore with one command, onto any host.
+
+### Restore (runbook)
+
+1. Deploy the **same or a newer** Jotter release, with `.env` pointing at the target
+   database (an empty one is fine), then run `php artisan migrate --force`.
+2. Upload the archive outside the document root and check it:
+   `php artisan jotter:restore /path/jotter-backup-….zip` prints its date and size and
+   asks for confirmation. Add `--force` to skip the question.
+3. If the vaults live somewhere else on the new host, add
+   `--vault-root=/home/<user>/vaults`: each vault goes to `<root>/<original folder>` and
+   the workspace paths are updated.
+4. After the restore:
+   ```sh
+   php artisan migrate --force          # when the code is newer than the backup
+   php artisan vault:reindex --all      # rebuild the projection from the restored files
+   php artisan semantic:index           # only if semantic search is on
+   php artisan jotter:doctor
+   ```
+
+The restore replaces every table found in the archive. The database part runs in one
+transaction, so a corrupt archive leaves the database as it was. Vault files are written
+over existing files, and files that only exist on the target are kept. A backup made by
+newer code (with migrations this code does not have) is refused. Upgrade the code first.
 
 ## External content embeds
 

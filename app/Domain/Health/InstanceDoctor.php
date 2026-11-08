@@ -82,6 +82,7 @@ final class InstanceDoctor
             $this->checkScheduler(),
             ...$this->checkOAuth(),
             $this->checkSemantic(),
+            $this->checkBackup(),
         ];
 
         return new DoctorReport(
@@ -209,6 +210,31 @@ final class InstanceDoctor
         return DoctorCheck::pass('semantic_search', 'Semantic search', false, sprintf('Workspaces %s send note text to %s; %d note(s) indexed (%d chunks).', implode(', ', $workspaces), $host, $indexedNotes, $chunks), [
             'workspaces' => $workspaces, 'provider_host' => $host, 'model' => (string) config('jotter.semantic.model'), 'indexed_notes' => $indexedNotes, 'chunks' => $chunks,
         ]);
+    }
+
+    /**
+     * Instance backups (#390): when the nightly backup is on, the newest
+     * archive must be under 48 hours old.
+     */
+    private function checkBackup(): DoctorCheck
+    {
+        $directory = rtrim((string) config('jotter.backup.path'), '/');
+        $archives = glob($directory.'/jotter-backup-*.zip') ?: [];
+        $newest = $archives === [] ? null : max(array_map('filemtime', $archives));
+        $details = ['path' => $directory, 'archives' => count($archives), 'newest_at' => $newest === null ? null : date(DATE_ATOM, (int) $newest)];
+
+        if (! (bool) config('jotter.backup.daily', false)) {
+            return DoctorCheck::pass('backup', 'Instance backup', false, $newest === null
+                ? 'No nightly backup (JOTTER_BACKUP_DAILY=false) and no archive found; run php artisan jotter:backup or rely on the host backups.'
+                : sprintf('No nightly backup; newest archive is from %s.', date('Y-m-d H:i', (int) $newest)), $details);
+        }
+        if ($newest === null || time() - (int) $newest > 48 * 3600) {
+            return DoctorCheck::fail('backup', 'Instance backup', false, $newest === null
+                ? 'JOTTER_BACKUP_DAILY=true but no archive exists yet in '.$directory.'.'
+                : sprintf('The newest backup is from %s, more than 48 hours ago; check the scheduler and disk space.', date('Y-m-d H:i', (int) $newest)), $details);
+        }
+
+        return DoctorCheck::pass('backup', 'Instance backup', false, sprintf('Nightly backup on; newest archive %s, %d kept.', date('Y-m-d H:i', (int) $newest), count($archives)), $details);
     }
 
     private function isProduction(): bool

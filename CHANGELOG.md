@@ -4,6 +4,12 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Instance backup and restore (#390) — 2026-11-08
+
+- **`php artisan jotter:backup`** writes one ZIP with every Jotter table (NDJSON, prefix-independent) and every vault file, in pure PHP (no `mysqldump`, no `exec`). It is written to `JOTTER_BACKUP_PATH` (default `storage/app/private/backups`), never under `public/`, and keeps the newest `JOTTER_BACKUP_KEEP` (7). `--no-vaults` / `--no-database` limit the archive. With `JOTTER_BACKUP_DAILY=true` it runs nightly at 01:30.
+- **`php artisan jotter:restore <zip>`** replaces the archived tables in one transaction (a corrupt archive changes nothing), skips generated columns, writes the vault files back (`--vault-root` moves them), refuses archives from newer code, and never writes outside a vault.
+- Sessions, cache, queues, reset tokens and the semantic index are left out; GrandpaSSOn's tables in a shared database are never read. `jotter:doctor` reports the newest backup and warns after 48 hours when nightly backups are on. Runbook: `docs/deployment.md`, "Backup and restore". Also recorded: Jotter stays MIT-licensed (`docs/decisions.md`).
+
 ### Playwright E2E of the OAuth consent screen — 2026-11-06
 
 - `frontend/e2e/oauth-consent.spec.ts` drives the consent screen in a real browser. A signed-in administrator registers a client (DCR), gets nothing pre-selected, is refused without a workspace, grants one workspace, and the client exchanges the code (PKCE) for a token whose `list_workspaces` shows only that workspace. Revoking it under Administration → Connected apps then makes the token answer 401. Without a session, the request goes to the SPA login, comes back to the consent screen after sign-in, and a denial returns `access_denied` with the client's `state`.

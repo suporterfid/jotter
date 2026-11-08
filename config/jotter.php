@@ -138,6 +138,17 @@ return [
         'max_chunks_scanned' => (int) env('JOTTER_SEMANTIC_MAX_CHUNKS', 20000),
     ],
 
+    // Instance backup (#390): `php artisan jotter:backup` writes one ZIP with every
+    // Jotter table (NDJSON) and every vault file, in pure PHP (no mysqldump, no exec).
+    // `daily` schedules it at 01:30; `keep` is how many archives stay in `path`.
+    'backup' => [
+        'path' => env('JOTTER_BACKUP_PATH') ?: storage_path('app/private/backups'),
+        'daily' => (bool) env('JOTTER_BACKUP_DAILY', false),
+        'keep' => (int) env('JOTTER_BACKUP_KEEP', 7),
+        // Never backed up: ephemeral state and projections rebuilt by commands.
+        'exclude_tables' => ['sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens', 'note_embeddings'],
+    ],
+
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 

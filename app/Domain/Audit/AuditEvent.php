@@ -55,6 +55,8 @@ enum AuditEvent: string
 
     case TENANT_PROVISIONED = 'tenant.provisioned';
     case TENANT_EXPORTED = 'tenant.exported';
+    case INSTANCE_BACKED_UP = 'instance.backed_up';
+    case INSTANCE_RESTORED = 'instance.restored';
     case TENANT_PLAN_CHANGED = 'tenant.plan_changed';
     case TENANT_TRIAL_REMINDER_SENT = 'tenant.trial_reminder_sent';
     case TENANT_TRIAL_EXPIRED = 'tenant.trial_expired';
