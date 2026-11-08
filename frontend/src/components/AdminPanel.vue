@@ -66,6 +66,11 @@
               <div class="admin-form">
                 <input v-model="wsEditDraft.name" data-testid="admin-edit-workspace-name" :placeholder="t('adminPanel.workspaceName')" required />
                 <input v-model="wsEditDraft.slug" data-testid="admin-edit-workspace-slug" :placeholder="t('adminPanel.slugPlaceholder')" required />
+                <label class="admin-check">
+                  {{ t('adminPanel.storageQuota') }}
+                  <input v-model="wsEditDraft.storage_quota_mb" type="number" min="0" step="1" data-testid="admin-edit-workspace-quota" :placeholder="t('adminPanel.storageQuotaHelp')" />
+                </label>
+                <p class="admin-form-note">{{ t('adminPanel.storageQuotaHelp') }}</p>
                 <p class="admin-form-note">{{ t('adminPanel.vaultPathNote') }}</p>
                 <div class="btn-group">
                   <button class="secondary-btn" data-testid="admin-edit-workspace-cancel" type="button" @click="cancelEditWorkspace">{{ t('adminPanel.cancel') }}</button>
@@ -74,7 +79,14 @@
               </div>
             </template>
             <template v-else>
-              <span><strong>{{ ws.name }}</strong> ({{ ws.slug }})</span>
+              <span>
+                <strong>{{ ws.name }}</strong> ({{ ws.slug }})
+                <small v-if="ws.storage" class="admin-note" :data-testid="`admin-ws-storage-${ws.id}`">
+                  · {{ t('adminPanel.storageUsed') }}: {{ formatBytes(ws.storage.used_bytes) }} /
+                  {{ ws.storage.limit_bytes === null ? t('adminPanel.storageUnlimited') : formatBytes(ws.storage.limit_bytes) }}
+                  <template v-if="ws.storage.percent !== null"> ({{ Math.round(ws.storage.percent) }}%)</template>
+                </small>
+              </span>
               <div class="btn-group">
                 <button class="secondary-btn" data-testid="admin-edit-workspace-btn" @click="startEditWorkspace(ws)">{{ t('adminPanel.edit') }}</button>
                 <button class="danger-btn" @click="archiveWorkspace(ws.id)" :disabled="loading">{{ t('adminPanel.archive') }}</button>
@@ -256,6 +268,7 @@ import { useI18n } from 'vue-i18n'
 import { api, getTenants, adminResetPassword } from '../services/api'
 import type { Tenant } from '../services/types'
 import McpClientSnippets from './McpClientSnippets.vue'
+import { formatBytes } from '../services/formatBytes'
 
 const { t } = useI18n()
 
@@ -443,7 +456,7 @@ async function revokeMcpToken(token: MachineTokenRow) {
 }
 
 const editingWsId = ref<number | null>(null)
-const wsEditDraft = ref({ name: '', slug: '' })
+const wsEditDraft = ref<{ name: string; slug: string; storage_quota_mb: number | string | null }>({ name: '', slug: '', storage_quota_mb: null })
 
 function close() {
   emit('close')
@@ -517,7 +530,7 @@ async function createWorkspace() {
 
 function startEditWorkspace(ws: any) {
   editingWsId.value = ws.id
-  wsEditDraft.value = { name: ws.name, slug: ws.slug }
+  wsEditDraft.value = { name: ws.name, slug: ws.slug, storage_quota_mb: ws.storage?.quota_mb ?? null }
 }
 
 function cancelEditWorkspace() {
@@ -528,7 +541,13 @@ async function saveEditWorkspace(id: number) {
   error.value = ''
   loading.value = true
   try {
-    await api.put(`/admin/workspaces/${id}`, wsEditDraft.value)
+    const quota = wsEditDraft.value.storage_quota_mb
+    await api.put(`/admin/workspaces/${id}`, {
+      name: wsEditDraft.value.name,
+      slug: wsEditDraft.value.slug,
+      // Empty field = instance default (null); 0 = unlimited.
+      storage_quota_mb: quota === '' || quota === null ? null : Number(quota),
+    })
     editingWsId.value = null
     await fetchWorkspaces()
   } catch (e: unknown) {

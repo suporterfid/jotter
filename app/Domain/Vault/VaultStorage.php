@@ -48,10 +48,17 @@ final class VaultStorage
         // Re-resolve after parents exist so symlink escapes are caught before write.
         $absolute = $this->paths->resolve($workspace, $relative, mustExist: false);
 
+        // Storage quota (#390): only growth is refused.
+        clearstatcache(true, $absolute);
+        $delta = strlen($contents) - (is_file($absolute) ? (int) filesize($absolute) : 0);
+        $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
+        $quota->assertCanGrow($workspace, $delta);
+
         $written = file_put_contents($absolute, $contents, LOCK_EX);
         if ($written === false) {
             throw new \RuntimeException("Unable to write vault note [{$relative}].");
         }
+        $quota->recordDelta($workspace, $delta);
 
         $document = MarkdownDocument::parse($contents, $this->fallbackTitle($relative));
 

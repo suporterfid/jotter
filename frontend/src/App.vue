@@ -79,6 +79,7 @@
     <!-- Main Content Area -->
     <main class="main-content">
       <PlanBanner :plan="activeTenantPlan" :plan-limit="planLimitActive" />
+      <StorageBanner :storage="activeWorkspaceStorage" />
       <!-- Graph View Mode -->
       <GraphView
         v-if="isGraphViewActive"
@@ -428,11 +429,13 @@ import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
 import { brand, setBrand } from './services/brand'
 import type { ImportSource } from './services/api'
 import PlanBanner from './components/PlanBanner.vue'
+import StorageBanner from './components/StorageBanner.vue'
 
 const { t } = useI18n()
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
+const activeWorkspaceStorage = computed(() => workspaces.value.find((ws) => ws.id === activeWorkspaceId.value)?.storage ?? null)
 const tenants = ref<Tenant[]>([])
 const activeTenantId = ref<number | null>(null)
 const activeTenantPlan = computed(() => tenants.value.find((tenant) => tenant.id === activeTenantId.value)?.plan ?? null)

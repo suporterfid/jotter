@@ -14,11 +14,17 @@ class Workspace extends Model
         'name',
         'vault_path',
         'semantic_search',
+        'storage_quota_mb',
     ];
 
     protected function casts(): array
     {
-        return ['semantic_search' => 'boolean'];
+        return [
+            'semantic_search' => 'boolean',
+            'storage_quota_mb' => 'integer',
+            'storage_bytes' => 'integer',
+            'storage_measured_at' => 'datetime',
+        ];
     }
 
     public function tenant(): BelongsTo

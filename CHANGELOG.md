@@ -4,6 +4,13 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Workspace storage quotas (#390) — 2026-11-08
+
+- Each workspace has a storage quota: `JOTTER_WORKSPACE_QUOTA_MB` (default **1024**, 0 = unlimited). It can be overridden per workspace in Administration → Workspaces or with `php artisan workspace:storage <slug> --quota=<MB|0|default>`. Migration `2026_11_08_000001` adds `storage_quota_mb`, `storage_bytes` and `storage_measured_at` to `workspaces`.
+- Only growth is refused: notes, attachments, imports (checked before anything is written) and WebDAV/MCP writes that would pass the quota answer **507 Insufficient Storage** (MCP: a readable tool error). Edits that do not grow the vault and deletes always work.
+- Usage is measured from disk on first use and hourly (`workspace:storage --measure`), and kept current by each write's size delta in between. `/api/workspaces` returns a `storage` status, the SPA shows a banner from 80% (`JOTTER_WORKSPACE_QUOTA_WARN_PERCENT`) and when the workspace is full, and `jotter:doctor` lists workspaces near or over their quota.
+- **Upgrade note:** a workspace already over 1 GiB stops accepting growth right after the upgrade. Run `php artisan workspace:storage --measure` and raise the quotas you need.
+
 ### Instance backup and restore (#390) — 2026-11-08
 
 - **`php artisan jotter:backup`** writes one ZIP with every Jotter table (NDJSON, prefix-independent) and every vault file, in pure PHP (no `mysqldump`, no `exec`). It is written to `JOTTER_BACKUP_PATH` (default `storage/app/private/backups`), never under `public/`, and keeps the newest `JOTTER_BACKUP_KEEP` (7). `--no-vaults` / `--no-database` limit the archive. With `JOTTER_BACKUP_DAILY=true` it runs nightly at 01:30.

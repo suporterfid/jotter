@@ -58,4 +58,5 @@ return [
     'note_locked' => 'A nota está sendo salva por outra pessoa; tente de novo em instantes.',
     'credential_not_allowed' => 'Tokens não podem ser usados nesta requisição; entre com seu usuário.',
     'machine_token_invalid_options' => 'Opções inválidas para o token de máquina.',
+    'storage_quota_exceeded' => 'Este workspace está cheio: :used de :limit usados. Apague notas ou anexos, ou peça a um administrador para aumentar a cota.',
 ];

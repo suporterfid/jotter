@@ -16,6 +16,10 @@ export default {
     support: 'Suporte',
     poweredBy: 'Powered by Jotter',
   },
+  storage: {
+    nearlyFull: 'Este workspace usa {used} de {limit} ({percent}%). Apague notas ou anexos, ou peça mais espaço a um administrador.',
+    full: 'Este workspace está cheio ({used} de {limit}). Novas notas e uploads ficam bloqueados até liberar espaço ou aumentar a cota.',
+  },
   plan: {
     trialEndsIn: 'O período de teste termina em {days} dias',
     trialEndsToday: 'O período de teste termina hoje',
@@ -446,6 +450,10 @@ export default {
   },
   adminPanel: {
     requestFailed: 'A solicitação falhou.',
+    storageUsed: 'Armazenamento',
+    storageQuota: 'Cota de armazenamento (MB)',
+    storageQuotaHelp: 'Vazio = padrão da instância; 0 = ilimitado.',
+    storageUnlimited: 'ilimitado',
     mcpTokens: "Tokens MCP",
     connectedApps: 'Apps conectados',
     connectedAppsHelp: 'Conexões OAuth (Claude web, ChatGPT…) de todos os usuários. Revogar uma corta os tokens na hora; cada pessoa também vê as suas em Apps conectados, na barra lateral.',

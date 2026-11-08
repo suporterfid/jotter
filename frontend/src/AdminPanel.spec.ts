@@ -172,7 +172,7 @@ describe('AdminPanel Component', () => {
     await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
     await flushPromises()
 
-    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'New Name', slug: 'new-slug' })
+    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'New Name', slug: 'new-slug', storage_quota_mb: null })
     expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(false)
   })
 
@@ -320,5 +320,27 @@ describe('AdminPanel Component', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="admin-apps-empty"]').text()).toBe('No connected apps.')
+  })
+  it('shows workspace storage and edits the quota (empty = default, 0 = unlimited)', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [
+          { id: 3, tenant_id: 1, slug: 'brain', name: 'Brain', storage: { used_bytes: 900 * 1024 * 1024, limit_bytes: 1024 * 1024 * 1024, percent: 87.9, warning: true, exceeded: false, quota_mb: null } },
+        ] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="admin-ws-storage-3"]').text().replace(/\s+/g, ' ')).toContain('900.0 MB / 1.0 GB (88%)')
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-edit-workspace-quota"]').setValue('0')
+    await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
+    await flushPromises()
+
+    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'Brain', slug: 'brain', storage_quota_mb: 0 })
   })
 })

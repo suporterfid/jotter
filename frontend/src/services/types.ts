@@ -1,8 +1,19 @@
+export interface WorkspaceStorage {
+  used_bytes: number
+  limit_bytes: number | null
+  percent: number | null
+  warning: boolean
+  exceeded: boolean
+  quota_mb: number | null
+}
+
 export interface Workspace {
   id: number
   tenant_id: number
   slug: string
   name: string
+  /** Storage quota status (#390); absent on older servers. */
+  storage?: WorkspaceStorage
 }
 
 export type PlanStatus = 'self_hosted' | 'trial' | 'active' | 'past_due' | 'read_only'

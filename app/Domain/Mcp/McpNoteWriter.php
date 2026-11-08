@@ -233,7 +233,11 @@ final class McpNoteWriter
     {
         $existing = Note::query()->where('workspace_id', $workspace->id)->where('path', $relative)->first();
 
-        $note = $this->storage->write($workspace, $relative, $contents, $subject->subjectId);
+        try {
+            $note = $this->storage->write($workspace, $relative, $contents, $subject->subjectId);
+        } catch (\App\Domain\Quota\QuotaExceeded $full) {
+            return McpWriteResult::error($full->getMessage(), ['path' => $relative, 'used_bytes' => $full->usedBytes, 'limit_bytes' => $full->limitBytes]);
+        }
         if ($existing !== null) {
             $this->events->emitNoteEdited($note, $subject);
         }

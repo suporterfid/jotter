@@ -58,4 +58,5 @@ return [
     'note_locked' => 'The note is being saved by someone else; try again in a moment.',
     'credential_not_allowed' => 'Tokens cannot be used for this request; sign in instead.',
     'machine_token_invalid_options' => 'Invalid machine token options.',
+    'storage_quota_exceeded' => 'This workspace is full: :used of :limit used. Delete notes or attachments, or ask an administrator to raise the quota.',
 ];

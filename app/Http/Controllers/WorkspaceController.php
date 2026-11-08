@@ -29,6 +29,16 @@ class WorkspaceController extends Controller
             $query->where('tenant_id', (int) $tenantId);
         }
 
-        return response()->json(['data' => $query->get()]);
+        $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
+        $query->addSelect(['vault_path', 'storage_quota_mb', 'storage_bytes']);
+
+        return response()->json(['data' => $query->get()->map(static fn (Workspace $workspace): array => [
+            'id' => $workspace->id,
+            'tenant_id' => $workspace->tenant_id,
+            'slug' => $workspace->slug,
+            'name' => $workspace->name,
+            // Storage quota (#390): drives the "almost full" warning in the SPA.
+            'storage' => $quota->status($workspace) + ['quota_mb' => $workspace->storage_quota_mb],
+        ])->values()]);
     }
 }

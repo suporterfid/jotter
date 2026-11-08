@@ -83,6 +83,7 @@ final class InstanceDoctor
             ...$this->checkOAuth(),
             $this->checkSemantic(),
             $this->checkBackup(),
+            $this->checkQuotas(),
         ];
 
         return new DoctorReport(
@@ -235,6 +236,37 @@ final class InstanceDoctor
         }
 
         return DoctorCheck::pass('backup', 'Instance backup', false, sprintf('Nightly backup on; newest archive %s, %d kept.', date('Y-m-d H:i', (int) $newest), count($archives)), $details);
+    }
+
+    /**
+     * Workspace storage quotas (#390), from the last measured usage (no disk walk here).
+     */
+    private function checkQuotas(): DoctorCheck
+    {
+        $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
+        $full = [];
+        $warning = [];
+        foreach (\App\Models\Workspace::query()->whereNotNull('storage_bytes')->get() as $workspace) {
+            $status = $quota->status($workspace);
+            if ($status['exceeded']) {
+                $full[] = $workspace->slug;
+            } elseif ($status['warning']) {
+                $warning[] = $workspace->slug.' ('.$status['percent'].'%)';
+            }
+        }
+        $defaultMb = (int) config('jotter.quota.default_mb', 1024);
+        $details = ['default_mb' => $defaultMb, 'full' => $full, 'warning' => $warning];
+
+        if ($full !== [] || $warning !== []) {
+            return DoctorCheck::fail('storage_quota', 'Workspace storage quotas', false, trim(
+                ($full === [] ? '' : 'Full (writes that grow them are refused): '.implode(', ', $full).'. ')
+                .($warning === [] ? '' : 'Near the quota: '.implode(', ', $warning).'.')
+            ).' Raise with php artisan workspace:storage <slug> --quota=<MB>.', $details);
+        }
+
+        return DoctorCheck::pass('storage_quota', 'Workspace storage quotas', false, $defaultMb > 0
+            ? sprintf('Every workspace is under %d%% of its quota (default %d MB).', (int) config('jotter.quota.warn_percent', 80), $defaultMb)
+            : 'Unlimited by default (JOTTER_WORKSPACE_QUOTA_MB=0).', $details);
     }
 
     private function isProduction(): bool

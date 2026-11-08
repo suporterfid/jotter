@@ -138,6 +138,14 @@ return [
         'max_chunks_scanned' => (int) env('JOTTER_SEMANTIC_MAX_CHUNKS', 20000),
     ],
 
+    // Workspace storage quota (#390). Per-workspace override: workspaces.storage_quota_mb
+    // (`php artisan workspace:storage <slug> --quota=<MB>`; 0 = unlimited). Only growth is
+    // refused (507); editing within the size and deleting always work.
+    'quota' => [
+        'default_mb' => (int) env('JOTTER_WORKSPACE_QUOTA_MB', 1024),
+        'warn_percent' => (int) env('JOTTER_WORKSPACE_QUOTA_WARN_PERCENT', 80),
+    ],
+
     // Instance backup (#390): `php artisan jotter:backup` writes one ZIP with every
     // Jotter table (NDJSON) and every vault file, in pure PHP (no mysqldump, no exec).
     // `daily` schedules it at 01:30; `keep` is how many archives stay in `path`.

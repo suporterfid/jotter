@@ -16,6 +16,10 @@ export default {
     support: 'Support',
     poweredBy: 'Powered by Jotter',
   },
+  storage: {
+    nearlyFull: 'This workspace uses {used} of {limit} ({percent}%). Delete notes or attachments, or ask an administrator for more space.',
+    full: 'This workspace is full ({used} of {limit}). New notes and uploads are refused until space is freed or the quota is raised.',
+  },
   plan: {
     trialEndsIn: 'Trial ends in {days} days',
     trialEndsToday: 'Trial ends today',
@@ -446,6 +450,10 @@ export default {
   },
   adminPanel: {
     requestFailed: 'Request failed.',
+    storageUsed: 'Storage',
+    storageQuota: 'Storage quota (MB)',
+    storageQuotaHelp: 'Empty = instance default; 0 = unlimited.',
+    storageUnlimited: 'unlimited',
     mcpTokens: "MCP tokens",
     connectedApps: 'Connected apps',
     connectedAppsHelp: "OAuth connections (Claude web, ChatGPT…) of every user. Revoking one stops its tokens immediately; each person also sees their own under the sidebar's Connected apps.",

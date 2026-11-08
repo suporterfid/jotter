@@ -136,6 +136,7 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
 | `semantic:index --limit=100` | every 5 minutes | Embeds changed notes of workspaces that opted in to semantic search; clears the index while `JOTTER_SEMANTIC_ENABLED=false` (see `docs/mcp.md`). |
+| `workspace:storage --measure` | hourly at :30 | Re-measures each vault on disk for the storage quotas; between runs, writes keep the running total. |
 | `jotter:backup` | daily 01:30, only when `JOTTER_BACKUP_DAILY=true` | Writes one ZIP with every Jotter table and vault file to `JOTTER_BACKUP_PATH` and keeps the newest `JOTTER_BACKUP_KEEP` (see *Backup and restore*). |
 | `oauth:prune` | daily 02:45 | Deletes expired OAuth codes and tokens, and idle OAuth clients without active grants. |
 | `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
@@ -201,6 +202,37 @@ can run at the same time, and what happens with big jobs.
   It has no time limit and reindexes at the end.
 - Storage quotas (when enabled) are checked against the extracted size; see *Workspace
   storage quotas*.
+
+## Workspace storage quotas
+
+Each workspace has a storage quota, so one vault cannot fill the hosting account.
+
+```dotenv
+JOTTER_WORKSPACE_QUOTA_MB=1024          # default per workspace (1 GiB); 0 = unlimited
+JOTTER_WORKSPACE_QUOTA_WARN_PERCENT=80  # banner and jotter:doctor warning from here
+```
+
+- **Only growth is refused.** A write that would take the vault past its quota answers
+  **507 Insufficient Storage**: new notes, larger edits, attachments, and imports (the whole
+  archive must fit before anything is written). MCP write tools return a readable error.
+  Editing without growing and deleting always work, so a full workspace can still be
+  cleaned up.
+- Everyone in the workspace sees a banner from 80%, and another when it is full.
+  Administrators see usage per workspace under Administration → Workspaces and can set
+  a workspace's own quota there. Leave it empty for the default, or set 0 for unlimited.
+- From SSH:
+  ```sh
+  php artisan workspace:storage                  # usage of every workspace
+  php artisan workspace:storage brain --quota=5120
+  php artisan workspace:storage brain --quota=default
+  php artisan workspace:storage --measure        # re-measure now (also hourly)
+  ```
+- Usage is the size of every file in the vault, including `.trash/` and `_resources/`.
+  Purging the trash (`vault:purge-trash`, nightly) frees space at the next measurement.
+- **Upgrading:** a workspace that is already over 1 GiB is full right after the upgrade:
+  reads, edits that do not grow it, and deletes still work. Check
+  `php artisan workspace:storage --measure` after deploying, and raise the quota where
+  needed.
 
 ## Backup and restore
 
