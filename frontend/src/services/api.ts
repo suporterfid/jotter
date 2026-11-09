@@ -86,6 +86,12 @@ export async function logout(): Promise<void> {
   await api.post('/auth/logout')
 }
 
+/** The signed-in person corrects their own name (#390). Returns the saved name. */
+export async function updateProfile(name: string): Promise<string> {
+  const response = await api.put<{ data: { name: string } }>('/user/profile', { name })
+  return response.data.data.name
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await api.post('/auth/change-password', {
     current_password: currentPassword,

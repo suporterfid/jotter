@@ -230,6 +230,24 @@ JOTTER_SIGNUP_REQUESTS_PER_HOUR=5        # per IP
 - Only with `JOTTER_AUTH_PROVIDER=local`: OIDC and GrandpaSSOn manage their own accounts.
 - Audit events: `signup.requested`, `signup.approved`, `signup.rejected`.
 
+## Deleting an account (LGPD)
+
+Administration → Users → **Delete**, or `php artisan user:delete <e-mail> [--force]`.
+
+- **Removed:** the account, its workspace memberships (including those stored under an SSO
+  UUID or the e-mail), manual tokens, OAuth grants and their tokens, note ACL entries,
+  linked identities, sessions, notifications, preferences, watches and group memberships.
+- **Kept, anonymised:** comments stay in the workspace, signed "Deleted user". Revision and
+  audit entries keep their dates but name `deleted-user`, and the e-mail is removed from
+  audit metadata. Notes and attachments belong to the workspace and are not touched.
+- You cannot delete your own account or the last active administrator.
+- With OIDC or GrandpaSSOn, a deleted person who signs in again gets a new, empty account.
+  Block them at the provider as well.
+- Backups made before the deletion still contain the account until they rotate out
+  (`JOTTER_BACKUP_KEEP`).
+- People correct their own name under **Edit profile** (local sign-in only; with an SSO
+  provider the name comes from the provider). Audit event: `user.profile_updated`.
+
 ## Workspace storage quotas
 
 Each workspace has a storage quota, so one vault cannot fill the hosting account.

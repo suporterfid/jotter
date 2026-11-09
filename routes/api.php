@@ -34,6 +34,7 @@ Route::get('/auth/oidc/redirect', [\App\Http\Controllers\OidcController::class, 
 Route::get('/auth/oidc/callback', [\App\Http\Controllers\OidcController::class, 'callback']);
 Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);
 Route::post('/user/locale', [\App\Http\Controllers\UserLocaleController::class, 'update']);
+Route::put('/user/profile', [\App\Http\Controllers\UserProfileController::class, 'update']);
 Route::get('/user/notification-preferences', [NotificationPreferenceController::class, 'index']);
 Route::put('/user/notification-preferences/{type}', [NotificationPreferenceController::class, 'update']);
 Route::post('/mcp', [\App\Http\Controllers\McpController::class, 'handle']);
@@ -43,6 +44,7 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/admin/users', [\App\Http\Controllers\AdminUserController::class, 'store']);
     Route::post('/admin/users/{user}/deactivate', [\App\Http\Controllers\AdminUserController::class, 'deactivate']);
     Route::post('/admin/users/{user}/reactivate', [\App\Http\Controllers\AdminUserController::class, 'reactivate']);
+    Route::delete('/admin/users/{user}', [\App\Http\Controllers\AdminUserController::class, 'destroy']);
     Route::post('/admin/users/{user}/approve', [\App\Http\Controllers\AdminSignupController::class, 'approve']);
     Route::post('/admin/users/{user}/reject', [\App\Http\Controllers\AdminSignupController::class, 'reject']);
     Route::post('/admin/users/{user}/reset-password', [\App\Http\Controllers\AdminUserController::class, 'resetPassword']);

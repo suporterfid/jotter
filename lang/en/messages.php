@@ -66,4 +66,8 @@ return [
     'signup_terms_required' => 'Accept the terms of use and the privacy policy to continue.',
     'signup_not_pending' => 'This account has no pending sign-up request.',
     'too_many_attempts' => 'Too many attempts. Try again later.',
+    'user_delete_self' => 'You cannot delete your own account.',
+    'user_delete_last_admin' => 'This is the last active administrator; promote someone else first.',
+    'deleted_user' => 'Deleted user',
+    'profile_managed_by_provider' => 'Your name comes from your sign-in provider; change it there.',
 ];

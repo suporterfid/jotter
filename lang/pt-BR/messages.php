@@ -66,4 +66,8 @@ return [
     'signup_terms_required' => 'Aceite os termos de uso e a política de privacidade para continuar.',
     'signup_not_pending' => 'Esta conta não tem pedido de cadastro pendente.',
     'too_many_attempts' => 'Muitas tentativas. Tente de novo mais tarde.',
+    'user_delete_self' => 'Você não pode excluir a própria conta.',
+    'user_delete_last_admin' => 'Este é o último administrador ativo; promova outra pessoa antes.',
+    'deleted_user' => 'Usuário excluído',
+    'profile_managed_by_provider' => 'Seu nome vem do seu provedor de login; altere-o por lá.',
 ];

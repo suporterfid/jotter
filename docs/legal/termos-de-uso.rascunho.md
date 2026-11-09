@@ -86,8 +86,10 @@ Você concorda em não usar o Serviço para:
 2. Podemos suspender ou encerrar uma conta que viole estes Termos ou a lei, ou que ponha
    em risco o Serviço ou outras pessoas. Quando possível, avisaremos antes e daremos
    prazo para você exportar o Conteúdo.
-3. Depois do encerramento, o Conteúdo é apagado conforme os prazos da Política de
-   Privacidade (inclusive das cópias de segurança, que se renovam em até [7] dias).
+3. Depois do encerramento, seus dados de conta são apagados conforme a Política de
+   Privacidade, inclusive das cópias de segurança, que se renovam em até [7] dias. Notas e
+   comentários que você escreveu em workspaces compartilhados pertencem ao workspace e
+   continuam lá, sem o seu nome nos comentários.
 
 ## 8. Responsabilidade
 

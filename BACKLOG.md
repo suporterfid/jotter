@@ -44,7 +44,7 @@ Spec: `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md`. Pla
 - **Terms and privacy:** drafts in `docs/legal/` waiting for the owner's review; publishing them is configuration (`JOTTER_BRAND_TERMS_URL` / `JOTTER_BRAND_PRIVACY_URL`).
 - ~~Licence strategy~~ **Decided:** stays MIT (`docs/decisions.md`).
 - ~~Queue worker~~ **Documented:** concurrency and large imports in `docs/deployment.md`.
-- **Follow-up (LGPD, P2):** there is no self-service way to change one's name or delete one's account, and no administrator action that deletes a user. The privacy draft says the operator handles these requests by hand for now. Suggested next step: an administrator "delete user" action, covering memberships, tokens, grants and an anonymised audit trail, plus name editing in the profile.
+- ~~**Follow-up (LGPD, P2):** no way to correct one's name or delete an account.~~ **Delivered 2026-11-09:** Administration → Users → Delete (and `user:delete`) removes the account, memberships, tokens, grants, ACL entries and identities, and anonymises comments, revisions and audit entries; "Edit profile" lets people correct their name (local sign-in).
 
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 

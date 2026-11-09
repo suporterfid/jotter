@@ -369,4 +369,31 @@ describe('AdminPanel Component', () => {
     expect(apiPost).toHaveBeenCalledWith('/admin/users/9/approve')
     expect(wrapper.find('[data-testid="admin-pending-signups"]').exists()).toBe(false)
   })
+  it('deletes a user after confirmation (#390 LGPD follow-up)', async () => {
+    let users = [
+      { id: 1, name: 'Admin', email: 'admin@acme.test', is_admin: true, is_active: true, signup_status: null },
+      { id: 5, name: 'Joe', email: 'joe@acme.test', is_admin: false, is_active: true, signup_status: null },
+    ]
+    apiGet.mockImplementation((url: string) => Promise.resolve({ data: { data: url === '/admin/users' ? users : [] } }))
+    apiDelete.mockImplementation((url: string) => {
+      if (url === '/admin/users/5') users = users.filter((u) => u.id !== 5)
+      return Promise.resolve({ data: {} })
+    })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    await wrapper.findAll('.tab-btn').find((b) => b.text().startsWith('Users'))!.trigger('click')
+
+    await wrapper.find('[data-testid="admin-delete-user-5"]').trigger('click')
+    expect(apiDelete).not.toHaveBeenCalled()
+
+    await wrapper.find('[data-testid="admin-delete-user-5"]').trigger('click')
+    await flushPromises()
+    expect(confirmSpy).toHaveBeenLastCalledWith(expect.stringContaining('joe@acme.test'))
+    expect(apiDelete).toHaveBeenCalledWith('/admin/users/5')
+    expect(wrapper.find('[data-testid="admin-delete-user-5"]').exists()).toBe(false)
+    confirmSpy.mockRestore()
+  })
 })

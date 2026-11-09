@@ -179,6 +179,24 @@ final class AdminUserController extends Controller
         return response()->json(['message' => __('messages.password_changed_successfully')]);
     }
 
+    /**
+     * Deletes the account and what identifies the person (#390, LGPD follow-up).
+     * Works for any identity provider; an SSO user who signs in again gets a new,
+     * empty account.
+     */
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeAdmin($request);
+
+        try {
+            $counts = app(\App\Domain\Users\UserDeletion::class)->delete($user, $this->currentSubject($request)?->subjectId);
+        } catch (\RuntimeException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['data' => ['id' => $user->id, 'deleted' => true, 'removed' => $counts]]);
+    }
+
     private function authorizeAdmin(Request $request): void
     {
         if (config('jotter.auth_bypass', false)) {

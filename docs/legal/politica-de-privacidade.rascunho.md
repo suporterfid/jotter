@@ -7,9 +7,10 @@
 > advogado. Depois de revisado, publique-o numa URL e configure
 > `JOTTER_BRAND_PRIVACY_URL`.
 >
-> **Lacunas do software a conhecer antes de publicar:** o Jotter ainda não tem, na
-> interface, a correção do próprio nome nem a exclusão da conta. Até isso existir, quem
-> atende esses pedidos é o operador, manualmente, dentro do prazo (ver `BACKLOG.md`).
+> **Como atender os pedidos do art. 18:** o próprio titular corrige o nome em "Editar
+> perfil" (só com login local; com OIDC ou GrandpaSSOn o nome vem do provedor). A exclusão
+> de conta é feita por um administrador em Administração → Usuários → Excluir, ou por
+> `php artisan user:delete <e-mail>`.
 
 **Última atualização:** [DATA]
 
@@ -93,8 +94,8 @@ e a ANPD, conforme o art. 48 da LGPD.
 Você pode, a qualquer momento e sem custo (LGPD, art. 18):
 
 - confirmar se tratamos seus dados e ter acesso a eles;
-- corrigir dados incompletos, inexatos ou desatualizados (o idioma pode ser alterado no
-  próprio Serviço; para corrigir o nome ou o e-mail, escreva para o encarregado);
+- corrigir dados incompletos, inexatos ou desatualizados (nome e idioma podem ser
+  alterados no próprio Serviço; para corrigir o e-mail, escreva para o encarregado);
 - pedir anonimização, bloqueio ou eliminação de dados desnecessários ou tratados em
   desconformidade com a lei;
 - pedir a portabilidade: o Conteúdo pode ser exportado por você mesmo, em Markdown, pela
@@ -107,9 +108,11 @@ Você pode, a qualquer momento e sem custo (LGPD, art. 18):
 Para exercer esses direitos, escreva para **[E-MAIL DO ENCARREGADO]**. Responderemos em
 até 15 dias. Podemos pedir uma confirmação de identidade antes de atender.
 
-Em workspaces compartilhados, o Conteúdo que você criou pode continuar visível para as
-outras pessoas do workspace depois que sua conta for encerrada, se o administrador do
-workspace decidir mantê-lo. Seus dados de conta são apagados de qualquer forma.
+Quando a conta é excluída, apagamos seus dados de conta, seus acessos aos workspaces,
+seus tokens e as autorizações dos aplicativos que você conectou. Seu e-mail também sai dos
+registros de auditoria. As notas e anexos que você criou em workspaces compartilhados
+pertencem ao workspace e continuam lá. Seus comentários continuam visíveis, mas assinados
+como "Usuário excluído".
 
 ## 8. Mudanças nesta Política
 

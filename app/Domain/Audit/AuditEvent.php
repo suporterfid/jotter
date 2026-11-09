@@ -57,6 +57,8 @@ enum AuditEvent: string
     case TENANT_EXPORTED = 'tenant.exported';
     case INSTANCE_BACKED_UP = 'instance.backed_up';
     case SIGNUP_REQUESTED = 'signup.requested';
+    case USER_DELETED = 'user.deleted';
+    case PROFILE_UPDATED = 'user.profile_updated';
     case SIGNUP_APPROVED = 'signup.approved';
     case SIGNUP_REJECTED = 'signup.rejected';
     case INSTANCE_RESTORED = 'instance.restored';

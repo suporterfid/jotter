@@ -484,6 +484,18 @@
         <button
           v-if="authProvider === 'local'"
           class="btn-icon"
+          data-testid="profile-btn"
+          :title="t('sidebar.profileTooltip')"
+          @click="$emit('open-profile')"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </button>
+        <button
+          v-if="authProvider === 'local'"
+          class="btn-icon"
           data-testid="change-password-btn"
           :title="t('sidebar.changePasswordTooltip')"
           @click="$emit('open-change-password')"
@@ -583,6 +595,7 @@ const emit = defineEmits<{
   (e: 'switch-tenant', tenantId: number): void
   (e: 'toggle-admin-panel'): void
   (e: 'open-change-password'): void
+  (e: 'open-profile'): void
   (e: 'open-connected-apps'): void
   (e: 'open-notification-preferences'): void
 }>()

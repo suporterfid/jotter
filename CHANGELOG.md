@@ -4,6 +4,12 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Account deletion and name correction (LGPD, #390 follow-up) — 2026-11-09
+
+- **Administration → Users → Delete** (`DELETE /api/admin/users/{user}`, or `php artisan user:delete <e-mail>`) deletes the account in one transaction. It removes memberships (by user id, e-mail and linked SSO identities), manual tokens, OAuth grants, note ACL entries, identities and sessions; notifications, preferences, watches and group memberships cascade. Comments stay with "Deleted user" as author, revision, audit and PDF-export actors become `deleted-user`, and the e-mail is removed from audit metadata. Notes are untouched. Deleting yourself or the last active administrator is refused. Audit event `user.deleted` carries no personal data.
+- **Edit profile** in the sidebar (`PUT /api/user/profile`) lets people correct their name with local sign-in; with OIDC or GrandpaSSOn the answer is 409, because the provider owns the name. Audit event `user.profile_updated`.
+- The privacy-policy draft now explains how to answer correction and deletion requests.
+
 ### Terms of use and privacy policy drafts (#390) — 2026-11-08
 
 - `docs/legal/termos-de-uso.rascunho.md` and `docs/legal/politica-de-privacidade.rascunho.md` are pt-BR drafts (LGPD) for the operator to review. They describe the data Jotter actually keeps, the default retention periods and the possible processors. Nothing is published. Configuring `JOTTER_BRAND_TERMS_URL` / `JOTTER_BRAND_PRIVACY_URL` shows the links and makes sign-up require acceptance.

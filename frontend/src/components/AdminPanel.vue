@@ -164,6 +164,7 @@
               <button class="secondary-btn" data-testid="admin-reset-password-btn" :disabled="loading" @click="resetPassword(u)">{{ t('adminPanel.resetPassword') }}</button>
               <button v-if="u.is_active" class="warning-btn" @click="toggleDeactivate(u, true)">{{ t('adminPanel.deactivate') }}</button>
               <button v-else class="success-btn" @click="toggleDeactivate(u, false)">{{ t('adminPanel.reactivate') }}</button>
+              <button class="danger-btn" :disabled="loading" :data-testid="`admin-delete-user-${u.id}`" @click="deleteUser(u)">{{ t('adminPanel.deleteUser') }}</button>
             </div>
           </li>
         </ul>
@@ -529,6 +530,22 @@ async function decideSignup(u: { id: number; name: string; email: string }, deci
   error.value = ''
   try {
     await api.post(`/admin/users/${u.id}/${decision}`)
+    await fetchUsers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, t('adminPanel.failedUpdateUser'))
+  } finally {
+    loading.value = false
+  }
+}
+
+// Account deletion (#390, LGPD): memberships, tokens and grants go; comments
+// and history stay in the workspace without the person's name.
+async function deleteUser(u: { id: number; name: string; email: string }) {
+  if (!confirm(t('adminPanel.deleteUserConfirm', { name: u.name, email: u.email }))) return
+  loading.value = true
+  error.value = ''
+  try {
+    await api.delete(`/admin/users/${u.id}`)
     await fetchUsers()
   } catch (e: unknown) {
     error.value = extractErrorMessage(e, t('adminPanel.failedUpdateUser'))
