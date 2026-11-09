@@ -173,12 +173,21 @@ export interface SearchFilters {
   modifiedBefore?: string
 }
 
+/** Versioned Terms/Privacy acceptance (LGPD); `version` is null when unversioned. */
+export interface TermsStatus {
+  version: string | null
+  accepted_version: string | null
+  accepted_at: string | null
+  acceptance_required: boolean
+}
+
 export interface AuthUser {
   subject_id: string
   email: string
   name: string
   is_admin: boolean
   locale: string
+  terms?: TermsStatus
 }
 
 export interface NoteRevisionMeta {

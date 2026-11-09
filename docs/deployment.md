@@ -99,7 +99,11 @@ space for the vault, database connectivity, pending migrations, `MAIL_MAILER`
 different from `log`, `MAIL_FROM_ADDRESS` set, `APP_INSTANCE_SLUG`, and the scheduler heartbeat (a
 `schedule:run` within the last 5 minutes). `APP_DEBUG` and the HTTPS check are
 critical when `APP_ENV=production` and warnings otherwise; the mailer, recommended
-extensions, and instance slug are always warnings.
+extensions, and instance slug are always warnings. Three LGPD checks are warnings too:
+`session_security` (`SESSION_SECURE_COOKIE=true`, `SESSION_ENCRYPT=true`,
+`SESSION_HTTP_ONLY=true`), `log_retention` (`LOG_STACK=daily` with `LOG_DAILY_DAYS`, because
+the `single` file never rotates), and `access_log_retention` (6 months of access records,
+judged only when `JOTTER_BRAND_TERMS_URL` or `JOTTER_BRAND_PRIVACY_URL` is published).
 
 ## Health endpoint
 
@@ -134,7 +138,7 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:reindex --all` | hourly | Reconciles every workspace vault from disk into the MySQL projection. |
 | `vault:purge-trash` | daily 02:00 | Permanently deletes notes past the trash retention period. |
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
-| `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
+| `audit:prune` | daily 02:30 | Enforces audit-log retention: `JOTTER_AUDIT_RETENTION_DAYS` (90), and `JOTTER_ACCESS_LOG_RETENTION_DAYS` for access records (sign-in, sign-out, OAuth tokens, MCP connections; set 184 for a hosted service, Marco Civil art. 15). |
 | `semantic:index --limit=100` | every 5 minutes | Embeds changed notes of workspaces that opted in to semantic search; clears the index while `JOTTER_SEMANTIC_ENABLED=false` (see `docs/mcp.md`). |
 | `workspace:storage --measure` | hourly at :30 | Re-measures each vault on disk for the storage quotas; between runs, writes keep the running total. |
 | `jotter:backup` | daily 01:30, only when `JOTTER_BACKUP_DAILY=true` | Writes one ZIP with every Jotter table and vault file to `JOTTER_BACKUP_PATH` and keeps the newest `JOTTER_BACKUP_KEEP` (see *Backup and restore*). |
@@ -435,10 +439,13 @@ retention or batch-size override:
 php artisan vault:purge-trash
 ```
 
-Audit log prune (scheduled daily with `--days=90`):
+Audit log prune (scheduled daily; windows from `JOTTER_AUDIT_RETENTION_DAYS`, default 90,
+and `JOTTER_ACCESS_LOG_RETENTION_DAYS`, default the same). Access records are never pruned
+sooner than the rest:
 
 ```sh
-php artisan audit:prune --days=90
+php artisan audit:prune
+php artisan audit:prune --days=90 --access-days=184
 ```
 
 Revision snapshot prune (scheduled daily with `--days=30`). Revision history is

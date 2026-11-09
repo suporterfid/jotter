@@ -46,6 +46,25 @@ Spec: `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md`. Pla
 - ~~Queue worker~~ **Documented:** concurrency and large imports in `docs/deployment.md`.
 - ~~**Follow-up (LGPD, P2):** no way to correct one's name or delete an account.~~ **Delivered 2026-11-09:** Administration → Users → Delete (and `user:delete`) removes the account, memberships, tokens, grants, ACL entries and identities, and anonymises comments, revisions and audit entries; "Edit profile" lets people correct their name (local sign-in).
 
+## LGPD compliance on shared hosting (2026-11-09)
+
+Gaps found in a code review against the LGPD, the Marco Civil da Internet and the ANPD resolutions. Not legal advice: the texts in `docs/legal/` still need a lawyer. Four blocks, in this order:
+
+1. ~~**Block 1 — low effort, high legal risk (P1).**~~ **Delivered 2026-11-09** (see CHANGELOG):
+   - ~~Access records for 6 months (Marco Civil art. 15).~~ `audit:prune` keeps access records (sign-in, sign-out, OAuth tokens, MCP connections, with IP) for `JOTTER_ACCESS_LOG_RETENTION_DAYS` and everything else for `JOTTER_AUDIT_RETENTION_DAYS`. The default keeps self-hosting unchanged (both 90 days); a hosted operator sets 184. `jotter:doctor` warns when published Terms/Privacy texts meet a shorter window.
+   - ~~Versioned acceptance of the Terms/Privacy texts.~~ `users.terms_version` + `JOTTER_TERMS_VERSION`; a banner asks again when the version changes (`POST /api/auth/terms/accept`, audited as `user.terms_accepted`).
+   - ~~Secure production defaults.~~ `jotter:doctor` warns about `SESSION_SECURE_COOKIE`, `SESSION_ENCRYPT`, `SESSION_HTTP_ONLY` and a `single` log channel that never rotates; `.env.example` turns session encryption on and documents `LOG_STACK=daily`.
+2. **Block 2 — documents and contracts (P1, operator work, no code).** Publish the reviewed Terms/Privacy drafts; sign a data processing agreement (contrato de operador, LGPD art. 39) with the hosting and SMTP providers; prefer a datacenter in Brazil or record the international-transfer safeguard (Resolução CD/ANPD nº 19/2024); keep a simplified record of processing (art. 37; small-agent regime, Resolução CD/ANPD nº 2/2022); write the incident response plan (notify ANPD and holders within 3 working days, keep the incident register for 5 years, Resolução CD/ANPD nº 15/2024); name the encarregado or a contact channel.
+3. **Block 3 — data subject self-service (P2).**
+   - "My data" page: download one's own data (profile, comments, memberships, own audit entries) and request account deletion, approved by an administrator (`UserDeletion` refuses self-deletion today).
+   - `tenant:delete {slug}` command replacing the manual `tinker` procedure in `docs/hosted-operations.md`, with audit and the 30-day deadline the privacy policy promises.
+4. **Block 4 — stronger security (P2).**
+   - TOTP second factor for administrators (pure PHP, fits shared hosting).
+   - Encrypted backups and exports (AES-256 ZIP or libsodium), and per-tenant keys so a deletion also reaches old backups (crypto-shredding).
+   - Optional: encryption at rest of `note_revisions.content`; vault encryption needs a new dated decision in `docs/decisions.md` first, because it changes the "plain `.md` on disk" invariant.
+
+Found while doing block 1, out of its scope: the sign-up form in `LoginModal.vue` joins the terms/privacy links with a `<template>` whose surrounding spaces Vue may collapse ("termos de usoe apolítica"); `TermsBanner.vue` uses explicit spaces instead.
+
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 
 - **Doctor thresholds.** Disk-space (100 MiB critical / 1 GiB warning) and scheduler age (5 minutes) are constants on `InstanceDoctor`; make them configurable only if a host proves them wrong.

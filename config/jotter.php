@@ -15,6 +15,25 @@ return [
         'powered_by' => (bool) env('JOTTER_BRAND_POWERED_BY', true),
     ],
 
+    // Legal texts (LGPD). `terms_version` labels the published Terms/Privacy
+    // texts (e.g. "2026-11-09"). When it is set and a terms or privacy URL is
+    // configured, every user whose recorded `users.terms_version` differs is
+    // asked to accept the current texts again. Empty = no versioning (default).
+    'legal' => [
+        'terms_version' => env('JOTTER_TERMS_VERSION') ?: null,
+    ],
+
+    // Audit retention (`audit:prune`, nightly). Access records (sign-in,
+    // sign-out, OAuth tokens issued, MCP connections: date, time and IP) can be
+    // kept longer than the rest. Marco Civil da Internet art. 15 requires six
+    // months of access records from a commercial application provider, so a
+    // hosted operator sets JOTTER_ACCESS_LOG_RETENTION_DAYS=184. The default
+    // (empty) keeps access records exactly as long as the rest of the audit log.
+    'audit' => [
+        'retention_days' => (int) env('JOTTER_AUDIT_RETENTION_DAYS', 90),
+        'access_retention_days' => env('JOTTER_ACCESS_LOG_RETENTION_DAYS') ? (int) env('JOTTER_ACCESS_LOG_RETENTION_DAYS') : null,
+    ],
+
     'seed' => [
         'tenant_name' => env('JOTTER_TENANT_NAME', 'Jotter'),
         'tenant_slug' => env('JOTTER_TENANT_SLUG', 'default'),

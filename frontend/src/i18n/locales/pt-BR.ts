@@ -20,6 +20,11 @@ export default {
     nearlyFull: 'Este workspace usa {used} de {limit} ({percent}%). Apague notas ou anexos, ou peça mais espaço a um administrador.',
     full: 'Este workspace está cheio ({used} de {limit}). Novas notas e uploads ficam bloqueados até liberar espaço ou aumentar a cota.',
   },
+  terms: {
+    updated: 'Nossos textos mudaram. Leia os',
+    accept: 'Li e aceito',
+    error: 'Não foi possível registrar o seu aceite. Tente de novo.',
+  },
   plan: {
     trialEndsIn: 'O período de teste termina em {days} dias',
     trialEndsToday: 'O período de teste termina hoje',

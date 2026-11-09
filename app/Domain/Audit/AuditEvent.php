@@ -59,6 +59,7 @@ enum AuditEvent: string
     case SIGNUP_REQUESTED = 'signup.requested';
     case USER_DELETED = 'user.deleted';
     case PROFILE_UPDATED = 'user.profile_updated';
+    case USER_TERMS_ACCEPTED = 'user.terms_accepted';
     case SIGNUP_APPROVED = 'signup.approved';
     case SIGNUP_REJECTED = 'signup.rejected';
     case INSTANCE_RESTORED = 'instance.restored';
@@ -69,4 +70,22 @@ enum AuditEvent: string
     case PLAN_SEAT_LIMIT_REACHED = 'plan.seat_limit_reached';
 
     case SYSTEM_AUDIT_PRUNED = 'system.audit_pruned';
+
+    /**
+     * Access records in the Marco Civil da Internet sense (art. 5º VIII, art. 15):
+     * when an application was used and from which IP. `audit:prune` may keep
+     * these longer than the rest of the audit log (JOTTER_ACCESS_LOG_RETENTION_DAYS).
+     *
+     * @return list<string>
+     */
+    public static function accessRecordValues(): array
+    {
+        return array_map(static fn (self $event): string => $event->value, [
+            self::AUTH_LOGIN_SUCCESS,
+            self::AUTH_LOGIN_FAILURE,
+            self::AUTH_LOGOUT,
+            self::OAUTH_TOKEN_ISSUED,
+            self::MCP_CONNECTED,
+        ]);
+    }
 }
