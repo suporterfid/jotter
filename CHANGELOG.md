@@ -4,6 +4,35 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Account deletion and name correction (LGPD, #390 follow-up) — 2026-11-09
+
+- **Administration → Users → Delete** (`DELETE /api/admin/users/{user}`, or `php artisan user:delete <e-mail>`) deletes the account in one transaction. It removes memberships (by user id, e-mail and linked SSO identities), manual tokens, OAuth grants, note ACL entries, identities and sessions; notifications, preferences, watches and group memberships cascade. Comments stay with "Deleted user" as author, revision, audit and PDF-export actors become `deleted-user`, and the e-mail is removed from audit metadata. Notes are untouched. Deleting yourself or the last active administrator is refused. Audit event `user.deleted` carries no personal data.
+- **Edit profile** in the sidebar (`PUT /api/user/profile`) lets people correct their name with local sign-in; with OIDC or GrandpaSSOn the answer is 409, because the provider owns the name. Audit event `user.profile_updated`.
+- The privacy-policy draft now explains how to answer correction and deletion requests.
+
+### Terms of use and privacy policy drafts (#390) — 2026-11-08
+
+- `docs/legal/termos-de-uso.rascunho.md` and `docs/legal/politica-de-privacidade.rascunho.md` are pt-BR drafts (LGPD) for the operator to review. They describe the data Jotter actually keeps, the default retention periods and the possible processors. Nothing is published. Configuring `JOTTER_BRAND_TERMS_URL` / `JOTTER_BRAND_PRIVACY_URL` shows the links and makes sign-up require acceptance.
+
+### Self sign-up with administrator approval (#390) — 2026-11-08
+
+- With `JOTTER_SIGNUP_ENABLED=true` (local authentication only), the sign-in screen offers **Create an account**. `POST /api/auth/register` creates an inactive account (`signup_status=pending`) and e-mails every active administrator. The answer is identical for e-mails that already have an account, and requests are limited per IP (`JOTTER_SIGNUP_REQUESTS_PER_HOUR`, 5).
+- Administration → Users lists pending requests with **Approve** (activates the account, adds `JOTTER_SIGNUP_DEFAULT_WORKSPACE` with `JOTTER_SIGNUP_DEFAULT_ROLE` when set, e-mails the person) and **Reject** (e-mails the person and deletes the request). New endpoints: `POST /api/admin/users/{user}/approve|reject`.
+- A pending person who signs in with the right password gets "waiting for approval" (403). `JOTTER_SIGNUP_ALLOWED_DOMAINS` limits who may ask. When the operator publishes terms or privacy URLs, accepting them is required and recorded (`terms_accepted_at`). Migration `2026_11_08_000002`; audit events `signup.requested|approved|rejected`.
+
+### Workspace storage quotas (#390) — 2026-11-08
+
+- Each workspace has a storage quota: `JOTTER_WORKSPACE_QUOTA_MB` (default **1024**, 0 = unlimited). It can be overridden per workspace in Administration → Workspaces or with `php artisan workspace:storage <slug> --quota=<MB|0|default>`. Migration `2026_11_08_000001` adds `storage_quota_mb`, `storage_bytes` and `storage_measured_at` to `workspaces`.
+- Only growth is refused: notes, attachments, imports (checked before anything is written) and WebDAV/MCP writes that would pass the quota answer **507 Insufficient Storage** (MCP: a readable tool error). Edits that do not grow the vault and deletes always work.
+- Usage is measured from disk on first use and hourly (`workspace:storage --measure`), and kept current by each write's size delta in between. `/api/workspaces` returns a `storage` status, the SPA shows a banner from 80% (`JOTTER_WORKSPACE_QUOTA_WARN_PERCENT`) and when the workspace is full, and `jotter:doctor` lists workspaces near or over their quota.
+- **Upgrade note:** a workspace already over 1 GiB stops accepting growth right after the upgrade. Run `php artisan workspace:storage --measure` and raise the quotas you need.
+
+### Instance backup and restore (#390) — 2026-11-08
+
+- **`php artisan jotter:backup`** writes one ZIP with every Jotter table (NDJSON, prefix-independent) and every vault file, in pure PHP (no `mysqldump`, no `exec`). It is written to `JOTTER_BACKUP_PATH` (default `storage/app/private/backups`), never under `public/`, and keeps the newest `JOTTER_BACKUP_KEEP` (7). `--no-vaults` / `--no-database` limit the archive. With `JOTTER_BACKUP_DAILY=true` it runs nightly at 01:30.
+- **`php artisan jotter:restore <zip>`** replaces the archived tables in one transaction (a corrupt archive changes nothing), skips generated columns, writes the vault files back (`--vault-root` moves them), refuses archives from newer code, and never writes outside a vault.
+- Sessions, cache, queues, reset tokens and the semantic index are left out; GrandpaSSOn's tables in a shared database are never read. `jotter:doctor` reports the newest backup and warns after 48 hours when nightly backups are on. Runbook: `docs/deployment.md`, "Backup and restore". Also recorded: Jotter stays MIT-licensed (`docs/decisions.md`).
+
 ### Playwright E2E of the OAuth consent screen — 2026-11-06
 
 - `frontend/e2e/oauth-consent.spec.ts` drives the consent screen in a real browser. A signed-in administrator registers a client (DCR), gets nothing pre-selected, is refused without a workspace, grants one workspace, and the client exchanges the code (PKCE) for a token whose `list_workspaces` shows only that workspace. Revoking it under Administration → Connected apps then makes the token answer 401. Without a session, the request goes to the SPA login, comes back to the consent screen after sign-in, and a denial returns `access_denied` with the client's `state`.

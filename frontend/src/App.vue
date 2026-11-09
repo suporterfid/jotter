@@ -61,6 +61,7 @@
       @switch-tenant="handleSwitchTenant"
       @toggle-admin-panel="isAdminPanelOpen = true"
       @open-change-password="isChangePasswordOpen = true"
+      @open-profile="isProfileOpen = true"
       @open-connected-apps="isConnectedAppsOpen = true"
       @open-notification-preferences="openNotificationPreferences"
     />
@@ -68,6 +69,13 @@
     <AdminPanel :is-open="isAdminPanelOpen" @close="handleCloseAdminPanel" />
 
     <ChangePasswordModal v-if="isChangePasswordOpen" @close="isChangePasswordOpen = false" />
+    <ProfileModal
+      v-if="isProfileOpen && currentUser"
+      :current-name="currentUser.name"
+      :email="currentUser.email"
+      @updated="handleProfileUpdated"
+      @close="isProfileOpen = false"
+    />
     <ConnectedAppsModal v-if="isConnectedAppsOpen" @close="isConnectedAppsOpen = false" />
 
     <NotificationPreferences
@@ -79,6 +87,7 @@
     <!-- Main Content Area -->
     <main class="main-content">
       <PlanBanner :plan="activeTenantPlan" :plan-limit="planLimitActive" />
+      <StorageBanner :storage="activeWorkspaceStorage" />
       <!-- Graph View Mode -->
       <GraphView
         v-if="isGraphViewActive"
@@ -376,6 +385,7 @@ import CollectionsBoardView from './components/CollectionsBoardView.vue'
 import CollectionsCalendarView from './components/CollectionsCalendarView.vue'
 import AdminPanel from './components/AdminPanel.vue'
 import ChangePasswordModal from './components/ChangePasswordModal.vue'
+import ProfileModal from './components/ProfileModal.vue'
 import ConnectedAppsModal from './components/ConnectedAppsModal.vue'
 import NotificationPreferences from './components/NotificationPreferences.vue'
 import {
@@ -428,11 +438,13 @@ import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
 import { brand, setBrand } from './services/brand'
 import type { ImportSource } from './services/api'
 import PlanBanner from './components/PlanBanner.vue'
+import StorageBanner from './components/StorageBanner.vue'
 
 const { t } = useI18n()
 
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
+const activeWorkspaceStorage = computed(() => workspaces.value.find((ws) => ws.id === activeWorkspaceId.value)?.storage ?? null)
 const tenants = ref<Tenant[]>([])
 const activeTenantId = ref<number | null>(null)
 const activeTenantPlan = computed(() => tenants.value.find((tenant) => tenant.id === activeTenantId.value)?.plan ?? null)
@@ -519,6 +531,11 @@ const currentUser = ref<AuthUser | null>(null)
 const backendVersion = ref<string | null>(null)
 const authProvider = ref<string | null>(null)
 const isChangePasswordOpen = ref(false)
+const isProfileOpen = ref(false)
+
+function handleProfileUpdated(name: string) {
+  if (currentUser.value) currentUser.value = { ...currentUser.value, name }
+}
 const isConnectedAppsOpen = ref(false)
 const isNotificationPreferencesOpen = ref(false)
 const notificationPreferencesUnsubscribeType = ref<NotificationType | null>(null)

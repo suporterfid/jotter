@@ -55,7 +55,10 @@ final class VaultExtractor
         }
 
         try {
-            return $this->processZip($workspace, $zip, $overwrite, $source);
+            $result = $this->processZip($workspace, $zip, $overwrite, $source);
+            app(\App\Domain\Quota\WorkspaceQuota::class)->measure($workspace);
+
+            return $result;
         } finally {
             $zip->close();
         }
@@ -78,6 +81,10 @@ final class VaultExtractor
         }
 
         $notes = $data['notes'] ?? [];
+        app(\App\Domain\Quota\WorkspaceQuota::class)->assertCanGrow($workspace, (int) array_sum(array_map(
+            static fn ($note): int => is_array($note) ? strlen((string) ($note['content'] ?? '')) : 0,
+            is_array($notes) ? $notes : [],
+        )));
         $extracted = [];
         $skipped = [];
         $errors = [];
@@ -266,6 +273,9 @@ final class VaultExtractor
                 'rewrite' => $source === ImportSource::NOTION && in_array($ext, ['md', 'markdown'], true),
             ];
         }
+
+        // Storage quota (#390): the whole archive must fit before anything is written.
+        app(\App\Domain\Quota\WorkspaceQuota::class)->assertCanGrow($workspace, $totalSize);
 
         foreach ($validEntries as $entry) {
             $stream = $zip->getStream($entry['entry']);

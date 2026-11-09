@@ -26,6 +26,14 @@ final class AuthController extends Controller
         $subject = $this->identityProvider->authenticate($validated, $request);
 
         if (! $subject) {
+            // A sign-up waiting for approval (#390) is told so, but only when the
+            // password is right, so the answer reveals nothing to a stranger.
+            $pending = \App\Models\User::query()->where('email', \Illuminate\Support\Str::lower(trim($validated['email'])))
+                ->where('signup_status', 'pending')->first();
+            if ($pending !== null && \Illuminate\Support\Facades\Hash::check($validated['password'], $pending->password)) {
+                return response()->json(['message' => __('messages.signup_pending'), 'signup_pending' => true], 403);
+            }
+
             return response()->json([
                 'message' => __('messages.invalid_email_or_password'),
             ], 401);
@@ -74,6 +82,7 @@ final class AuthController extends Controller
             'data' => [
                 'provider' => $provider,
                 'sso_login_url' => $ssoLoginUrl,
+                'signup_enabled' => SignupController::enabled(),
                 'version' => ReleaseVersion::current(),
                 'external_embed_domains' => ExternalEmbedPolicy::configured()->allowedHosts(),
                 'brand' => Branding::configured()->toArray(),

@@ -19,6 +19,21 @@ return [
         'mcp_guide' => 'Guia do MCP',
         'trial' => '{1} Seu período de teste dura 1 dia.|[2,*] Seu período de teste dura :days dias; avisaremos antes de terminar.',
     ],
+    'signup_requested' => [
+        'subject' => ':name pediu uma conta',
+        'body' => ':name (:email) pediu uma conta no :brand. O acesso fica desligado até um administrador aprovar.',
+        'button' => 'Abrir o :brand',
+        'where' => 'Aprove ou rejeite o pedido em Administração → Usuários.',
+    ],
+    'signup_approved' => [
+        'subject' => 'Sua conta no :brand foi aprovada',
+        'body' => 'Um administrador aprovou sua conta no :brand. Você já pode entrar com o e-mail e a senha que escolheu.',
+        'login_button' => 'Entrar',
+    ],
+    'signup_rejected' => [
+        'subject' => 'Seu pedido de conta no :brand',
+        'body' => 'Seu pedido de conta no :brand não foi aprovado, e os dados que você enviou foram apagados. Se acha que foi um engano, fale com o administrador deste site.',
+    ],
     'password_reset' => [
         'subject' => 'Sua senha do :brand foi redefinida',
         'body' => 'Um administrador redefiniu a senha da sua conta no :brand. Use a nova senha que ele compartilhou com você para entrar e, em seguida, escolha uma senha sua.',

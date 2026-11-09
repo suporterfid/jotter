@@ -136,6 +136,8 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `vault:prune-revisions --days=30` | daily 02:15 | Prunes derived revision snapshots (Markdown files are never touched). |
 | `audit:prune --days=90` | daily 02:30 | Enforces audit-log retention. |
 | `semantic:index --limit=100` | every 5 minutes | Embeds changed notes of workspaces that opted in to semantic search; clears the index while `JOTTER_SEMANTIC_ENABLED=false` (see `docs/mcp.md`). |
+| `workspace:storage --measure` | hourly at :30 | Re-measures each vault on disk for the storage quotas; between runs, writes keep the running total. |
+| `jotter:backup` | daily 01:30, only when `JOTTER_BACKUP_DAILY=true` | Writes one ZIP with every Jotter table and vault file to `JOTTER_BACKUP_PATH` and keeps the newest `JOTTER_BACKUP_KEEP` (see *Backup and restore*). |
 | `oauth:prune` | daily 02:45 | Deletes expired OAuth codes and tokens, and idle OAuth clients without active grants. |
 | `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
 | `queue:work --stop-when-empty --max-time=50` | every minute, only when `QUEUE_CONNECTION=database` | Drains a database queue without a daemon. Mail is synchronous by default, so this is normally not registered. |
@@ -144,6 +146,194 @@ The individual commands below remain available for one-off runs with different
 options. Hosted-mode plan state is changed with `php artisan tenant:plan <slug>`
 and inspected with `php artisan tenant:show <slug>` (see `docs/architecture.md`,
 "Hosted mode").
+
+## Concurrency and long-running work
+
+Jotter runs with no daemon and no worker process (spec §4). Everything that is not a web
+request is a bounded batch started by the single `schedule:run` cron entry. Here is what
+can run at the same time, and what happens with big jobs.
+
+**Background work**
+
+- `JobDispatcher` (`JOTTER_JOB_DISPATCHER=local`) only records a job; it does not run it.
+  The scheduled commands in the table above are the executors: each run picks up a
+  bounded batch (100 digest notifications, 50 e-mails, 10 PDF exports
+  (`jotter.pdf.process_batch_size`), 100 notes for semantic search), and the next minute
+  continues where it stopped.
+- Every scheduled command uses `withoutOverlapping(...)`: if a run is still going when cron
+  fires again, the new run is skipped, never doubled. The lock lives in the cache store
+  (`CACHE_STORE=database` by default) and expires after the minutes shown in
+  `routes/console.php` (10 for minute jobs, 55 for the hourly reindex), so a run killed
+  by the host does not block the job forever.
+- No application job implements `ShouldQueue` today, and mail is sent synchronously. The
+  `queue:work --stop-when-empty --max-time=50` entry only runs when
+  `QUEUE_CONNECTION=database`. It drains whatever an operator or package queues and exits;
+  it is not a resident worker.
+- CLI commands run without PHP's web `max_execution_time` (the CLI default is unlimited),
+  so heavy operations belong there: `vault:import`, `vault:reindex`, `tenant:export`,
+  `jotter:backup`, `jotter:restore`.
+
+**Web requests and writes**
+
+- Request concurrency is the host's limit on PHP processes ("entry processes" on
+  CloudLinux/cPanel, often 20–30). A request that runs long, such as a large import, holds
+  one of those processes until it ends.
+- Writes to the same note are serialized by a per-note lock: 10 s TTL, up to 5 s wait,
+  stored in the cache. The MCP write tools, the editor's `base_sha256` saves, and WebDAV
+  writes with `If-Match` take it. A busy lock answers 423 (WebDAV, REST) or a retryable tool
+  error (MCP). Writes without a precondition are last-writer-wins, and the previous
+  version stays in the revision history.
+- MCP is limited per token (`JOTTER_MCP_CALLS_PER_MINUTE=120`, `…_WRITES_PER_MINUTE=30`,
+  `…_WRITES_PER_DAY=500`); `/oauth/register` allows 10 per hour per IP.
+
+**Large imports**
+
+- The web import (`POST /api/workspaces/{id}/import`, the "Import" dialog) accepts a ZIP of
+  up to **50 MB**. It then extracts and reindexes **inside the request**. Two host limits
+  apply first: `upload_max_filesize` / `post_max_size` (often 2–64 MB on shared hosting),
+  then `max_execution_time` (often 30–60 s).
+- If the request is cut short, the files extracted so far stay in the vault, and nothing
+  is half-written inside a single file. The index catches up at the next hourly
+  `vault:reindex`, or right away with `php artisan vault:reindex --workspace=<id>`.
+  Running the same import again is safe: existing notes are skipped unless you tick
+  "overwrite".
+- For vaults over a few thousand notes or tens of MB, import over SSH instead:
+  `php artisan vault:import <workspace> archive.zip [--overwrite] [--source=obsidian|notion]`.
+  It has no time limit and reindexes at the end.
+- Storage quotas (when enabled) are checked against the extracted size; see *Workspace
+  storage quotas*.
+
+## Self sign-up with approval
+
+Off by default; accounts are created by administrators. To let people ask for an account:
+
+```dotenv
+JOTTER_SIGNUP_ENABLED=true
+JOTTER_SIGNUP_ALLOWED_DOMAINS=           # optional: example.com,example.org
+JOTTER_SIGNUP_DEFAULT_WORKSPACE=         # optional: workspace slug added on approval
+JOTTER_SIGNUP_DEFAULT_ROLE=viewer        # viewer or editor
+JOTTER_SIGNUP_REQUESTS_PER_HOUR=5        # per IP
+```
+
+- The sign-in screen gains **Create an account** (name, e-mail, password). The account is
+  created **inactive**, and every active administrator gets an e-mail. Nobody can sign in
+  until an administrator approves the request.
+- Administration → Users lists pending requests apart, with **Approve** and **Reject**.
+  Approving turns the account on, adds the default workspace membership when configured,
+  and e-mails the person. Rejecting e-mails them and **deletes** the request, so their
+  data is not kept.
+- The form answers the same way whether or not the e-mail already has an account, so it
+  cannot be used to find out who has one. A pending person who signs in with the right
+  password is told that approval is pending; a wrong password gets the usual error.
+- When `JOTTER_BRAND_TERMS_URL` or `JOTTER_BRAND_PRIVACY_URL` is set, the form requires
+  accepting them and records `terms_accepted_at`.
+- Only with `JOTTER_AUTH_PROVIDER=local`: OIDC and GrandpaSSOn manage their own accounts.
+- Audit events: `signup.requested`, `signup.approved`, `signup.rejected`.
+
+## Deleting an account (LGPD)
+
+Administration → Users → **Delete**, or `php artisan user:delete <e-mail> [--force]`.
+
+- **Removed:** the account, its workspace memberships (including those stored under an SSO
+  UUID or the e-mail), manual tokens, OAuth grants and their tokens, note ACL entries,
+  linked identities, sessions, notifications, preferences, watches and group memberships.
+- **Kept, anonymised:** comments stay in the workspace, signed "Deleted user". Revision and
+  audit entries keep their dates but name `deleted-user`, and the e-mail is removed from
+  audit metadata. Notes and attachments belong to the workspace and are not touched.
+- You cannot delete your own account or the last active administrator.
+- With OIDC or GrandpaSSOn, a deleted person who signs in again gets a new, empty account.
+  Block them at the provider as well.
+- Backups made before the deletion still contain the account until they rotate out
+  (`JOTTER_BACKUP_KEEP`).
+- People correct their own name under **Edit profile** (local sign-in only; with an SSO
+  provider the name comes from the provider). Audit event: `user.profile_updated`.
+
+## Workspace storage quotas
+
+Each workspace has a storage quota, so one vault cannot fill the hosting account.
+
+```dotenv
+JOTTER_WORKSPACE_QUOTA_MB=1024          # default per workspace (1 GiB); 0 = unlimited
+JOTTER_WORKSPACE_QUOTA_WARN_PERCENT=80  # banner and jotter:doctor warning from here
+```
+
+- **Only growth is refused.** A write that would take the vault past its quota answers
+  **507 Insufficient Storage**: new notes, larger edits, attachments, and imports (the whole
+  archive must fit before anything is written). MCP write tools return a readable error.
+  Editing without growing and deleting always work, so a full workspace can still be
+  cleaned up.
+- Everyone in the workspace sees a banner from 80%, and another when it is full.
+  Administrators see usage per workspace under Administration → Workspaces and can set
+  a workspace's own quota there. Leave it empty for the default, or set 0 for unlimited.
+- From SSH:
+  ```sh
+  php artisan workspace:storage                  # usage of every workspace
+  php artisan workspace:storage brain --quota=5120
+  php artisan workspace:storage brain --quota=default
+  php artisan workspace:storage --measure        # re-measure now (also hourly)
+  ```
+- Usage is the size of every file in the vault, including `.trash/` and `_resources/`.
+  Purging the trash (`vault:purge-trash`, nightly) frees space at the next measurement.
+- **Upgrading:** a workspace that is already over 1 GiB is full right after the upgrade:
+  reads, edits that do not grow it, and deletes still work. Check
+  `php artisan workspace:storage --measure` after deploying, and raise the quota where
+  needed.
+
+## Backup and restore
+
+Jotter keeps two things: the **vaults** (`.md` files and attachments on disk, the source
+of truth) and the **MySQL database** (users, memberships, ACLs, comments, revisions,
+tokens, OAuth grants, settings, plus a search index rebuilt from the vaults).
+`jotter:backup` saves both in one ZIP, in pure PHP: no `mysqldump`, no `exec`, so it runs
+from the same cron as everything else.
+
+```sh
+php artisan jotter:backup                 # storage/app/private/backups/jotter-backup-<timestamp>.zip
+php artisan jotter:backup --to=/home/u/backups/jotter.zip
+php artisan jotter:backup --no-vaults     # database only (small, quick)
+```
+
+```dotenv
+JOTTER_BACKUP_DAILY=true                  # schedule it every night at 01:30
+JOTTER_BACKUP_KEEP=7                      # newest archives kept in the folder
+JOTTER_BACKUP_PATH=                       # default storage/app/private/backups
+```
+
+- The ZIP holds password hashes, token hashes and every note. It is written outside the
+  document root (the command refuses `public/`). **Copy it off the server**, for
+  example by downloading it over SFTP or with the host's remote backup: a backup on the
+  same disk does not survive that disk.
+- Left out on purpose: sessions, cache, queue tables, password-reset tokens, and the
+  semantic-search index (`note_embeddings`), which `semantic:index` rebuilds.
+- Only this installation's tables are read (those with `DB_PREFIX`), never GrandpaSSOn's
+  tables that may share the database.
+- `jotter:doctor` reports the newest archive; with `JOTTER_BACKUP_DAILY=true` it warns
+  when that archive is more than 48 hours old.
+- cPanel's own backups (Files + MySQL) remain a good second copy. `jotter:backup` adds an
+  archive you can restore with one command, onto any host.
+
+### Restore (runbook)
+
+1. Deploy the **same or a newer** Jotter release, with `.env` pointing at the target
+   database (an empty one is fine), then run `php artisan migrate --force`.
+2. Upload the archive outside the document root and check it:
+   `php artisan jotter:restore /path/jotter-backup-….zip` prints its date and size and
+   asks for confirmation. Add `--force` to skip the question.
+3. If the vaults live somewhere else on the new host, add
+   `--vault-root=/home/<user>/vaults`: each vault goes to `<root>/<original folder>` and
+   the workspace paths are updated.
+4. After the restore:
+   ```sh
+   php artisan migrate --force          # when the code is newer than the backup
+   php artisan vault:reindex --all      # rebuild the projection from the restored files
+   php artisan semantic:index           # only if semantic search is on
+   php artisan jotter:doctor
+   ```
+
+The restore replaces every table found in the archive. The database part runs in one
+transaction, so a corrupt archive leaves the database as it was. Vault files are written
+over existing files, and files that only exist on the target are kept. A backup made by
+newer code (with migrations this code does not have) is refused. Upgrade the code first.
 
 ## External content embeds
 

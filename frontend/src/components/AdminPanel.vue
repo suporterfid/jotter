@@ -24,6 +24,7 @@
           @click="activeTab = 'users'"
         >
           {{ t('adminPanel.users') }}
+          <span v-if="pendingSignups.length" class="tab-badge" data-testid="admin-pending-badge">{{ pendingSignups.length }}</span>
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'mcp' }]"
@@ -66,6 +67,11 @@
               <div class="admin-form">
                 <input v-model="wsEditDraft.name" data-testid="admin-edit-workspace-name" :placeholder="t('adminPanel.workspaceName')" required />
                 <input v-model="wsEditDraft.slug" data-testid="admin-edit-workspace-slug" :placeholder="t('adminPanel.slugPlaceholder')" required />
+                <label class="admin-check">
+                  {{ t('adminPanel.storageQuota') }}
+                  <input v-model="wsEditDraft.storage_quota_mb" type="number" min="0" step="1" data-testid="admin-edit-workspace-quota" :placeholder="t('adminPanel.storageQuotaHelp')" />
+                </label>
+                <p class="admin-form-note">{{ t('adminPanel.storageQuotaHelp') }}</p>
                 <p class="admin-form-note">{{ t('adminPanel.vaultPathNote') }}</p>
                 <div class="btn-group">
                   <button class="secondary-btn" data-testid="admin-edit-workspace-cancel" type="button" @click="cancelEditWorkspace">{{ t('adminPanel.cancel') }}</button>
@@ -74,7 +80,14 @@
               </div>
             </template>
             <template v-else>
-              <span><strong>{{ ws.name }}</strong> ({{ ws.slug }})</span>
+              <span>
+                <strong>{{ ws.name }}</strong> ({{ ws.slug }})
+                <small v-if="ws.storage" class="admin-note" :data-testid="`admin-ws-storage-${ws.id}`">
+                  · {{ t('adminPanel.storageUsed') }}: {{ formatBytes(ws.storage.used_bytes) }} /
+                  {{ ws.storage.limit_bytes === null ? t('adminPanel.storageUnlimited') : formatBytes(ws.storage.limit_bytes) }}
+                  <template v-if="ws.storage.percent !== null"> ({{ Math.round(ws.storage.percent) }}%)</template>
+                </small>
+              </span>
               <div class="btn-group">
                 <button class="secondary-btn" data-testid="admin-edit-workspace-btn" @click="startEditWorkspace(ws)">{{ t('adminPanel.edit') }}</button>
                 <button class="danger-btn" @click="archiveWorkspace(ws.id)" :disabled="loading">{{ t('adminPanel.archive') }}</button>
@@ -115,6 +128,23 @@
 
       <!-- Users Tab -->
       <div v-if="activeTab === 'users'" class="tab-content">
+        <template v-if="pendingSignups.length">
+          <h3>{{ t('adminPanel.pendingSignups') }}</h3>
+          <p class="admin-note">{{ t('adminPanel.pendingSignupsHelp') }}</p>
+          <ul class="admin-list" data-testid="admin-pending-signups">
+            <li v-for="u in pendingSignups" :key="u.id" class="admin-list-item" :data-testid="`admin-pending-${u.id}`">
+              <span>
+                <strong>{{ u.name }}</strong> ({{ u.email }})
+                <small v-if="u.signup_requested_at" class="admin-note"> · {{ formatDate(u.signup_requested_at) }}</small>
+              </span>
+              <div class="btn-group">
+                <button class="success-btn" :disabled="loading" :data-testid="`admin-approve-${u.id}`" @click="decideSignup(u, 'approve')">{{ t('adminPanel.approve') }}</button>
+                <button class="danger-btn" :disabled="loading" :data-testid="`admin-reject-${u.id}`" @click="decideSignup(u, 'reject')">{{ t('adminPanel.reject') }}</button>
+              </div>
+            </li>
+          </ul>
+        </template>
+
         <h3>{{ t('adminPanel.createLocalUser') }}</h3>
         <form @submit.prevent="createUser" class="admin-form">
           <input v-model="newUser.name" :placeholder="t('adminPanel.fullName')" required />
@@ -128,12 +158,13 @@
 
         <h3>{{ t('adminPanel.usersList') }}</h3>
         <ul class="admin-list">
-          <li v-for="u in users" :key="u.id" class="admin-list-item">
+          <li v-for="u in activeOrInactiveUsers" :key="u.id" class="admin-list-item">
             <span><strong>{{ u.name }}</strong> ({{ u.email }}) <em v-if="!u.is_active">{{ t('adminPanel.deactivatedTag') }}</em></span>
             <div class="btn-group">
               <button class="secondary-btn" data-testid="admin-reset-password-btn" :disabled="loading" @click="resetPassword(u)">{{ t('adminPanel.resetPassword') }}</button>
               <button v-if="u.is_active" class="warning-btn" @click="toggleDeactivate(u, true)">{{ t('adminPanel.deactivate') }}</button>
               <button v-else class="success-btn" @click="toggleDeactivate(u, false)">{{ t('adminPanel.reactivate') }}</button>
+              <button class="danger-btn" :disabled="loading" :data-testid="`admin-delete-user-${u.id}`" @click="deleteUser(u)">{{ t('adminPanel.deleteUser') }}</button>
             </div>
           </li>
         </ul>
@@ -256,6 +287,7 @@ import { useI18n } from 'vue-i18n'
 import { api, getTenants, adminResetPassword } from '../services/api'
 import type { Tenant } from '../services/types'
 import McpClientSnippets from './McpClientSnippets.vue'
+import { formatBytes } from '../services/formatBytes'
 
 const { t } = useI18n()
 
@@ -443,7 +475,7 @@ async function revokeMcpToken(token: MachineTokenRow) {
 }
 
 const editingWsId = ref<number | null>(null)
-const wsEditDraft = ref({ name: '', slug: '' })
+const wsEditDraft = ref<{ name: string; slug: string; storage_quota_mb: number | string | null }>({ name: '', slug: '', storage_quota_mb: null })
 
 function close() {
   emit('close')
@@ -488,6 +520,40 @@ async function fetchMembers() {
   }
 }
 
+// Self sign-up requests waiting for a decision (#390).
+const pendingSignups = computed(() => users.value.filter((u: { signup_status?: string | null }) => u.signup_status === 'pending'))
+const activeOrInactiveUsers = computed(() => users.value.filter((u: { signup_status?: string | null }) => u.signup_status !== 'pending'))
+
+async function decideSignup(u: { id: number; name: string; email: string }, decision: 'approve' | 'reject') {
+  if (decision === 'reject' && !confirm(t('adminPanel.rejectConfirm', { name: u.name, email: u.email }))) return
+  loading.value = true
+  error.value = ''
+  try {
+    await api.post(`/admin/users/${u.id}/${decision}`)
+    await fetchUsers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, t('adminPanel.failedUpdateUser'))
+  } finally {
+    loading.value = false
+  }
+}
+
+// Account deletion (#390, LGPD): memberships, tokens and grants go; comments
+// and history stay in the workspace without the person's name.
+async function deleteUser(u: { id: number; name: string; email: string }) {
+  if (!confirm(t('adminPanel.deleteUserConfirm', { name: u.name, email: u.email }))) return
+  loading.value = true
+  error.value = ''
+  try {
+    await api.delete(`/admin/users/${u.id}`)
+    await fetchUsers()
+  } catch (e: unknown) {
+    error.value = extractErrorMessage(e, t('adminPanel.failedUpdateUser'))
+  } finally {
+    loading.value = false
+  }
+}
+
 async function fetchUsers() {
   try {
     const response = await api.get<{ data: any[] }>('/admin/users')
@@ -517,7 +583,7 @@ async function createWorkspace() {
 
 function startEditWorkspace(ws: any) {
   editingWsId.value = ws.id
-  wsEditDraft.value = { name: ws.name, slug: ws.slug }
+  wsEditDraft.value = { name: ws.name, slug: ws.slug, storage_quota_mb: ws.storage?.quota_mb ?? null }
 }
 
 function cancelEditWorkspace() {
@@ -528,7 +594,13 @@ async function saveEditWorkspace(id: number) {
   error.value = ''
   loading.value = true
   try {
-    await api.put(`/admin/workspaces/${id}`, wsEditDraft.value)
+    const quota = wsEditDraft.value.storage_quota_mb
+    await api.put(`/admin/workspaces/${id}`, {
+      name: wsEditDraft.value.name,
+      slug: wsEditDraft.value.slug,
+      // Empty field = instance default (null); 0 = unlimited.
+      storage_quota_mb: quota === '' || quota === null ? null : Number(quota),
+    })
     editingWsId.value = null
     await fetchWorkspaces()
   } catch (e: unknown) {
@@ -628,6 +700,17 @@ watch(() => props.isOpen, (val) => {
 </script>
 
 <style scoped>
+.tab-badge {
+  display: inline-block;
+  min-width: 1.25rem;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--color-warning-fg);
+  background: var(--color-warning-bg);
+}
+
 .admin-modal-overlay {
   position: fixed;
   top: 0;

@@ -82,6 +82,8 @@ final class InstanceDoctor
             $this->checkScheduler(),
             ...$this->checkOAuth(),
             $this->checkSemantic(),
+            $this->checkBackup(),
+            $this->checkQuotas(),
         ];
 
         return new DoctorReport(
@@ -209,6 +211,62 @@ final class InstanceDoctor
         return DoctorCheck::pass('semantic_search', 'Semantic search', false, sprintf('Workspaces %s send note text to %s; %d note(s) indexed (%d chunks).', implode(', ', $workspaces), $host, $indexedNotes, $chunks), [
             'workspaces' => $workspaces, 'provider_host' => $host, 'model' => (string) config('jotter.semantic.model'), 'indexed_notes' => $indexedNotes, 'chunks' => $chunks,
         ]);
+    }
+
+    /**
+     * Instance backups (#390): when the nightly backup is on, the newest
+     * archive must be under 48 hours old.
+     */
+    private function checkBackup(): DoctorCheck
+    {
+        $directory = rtrim((string) config('jotter.backup.path'), '/');
+        $archives = glob($directory.'/jotter-backup-*.zip') ?: [];
+        $newest = $archives === [] ? null : max(array_map('filemtime', $archives));
+        $details = ['path' => $directory, 'archives' => count($archives), 'newest_at' => $newest === null ? null : date(DATE_ATOM, (int) $newest)];
+
+        if (! (bool) config('jotter.backup.daily', false)) {
+            return DoctorCheck::pass('backup', 'Instance backup', false, $newest === null
+                ? 'No nightly backup (JOTTER_BACKUP_DAILY=false) and no archive found; run php artisan jotter:backup or rely on the host backups.'
+                : sprintf('No nightly backup; newest archive is from %s.', date('Y-m-d H:i', (int) $newest)), $details);
+        }
+        if ($newest === null || time() - (int) $newest > 48 * 3600) {
+            return DoctorCheck::fail('backup', 'Instance backup', false, $newest === null
+                ? 'JOTTER_BACKUP_DAILY=true but no archive exists yet in '.$directory.'.'
+                : sprintf('The newest backup is from %s, more than 48 hours ago; check the scheduler and disk space.', date('Y-m-d H:i', (int) $newest)), $details);
+        }
+
+        return DoctorCheck::pass('backup', 'Instance backup', false, sprintf('Nightly backup on; newest archive %s, %d kept.', date('Y-m-d H:i', (int) $newest), count($archives)), $details);
+    }
+
+    /**
+     * Workspace storage quotas (#390), from the last measured usage (no disk walk here).
+     */
+    private function checkQuotas(): DoctorCheck
+    {
+        $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
+        $full = [];
+        $warning = [];
+        foreach (\App\Models\Workspace::query()->whereNotNull('storage_bytes')->get() as $workspace) {
+            $status = $quota->status($workspace);
+            if ($status['exceeded']) {
+                $full[] = $workspace->slug;
+            } elseif ($status['warning']) {
+                $warning[] = $workspace->slug.' ('.$status['percent'].'%)';
+            }
+        }
+        $defaultMb = (int) config('jotter.quota.default_mb', 1024);
+        $details = ['default_mb' => $defaultMb, 'full' => $full, 'warning' => $warning];
+
+        if ($full !== [] || $warning !== []) {
+            return DoctorCheck::fail('storage_quota', 'Workspace storage quotas', false, trim(
+                ($full === [] ? '' : 'Full (writes that grow them are refused): '.implode(', ', $full).'. ')
+                .($warning === [] ? '' : 'Near the quota: '.implode(', ', $warning).'.')
+            ).' Raise with php artisan workspace:storage <slug> --quota=<MB>.', $details);
+        }
+
+        return DoctorCheck::pass('storage_quota', 'Workspace storage quotas', false, $defaultMb > 0
+            ? sprintf('Every workspace is under %d%% of its quota (default %d MB).', (int) config('jotter.quota.warn_percent', 80), $defaultMb)
+            : 'Unlimited by default (JOTTER_WORKSPACE_QUOTA_MB=0).', $details);
     }
 
     private function isProduction(): bool

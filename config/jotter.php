@@ -138,6 +138,40 @@ return [
         'max_chunks_scanned' => (int) env('JOTTER_SEMANTIC_MAX_CHUNKS', 20000),
     ],
 
+    // Self sign-up with administrator approval (#390). Local authentication only
+    // (OIDC and GrandpaSSOn manage accounts themselves). Off by default.
+    'signup' => [
+        'enabled' => (bool) env('JOTTER_SIGNUP_ENABLED', false),
+        // Optional: comma-separated e-mail domains allowed to ask (empty = any).
+        'allowed_domains' => array_values(array_filter(array_map(
+            static fn (string $domain): string => strtolower(trim($domain)),
+            explode(',', (string) env('JOTTER_SIGNUP_ALLOWED_DOMAINS', '')),
+        ))),
+        // Optional: on approval, add the person to this workspace (slug) with this role.
+        'default_workspace' => env('JOTTER_SIGNUP_DEFAULT_WORKSPACE'),
+        'default_role' => env('JOTTER_SIGNUP_DEFAULT_ROLE', 'viewer'),
+        'requests_per_hour' => (int) env('JOTTER_SIGNUP_REQUESTS_PER_HOUR', 5),
+    ],
+
+    // Workspace storage quota (#390). Per-workspace override: workspaces.storage_quota_mb
+    // (`php artisan workspace:storage <slug> --quota=<MB>`; 0 = unlimited). Only growth is
+    // refused (507); editing within the size and deleting always work.
+    'quota' => [
+        'default_mb' => (int) env('JOTTER_WORKSPACE_QUOTA_MB', 1024),
+        'warn_percent' => (int) env('JOTTER_WORKSPACE_QUOTA_WARN_PERCENT', 80),
+    ],
+
+    // Instance backup (#390): `php artisan jotter:backup` writes one ZIP with every
+    // Jotter table (NDJSON) and every vault file, in pure PHP (no mysqldump, no exec).
+    // `daily` schedules it at 01:30; `keep` is how many archives stay in `path`.
+    'backup' => [
+        'path' => env('JOTTER_BACKUP_PATH') ?: storage_path('app/private/backups'),
+        'daily' => (bool) env('JOTTER_BACKUP_DAILY', false),
+        'keep' => (int) env('JOTTER_BACKUP_KEEP', 7),
+        // Never backed up: ephemeral state and projections rebuilt by commands.
+        'exclude_tables' => ['sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens', 'note_embeddings'],
+    ],
+
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),
     'auth_bypass' => (bool) env('JOTTER_AUTH_BYPASS', false),
 

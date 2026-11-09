@@ -172,7 +172,7 @@ describe('AdminPanel Component', () => {
     await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
     await flushPromises()
 
-    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'New Name', slug: 'new-slug' })
+    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'New Name', slug: 'new-slug', storage_quota_mb: null })
     expect(wrapper.find('[data-testid="admin-edit-workspace-name"]').exists()).toBe(false)
   })
 
@@ -320,5 +320,80 @@ describe('AdminPanel Component', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="admin-apps-empty"]').text()).toBe('No connected apps.')
+  })
+  it('shows workspace storage and edits the quota (empty = default, 0 = unlimited)', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/workspaces') {
+        return Promise.resolve({ data: { data: [
+          { id: 3, tenant_id: 1, slug: 'brain', name: 'Brain', storage: { used_bytes: 900 * 1024 * 1024, limit_bytes: 1024 * 1024 * 1024, percent: 87.9, warning: true, exceeded: false, quota_mb: null } },
+        ] } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="admin-ws-storage-3"]').text().replace(/\s+/g, ' ')).toContain('900.0 MB / 1.0 GB (88%)')
+
+    await wrapper.find('[data-testid="admin-edit-workspace-btn"]').trigger('click')
+    await wrapper.find('[data-testid="admin-edit-workspace-quota"]').setValue('0')
+    await wrapper.find('[data-testid="admin-edit-workspace-save"]').trigger('click')
+    await flushPromises()
+
+    expect(apiPut).toHaveBeenCalledWith('/admin/workspaces/3', { name: 'Brain', slug: 'brain', storage_quota_mb: 0 })
+  })
+  it('lists pending sign-up requests apart and approves or rejects them (#390)', async () => {
+    type Row = { id: number; name: string; email: string; is_admin: boolean; is_active: boolean; signup_status: string | null; signup_requested_at?: string }
+    let users: Row[] = [
+      { id: 1, name: 'Admin', email: 'admin@acme.test', is_admin: true, is_active: true, signup_status: null },
+      { id: 9, name: 'Maria', email: 'maria@example.com', is_admin: false, is_active: false, signup_status: 'pending', signup_requested_at: '2026-11-08T10:00:00Z' },
+    ]
+    apiGet.mockImplementation((url: string) => Promise.resolve({ data: { data: url === '/admin/users' ? users : [] } }))
+    apiPost.mockImplementation((url: string) => {
+      if (url === '/admin/users/9/approve') users = users.map((u) => (u.id === 9 ? { ...u, is_active: true, signup_status: 'approved' } : u))
+      return Promise.resolve({ data: { data: {} } })
+    })
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="admin-pending-badge"]').text()).toBe('1')
+
+    const usersTab = wrapper.findAll('.tab-btn').find((b) => b.text().startsWith('Users'))!
+    await usersTab.trigger('click')
+    expect(wrapper.find('[data-testid="admin-pending-9"]').text()).toContain('maria@example.com')
+
+    await wrapper.find('[data-testid="admin-approve-9"]').trigger('click')
+    await flushPromises()
+    expect(apiPost).toHaveBeenCalledWith('/admin/users/9/approve')
+    expect(wrapper.find('[data-testid="admin-pending-signups"]').exists()).toBe(false)
+  })
+  it('deletes a user after confirmation (#390 LGPD follow-up)', async () => {
+    let users = [
+      { id: 1, name: 'Admin', email: 'admin@acme.test', is_admin: true, is_active: true, signup_status: null },
+      { id: 5, name: 'Joe', email: 'joe@acme.test', is_admin: false, is_active: true, signup_status: null },
+    ]
+    apiGet.mockImplementation((url: string) => Promise.resolve({ data: { data: url === '/admin/users' ? users : [] } }))
+    apiDelete.mockImplementation((url: string) => {
+      if (url === '/admin/users/5') users = users.filter((u) => u.id !== 5)
+      return Promise.resolve({ data: {} })
+    })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+
+    const wrapper = mount(AdminPanel, { props: { isOpen: false } })
+    await wrapper.setProps({ isOpen: true })
+    await flushPromises()
+    await wrapper.findAll('.tab-btn').find((b) => b.text().startsWith('Users'))!.trigger('click')
+
+    await wrapper.find('[data-testid="admin-delete-user-5"]').trigger('click')
+    expect(apiDelete).not.toHaveBeenCalled()
+
+    await wrapper.find('[data-testid="admin-delete-user-5"]').trigger('click')
+    await flushPromises()
+    expect(confirmSpy).toHaveBeenLastCalledWith(expect.stringContaining('joe@acme.test'))
+    expect(apiDelete).toHaveBeenCalledWith('/admin/users/5')
+    expect(wrapper.find('[data-testid="admin-delete-user-5"]').exists()).toBe(false)
+    confirmSpy.mockRestore()
   })
 })

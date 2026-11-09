@@ -32,6 +32,9 @@ class User extends Authenticatable
         'is_admin',
         'is_active',
         'locale',
+        'signup_status',
+        'signup_requested_at',
+        'terms_accepted_at',
     ];
 
     /**
@@ -56,6 +59,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_active' => 'boolean',
+            'signup_requested_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
         ];
     }
 

@@ -38,9 +38,18 @@ Schedule::command('analytics:rollup')->everyFiveMinutes()->withoutOverlapping(10
 // Hourly: reconcile the on-disk vaults into the MySQL projection.
 Schedule::command('vault:reindex', ['--all'])->hourly()->withoutOverlapping(55);
 
+// Hourly at :30: re-measure workspace storage for the quotas (#390).
+Schedule::command('workspace:storage', ['--measure'])->hourlyAt(30)->withoutOverlapping(30);
+
 // Semantic search (#412): embed changed notes of opted-in workspaces, a bounded
 // batch per run. A no-op (and it clears any index) while JOTTER_SEMANTIC_ENABLED=false.
 Schedule::command('semantic:index', ['--limit=100'])->everyFiveMinutes()->withoutOverlapping(10);
+
+// Opt-in nightly instance backup (#390): JOTTER_BACKUP_DAILY=true. Keeps the newest
+// JOTTER_BACKUP_KEEP archives in JOTTER_BACKUP_PATH; copy them off the server.
+if ((bool) config('jotter.backup.daily', false)) {
+    Schedule::command('jotter:backup')->dailyAt('01:30')->withoutOverlapping(120);
+}
 
 // Nightly retention (spread out so they never share a minute).
 Schedule::command('vault:purge-trash')->dailyAt('02:00')->withoutOverlapping(60);

@@ -67,6 +67,8 @@ final class AdminWorkspaceController extends Controller
             'name' => ['sometimes', 'string', 'max:191'],
             'slug' => ['sometimes', 'string', 'max:191'],
             'vault_path' => ['sometimes', 'string', 'max:700'],
+            // Storage quota (#390): null = instance default, 0 = unlimited.
+            'storage_quota_mb' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:10485760'],
         ]);
 
         if (isset($validated['vault_path'])) {
@@ -86,6 +88,7 @@ final class AdminWorkspaceController extends Controller
                 'slug' => $workspace->slug,
                 'name' => $workspace->name,
                 'vault_path' => $workspace->vault_path,
+                'storage' => app(\App\Domain\Quota\WorkspaceQuota::class)->status($workspace) + ['quota_mb' => $workspace->storage_quota_mb],
             ],
         ]);
     }
