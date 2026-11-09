@@ -188,4 +188,63 @@ final class JotterDoctorCommandTest extends TestCase
         $byId = array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
         $this->assertSame('pass', $byId['oauth_cimd']['status']);
     }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function checksById(): array
+    {
+        return array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+    }
+
+    public function test_doctor_warns_about_insecure_session_and_unrotated_logs(): void
+    {
+        $this->healthyProductionConfig();
+        config([
+            'session.secure' => false,
+            'session.encrypt' => false,
+            'logging.default' => 'stack',
+            'logging.channels.stack.channels' => ['single'],
+        ]);
+
+        $byId = $this->checksById();
+        $this->assertSame('warn', $byId['session_security']['status']);
+        $this->assertStringContainsString('SESSION_SECURE_COOKIE=true', $byId['session_security']['message']);
+        $this->assertStringContainsString('SESSION_ENCRYPT=true', $byId['session_security']['message']);
+        $this->assertSame('warn', $byId['log_retention']['status']);
+
+        config([
+            'session.secure' => true,
+            'session.encrypt' => true,
+            'logging.channels.stack.channels' => ['daily'],
+            'logging.channels.daily.days' => 14,
+        ]);
+
+        $byId = $this->checksById();
+        $this->assertSame('pass', $byId['session_security']['status']);
+        $this->assertSame('pass', $byId['log_retention']['status']);
+    }
+
+    public function test_doctor_checks_access_record_retention_only_for_a_service_offered_to_others(): void
+    {
+        $this->healthyProductionConfig();
+        config([
+            'jotter.audit.retention_days' => 90,
+            'jotter.audit.access_retention_days' => null,
+            'jotter.brand.terms_url' => null,
+            'jotter.brand.privacy_url' => null,
+        ]);
+
+        // Personal installation: informational pass, never a warning.
+        $this->assertSame('pass', $this->checksById()['access_log_retention']['status']);
+
+        // Published Terms/Privacy texts: a service offered to others must keep 6 months.
+        config(['jotter.brand.privacy_url' => 'https://example.com/privacidade']);
+        $check = $this->checksById()['access_log_retention'];
+        $this->assertSame('warn', $check['status']);
+        $this->assertStringContainsString('JOTTER_ACCESS_LOG_RETENTION_DAYS=184', $check['message']);
+
+        config(['jotter.audit.access_retention_days' => 184]);
+        $this->assertSame('pass', $this->checksById()['access_log_retention']['status']);
+    }
 }

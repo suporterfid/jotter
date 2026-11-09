@@ -28,6 +28,28 @@ If an operator deliberately sets `QUEUE_CONNECTION=database`, the scheduler
 drains it every minute with `queue:work --stop-when-empty --max-time=50`; the
 default stays synchronous.
 
+## LGPD settings for a hosted service
+
+A service offered to others has legal duties that a personal self-hosted
+installation does not. Set these in `.env` (defaults keep self-hosting unchanged):
+
+```dotenv
+JOTTER_BRAND_TERMS_URL=https://example.com/termos
+JOTTER_BRAND_PRIVACY_URL=https://example.com/privacidade
+JOTTER_TERMS_VERSION=2026-11-09          # change it whenever a text changes
+JOTTER_ACCESS_LOG_RETENTION_DAYS=184     # Marco Civil art. 15: 6 months of access records
+SESSION_SECURE_COOKIE=true
+SESSION_ENCRYPT=true
+LOG_STACK=daily
+LOG_DAILY_DAYS=14
+```
+
+`php artisan jotter:doctor` warns about each one that is missing
+(`session_security`, `log_retention`, `access_log_retention`). The texts
+themselves are drafts in `docs/legal/` and need a lawyer's review; the
+contracts and processes they depend on are tracked in `BACKLOG.md`
+("LGPD compliance on shared hosting", block 2).
+
 ## Provision a customer
 
 One command creates the tenant, its first workspace and vault directory

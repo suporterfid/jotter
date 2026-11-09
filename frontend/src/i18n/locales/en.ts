@@ -20,6 +20,11 @@ export default {
     nearlyFull: 'This workspace uses {used} of {limit} ({percent}%). Delete notes or attachments, or ask an administrator for more space.',
     full: 'This workspace is full ({used} of {limit}). New notes and uploads are refused until space is freed or the quota is raised.',
   },
+  terms: {
+    updated: 'Our texts changed. Please review the',
+    accept: 'I have read and accept',
+    error: 'Could not record your acceptance. Try again.',
+  },
   plan: {
     trialEndsIn: 'Trial ends in {days} days',
     trialEndsToday: 'Trial ends today',

@@ -1,6 +1,6 @@
 import type { BrandConfig } from './brand'
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteRevisionComparison, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, TermsStatus, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteRevisionComparison, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -105,6 +105,11 @@ export async function updateLocale(locale: string): Promise<void> {
 
 export async function adminResetPassword(userId: number, newPassword: string): Promise<void> {
   await api.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
+}
+
+export async function acceptTerms(): Promise<TermsStatus> {
+  const response = await api.post<{ data: { terms: TermsStatus } }>('/auth/terms/accept')
+  return response.data.data.terms
 }
 
 export async function getMe(): Promise<AuthUser | null> {

@@ -86,6 +86,7 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
+      <TermsBanner :terms="currentUser?.terms" @accepted="handleTermsAccepted" />
       <PlanBanner :plan="activeTenantPlan" :plan-limit="planLimitActive" />
       <StorageBanner :storage="activeWorkspaceStorage" />
       <!-- Graph View Mode -->
@@ -428,7 +429,7 @@ import {
   updateBoard,
   deleteBoard
 } from './services/api'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig, NotificationType, WorkspaceAnalytics as WorkspaceAnalyticsData } from './services/types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, TermsStatus, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig, NotificationType, WorkspaceAnalytics as WorkspaceAnalyticsData } from './services/types'
 import BoardSwitcher from './components/BoardSwitcher.vue'
 import { isArchived } from './services/collectionUtils'
 import { APP_VERSION } from './version'
@@ -438,6 +439,7 @@ import { setExternalEmbedAllowedHosts } from './services/externalEmbeds'
 import { brand, setBrand } from './services/brand'
 import type { ImportSource } from './services/api'
 import PlanBanner from './components/PlanBanner.vue'
+import TermsBanner from './components/TermsBanner.vue'
 import StorageBanner from './components/StorageBanner.vue'
 
 const { t } = useI18n()
@@ -823,6 +825,10 @@ async function handleDeleteNotification(notificationId: number) {
   } catch (err) {
     console.error('Failed to delete notification:', err)
   }
+}
+
+function handleTermsAccepted(terms: TermsStatus) {
+  if (currentUser.value) currentUser.value = { ...currentUser.value, terms }
 }
 
 async function handleLoginSuccess(user: AuthUser) {

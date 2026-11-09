@@ -54,7 +54,8 @@ if ((bool) config('jotter.backup.daily', false)) {
 // Nightly retention (spread out so they never share a minute).
 Schedule::command('vault:purge-trash')->dailyAt('02:00')->withoutOverlapping(60);
 Schedule::command('vault:prune-revisions', ['--days=30'])->dailyAt('02:15')->withoutOverlapping(60);
-Schedule::command('audit:prune', ['--days=90'])->dailyAt('02:30')->withoutOverlapping(60);
+// Retention comes from JOTTER_AUDIT_RETENTION_DAYS / JOTTER_ACCESS_LOG_RETENTION_DAYS.
+Schedule::command('audit:prune')->dailyAt('02:30')->withoutOverlapping(60);
 Schedule::command('oauth:prune')->dailyAt('02:45')->withoutOverlapping(60);
 
 // Hosted mode only: trial reminders (3 days before), then trials past their

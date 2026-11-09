@@ -35,6 +35,7 @@ class User extends Authenticatable
         'signup_status',
         'signup_requested_at',
         'terms_accepted_at',
+        'terms_version',
     ];
 
     /**

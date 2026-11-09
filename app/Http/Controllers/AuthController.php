@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Audit\AuditEvent;
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Vault\ExternalEmbedPolicy;
 use App\Support\Branding;
+use App\Support\LegalTerms;
 use App\Support\ReleaseVersion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,6 +48,7 @@ final class AuthController extends Controller
                 'email' => $subject->email,
                 'name' => $subject->name,
                 'is_admin' => $subject->isAdmin,
+                'terms' => LegalTerms::statusFor($subject->user),
             ],
         ]);
     }
@@ -116,7 +120,41 @@ final class AuthController extends Controller
                 'name' => $subject->name,
                 'is_admin' => $subject->isAdmin,
                 'locale' => $subject->locale,
+                'terms' => LegalTerms::statusFor($subject->user),
             ],
         ]);
+    }
+
+    /**
+     * Records that the signed-in person accepted the current Terms/Privacy
+     * version (LGPD). Only a browser session can accept: a machine or OAuth
+     * token acts for an agent, not for the person reading the texts.
+     */
+    public function acceptTerms(Request $request, AuditRecorder $audit): JsonResponse
+    {
+        $subject = $this->identityProvider->resolveIdentity($request);
+        if (! $subject || $subject->user === null) {
+            return response()->json(['message' => __('messages.unauthenticated')], 401);
+        }
+        if ($subject->isCredential()) {
+            return response()->json(['message' => __('messages.terms_accept_session_only')], 403);
+        }
+
+        $version = LegalTerms::currentVersion();
+        if ($version === null || ! LegalTerms::linksConfigured()) {
+            return response()->json(['message' => __('messages.terms_not_versioned')], 409);
+        }
+
+        $user = $subject->user;
+        if ($user->terms_version !== $version) {
+            $user->forceFill(['terms_accepted_at' => now(), 'terms_version' => $version])->save();
+            $audit->record(
+                event: AuditEvent::USER_TERMS_ACCEPTED,
+                actorId: $subject->subjectId,
+                metadata: ['user_id' => $user->id, 'terms_version' => $version],
+            );
+        }
+
+        return response()->json(['data' => ['terms' => LegalTerms::statusFor($user->refresh())]]);
     }
 }

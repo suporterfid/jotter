@@ -74,11 +74,12 @@ outra garantia].
 | Pedido de cadastro recusado | apagado na hora da recusa |
 | Notas apagadas (lixeira) | 30 dias na lixeira (`JOTTER_TRASH_RETENTION_DAYS`), depois apagadas de vez |
 | Versões antigas de notas | 30 dias (`vault:prune-revisions`) |
-| Registros de auditoria (inclui IP) | 90 dias (`audit:prune`); as estatísticas agregadas, sem IP, podem ficar por mais tempo |
+| Registros de acesso (entrada, saída, conexões de aplicativos, com IP) | [6 meses] (`JOTTER_ACCESS_LOG_RETENTION_DAYS=184`), como exige o Marco Civil da Internet, art. 15 |
+| Demais registros de auditoria (inclui IP) | 90 dias (`JOTTER_AUDIT_RETENTION_DAYS`, `audit:prune`); as estatísticas agregadas, sem IP, podem ficar por mais tempo |
 | Exportações em PDF | 24 horas |
 | Tokens e autorizações OAuth | até expirarem ou serem revogados; códigos e tokens vencidos são apagados diariamente |
 | Cópias de segurança | as [7] mais recentes (`JOTTER_BACKUP_KEEP`); um dado apagado some das cópias quando a mais antiga que o contém é descartada |
-| Registros exigidos por lei | pelo prazo legal, por exemplo 6 meses para registros de acesso a aplicações (Marco Civil, art. 15) |
+| Outros registros exigidos por lei | pelo prazo legal |
 
 ## 6. Segurança
 

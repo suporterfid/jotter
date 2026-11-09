@@ -6,6 +6,7 @@ use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Mail\SignupRequestedEmail;
 use App\Models\User;
+use App\Support\LegalTerms;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -43,7 +44,7 @@ final class SignupController extends Controller
             return response()->json(['message' => __('messages.too_many_attempts')], 429, ['Retry-After' => (string) RateLimiter::availableIn($key)]);
         }
 
-        $termsRequired = (string) config('jotter.brand.terms_url', '') !== '' || (string) config('jotter.brand.privacy_url', '') !== '';
+        $termsRequired = LegalTerms::linksConfigured();
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
             'email' => ['required', 'string', 'email', 'max:191'],
@@ -74,6 +75,7 @@ final class SignupController extends Controller
             'signup_status' => 'pending',
             'signup_requested_at' => now(),
             'terms_accepted_at' => $termsRequired ? now() : null,
+            'terms_version' => $termsRequired ? LegalTerms::currentVersion() : null,
         ]);
 
         $this->audit->record(event: AuditEvent::SIGNUP_REQUESTED, actorId: (string) $user->id, metadata: ['user_id' => $user->id, 'ip' => $request->ip()]);

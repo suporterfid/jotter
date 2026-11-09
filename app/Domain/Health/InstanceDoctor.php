@@ -2,6 +2,7 @@
 
 namespace App\Domain\Health;
 
+use App\Support\LegalTerms;
 use App\Support\ReleaseVersion;
 use App\Support\SchedulerHeartbeat;
 use Carbon\CarbonImmutable;
@@ -15,6 +16,9 @@ use Illuminate\Support\Facades\DB;
 final class InstanceDoctor
 {
     public const MINIMUM_PHP_VERSION = '8.2.0';
+
+    /** Six months, counted generously (the longest six-month span is 184 days). */
+    public const ACCESS_RECORD_DAYS = 184;
 
     public const SCHEDULER_MAX_AGE_MINUTES = 5;
 
@@ -70,6 +74,9 @@ final class InstanceDoctor
             $this->checkAppKey(),
             $this->checkAppDebug($isProduction),
             $this->checkAppUrl($isProduction),
+            $this->checkSessionSecurity(),
+            $this->checkLogRetention(),
+            $this->checkAccessLogRetention(),
             $this->checkWritable('storage_writable', 'storage/ writable', $this->storageDirectories()),
             $this->checkWritable('bootstrap_cache_writable', 'bootstrap/cache writable', [base_path('bootstrap/cache')]),
             $this->checkVaultPath(),
@@ -353,6 +360,76 @@ final class InstanceDoctor
         return str_starts_with(strtolower($url), 'https://')
             ? DoctorCheck::pass('app_url_https', 'APP_URL uses HTTPS', $isProduction, $url, ['url' => $url])
             : DoctorCheck::fail('app_url_https', 'APP_URL uses HTTPS', $isProduction, sprintf("APP_URL is '%s'; production installations must use an https:// URL.", $url), ['url' => $url]);
+    }
+
+    /**
+     * LGPD art. 46 (security): the session cookie travels only over HTTPS and
+     * the session payload stored in MySQL is encrypted. A warning, never
+     * critical, so existing installations keep deploying.
+     */
+    private function checkSessionSecurity(): DoctorCheck
+    {
+        $secure = (bool) config('session.secure');
+        $encrypted = (bool) config('session.encrypt');
+        $httpOnly = (bool) config('session.http_only', true);
+        $details = ['secure_cookie' => $secure, 'encrypt' => $encrypted, 'http_only' => $httpOnly];
+
+        $missing = array_keys(array_filter([
+            'SESSION_SECURE_COOKIE=true' => ! $secure,
+            'SESSION_ENCRYPT=true' => ! $encrypted,
+            'SESSION_HTTP_ONLY=true' => ! $httpOnly,
+        ]));
+
+        return $missing === []
+            ? DoctorCheck::pass('session_security', 'Session cookie and storage', false, 'HTTPS-only, HttpOnly cookie; session payload encrypted.', $details)
+            : DoctorCheck::fail('session_security', 'Session cookie and storage', false, 'Set '.implode(', ', $missing).' in .env (LGPD art. 46: protect personal data in transit and at rest).', $details);
+    }
+
+    /**
+     * Logs may hold e-mail addresses and IPs. The `single` channel never
+     * rotates, so they would be kept forever; `daily` deletes old files.
+     */
+    private function checkLogRetention(): DoctorCheck
+    {
+        $default = (string) config('logging.default');
+        $channels = $default === 'stack'
+            ? array_map('trim', (array) config('logging.channels.stack.channels', []))
+            : [$default];
+        $days = (int) config('logging.channels.daily.days', 14);
+        $details = ['default' => $default, 'channels' => $channels, 'daily_days' => $days];
+
+        if (in_array('single', $channels, true)) {
+            return DoctorCheck::fail('log_retention', 'Log retention', false, 'The `single` log channel never rotates, so personal data in logs (e-mails, IPs) is kept forever. Set LOG_STACK=daily and LOG_DAILY_DAYS (e.g. 14).', $details);
+        }
+        if (in_array('daily', $channels, true) && $days <= 0) {
+            return DoctorCheck::fail('log_retention', 'Log retention', false, 'LOG_DAILY_DAYS=0 keeps every daily log file; set a number of days (e.g. 14).', $details);
+        }
+
+        return DoctorCheck::pass('log_retention', 'Log retention', false, in_array('daily', $channels, true)
+            ? sprintf('Daily log files are deleted after %d days.', $days)
+            : sprintf('Log channel(s): %s.', implode(', ', $channels)), $details);
+    }
+
+    /**
+     * Marco Civil da Internet art. 15: a commercial application provider keeps
+     * access records (date, time, IP) for six months. Only judged when the
+     * installation publishes Terms/Privacy texts, i.e. offers a service to
+     * others; a personal self-hosted installation is not asked to keep more.
+     */
+    private function checkAccessLogRetention(): DoctorCheck
+    {
+        $auditDays = max(1, (int) config('jotter.audit.retention_days', 90));
+        $accessDays = max($auditDays, (int) (config('jotter.audit.access_retention_days') ?? $auditDays));
+        $details = ['audit_days' => $auditDays, 'access_days' => $accessDays, 'required_days' => self::ACCESS_RECORD_DAYS];
+
+        if ($accessDays >= self::ACCESS_RECORD_DAYS) {
+            return DoctorCheck::pass('access_log_retention', 'Access records (Marco Civil)', false, sprintf('Access records are kept %d days.', $accessDays), $details);
+        }
+        if (! LegalTerms::linksConfigured()) {
+            return DoctorCheck::pass('access_log_retention', 'Access records (Marco Civil)', false, sprintf('Access records are kept %d days. A service offered to others must keep them 6 months: set JOTTER_ACCESS_LOG_RETENTION_DAYS=%d.', $accessDays, self::ACCESS_RECORD_DAYS), $details);
+        }
+
+        return DoctorCheck::fail('access_log_retention', 'Access records (Marco Civil)', false, sprintf('Access records are kept only %d days, but Marco Civil art. 15 requires 6 months for a service offered to others. Set JOTTER_ACCESS_LOG_RETENTION_DAYS=%d.', $accessDays, self::ACCESS_RECORD_DAYS), $details);
     }
 
     /**

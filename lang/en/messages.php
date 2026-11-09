@@ -64,6 +64,8 @@ return [
     'signup_pending' => 'Your account is waiting for an administrator to approve it.',
     'signup_domain_not_allowed' => 'Sign-up is limited to some e-mail domains on this server.',
     'signup_terms_required' => 'Accept the terms of use and the privacy policy to continue.',
+    'terms_accept_session_only' => 'Only a signed-in browser session can accept the terms.',
+    'terms_not_versioned' => 'The terms of use are not versioned on this installation.',
     'signup_not_pending' => 'This account has no pending sign-up request.',
     'too_many_attempts' => 'Too many attempts. Try again later.',
     'user_delete_self' => 'You cannot delete your own account.',
