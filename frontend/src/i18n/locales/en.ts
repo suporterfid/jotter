@@ -93,6 +93,7 @@ export default {
     useAuthenticator: 'Use the authenticator app',
     bannerRequired: 'Turn on two-step verification to keep using Administration.',
     bannerAction: 'Set it up now',
+  },
   myData: {
     heading: 'Your data',
     help: 'Download everything we keep about you (account, sign-ins, comments, tokens and activity history) or ask for your account to be deleted. Notes belong to their workspaces and stay there.',
