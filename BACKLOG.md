@@ -75,6 +75,11 @@ Found while doing block 1, out of its scope: the sign-up form in `LoginModal.vue
 - **Routine (P3).** No automated dependency alerting runs since GitHub Actions was removed: run `./scripts/jt.sh composer audit` and `./scripts/jt.sh npm audit --omit=dev` before each release, or add them to `jt ci`.
 - **`vue-i18n` 11 warns about HTML in a message** (`linkReportViewer.noBrokenLinks`: `No broken <code>[[wikilinks]]</code> found.`). A dev-console warning only; move the markup out of the message when that screen is next touched.
 
+## End-to-end suite flakiness (seen 2026-11-10)
+
+- **`password-management.spec.ts:4` times out intermittently (P2).** Within a full `jt e2e` run, the click on `[data-testid="change-password-btn"]` waits 60 s because `<div class="tab-strip tab-strip-vertical">` in `main.main-content` intercepts pointer events. The vertical tab strip overlaps the sidebar footer. It passes alone and in some full runs, and it happened on a branch without the two-step verification code (the dependency update), so it depends on state or order left by earlier specs. Find which spec leaves the vertical tab strip open, and check whether the overlap is also a real layout bug at that viewport.
+- **`content-approval.spec.ts:4` is flaky** (the review state still reads "Draft" when first checked) and **`oauth-consent.spec.ts` fails in the sandbox** (the redirect back to the loopback client is never captured). Both also happen on `main`.
+
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 
 - **Doctor thresholds.** Disk-space (100 MiB critical / 1 GiB warning) and scheduler age (5 minutes) are constants on `InstanceDoctor`; make them configurable only if a host proves them wrong.
