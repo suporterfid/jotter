@@ -65,6 +65,13 @@ Gaps found in a code review against the LGPD, the Marco Civil da Internet and th
 
 Found while doing block 1, out of its scope: the sign-up form in `LoginModal.vue` joins the terms/privacy links with a `<template>` whose surrounding spaces Vue may collapse ("termos de usoe apolítica"); `TermsBanner.vue` uses explicit spaces instead.
 
+## Dependency hygiene
+
+- ~~**Production advisories (2026-11-10).**~~ **Fixed** (see CHANGELOG): `composer audit` and `npm audit --omit=dev` are clean.
+- **Development-only advisories (P3).** Six moderate ones remain in `eslint` 10 (`@eslint/config-array` → `minimatch`) and in `@vue/test-utils` → `js-beautify` (`editorconfig`, `glob`, `minimatch`). None ships in the release ZIP. Re-run `./scripts/jt.sh npm audit` when `eslint` or `js-beautify` publish fixes.
+- **Routine (P3).** No automated dependency alerting runs since GitHub Actions was removed: run `./scripts/jt.sh composer audit` and `./scripts/jt.sh npm audit --omit=dev` before each release, or add them to `jt ci`.
+- **`vue-i18n` 11 warns about HTML in a message** (`linkReportViewer.noBrokenLinks`: `No broken <code>[[wikilinks]]</code> found.`). A dev-console warning only; move the markup out of the message when that screen is next touched.
+
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 
 - **Doctor thresholds.** Disk-space (100 MiB critical / 1 GiB warning) and scheduler age (5 minutes) are constants on `InstanceDoctor`; make them configurable only if a host proves them wrong.
