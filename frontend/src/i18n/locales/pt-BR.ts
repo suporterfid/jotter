@@ -93,6 +93,7 @@ export default {
     useAuthenticator: 'Usar o app autenticador',
     bannerRequired: 'Ligue a verificação em duas etapas para continuar usando a Administração.',
     bannerAction: 'Configurar agora',
+  },
   myData: {
     heading: 'Seus dados',
     help: 'Baixe tudo o que guardamos sobre você (conta, acessos, comentários, tokens e histórico de atividade) ou peça a exclusão da sua conta. As notas pertencem aos workspaces e continuam lá.',
