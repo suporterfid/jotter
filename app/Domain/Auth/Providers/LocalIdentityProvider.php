@@ -95,6 +95,18 @@ final class LocalIdentityProvider implements IdentityProvider
             return null;
         }
 
+        // Two-step verification (block 4b): the password is right, but nobody is
+        // signed in until a code completes the challenge (POST /api/auth/two-factor).
+        // Without a session there is nowhere to keep the challenge: refuse, never skip it.
+        if ($user->hasTwoFactor()) {
+            if (! $request->hasSession()) {
+                return null;
+            }
+            (new \App\Domain\Auth\TwoFactor\TwoFactorChallenge)->start($request, $user, (bool) ($credentials['remember'] ?? false));
+
+            throw new \App\Domain\Auth\TwoFactor\TwoFactorRequired;
+        }
+
         Auth::guard('web')->login($user, (bool) ($credentials['remember'] ?? false));
 
         if ($request->hasSession()) {

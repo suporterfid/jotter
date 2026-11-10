@@ -73,8 +73,10 @@
       v-if="isProfileOpen && currentUser"
       :current-name="currentUser.name"
       :email="currentUser.email"
+      :two-factor="currentUser.two_factor"
       :deletion-requested-at="currentUser.deletion_requested_at"
       @updated="handleProfileUpdated"
+      @two-factor-changed="handleTwoFactorChanged"
       @deletion-changed="handleDeletionChanged"
       @close="isProfileOpen = false"
     />
@@ -89,6 +91,7 @@
     <!-- Main Content Area -->
     <main class="main-content">
       <TermsBanner :terms="currentUser?.terms" @accepted="handleTermsAccepted" />
+      <TwoFactorBanner :status="currentUser?.two_factor" @open-profile="isProfileOpen = true" />
       <PlanBanner :plan="activeTenantPlan" :plan-limit="planLimitActive" />
       <StorageBanner :storage="activeWorkspaceStorage" />
       <!-- Graph View Mode -->
@@ -431,7 +434,7 @@ import {
   updateBoard,
   deleteBoard
 } from './services/api'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, TermsStatus, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig, NotificationType, WorkspaceAnalytics as WorkspaceAnalyticsData } from './services/types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, TermsStatus, TwoFactorStatus, SearchFilters, AttachmentItem, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, FolderPosition, Board, BoardColumnConfig, NotificationType, WorkspaceAnalytics as WorkspaceAnalyticsData } from './services/types'
 import BoardSwitcher from './components/BoardSwitcher.vue'
 import { isArchived } from './services/collectionUtils'
 import { APP_VERSION } from './version'
@@ -442,6 +445,7 @@ import { brand, setBrand } from './services/brand'
 import type { ImportSource } from './services/api'
 import PlanBanner from './components/PlanBanner.vue'
 import TermsBanner from './components/TermsBanner.vue'
+import TwoFactorBanner from './components/TwoFactorBanner.vue'
 import StorageBanner from './components/StorageBanner.vue'
 
 const { t } = useI18n()
@@ -539,6 +543,10 @@ const isProfileOpen = ref(false)
 
 function handleProfileUpdated(name: string) {
   if (currentUser.value) currentUser.value = { ...currentUser.value, name }
+}
+
+function handleTwoFactorChanged(status: TwoFactorStatus) {
+  if (currentUser.value) currentUser.value = { ...currentUser.value, two_factor: status }
 }
 
 function handleDeletionChanged(requestedAt: string | null) {

@@ -84,6 +84,8 @@ outra garantia].
 ## 6. Segurança
 
 Senhas, tokens e códigos de acesso são guardados apenas como *hash*. O tráfego usa HTTPS.
+Você pode ligar a verificação em duas etapas (código de um app autenticador) em **Seu
+perfil**[; para administradores ela é obrigatória].
 [Se `JOTTER_BACKUP_KEY` estiver configurada] As cópias de segurança são criptografadas, e a
 chave fica guardada fora do servidor.
 O acesso aos workspaces segue papéis e permissões por nota. As credenciais de agentes de

@@ -27,6 +27,8 @@
         </div>
       </form>
 
+      <TwoFactorPanel :status="twoFactor" @changed="$emit('two-factor-changed', $event)" />
+
       <MyDataPanel :deletion-requested-at="deletionRequestedAt" @deletion-changed="$emit('deletion-changed', $event)" />
     </div>
   </div>
@@ -36,13 +38,16 @@
 import { onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { updateProfile } from '../services/api'
+import type { TwoFactorStatus } from '../services/types'
 import MyDataPanel from './MyDataPanel.vue'
+import TwoFactorPanel from './TwoFactorPanel.vue'
 
 // The person corrects their own name (#390, LGPD right to correction).
-const props = defineProps<{ currentName: string; email: string; deletionRequestedAt?: string | null }>()
+const props = defineProps<{ currentName: string; email: string; twoFactor?: TwoFactorStatus | null; deletionRequestedAt?: string | null }>()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'updated', name: string): void
+  (e: 'two-factor-changed', status: TwoFactorStatus): void
   (e: 'deletion-changed', requestedAt: string | null): void
 }>()
 const { t } = useI18n()
@@ -93,6 +98,9 @@ async function submit() {
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   width: 360px;
+  max-width: calc(100vw - 2 * var(--space-4));
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-float);
 }
 

@@ -95,6 +95,7 @@ final class InstanceDoctor
             $this->checkBackup(),
             $this->checkBackupEncryption(),
             $this->checkQuotas(),
+            $this->checkAdminTwoFactor($databaseCheck->passed),
             $this->checkDeletionRequests($databaseCheck->passed),
         ];
 
@@ -307,6 +308,34 @@ final class InstanceDoctor
         return DoctorCheck::pass('storage_quota', 'Workspace storage quotas', false, $defaultMb > 0
             ? sprintf('Every workspace is under %d%% of its quota (default %d MB).', (int) config('jotter.quota.warn_percent', 80), $defaultMb)
             : 'Unlimited by default (JOTTER_WORKSPACE_QUOTA_MB=0).', $details);
+    }
+
+    /**
+     * Block 4b: administrators reach everything, so their password alone
+     * should not be enough. Judged only where two-step verification applies
+     * (local provider); OIDC sign-ins rely on the identity provider's MFA.
+     */
+    private function checkAdminTwoFactor(bool $databaseReachable): DoctorCheck
+    {
+        if (! $databaseReachable || (string) config('jotter.auth_provider', 'local') !== 'local') {
+            return DoctorCheck::pass('admin_two_factor', 'Administrator two-step verification', false, 'Not applicable: sign-in is handled by an identity provider, or the database is not reachable.');
+        }
+
+        $admins = \App\Models\User::query()->where('is_admin', true)->where('is_active', true)->get(['id', 'email', 'two_factor_secret', 'two_factor_confirmed_at']);
+        $without = $admins->reject(static fn (\App\Models\User $user): bool => $user->hasTwoFactor())->pluck('email')->values()->all();
+        $required = (bool) config('jotter.two_factor.required_for_admins', false);
+        $details = ['admins' => $admins->count(), 'without_two_factor' => $without, 'required' => $required];
+
+        if ($without === []) {
+            return DoctorCheck::pass('admin_two_factor', 'Administrator two-step verification', false, sprintf('All %d active administrator(s) use two-step verification.', $admins->count()), $details);
+        }
+
+        return DoctorCheck::fail('admin_two_factor', 'Administrator two-step verification', false, sprintf(
+            '%s without two-step verification: %s.%s',
+            count($without) === 1 ? '1 administrator' : count($without).' administrators',
+            implode(', ', $without),
+            $required ? ' They must set it up before using Administration.' : ' Set JOTTER_2FA_REQUIRED_FOR_ADMINS=true to make it mandatory.',
+        ), $details);
     }
 
     /**

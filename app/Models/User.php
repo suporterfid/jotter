@@ -47,6 +47,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -63,6 +65,10 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'signup_requested_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
+            'two_factor_last_used_step' => 'integer',
             'deletion_requested_at' => 'datetime',
         ];
     }
@@ -70,6 +76,12 @@ class User extends Authenticatable
     public function identities(): HasMany
     {
         return $this->hasMany(Identity::class);
+    }
+
+    /** Two-step verification is set up and confirmed (block 4b). */
+    public function hasTwoFactor(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && (string) $this->two_factor_secret !== '';
     }
 
     /**

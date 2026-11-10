@@ -4,6 +4,21 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### LGPD block 4b: TOTP two-step verification — 2026-11-10
+
+- **Your profile → Two-step verification.** Anyone who signs in with a password (local provider, or GrandpaSSOn's local fallback) can turn it on.
+  - Turning it on asks for the current password (`POST /api/user/two-factor`), shows a QR code and the key, and takes effect only after a first code is confirmed (`POST /api/user/two-factor/confirm`).
+  - Confirming shows ten one-time recovery codes once, with a `.txt` download.
+  - Turning it off (`DELETE /api/user/two-factor`) and renewing the codes (`POST /api/user/two-factor/recovery-codes`) also ask for the password, limited to 5 tries per 15 minutes.
+- **Sign-in in two steps.** After the right password, `POST /api/auth/login` answers `202 {two_factor_required: true}` and nobody is signed in yet. `POST /api/auth/two-factor` with `code` or `recovery_code` completes it.
+  - The challenge lives 5 minutes in the session and is dropped after 5 wrong codes. A per-account limiter (15 per 15 minutes) spans challenges.
+  - A code is accepted once (replay protection), and a recovery code is consumed when used.
+  - Without a session the sign-in is refused, never let through.
+  - The `auth.login_success` audit row records `two_factor: totp|recovery_code`.
+- **Implementation.** TOTP is RFC 6238 in pure PHP (`App\Domain\Auth\TwoFactor\Totp`: SHA-1, 30 s, 6 digits, ±1 step). The secret is encrypted with `APP_KEY`, and only SHA-256 hashes of the recovery codes are kept, also encrypted. Migration `2026_11_10_000002`. The QR code is drawn in the browser with the `qrcode` npm package.
+- **`JOTTER_2FA_REQUIRED_FOR_ADMINS`** (default `false`). Administrators of a local-provider installation get `403 two_factor_setup_required` on `/api/admin/*` and a banner pointing to their profile until they turn it on.
+- **`php artisan user:two-factor-reset <e-mail>`** handles a lost authenticator. `jotter:doctor` gains `admin_two_factor`, which lists active administrators without it. `GET /api/auth/me` and the sign-in answer carry `two_factor` (`available`, `enabled`, `required`, `recovery_codes_left`).
+- Audit events `user.two_factor_enabled`, `user.two_factor_disabled`, `user.two_factor_recovery_codes_regenerated`, `user.two_factor_recovery_code_used` and `user.two_factor_reset`.
 ### LGPD block 4a: encrypted instance backups — 2026-11-10
 
 - With `JOTTER_BACKUP_KEY` set, `jotter:backup` encrypts the whole archive with libsodium's secretstream (XChaCha20-Poly1305, 1 MiB chunks, pure PHP) and writes `jotter-backup-<timestamp>.zip.enc`. File names inside are hidden, and the plain ZIP only ever exists in a private scratch folder. A truncated, altered or wrongly keyed archive is refused before anything is restored.

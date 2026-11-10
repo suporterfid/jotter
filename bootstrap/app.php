@@ -40,6 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
             SetLocaleFromSubject::class,
             // Bearer machine/OAuth tokens: scope and audience per route.
             EnforceCredentialAudience::class,
+            // JOTTER_2FA_REQUIRED_FOR_ADMINS: /api/admin/* waits for two-step verification.
+            \App\Http\Middleware\RequireAdminTwoFactor::class,
         ]);
 
         // OAuth machine endpoints are called by MCP clients, not by our forms.

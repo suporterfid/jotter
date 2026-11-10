@@ -248,6 +248,23 @@ final class JotterDoctorCommandTest extends TestCase
         $this->assertSame('pass', $this->checksById()['access_log_retention']['status']);
     }
 
+    public function test_doctor_lists_administrators_without_two_step_verification(): void
+    {
+        $this->healthyProductionConfig();
+        config(['jotter.auth_provider' => 'local']);
+        $admin = \App\Models\User::factory()->create(['email' => 'root@example.com', 'is_admin' => true]);
+
+        $check = $this->checksById()['admin_two_factor'];
+        $this->assertSame('warn', $check['status']);
+        $this->assertStringContainsString('root@example.com', $check['message']);
+
+        $admin->forceFill(['two_factor_secret' => \App\Domain\Auth\TwoFactor\Totp::generateSecret(), 'two_factor_confirmed_at' => now()])->save();
+        $this->assertSame('pass', $this->checksById()['admin_two_factor']['status']);
+
+        config(['jotter.auth_provider' => 'oidc']);
+        $this->assertSame('pass', $this->checksById()['admin_two_factor']['status']);
+    }
+
     public function test_doctor_checks_backup_encryption(): void
     {
         $this->healthyProductionConfig();

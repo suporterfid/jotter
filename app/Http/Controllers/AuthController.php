@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\Contracts\IdentityProvider;
+use App\Domain\Auth\TwoFactor\TwoFactorChallenge;
+use App\Domain\Auth\TwoFactor\TwoFactorPolicy;
+use App\Domain\Auth\TwoFactor\TwoFactorRequired;
 use App\Domain\Vault\ExternalEmbedPolicy;
 use App\Support\Branding;
 use App\Support\LegalTerms;
@@ -26,7 +29,12 @@ final class AuthController extends Controller
             'remember' => ['nullable', 'boolean'],
         ]);
 
-        $subject = $this->identityProvider->authenticate($validated, $request);
+        try {
+            $subject = $this->identityProvider->authenticate($validated, $request);
+        } catch (TwoFactorRequired) {
+            // Password accepted; a code must follow (POST /api/auth/two-factor).
+            return response()->json(['data' => ['two_factor_required' => true]], 202);
+        }
 
         if (! $subject) {
             // A sign-up waiting for approval (#390) is told so, but only when the
@@ -49,8 +57,39 @@ final class AuthController extends Controller
                 'name' => $subject->name,
                 'is_admin' => $subject->isAdmin,
                 'terms' => LegalTerms::statusFor($subject->user),
+                'two_factor' => TwoFactorPolicy::statusFor($subject->user),
             ],
         ]);
+    }
+
+    /**
+     * Second step of a password sign-in: a TOTP code (`code`) or a recovery
+     * code (`recovery_code`). 422 for a wrong code; 401 with `two_factor_expired`
+     * when the challenge expired or failed five times (sign in again).
+     */
+    public function twoFactor(Request $request, TwoFactorChallenge $challenge): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['nullable', 'string', 'max:16'],
+            'recovery_code' => ['nullable', 'string', 'max:32'],
+        ]);
+
+        $result = $challenge->complete($request, $validated['code'] ?? null, $validated['recovery_code'] ?? null);
+
+        return match ($result['status']) {
+            'ok' => response()->json(['data' => [
+                'subject_id' => (string) $result['user']->id,
+                'email' => $result['user']->email,
+                'name' => $result['user']->name,
+                'is_admin' => (bool) $result['user']->is_admin,
+                'locale' => $result['user']->locale,
+                'terms' => LegalTerms::statusFor($result['user']),
+                'two_factor' => TwoFactorPolicy::statusFor($result['user']),
+            ]]),
+            'invalid' => response()->json(['message' => __('messages.two_factor_invalid'), 'errors' => ['code' => [__('messages.two_factor_invalid')]]], 422),
+            'locked' => response()->json(['message' => __('messages.too_many_attempts')], 429),
+            default => response()->json(['message' => __('messages.two_factor_expired'), 'two_factor_expired' => true], 401),
+        };
     }
 
     /**
@@ -121,6 +160,7 @@ final class AuthController extends Controller
                 'is_admin' => $subject->isAdmin,
                 'locale' => $subject->locale,
                 'terms' => LegalTerms::statusFor($subject->user),
+                'two_factor' => TwoFactorPolicy::statusFor($subject->user),
                 'deletion_requested_at' => $subject->user?->deletion_requested_at?->toIso8601String(),
             ],
         ]);

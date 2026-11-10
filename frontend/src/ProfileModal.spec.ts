@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ProfileModal from './components/ProfileModal.vue'
 import { updateProfile } from './services/api'
 
-vi.mock('./services/api', () => ({ updateProfile: vi.fn(), USER_DATA_EXPORT_URL: '/api/user/data-export', requestAccountDeletion: vi.fn(), cancelAccountDeletion: vi.fn() }))
+vi.mock('./services/api', () => ({ updateProfile: vi.fn(), startTwoFactor: vi.fn(), confirmTwoFactor: vi.fn(), disableTwoFactor: vi.fn(), regenerateRecoveryCodes: vi.fn(), USER_DATA_EXPORT_URL: '/api/user/data-export', requestAccountDeletion: vi.fn(), cancelAccountDeletion: vi.fn() }))
 
 describe('ProfileModal (#390 name correction)', () => {
   beforeEach(() => vi.clearAllMocks())

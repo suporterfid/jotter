@@ -60,7 +60,7 @@ Gaps found in a code review against the LGPD, the Marco Civil da Internet and th
    - ~~`tenant:delete {slug}`.~~ Replaces the `tinker` runbook: `--dry-run`, `--export-to`, deletes accounts that belong only to the tenant, keeps access records detached for the Marco Civil window, removes vault folders only inside `VAULT_BASE_PATH`, audited as `tenant.deleted`.
 4. **Block 4 — stronger security (P2).** Split into three PRs:
    - ~~**4a. Encrypted instance backups.**~~ **Delivered 2026-11-10** (see CHANGELOG): `JOTTER_BACKUP_KEY` (from `jotter:backup-key`) encrypts every `jotter:backup` archive as a whole (libsodium secretstream, `*.zip.enc`), `jotter:restore` decrypts it, rotation through `JOTTER_BACKUP_PREVIOUS_KEYS`, and the `backup_encryption` doctor check.
-   - **4b. TOTP second factor for administrators** (pure PHP, fits shared hosting): enrolment with QR code, verification at sign-in, recovery codes, and an administrator reset.
+   - ~~**4b. TOTP two-step verification.**~~ **Delivered 2026-11-10** (see CHANGELOG): pure-PHP RFC 6238, encrypted secret and hashed recovery codes, a second sign-in step with replay protection and attempt limits, `JOTTER_2FA_REQUIRED_FOR_ADMINS`, `user:two-factor-reset`, and the `admin_two_factor` doctor check. Not covered: a Playwright end-to-end of the whole flow (component and API tests cover it).
    - **4c. Per-tenant keys and crypto-shredding** (a tenant deletion also reaches old backups), plus optional encryption at rest of `note_revisions.content`. This needs a dated decision in `docs/decisions.md` first: it changes what backups contain and where keys live. Vault encryption changes the "plain `.md` on disk" invariant and is out of scope until that decision exists.
    - Follow-up of 4a: `tenant:export` archives handed to customers are still plain ZIPs. A password-protected (AES-256 ZIP) option would let customers open them with 7-Zip.
 
@@ -74,6 +74,11 @@ Found while doing block 1, out of its scope: the sign-up form in `LoginModal.vue
 - **Development-only advisories (P3).** Six moderate ones remain in `eslint` 10 (`@eslint/config-array` → `minimatch`) and in `@vue/test-utils` → `js-beautify` (`editorconfig`, `glob`, `minimatch`). None ships in the release ZIP. Re-run `./scripts/jt.sh npm audit` when `eslint` or `js-beautify` publish fixes.
 - **Routine (P3).** No automated dependency alerting runs since GitHub Actions was removed: run `./scripts/jt.sh composer audit` and `./scripts/jt.sh npm audit --omit=dev` before each release, or add them to `jt ci`.
 - **`vue-i18n` 11 warns about HTML in a message** (`linkReportViewer.noBrokenLinks`: `No broken <code>[[wikilinks]]</code> found.`). A dev-console warning only; move the markup out of the message when that screen is next touched.
+
+## End-to-end suite flakiness (seen 2026-11-10)
+
+- **`password-management.spec.ts:4` times out intermittently (P2).** Within a full `jt e2e` run, the click on `[data-testid="change-password-btn"]` waits 60 s because `<div class="tab-strip tab-strip-vertical">` in `main.main-content` intercepts pointer events. The vertical tab strip overlaps the sidebar footer. It passes alone and in some full runs, and it happened on a branch without the two-step verification code (the dependency update), so it depends on state or order left by earlier specs. Find which spec leaves the vertical tab strip open, and check whether the overlap is also a real layout bug at that viewport.
+- **`content-approval.spec.ts:4` is flaky** (the review state still reads "Draft" when first checked) and **`oauth-consent.spec.ts` fails in the sandbox** (the redirect back to the loopback client is never captured). Both also happen on `main`.
 
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 
