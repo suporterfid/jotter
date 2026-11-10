@@ -188,6 +188,8 @@ export interface AuthUser {
   is_admin: boolean
   locale: string
   terms?: TermsStatus
+  /** LGPD: when the person asked for their account to be deleted (null = no request). */
+  deletion_requested_at?: string | null
 }
 
 export interface NoteRevisionMeta {

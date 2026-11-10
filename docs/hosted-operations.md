@@ -108,27 +108,54 @@ refuses to. Audit: `tenant.exported`.
 
 ## Remove a tenant
 
-There is deliberately no destructive command. To remove a customer:
+At the end of the retention period agreed with the customer (LGPD art. 16):
 
-1. `php artisan tenant:export acme --to=...` and deliver the archive.
-2. `php artisan tenant:plan acme --status=read_only` during the notice period.
-3. After the retention period agreed with the customer, delete the rows and the
-   vault directory manually and record the action out of band. `audit_log`
-   rows reference the tenant with `ON DELETE RESTRICT`, so they must go first
-   (keep the exported archive as the record of what existed):
+1. `php artisan tenant:plan acme --status=read_only` during the notice period.
+2. See what would go, changing nothing:
 
 ```sh
-php artisan tinker --execute="
-  \$t = App\\Models\\Tenant::where('slug','acme')->firstOrFail();
-  App\\Models\\AuditLog::where('tenant_id', \$t->id)->delete();
-  \$t->delete();
-"
-rm -rf "$VAULT_BASE_PATH/acme-docs"
+php artisan tenant:delete acme --dry-run
 ```
 
-Cascading foreign keys then remove workspaces, memberships, notes, and related
-projections; the local user account survives (it may belong to other tenants)
-and can be deactivated from the admin UI.
+3. Export and delete in one step (nothing is deleted if the export fails):
+
+```sh
+php artisan tenant:delete acme --export-to=/home/user/exports/acme.zip
+```
+
+`tenant:delete` asks for confirmation (`--force` skips it; `--json` for scripts) and then:
+
+- deletes, through `user:delete`'s rules, every account that belongs **only** to this
+  tenant. Administrators, and people with a membership in another tenant, only lose
+  their memberships here;
+- keeps the tenant's **access records** (sign-in, sign-out, OAuth tokens issued, MCP
+  connections, with IP) for the Marco Civil window (`JOTTER_ACCESS_LOG_RETENTION_DAYS`),
+  detached from the tenant, so `audit:prune` removes them later. Every other audit row
+  of the tenant is deleted;
+- deletes the tenant row; foreign keys cascade to workspaces, notes, revisions,
+  comments, tokens, grants, groups and projections;
+- removes each workspace's vault folder from disk, but only when it lies inside
+  `VAULT_BASE_PATH`. A folder elsewhere is listed as "not removed" for you to check;
+- records `tenant.deleted` (slug and counts, no personal data).
+
+It refuses to delete the installation's only tenant. Instance backups taken before
+keep the tenant until they rotate out (`JOTTER_BACKUP_KEEP`), as the privacy policy
+says. Keep the exported ZIP as the record of what existed for as long as your contract
+requires, and no longer.
+
+## Account deletion requests
+
+People ask for their own account to be deleted from **Your profile → Your data**
+(they can also download everything Jotter keeps about them there). Active
+administrators are e-mailed, and the request shows in **Administration → Users →
+Account deletion requests**. Carry it out there, or over SSH:
+
+```sh
+php artisan user:delete maria@example.com
+```
+
+The privacy policy promises 30 days. `jotter:doctor` warns (`deletion_requests`)
+when a request is older than 15 days.
 
 ## Starter templates
 

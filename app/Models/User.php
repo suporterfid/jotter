@@ -36,6 +36,7 @@ class User extends Authenticatable
         'signup_requested_at',
         'terms_accepted_at',
         'terms_version',
+        'deletion_requested_at',
     ];
 
     /**
@@ -62,6 +63,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'signup_requested_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
+            'deletion_requested_at' => 'datetime',
         ];
     }
 

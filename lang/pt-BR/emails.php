@@ -19,6 +19,12 @@ return [
         'mcp_guide' => 'Guia do MCP',
         'trial' => '{1} Seu período de teste dura 1 dia.|[2,*] Seu período de teste dura :days dias; avisaremos antes de terminar.',
     ],
+    'deletion_requested' => [
+        'subject' => ':name pediu a exclusão da conta',
+        'body' => ':name (:email) pediu a exclusão da própria conta no :brand. A Política de Privacidade promete atender em até 30 dias.',
+        'button' => 'Abrir o :brand',
+        'where' => 'Confira o pedido e exclua a conta em Administração → Usuários (ou com php artisan user:delete).',
+    ],
     'signup_requested' => [
         'subject' => ':name pediu uma conta',
         'body' => ':name (:email) pediu uma conta no :brand. O acesso fica desligado até um administrador aprovar.',
