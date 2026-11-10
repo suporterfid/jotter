@@ -17,6 +17,9 @@ final class InstanceDoctor
 {
     public const MINIMUM_PHP_VERSION = '8.2.0';
 
+    /** A deletion request this old is half-way to the 30 days the privacy policy promises. */
+    public const DELETION_REQUEST_WARN_DAYS = 15;
+
     /** Six months, counted generously (the longest six-month span is 184 days). */
     public const ACCESS_RECORD_DAYS = 184;
 
@@ -92,6 +95,7 @@ final class InstanceDoctor
             $this->checkBackup(),
             $this->checkBackupEncryption(),
             $this->checkQuotas(),
+            $this->checkDeletionRequests($databaseCheck->passed),
         ];
 
         return new DoctorReport(
@@ -303,6 +307,34 @@ final class InstanceDoctor
         return DoctorCheck::pass('storage_quota', 'Workspace storage quotas', false, $defaultMb > 0
             ? sprintf('Every workspace is under %d%% of its quota (default %d MB).', (int) config('jotter.quota.warn_percent', 80), $defaultMb)
             : 'Unlimited by default (JOTTER_WORKSPACE_QUOTA_MB=0).', $details);
+    }
+
+    /**
+     * LGPD art. 18 VI: people ask for deletion from "Your profile → Your data";
+     * an administrator carries it out. Warns before the 30-day promise lapses.
+     */
+    private function checkDeletionRequests(bool $databaseReachable): DoctorCheck
+    {
+        if (! $databaseReachable) {
+            return DoctorCheck::pass('deletion_requests', 'Account deletion requests', false, 'Skipped: the database is not reachable.');
+        }
+
+        $pending = \App\Models\User::query()->whereNotNull('deletion_requested_at')->orderBy('deletion_requested_at')->get(['id', 'email', 'deletion_requested_at']);
+        $overdue = $pending->filter(static fn (\App\Models\User $user): bool => $user->deletion_requested_at->lt(now()->subDays(self::DELETION_REQUEST_WARN_DAYS)));
+        $details = ['pending' => $pending->count(), 'older_than_days' => self::DELETION_REQUEST_WARN_DAYS, 'overdue_user_ids' => $overdue->pluck('id')->all()];
+
+        if ($overdue->isNotEmpty()) {
+            return DoctorCheck::fail('deletion_requests', 'Account deletion requests', false, sprintf(
+                '%d request(s) older than %d days; the privacy policy promises 30. Delete in Administration → Users or with php artisan user:delete <e-mail>: %s.',
+                $overdue->count(),
+                self::DELETION_REQUEST_WARN_DAYS,
+                $overdue->map(static fn (\App\Models\User $user): string => $user->email.' ('.$user->deletion_requested_at->toDateString().')')->implode(', '),
+            ), $details);
+        }
+
+        return DoctorCheck::pass('deletion_requests', 'Account deletion requests', false, $pending->isEmpty()
+            ? 'No pending requests.'
+            : sprintf('%d pending, all newer than %d days.', $pending->count(), self::DELETION_REQUEST_WARN_DAYS), $details);
     }
 
     private function isProduction(): bool

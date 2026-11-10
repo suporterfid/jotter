@@ -55,16 +55,25 @@ Gaps found in a code review against the LGPD, the Marco Civil da Internet and th
    - ~~Versioned acceptance of the Terms/Privacy texts.~~ `users.terms_version` + `JOTTER_TERMS_VERSION`; a banner asks again when the version changes (`POST /api/auth/terms/accept`, audited as `user.terms_accepted`).
    - ~~Secure production defaults.~~ `jotter:doctor` warns about `SESSION_SECURE_COOKIE`, `SESSION_ENCRYPT`, `SESSION_HTTP_ONLY` and a `single` log channel that never rotates; `.env.example` turns session encryption on and documents `LOG_STACK=daily`.
 2. **Block 2 — documents and contracts (P1, operator work, no code).** Publish the reviewed Terms/Privacy drafts; sign a data processing agreement (contrato de operador, LGPD art. 39) with the hosting and SMTP providers; prefer a datacenter in Brazil or record the international-transfer safeguard (Resolução CD/ANPD nº 19/2024); keep a simplified record of processing (art. 37; small-agent regime, Resolução CD/ANPD nº 2/2022); write the incident response plan (notify ANPD and holders within 3 working days, keep the incident register for 5 years, Resolução CD/ANPD nº 15/2024); name the encarregado or a contact channel.
-3. **Block 3 — data subject self-service (P2).**
-   - "My data" page: download one's own data (profile, comments, memberships, own audit entries) and request account deletion, approved by an administrator (`UserDeletion` refuses self-deletion today).
-   - `tenant:delete {slug}` command replacing the manual `tinker` procedure in `docs/hosted-operations.md`, with audit and the 30-day deadline the privacy policy promises.
+3. ~~**Block 3 — data subject self-service (P2).**~~ **Delivered 2026-11-10** (see CHANGELOG):
+   - ~~"My data".~~ Your profile → Your data: `GET /api/user/data-export` (JSON download of everything kept about the person, no secrets and no note bodies; 5 per hour) and `POST`/`DELETE /api/user/deletion-request` (administrators e-mailed; Administration → Users lists the requests; `jotter:doctor` warns after 15 days). The deletion itself stays with an administrator (`user:delete`).
+   - ~~`tenant:delete {slug}`.~~ Replaces the `tinker` runbook: `--dry-run`, `--export-to`, deletes accounts that belong only to the tenant, keeps access records detached for the Marco Civil window, removes vault folders only inside `VAULT_BASE_PATH`, audited as `tenant.deleted`.
 4. **Block 4 — stronger security (P2).** Split into three PRs:
    - ~~**4a. Encrypted instance backups.**~~ **Delivered 2026-11-10** (see CHANGELOG): `JOTTER_BACKUP_KEY` (from `jotter:backup-key`) encrypts every `jotter:backup` archive as a whole (libsodium secretstream, `*.zip.enc`), `jotter:restore` decrypts it, rotation through `JOTTER_BACKUP_PREVIOUS_KEYS`, and the `backup_encryption` doctor check.
    - **4b. TOTP second factor for administrators** (pure PHP, fits shared hosting): enrolment with QR code, verification at sign-in, recovery codes, and an administrator reset.
    - **4c. Per-tenant keys and crypto-shredding** (a tenant deletion also reaches old backups), plus optional encryption at rest of `note_revisions.content`. This needs a dated decision in `docs/decisions.md` first: it changes what backups contain and where keys live. Vault encryption changes the "plain `.md` on disk" invariant and is out of scope until that decision exists.
    - Follow-up of 4a: `tenant:export` archives handed to customers are still plain ZIPs. A password-protected (AES-256 ZIP) option would let customers open them with 7-Zip.
 
+Seen while doing block 3, not yet explained: one full `jt test` run failed `TenantProvisionCommandTest::test_provision_creates_everything_and_prints_the_password_once` with `JsonException: Syntax error` (the command's `--json` output did not parse). The test passed alone, together with the other tenant command tests, and in the next full run. It may be order- or timing-dependent around the nested `platform:bootstrap-admin` Artisan call that replaces the output buffer (see the comment in the test). Capture the raw output the next time it fails.
+
 Found while doing block 1, out of its scope: the sign-up form in `LoginModal.vue` joins the terms/privacy links with a `<template>` whose surrounding spaces Vue may collapse ("termos de usoe apolítica"); `TermsBanner.vue` uses explicit spaces instead.
+
+## Dependency hygiene
+
+- ~~**Production advisories (2026-11-10).**~~ **Fixed** (see CHANGELOG): `composer audit` and `npm audit --omit=dev` are clean.
+- **Development-only advisories (P3).** Six moderate ones remain in `eslint` 10 (`@eslint/config-array` → `minimatch`) and in `@vue/test-utils` → `js-beautify` (`editorconfig`, `glob`, `minimatch`). None ships in the release ZIP. Re-run `./scripts/jt.sh npm audit` when `eslint` or `js-beautify` publish fixes.
+- **Routine (P3).** No automated dependency alerting runs since GitHub Actions was removed: run `./scripts/jt.sh composer audit` and `./scripts/jt.sh npm audit --omit=dev` before each release, or add them to `jt ci`.
+- **`vue-i18n` 11 warns about HTML in a message** (`linkReportViewer.noBrokenLinks`: `No broken <code>[[wikilinks]]</code> found.`). A dev-console warning only; move the markup out of the message when that screen is next touched.
 
 ## Operations follow-ups (from the 2026-08-31 multi-instance release)
 

@@ -19,6 +19,12 @@ return [
         'mcp_guide' => 'MCP guide',
         'trial' => '{1} Your trial lasts 1 day.|[2,*] Your trial lasts :days days; we will remind you before it ends.',
     ],
+    'deletion_requested' => [
+        'subject' => ':name asked for their account to be deleted',
+        'body' => ':name (:email) asked for their own account on :brand to be deleted. The privacy policy promises to do it within 30 days.',
+        'button' => 'Open :brand',
+        'where' => 'Review the request and delete the account in Administration → Users (or with php artisan user:delete).',
+    ],
     'signup_requested' => [
         'subject' => ':name asked for an account',
         'body' => ':name (:email) asked for an account on :brand. Their access stays off until an administrator approves it.',

@@ -18,7 +18,11 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
+        <!-- compose.yaml loads .env as real container variables (APP_ENV=local by
+             default). Laravel reads $_SERVER before $_ENV, so both are forced:
+             otherwise tests run as `local` and CSRF answers 419 on web routes. -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <server name="APP_ENV" value="testing" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

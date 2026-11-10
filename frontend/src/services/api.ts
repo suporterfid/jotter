@@ -107,6 +107,20 @@ export async function adminResetPassword(userId: number, newPassword: string): P
   await api.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword })
 }
 
+/** LGPD: download of everything Jotter keeps about the signed-in person (a browser download). */
+export const USER_DATA_EXPORT_URL = '/api/user/data-export'
+
+/** LGPD: ask an administrator to delete this account; answers the request date. */
+export async function requestAccountDeletion(): Promise<string | null> {
+  const response = await api.post<{ data: { deletion_requested_at: string | null } }>('/user/deletion-request')
+  return response.data.data.deletion_requested_at
+}
+
+export async function cancelAccountDeletion(): Promise<string | null> {
+  const response = await api.delete<{ data: { deletion_requested_at: string | null } }>('/user/deletion-request')
+  return response.data.data.deletion_requested_at
+}
+
 export async function acceptTerms(): Promise<TermsStatus> {
   const response = await api.post<{ data: { terms: TermsStatus } }>('/auth/terms/accept')
   return response.data.data.terms

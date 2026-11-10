@@ -265,4 +265,21 @@ final class JotterDoctorCommandTest extends TestCase
         config(['jotter.backup.key' => \App\Domain\Backup\BackupCipher::generateKey()]);
         $this->assertSame('pass', $this->checksById()['backup_encryption']['status']);
     }
+
+    public function test_doctor_warns_about_deletion_requests_close_to_the_deadline(): void
+    {
+        $this->healthyProductionConfig();
+        $this->assertSame('pass', $this->checksById()['deletion_requests']['status']);
+
+        \App\Models\User::factory()->create(['email' => 'recent@example.com', 'deletion_requested_at' => now()->subDays(3)]);
+        $check = $this->checksById()['deletion_requests'];
+        $this->assertSame('pass', $check['status']);
+        $this->assertSame(1, $check['details']['pending']);
+
+        $old = \App\Models\User::factory()->create(['email' => 'old@example.com', 'deletion_requested_at' => now()->subDays(20)]);
+        $check = $this->checksById()['deletion_requests'];
+        $this->assertSame('warn', $check['status']);
+        $this->assertStringContainsString('old@example.com', $check['message']);
+        $this->assertSame([$old->id], $check['details']['overdue_user_ids']);
+    }
 }
