@@ -29,21 +29,41 @@ use ZipArchive;
  * Only this installation's tables are read (those carrying DB_PREFIX, never
  * the GrandpaSSOn tables that may share the database). Ephemeral state and
  * rebuildable projections listed in `jotter.backup.exclude_tables` are left out.
+ *
+ * With JOTTER_BACKUP_KEY set, the finished ZIP is encrypted as a whole
+ * (BackupCipher, `*.zip.enc`): file names inside are hidden too. Inspect and
+ * restore decrypt it to a private temporary file first and delete it after.
  */
 final class InstanceBackup
 {
     public const FORMAT = 'jotter-backup/1';
 
-    public function __construct(private readonly AuditRecorder $audit = new AuditRecorder) {}
+    public function __construct(
+        private readonly AuditRecorder $audit = new AuditRecorder,
+        private readonly ?BackupCipher $cipher = null,
+    ) {}
+
+    public function encrypts(): bool
+    {
+        return $this->cipher()->enabled();
+    }
 
     /**
-     * @return array{path: string, tables: int, rows: int, files: int, bytes: int}
+     * @param  bool  $encrypt  false writes a plain ZIP even when JOTTER_BACKUP_KEY is set
+     * @return array{path: string, tables: int, rows: int, files: int, bytes: int, encrypted: bool}
      */
-    public function create(string $zipPath, bool $withDatabase = true, bool $withVaults = true): array
+    public function create(string $zipPath, bool $withDatabase = true, bool $withVaults = true, bool $encrypt = true): array
     {
-        File::ensureDirectoryExists(dirname($zipPath), 0750);
+        $encrypt = $encrypt && $this->encrypts();
+        if ($encrypt) {
+            $this->cipher()->assertUsable();
+        }
+        $target = $zipPath;
+        File::ensureDirectoryExists(dirname($target), 0750);
         $scratch = storage_path('app/private/backups/.tmp-'.bin2hex(random_bytes(6)));
         File::ensureDirectoryExists($scratch, 0700);
+        // When encrypting, the plain ZIP only ever exists in the private scratch folder.
+        $zipPath = $encrypt ? $scratch.'/archive.zip' : $target;
 
         $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -86,15 +106,18 @@ final class InstanceBackup
             if (! $zip->close()) {
                 throw new RuntimeException("Unable to write the backup at {$zipPath}.");
             }
+            if ($encrypt) {
+                $this->cipher()->encryptFile($zipPath, $target);
+            }
         } finally {
             File::deleteDirectory($scratch);
         }
 
         $this->audit->record(event: AuditEvent::INSTANCE_BACKED_UP, actorId: 'cli:jotter:backup', metadata: [
-            'path' => basename($zipPath), 'tables' => count($tables), 'rows' => $rows, 'files' => $files,
+            'path' => basename($target), 'tables' => count($tables), 'rows' => $rows, 'files' => $files, 'encrypted' => $encrypt,
         ]);
 
-        return ['path' => $zipPath, 'tables' => count($tables), 'rows' => $rows, 'files' => $files, 'bytes' => (int) filesize($zipPath)];
+        return ['path' => $target, 'tables' => count($tables), 'rows' => $rows, 'files' => $files, 'bytes' => (int) filesize($target), 'encrypted' => $encrypt];
     }
 
     /**
@@ -104,12 +127,7 @@ final class InstanceBackup
      */
     public function inspect(string $zipPath): array
     {
-        $zip = $this->open($zipPath);
-        try {
-            return $this->manifest($zip);
-        } finally {
-            $zip->close();
-        }
+        return $this->withArchive($zipPath, fn (ZipArchive $zip): array => $this->manifest($zip));
     }
 
     /**
@@ -121,16 +139,15 @@ final class InstanceBackup
      */
     public function restore(string $zipPath, ?string $vaultRoot = null): array
     {
-        $zip = $this->open($zipPath);
-        try {
+        [$manifest, $tables, $rows, $files] = $this->withArchive($zipPath, function (ZipArchive $zip) use ($vaultRoot): array {
             $manifest = $this->manifest($zip);
             $this->assertCompatible($manifest);
 
             [$tables, $rows] = ($manifest['includes']['database'] ?? true) ? $this->restoreDatabase($zip, (array) $manifest['tables']) : [0, 0];
             $files = ($manifest['includes']['vaults'] ?? true) ? $this->restoreVaults($zip, (array) $manifest['workspaces'], $vaultRoot) : 0;
-        } finally {
-            $zip->close();
-        }
+
+            return [$manifest, $tables, $rows, $files];
+        });
 
         $known = array_map(static fn (string $path): string => basename($path, '.php'), File::glob(database_path('migrations/*.php')));
         $pending = array_diff($known, (array) $manifest['migrations']) !== [];
@@ -152,7 +169,10 @@ final class InstanceBackup
         if ($keep < 1 || ! is_dir($directory)) {
             return [];
         }
-        $archives = File::glob(rtrim($directory, '/').'/jotter-backup-*.zip');
+        $archives = array_merge(
+            File::glob(rtrim($directory, '/').'/jotter-backup-*.zip'),
+            File::glob(rtrim($directory, '/').'/jotter-backup-*.zip'.BackupCipher::EXTENSION),
+        );
         rsort($archives);
         $deleted = [];
         foreach (array_slice($archives, $keep) as $old) {
@@ -242,6 +262,49 @@ final class InstanceBackup
         }
 
         return $count;
+    }
+
+    /**
+     * Opens the archive (decrypting an encrypted one to a private temporary
+     * file first), runs $callback, and always closes and removes the copy.
+     *
+     * @template T
+     * @param  callable(ZipArchive): T  $callback
+     * @return T
+     */
+    private function withArchive(string $path, callable $callback): mixed
+    {
+        $plain = null;
+        if (is_file($path) && BackupCipher::isEncrypted($path)) {
+            $scratch = storage_path('app/private/backups/.tmp-'.bin2hex(random_bytes(6)));
+            File::ensureDirectoryExists($scratch, 0700);
+            $plain = $scratch.'/archive.zip';
+            try {
+                $this->cipher()->decryptFile($path, $plain);
+            } catch (RuntimeException $exception) {
+                File::deleteDirectory($scratch);
+
+                throw $exception;
+            }
+        }
+
+        try {
+            $zip = $this->open($plain ?? $path);
+            try {
+                return $callback($zip);
+            } finally {
+                $zip->close();
+            }
+        } finally {
+            if ($plain !== null) {
+                File::deleteDirectory(dirname($plain));
+            }
+        }
+    }
+
+    private function cipher(): BackupCipher
+    {
+        return $this->cipher ?? BackupCipher::fromConfig();
     }
 
     private function open(string $zipPath): ZipArchive

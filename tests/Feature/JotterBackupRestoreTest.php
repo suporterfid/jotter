@@ -171,4 +171,68 @@ final class JotterBackupRestoreTest extends TestCase
         $this->assertSame(1, Artisan::call('jotter:backup', ['--to' => public_path('leak.zip')]));
         $this->assertFileDoesNotExist(public_path('leak.zip'));
     }
+
+    public function test_with_a_key_the_backup_is_encrypted_and_still_restores(): void
+    {
+        $key = \App\Domain\Backup\BackupCipher::generateKey();
+        config(['jotter.backup.key' => $key]);
+
+        $this->assertSame(0, Artisan::call('jotter:backup', ['--json' => true]));
+        $summary = json_decode(Artisan::output(), true);
+        $this->assertTrue($summary['encrypted']);
+        $this->assertStringEndsWith('.zip.enc', $summary['path']);
+        $this->assertTrue(\App\Domain\Backup\BackupCipher::isEncrypted($summary['path']));
+        $raw = (string) file_get_contents($summary['path']);
+        $this->assertStringNotContainsString('estado.md', $raw, 'file names inside are hidden');
+        $this->assertStringNotContainsString('joe@acme.test', $raw);
+        $this->assertSame([], glob($this->dir.'/*.zip') ?: [], 'no plain copy is left next to it');
+        $this->assertDatabaseHas('audit_log', ['event' => 'instance.backed_up']);
+
+        Membership::query()->delete();
+        File::deleteDirectory($this->vault);
+
+        $this->assertSame(0, Artisan::call('jotter:restore', ['archive' => $summary['path'], '--force' => true, '--json' => true]), Artisan::output());
+        $this->assertSame(1, Membership::query()->count());
+        $this->assertSame("# Estado\n\nprimeiro\n", file_get_contents($this->vault.'/projetos/x/estado.md'));
+        $this->assertSame([], glob(storage_path('app/private/backups/.tmp-*')) ?: [], 'the decrypted copy is removed');
+
+        // Without the key the archive cannot be read, and nothing changes.
+        config(['jotter.backup.key' => \App\Domain\Backup\BackupCipher::generateKey()]);
+        $this->assertSame(1, Artisan::call('jotter:restore', ['archive' => $summary['path'], '--force' => true]));
+        $this->assertStringContainsString('JOTTER_BACKUP_PREVIOUS_KEYS', Artisan::output());
+
+        // After a rotation the old key still opens it.
+        config(['jotter.backup.previous_keys' => [$key]]);
+        $this->assertSame(0, Artisan::call('jotter:restore', ['archive' => $summary['path'], '--force' => true]), Artisan::output());
+    }
+
+    public function test_unencrypted_on_request_and_pruning_counts_both_kinds(): void
+    {
+        config(['jotter.backup.key' => \App\Domain\Backup\BackupCipher::generateKey()]);
+
+        $this->assertSame(0, Artisan::call('jotter:backup', ['--json' => true, '--unencrypted' => true]));
+        $plain = json_decode(Artisan::output(), true);
+        $this->assertFalse($plain['encrypted']);
+        $this->assertStringEndsWith('.zip', $plain['path']);
+
+        File::ensureDirectoryExists($this->dir);
+        foreach (['20200101-000000.zip', '20200102-000000.zip.enc', '20200103-000000.zip.enc'] as $name) {
+            File::put($this->dir.'/jotter-backup-'.$name, 'old');
+        }
+        $this->assertSame(0, Artisan::call('jotter:backup', ['--json' => true, '--keep' => 2]));
+        $summary = json_decode(Artisan::output(), true);
+        // Kept: the two backups made in this test (one plain, one encrypted); every older one goes.
+        $this->assertSame(['jotter-backup-20200103-000000.zip.enc', 'jotter-backup-20200102-000000.zip.enc', 'jotter-backup-20200101-000000.zip'], $summary['pruned']);
+        $this->assertCount(2, glob($this->dir.'/jotter-backup-*') ?: []);
+    }
+
+    public function test_backup_key_prints_a_usable_key(): void
+    {
+        $this->assertSame(0, Artisan::call('jotter:backup-key'));
+        $output = Artisan::output();
+        $this->assertSame(1, preg_match('/^JOTTER_BACKUP_KEY=(base64:\S+)$/m', $output, $match));
+
+        (new \App\Domain\Backup\BackupCipher($match[1]))->assertUsable();
+        $this->assertStringContainsString('OFF this server', $output);
+    }
 }

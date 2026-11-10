@@ -58,10 +58,11 @@ Gaps found in a code review against the LGPD, the Marco Civil da Internet and th
 3. **Block 3 — data subject self-service (P2).**
    - "My data" page: download one's own data (profile, comments, memberships, own audit entries) and request account deletion, approved by an administrator (`UserDeletion` refuses self-deletion today).
    - `tenant:delete {slug}` command replacing the manual `tinker` procedure in `docs/hosted-operations.md`, with audit and the 30-day deadline the privacy policy promises.
-4. **Block 4 — stronger security (P2).**
-   - TOTP second factor for administrators (pure PHP, fits shared hosting).
-   - Encrypted backups and exports (AES-256 ZIP or libsodium), and per-tenant keys so a deletion also reaches old backups (crypto-shredding).
-   - Optional: encryption at rest of `note_revisions.content`; vault encryption needs a new dated decision in `docs/decisions.md` first, because it changes the "plain `.md` on disk" invariant.
+4. **Block 4 — stronger security (P2).** Split into three PRs:
+   - ~~**4a. Encrypted instance backups.**~~ **Delivered 2026-11-10** (see CHANGELOG): `JOTTER_BACKUP_KEY` (from `jotter:backup-key`) encrypts every `jotter:backup` archive as a whole (libsodium secretstream, `*.zip.enc`), `jotter:restore` decrypts it, rotation through `JOTTER_BACKUP_PREVIOUS_KEYS`, and the `backup_encryption` doctor check.
+   - **4b. TOTP second factor for administrators** (pure PHP, fits shared hosting): enrolment with QR code, verification at sign-in, recovery codes, and an administrator reset.
+   - **4c. Per-tenant keys and crypto-shredding** (a tenant deletion also reaches old backups), plus optional encryption at rest of `note_revisions.content`. This needs a dated decision in `docs/decisions.md` first: it changes what backups contain and where keys live. Vault encryption changes the "plain `.md` on disk" invariant and is out of scope until that decision exists.
+   - Follow-up of 4a: `tenant:export` archives handed to customers are still plain ZIPs. A password-protected (AES-256 ZIP) option would let customers open them with 7-Zip.
 
 Found while doing block 1, out of its scope: the sign-up form in `LoginModal.vue` joins the terms/privacy links with a `<template>` whose surrounding spaces Vue may collapse ("termos de usoe apolítica"); `TermsBanner.vue` uses explicit spaces instead.
 

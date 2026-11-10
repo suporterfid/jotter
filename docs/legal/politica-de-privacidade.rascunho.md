@@ -84,6 +84,8 @@ outra garantia].
 ## 6. Segurança
 
 Senhas, tokens e códigos de acesso são guardados apenas como *hash*. O tráfego usa HTTPS.
+[Se `JOTTER_BACKUP_KEY` estiver configurada] As cópias de segurança são criptografadas, e a
+chave fica guardada fora do servidor.
 O acesso aos workspaces segue papéis e permissões por nota. As credenciais de agentes de
 IA são limitadas por escopo, workspace e pasta, e nunca têm poderes de administrador. As
 cópias de segurança ficam fora da área pública do site. Nenhum sistema é perfeitamente

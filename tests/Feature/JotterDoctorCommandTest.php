@@ -247,4 +247,22 @@ final class JotterDoctorCommandTest extends TestCase
         config(['jotter.audit.access_retention_days' => 184]);
         $this->assertSame('pass', $this->checksById()['access_log_retention']['status']);
     }
+
+    public function test_doctor_checks_backup_encryption(): void
+    {
+        $this->healthyProductionConfig();
+        config(['jotter.backup.daily' => false, 'jotter.backup.key' => null, 'jotter.backup.previous_keys' => []]);
+        $this->assertSame('pass', $this->checksById()['backup_encryption']['status']);
+
+        config(['jotter.backup.daily' => true]);
+        $check = $this->checksById()['backup_encryption'];
+        $this->assertSame('warn', $check['status']);
+        $this->assertStringContainsString('jotter:backup-key', $check['message']);
+
+        config(['jotter.backup.key' => 'base64:'.base64_encode('too-short')]);
+        $this->assertSame('warn', $this->checksById()['backup_encryption']['status']);
+
+        config(['jotter.backup.key' => \App\Domain\Backup\BackupCipher::generateKey()]);
+        $this->assertSame('pass', $this->checksById()['backup_encryption']['status']);
+    }
 }

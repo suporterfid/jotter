@@ -4,6 +4,14 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### LGPD block 4a: encrypted instance backups — 2026-11-10
+
+- With `JOTTER_BACKUP_KEY` set, `jotter:backup` encrypts the whole archive with libsodium's secretstream (XChaCha20-Poly1305, 1 MiB chunks, pure PHP) and writes `jotter-backup-<timestamp>.zip.enc`. File names inside are hidden, and the plain ZIP only ever exists in a private scratch folder. A truncated, altered or wrongly keyed archive is refused before anything is restored.
+- `jotter:restore` (and the manifest check) recognises encrypted archives and decrypts them to a private temporary file that is always removed. `JOTTER_BACKUP_PREVIOUS_KEYS` (comma-separated) opens archives made before a key rotation; each archive records the key id it needs.
+- New `php artisan jotter:backup-key` prints a fresh key. `jotter:backup --unencrypted` forces a plain ZIP. Pruning (`JOTTER_BACKUP_KEEP`) and the doctor's newest-archive check count both `.zip` and `.zip.enc`. The `instance.backed_up` audit row records `encrypted`.
+- `jotter:doctor` gains `backup_encryption`: a warning when nightly backups are on without a key, or when a configured key is malformed.
+- Without a key nothing changes. `docs/deployment.md` ("Encrypted backups") explains key custody: keep a copy off the server, because without it no backup can be restored.
+
 ### LGPD block 1: access records, versioned terms, secure defaults — 2026-11-09
 
 - **Access records (Marco Civil da Internet art. 15).** `audit:prune` now has two windows: access records (`auth.login_success`, `auth.login_failure`, `auth.logout`, `oauth.token_issued`, `mcp.connected`, all with IP) are kept for `JOTTER_ACCESS_LOG_RETENTION_DAYS`, every other event for `JOTTER_AUDIT_RETENTION_DAYS` (default 90). The access window is never shorter than the audit window, and by default equals it, so self-hosting is unchanged. A hosted (commercial) operator sets `JOTTER_ACCESS_LOG_RETENTION_DAYS=184`. New option `audit:prune --access-days=`; the scheduler no longer hard-codes `--days=90`, so it reads the configuration.
