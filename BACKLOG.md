@@ -58,9 +58,10 @@ Gaps found in a code review against the LGPD, the Marco Civil da Internet and th
 3. **Block 3 — data subject self-service (P2).**
    - "My data" page: download one's own data (profile, comments, memberships, own audit entries) and request account deletion, approved by an administrator (`UserDeletion` refuses self-deletion today).
    - `tenant:delete {slug}` command replacing the manual `tinker` procedure in `docs/hosted-operations.md`, with audit and the 30-day deadline the privacy policy promises.
-4. **Block 4 — stronger security (P2).**
-   - TOTP second factor for administrators (pure PHP, fits shared hosting).
-   - Encrypted backups and exports (AES-256 ZIP or libsodium), and per-tenant keys so a deletion also reaches old backups (crypto-shredding).
+4. **Block 4 — stronger security (P2).** 4a (encrypted backups) is in [suporterfid/jotter#421](https://github.com/suporterfid/jotter/pull/421); 4c (crypto-shredding) needs a decision record first.
+   - ~~**4b. TOTP two-step verification.**~~ **Delivered 2026-11-10** (see CHANGELOG): pure-PHP RFC 6238, encrypted secret and hashed recovery codes, a second sign-in step with replay protection and attempt limits, `JOTTER_2FA_REQUIRED_FOR_ADMINS`, `user:two-factor-reset`, and the `admin_two_factor` doctor check. Not covered: a Playwright end-to-end of the whole flow (component and API tests cover it).
+   - **Dependency audit (P2, found while adding `qrcode`).** `npm audit --omit=dev` reports 13 production advisories that predate this work, including `dompurify` (critical, XSS), `axios`, `vue-i18n`/`@intlify/*`, `vue`'s server renderer, `prosemirror-view` and `follow-redirects`. Upgrade them in a dedicated PR, checking the Markdown sanitiser (`dompurify`) first.
+   - Per-tenant keys so a deletion also reaches old backups (crypto-shredding).
    - Optional: encryption at rest of `note_revisions.content`; vault encryption needs a new dated decision in `docs/decisions.md` first, because it changes the "plain `.md` on disk" invariant.
 
 Found while doing block 1, out of its scope: the sign-up form in `LoginModal.vue` joins the terms/privacy links with a `<template>` whose surrounding spaces Vue may collapse ("termos de usoe apolítica"); `TermsBanner.vue` uses explicit spaces instead.

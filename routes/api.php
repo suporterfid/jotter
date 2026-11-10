@@ -25,6 +25,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/two-factor', [AuthController::class, 'twoFactor']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 Route::get('/auth/me', [AuthController::class, 'me']);
 Route::post('/auth/terms/accept', [AuthController::class, 'acceptTerms']);
@@ -36,6 +37,11 @@ Route::get('/auth/oidc/callback', [\App\Http\Controllers\OidcController::class, 
 Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);
 Route::post('/user/locale', [\App\Http\Controllers\UserLocaleController::class, 'update']);
 Route::put('/user/profile', [\App\Http\Controllers\UserProfileController::class, 'update']);
+Route::get('/user/two-factor', [\App\Http\Controllers\UserTwoFactorController::class, 'show']);
+Route::post('/user/two-factor', [\App\Http\Controllers\UserTwoFactorController::class, 'start']);
+Route::post('/user/two-factor/confirm', [\App\Http\Controllers\UserTwoFactorController::class, 'confirm']);
+Route::delete('/user/two-factor', [\App\Http\Controllers\UserTwoFactorController::class, 'disable']);
+Route::post('/user/two-factor/recovery-codes', [\App\Http\Controllers\UserTwoFactorController::class, 'regenerateRecoveryCodes']);
 Route::get('/user/notification-preferences', [NotificationPreferenceController::class, 'index']);
 Route::put('/user/notification-preferences/{type}', [NotificationPreferenceController::class, 'update']);
 Route::post('/mcp', [\App\Http\Controllers\McpController::class, 'handle']);

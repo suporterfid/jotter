@@ -54,6 +54,35 @@
         <button type="button" class="btn-link" data-testid="signup-back" @click="switchMode('login')">{{ t('login.backToSignIn') }}</button>
       </form>
 
+      <!-- Second step of a password sign-in (block 4b): authenticator code or recovery code. -->
+      <form v-else-if="twoFactorStep" @submit.prevent="handleTwoFactor" class="login-form" data-testid="two-factor-form">
+        <h3 class="signup-heading">{{ t('twoFactor.loginHeading') }}</h3>
+        <p class="login-subtitle">{{ useRecoveryCode ? t('twoFactor.loginRecoveryHelp') : t('twoFactor.loginHelp') }}</p>
+        <div v-if="errorMessage" class="login-error" data-testid="two-factor-error">{{ errorMessage }}</div>
+        <div class="form-group">
+          <label for="two-factor-code">{{ useRecoveryCode ? t('twoFactor.recoveryCodeLabel') : t('twoFactor.codeLabel') }}</label>
+          <input
+            id="two-factor-code"
+            ref="twoFactorInput"
+            v-model="twoFactorCode"
+            data-testid="two-factor-code"
+            type="text"
+            :inputmode="useRecoveryCode ? 'text' : 'numeric'"
+            :autocomplete="useRecoveryCode ? 'off' : 'one-time-code'"
+            :maxlength="useRecoveryCode ? 16 : 6"
+            required
+            class="form-input"
+          />
+        </div>
+        <button type="submit" data-testid="two-factor-submit" class="btn-login" :disabled="isSubmitting || !twoFactorCode.trim()">
+          {{ isSubmitting ? t('login.signingIn') : t('twoFactor.verify') }}
+        </button>
+        <button type="button" class="btn-link" data-testid="two-factor-toggle" @click="toggleRecoveryCode">
+          {{ useRecoveryCode ? t('twoFactor.useAuthenticator') : t('twoFactor.useRecoveryCode') }}
+        </button>
+        <button type="button" class="btn-link" @click="cancelTwoFactor">{{ t('login.backToSignIn') }}</button>
+      </form>
+
       <form v-else @submit.prevent="handleLogin" class="login-form">
         <div v-if="errorMessage" class="login-error" data-testid="login-error">
           {{ errorMessage }}
@@ -102,9 +131,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { login, getAuthConfig, register } from '../services/api'
+import { login, getAuthConfig, register, completeTwoFactor, needsTwoFactor } from '../services/api'
 import { brand, setBrand } from '../services/brand'
 import BrandMark from './BrandMark.vue'
 import BrandFooter from './BrandFooter.vue'
@@ -131,6 +160,44 @@ const signupEnabled = ref(false)
 const mode = ref<'login' | 'register'>('login')
 const signupDone = ref('')
 const signup = ref({ name: '', email: '', password: '', passwordConfirmation: '', acceptTerms: false })
+const twoFactorStep = ref(false)
+const useRecoveryCode = ref(false)
+const twoFactorCode = ref('')
+const twoFactorInput = ref<HTMLInputElement | null>(null)
+
+function toggleRecoveryCode() {
+  useRecoveryCode.value = !useRecoveryCode.value
+  twoFactorCode.value = ''
+  errorMessage.value = ''
+}
+
+function cancelTwoFactor() {
+  twoFactorStep.value = false
+  useRecoveryCode.value = false
+  twoFactorCode.value = ''
+  errorMessage.value = ''
+}
+
+async function handleTwoFactor() {
+  const value = twoFactorCode.value.trim()
+  if (!value) return
+  isSubmitting.value = true
+  errorMessage.value = ''
+  try {
+    const user = await completeTwoFactor(useRecoveryCode.value ? { recovery_code: value } : { code: value })
+    cancelTwoFactor()
+    emit('login-success', user)
+  } catch (err: unknown) {
+    const data = (err as { response?: { data?: { message?: string; two_factor_expired?: boolean } } })?.response?.data
+    if (data?.two_factor_expired) {
+      cancelTwoFactor()
+    }
+    errorMessage.value = data?.message || t('login.connectionFailed')
+    twoFactorCode.value = ''
+  } finally {
+    isSubmitting.value = false
+  }
+}
 
 function switchMode(next: 'login' | 'register') {
   mode.value = next
@@ -188,10 +255,16 @@ async function handleLogin() {
   errorMessage.value = ''
 
   try {
-    const user = await login(email.value.trim(), password.value)
+    const result = await login(email.value.trim(), password.value)
     email.value = ''
     password.value = ''
-    emit('login-success', user)
+    if (needsTwoFactor(result)) {
+      twoFactorStep.value = true
+      await nextTick()
+      twoFactorInput.value?.focus()
+      return
+    }
+    emit('login-success', result)
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'response' in err) {
       const res = (err as { response?: { data?: { message?: string } } }).response

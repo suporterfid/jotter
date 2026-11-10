@@ -104,6 +104,8 @@ extensions, and instance slug are always warnings. Three LGPD checks are warning
 `SESSION_HTTP_ONLY=true`), `log_retention` (`LOG_STACK=daily` with `LOG_DAILY_DAYS`, because
 the `single` file never rotates), and `access_log_retention` (6 months of access records,
 judged only when `JOTTER_BRAND_TERMS_URL` or `JOTTER_BRAND_PRIVACY_URL` is published).
+`admin_two_factor` lists active administrators without two-step verification (local
+provider only; see `docs/hosted-operations.md` "Two-step verification").
 
 ## Health endpoint
 

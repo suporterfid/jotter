@@ -42,6 +42,7 @@ SESSION_SECURE_COOKIE=true
 SESSION_ENCRYPT=true
 LOG_STACK=daily
 LOG_DAILY_DAYS=14
+JOTTER_2FA_REQUIRED_FOR_ADMINS=true      # administrators need two-step verification
 ```
 
 `php artisan jotter:doctor` warns about each one that is missing
@@ -49,6 +50,26 @@ LOG_DAILY_DAYS=14
 themselves are drafts in `docs/legal/` and need a lawyer's review; the
 contracts and processes they depend on are tracked in `BACKLOG.md`
 ("LGPD compliance on shared hosting", block 2).
+
+## Two-step verification
+
+Everyone who signs in with a password can turn on two-step verification in
+**Your profile → Two-step verification**: scan the QR code with an authenticator
+app, confirm a code, and keep the ten recovery codes it shows once. Sign-in then
+asks for a 6-digit code (or a recovery code) after the password. With
+`JOTTER_2FA_REQUIRED_FOR_ADMINS=true`, administrators must set it up before
+Administration answers; `jotter:doctor` (`admin_two_factor`) lists those without it.
+
+Someone who lost both the phone and the recovery codes: **confirm who is asking
+first** (this is the way around the second factor), then
+
+```sh
+php artisan user:two-factor-reset maria@example.com
+```
+
+The secret and recovery codes are encrypted with `APP_KEY`. A backup restored into
+an installation with a different `APP_KEY` cannot read them: reset two-step
+verification for those accounts afterwards.
 
 ## Provision a customer
 

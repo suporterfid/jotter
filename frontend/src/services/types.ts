@@ -181,6 +181,14 @@ export interface TermsStatus {
   acceptance_required: boolean
 }
 
+/** Two-step verification (TOTP) state of the signed-in person (block 4b). */
+export interface TwoFactorStatus {
+  available: boolean
+  enabled: boolean
+  required: boolean
+  recovery_codes_left: number
+}
+
 export interface AuthUser {
   subject_id: string
   email: string
@@ -188,6 +196,7 @@ export interface AuthUser {
   is_admin: boolean
   locale: string
   terms?: TermsStatus
+  two_factor?: TwoFactorStatus
 }
 
 export interface NoteRevisionMeta {

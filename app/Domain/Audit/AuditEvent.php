@@ -60,6 +60,11 @@ enum AuditEvent: string
     case USER_DELETED = 'user.deleted';
     case PROFILE_UPDATED = 'user.profile_updated';
     case USER_TERMS_ACCEPTED = 'user.terms_accepted';
+    case TWO_FACTOR_ENABLED = 'user.two_factor_enabled';
+    case TWO_FACTOR_DISABLED = 'user.two_factor_disabled';
+    case TWO_FACTOR_RECOVERY_CODES_REGENERATED = 'user.two_factor_recovery_codes_regenerated';
+    case TWO_FACTOR_RECOVERY_CODE_USED = 'user.two_factor_recovery_code_used';
+    case TWO_FACTOR_RESET = 'user.two_factor_reset';
     case SIGNUP_APPROVED = 'signup.approved';
     case SIGNUP_REJECTED = 'signup.rejected';
     case INSTANCE_RESTORED = 'instance.restored';

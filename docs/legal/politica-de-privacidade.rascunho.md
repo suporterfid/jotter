@@ -84,6 +84,8 @@ outra garantia].
 ## 6. Segurança
 
 Senhas, tokens e códigos de acesso são guardados apenas como *hash*. O tráfego usa HTTPS.
+Você pode ligar a verificação em duas etapas (código de um app autenticador) em **Seu
+perfil**[; para administradores ela é obrigatória].
 O acesso aos workspaces segue papéis e permissões por nota. As credenciais de agentes de
 IA são limitadas por escopo, workspace e pasta, e nunca têm poderes de administrador. As
 cópias de segurança ficam fora da área pública do site. Nenhum sistema é perfeitamente

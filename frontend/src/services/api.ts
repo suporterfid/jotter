@@ -1,6 +1,6 @@
 import type { BrandConfig } from './brand'
 import axios from 'axios'
-import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, TermsStatus, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteRevisionComparison, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
+import type { Workspace, Tenant, NoteMeta, TrashNoteMeta, NoteDetail, SearchResult, AuthUser, TermsStatus, TwoFactorStatus, AttachmentItem, SearchFilters, NoteRevisionMeta, NoteRevisionDetail, NoteRevisionComparison, NoteProperty, NoteComment, AuditLogEntry, LinkReport, NotificationItem, CollectionPage, UnlinkedMention, OutgoingLink, FolderPosition, SortItem, Board, NoteChecklistItem, NoteActivityEntry, NoteAccessPayload, NoteAclEntry, WorkspaceGroup, NoteShareState, WorkspaceAnalytics, NoteReviewSummary } from './types'
 
 axios.defaults.withCredentials = true
 
@@ -60,9 +60,44 @@ export async function getCsrfCookie(): Promise<void> {
   await axios.get('/sanctum/csrf-cookie')
 }
 
-export async function login(email: string, password: string): Promise<AuthUser> {
+/** Answer of a password sign-in that still needs a two-step verification code. */
+export interface TwoFactorChallenge {
+  two_factor_required: true
+}
+
+export async function login(email: string, password: string): Promise<AuthUser | TwoFactorChallenge> {
   await getCsrfCookie().catch(() => {})
-  const response = await api.post<{ data: AuthUser }>('/auth/login', { email, password })
+  const response = await api.post<{ data: AuthUser | TwoFactorChallenge }>('/auth/login', { email, password })
+  return response.data.data
+}
+
+export function needsTwoFactor(result: AuthUser | TwoFactorChallenge): result is TwoFactorChallenge {
+  return (result as TwoFactorChallenge).two_factor_required === true
+}
+
+/** Second step of the sign-in: a 6-digit code, or a recovery code. */
+export async function completeTwoFactor(answer: { code?: string; recovery_code?: string }): Promise<AuthUser> {
+  const response = await api.post<{ data: AuthUser }>('/auth/two-factor', answer)
+  return response.data.data
+}
+
+export async function startTwoFactor(password: string): Promise<{ secret: string; otpauth_uri: string }> {
+  const response = await api.post<{ data: { secret: string; otpauth_uri: string } }>('/user/two-factor', { password })
+  return response.data.data
+}
+
+export async function confirmTwoFactor(code: string): Promise<{ recovery_codes: string[]; two_factor: TwoFactorStatus }> {
+  const response = await api.post<{ data: { recovery_codes: string[]; two_factor: TwoFactorStatus } }>('/user/two-factor/confirm', { code })
+  return response.data.data
+}
+
+export async function disableTwoFactor(password: string): Promise<TwoFactorStatus> {
+  const response = await api.delete<{ data: TwoFactorStatus }>('/user/two-factor', { data: { password } })
+  return response.data.data
+}
+
+export async function regenerateRecoveryCodes(password: string): Promise<{ recovery_codes: string[]; two_factor: TwoFactorStatus }> {
+  const response = await api.post<{ data: { recovery_codes: string[]; two_factor: TwoFactorStatus } }>('/user/two-factor/recovery-codes', { password })
   return response.data.data
 }
 

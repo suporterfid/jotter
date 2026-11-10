@@ -19,6 +19,14 @@ return [
     // texts (e.g. "2026-11-09"). When it is set and a terms or privacy URL is
     // configured, every user whose recorded `users.terms_version` differs is
     // asked to accept the current texts again. Empty = no versioning (default).
+    // Two-step verification (TOTP) for password sign-ins (block 4b). Anyone with
+    // a local password can turn it on in "Your profile". With this on,
+    // administrators of a local-provider installation must set it up before
+    // /api/admin/* answers (403 `two_factor_setup_required` until then).
+    'two_factor' => [
+        'required_for_admins' => (bool) env('JOTTER_2FA_REQUIRED_FOR_ADMINS', false),
+    ],
+
     'legal' => [
         'terms_version' => env('JOTTER_TERMS_VERSION') ?: null,
     ],

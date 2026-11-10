@@ -1,13 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginModal from './components/LoginModal.vue'
-import { getAuthConfig, login, register } from './services/api'
+import { completeTwoFactor, getAuthConfig, login, register } from './services/api'
 import { setBrand } from './services/brand'
 
 vi.mock('./services/api', () => ({
   login: vi.fn(),
   getAuthConfig: vi.fn(),
   register: vi.fn(),
+  completeTwoFactor: vi.fn(),
+  needsTwoFactor: (result: { two_factor_required?: boolean }) => result.two_factor_required === true,
 }))
 
 describe('LoginModal', () => {
@@ -122,5 +124,51 @@ describe('LoginModal', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="login-error"]').text()).toContain('waiting for an administrator')
+  })
+
+  it('asks for the two-step verification code after the password', async () => {
+    vi.mocked(getAuthConfig).mockResolvedValue({ provider: 'local', sso_login_url: null, version: null })
+    vi.mocked(login).mockResolvedValue({ two_factor_required: true })
+    const user = { subject_id: '7', email: 'ana@example.com', name: 'Ana', is_admin: false, locale: 'en' }
+    vi.mocked(completeTwoFactor).mockResolvedValueOnce(user)
+
+    const wrapper = mount(LoginModal, { props: { show: true } })
+    await flushPromises()
+    await wrapper.find('[data-testid="login-email"]').setValue('ana@example.com')
+    await wrapper.find('[data-testid="login-password"]').setValue('senha-longa-123')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(wrapper.emitted('login-success')).toBeUndefined()
+    expect(wrapper.find('[data-testid="two-factor-form"]').exists()).toBe(true)
+
+    await wrapper.find('[data-testid="two-factor-code"]').setValue('123456')
+    await wrapper.find('[data-testid="two-factor-form"]').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(completeTwoFactor).toHaveBeenCalledWith({ code: '123456' })
+    expect(wrapper.emitted('login-success')?.[0]).toEqual([user])
+  })
+
+  it('takes a recovery code and goes back to the password when the challenge expired', async () => {
+    vi.mocked(getAuthConfig).mockResolvedValue({ provider: 'local', sso_login_url: null, version: null })
+    vi.mocked(login).mockResolvedValue({ two_factor_required: true })
+    vi.mocked(completeTwoFactor).mockRejectedValueOnce({ response: { status: 401, data: { message: 'Digite a senha de novo.', two_factor_expired: true } } })
+
+    const wrapper = mount(LoginModal, { props: { show: true } })
+    await flushPromises()
+    await wrapper.find('[data-testid="login-email"]').setValue('ana@example.com')
+    await wrapper.find('[data-testid="login-password"]').setValue('senha-longa-123')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="two-factor-toggle"]').trigger('click')
+    await wrapper.find('[data-testid="two-factor-code"]').setValue('abcde-fghjk')
+    await wrapper.find('[data-testid="two-factor-form"]').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(completeTwoFactor).toHaveBeenCalledWith({ recovery_code: 'abcde-fghjk' })
+    expect(wrapper.find('[data-testid="two-factor-form"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="login-error"]').text()).toContain('Digite a senha de novo.')
   })
 })
