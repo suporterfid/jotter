@@ -4,6 +4,20 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Security: dependency updates — 2026-11-10
+
+- **Composer** (`composer audit`: 10 packages with advisories → **0**), updated within the existing constraints, still PHP 8.2:
+  - `laravel/framework` 12.64 → 12.72 (critical TokenGuard authentication bypass, relationship-inclusion data destruction, debug-page XSS);
+  - `league/commonmark` 2.8.3 → 2.10.7 (XSS and denial-of-service fixes in the server-side Markdown renderer);
+  - `symfony/yaml` 7.4.14 → 7.4.23 (front-matter parser: unbounded recursion and exponential parse time);
+  - `symfony/http-foundation`, `http-kernel`, `routing` and `mime` → 7.4.22–7.4.23;
+  - `guzzlehttp/guzzle` → 7.16.1, `phpseclib/phpseclib` → 3.0.58, `league/flysystem` → 3.36.0, plus their dependencies.
+- **npm, production** (`npm audit --omit=dev`: 13 → **0**):
+  - `npm audit fix` brought `dompurify` (critical XSS), `axios`, `vue`, `prosemirror-view`, `follow-redirects`, `vite`, `vitest`, `postcss`, `nanoid` and others to fixed versions;
+  - **`vue-i18n` 9 → 11** (the app already used the Composition API, `legacy: false`; no code change);
+  - **`@milkdown/kit` 7.22.0 → 7.23.0**: the patched `prosemirror-view` requires `prosemirror-model` ≥ 1.25.12, which validates node attributes, and Milkdown 7.22 created images with `title: null`, so images without a title vanished from the WYSIWYG editor. The round-trip fidelity test caught it; 7.23.0 fixes it.
+- **Left, development only** (6 moderate): `eslint` 10 → `@eslint/config-array` → `minimatch`, and `@vue/test-utils` → `js-beautify` → `editorconfig`/`glob`/`minimatch`. None ships in the release ZIP, and npm's only remedy is downgrading `eslint` to 9. Revisit when upstream releases fixes.
+
 ### LGPD block 1: access records, versioned terms, secure defaults — 2026-11-09
 
 - **Access records (Marco Civil da Internet art. 15).** `audit:prune` now has two windows: access records (`auth.login_success`, `auth.login_failure`, `auth.logout`, `oauth.token_issued`, `mcp.connected`, all with IP) are kept for `JOTTER_ACCESS_LOG_RETENTION_DAYS`, every other event for `JOTTER_AUDIT_RETENTION_DAYS` (default 90). The access window is never shorter than the audit window, and by default equals it, so self-hosting is unchanged. A hosted (commercial) operator sets `JOTTER_ACCESS_LOG_RETENTION_DAYS=184`. New option `audit:prune --access-days=`; the scheduler no longer hard-codes `--days=90`, so it reads the configuration.
