@@ -24,7 +24,7 @@
           @click="activeTab = 'users'"
         >
           {{ t('adminPanel.users') }}
-          <span v-if="pendingSignups.length" class="tab-badge" data-testid="admin-pending-badge">{{ pendingSignups.length }}</span>
+          <span v-if="pendingSignups.length + deletionRequests.length" class="tab-badge" data-testid="admin-pending-badge">{{ pendingSignups.length + deletionRequests.length }}</span>
         </button>
         <button
           :class="['tab-btn', { active: activeTab === 'mcp' }]"
@@ -140,6 +140,22 @@
               <div class="btn-group">
                 <button class="success-btn" :disabled="loading" :data-testid="`admin-approve-${u.id}`" @click="decideSignup(u, 'approve')">{{ t('adminPanel.approve') }}</button>
                 <button class="danger-btn" :disabled="loading" :data-testid="`admin-reject-${u.id}`" @click="decideSignup(u, 'reject')">{{ t('adminPanel.reject') }}</button>
+              </div>
+            </li>
+          </ul>
+        </template>
+
+        <template v-if="deletionRequests.length">
+          <h3>{{ t('adminPanel.deletionRequests') }}</h3>
+          <p class="admin-note">{{ t('adminPanel.deletionRequestsHelp') }}</p>
+          <ul class="admin-list" data-testid="admin-deletion-requests">
+            <li v-for="u in deletionRequests" :key="u.id" class="admin-list-item" :data-testid="`admin-deletion-request-${u.id}`">
+              <span>
+                <strong>{{ u.name }}</strong> ({{ u.email }})
+                <small class="admin-note"> · {{ formatDate(u.deletion_requested_at) }}</small>
+              </span>
+              <div class="btn-group">
+                <button class="danger-btn" :disabled="loading" :data-testid="`admin-delete-requested-${u.id}`" @click="deleteUser(u)">{{ t('adminPanel.deleteUser') }}</button>
               </div>
             </li>
           </ul>
@@ -522,6 +538,8 @@ async function fetchMembers() {
 
 // Self sign-up requests waiting for a decision (#390).
 const pendingSignups = computed(() => users.value.filter((u: { signup_status?: string | null }) => u.signup_status === 'pending'))
+// LGPD: people who asked for their account to be deleted ("Your profile → Your data").
+const deletionRequests = computed(() => users.value.filter((u: { deletion_requested_at?: string | null }) => !!u.deletion_requested_at))
 const activeOrInactiveUsers = computed(() => users.value.filter((u: { signup_status?: string | null }) => u.signup_status !== 'pending'))
 
 async function decideSignup(u: { id: number; name: string; email: string }, decision: 'approve' | 'reject') {

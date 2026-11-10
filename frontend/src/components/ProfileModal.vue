@@ -26,6 +26,8 @@
           </button>
         </div>
       </form>
+
+      <MyDataPanel :deletion-requested-at="deletionRequestedAt" @deletion-changed="$emit('deletion-changed', $event)" />
     </div>
   </div>
 </template>
@@ -34,12 +36,14 @@
 import { onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { updateProfile } from '../services/api'
+import MyDataPanel from './MyDataPanel.vue'
 
 // The person corrects their own name (#390, LGPD right to correction).
-const props = defineProps<{ currentName: string; email: string }>()
+const props = defineProps<{ currentName: string; email: string; deletionRequestedAt?: string | null }>()
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'updated', name: string): void
+  (e: 'deletion-changed', requestedAt: string | null): void
 }>()
 const { t } = useI18n()
 

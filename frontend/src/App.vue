@@ -73,7 +73,9 @@
       v-if="isProfileOpen && currentUser"
       :current-name="currentUser.name"
       :email="currentUser.email"
+      :deletion-requested-at="currentUser.deletion_requested_at"
       @updated="handleProfileUpdated"
+      @deletion-changed="handleDeletionChanged"
       @close="isProfileOpen = false"
     />
     <ConnectedAppsModal v-if="isConnectedAppsOpen" @close="isConnectedAppsOpen = false" />
@@ -537,6 +539,10 @@ const isProfileOpen = ref(false)
 
 function handleProfileUpdated(name: string) {
   if (currentUser.value) currentUser.value = { ...currentUser.value, name }
+}
+
+function handleDeletionChanged(requestedAt: string | null) {
+  if (currentUser.value) currentUser.value = { ...currentUser.value, deletion_requested_at: requestedAt }
 }
 const isConnectedAppsOpen = ref(false)
 const isNotificationPreferencesOpen = ref(false)

@@ -36,6 +36,9 @@ Route::get('/auth/oidc/callback', [\App\Http\Controllers\OidcController::class, 
 Route::post('/auth/change-password', [\App\Http\Controllers\AdminUserController::class, 'changePassword']);
 Route::post('/user/locale', [\App\Http\Controllers\UserLocaleController::class, 'update']);
 Route::put('/user/profile', [\App\Http\Controllers\UserProfileController::class, 'update']);
+Route::get('/user/data-export', [\App\Http\Controllers\UserDataController::class, 'export']);
+Route::post('/user/deletion-request', [\App\Http\Controllers\UserDataController::class, 'requestDeletion']);
+Route::delete('/user/deletion-request', [\App\Http\Controllers\UserDataController::class, 'cancelDeletion']);
 Route::get('/user/notification-preferences', [NotificationPreferenceController::class, 'index']);
 Route::put('/user/notification-preferences/{type}', [NotificationPreferenceController::class, 'update']);
 Route::post('/mcp', [\App\Http\Controllers\McpController::class, 'handle']);

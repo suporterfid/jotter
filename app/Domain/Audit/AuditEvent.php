@@ -60,6 +60,10 @@ enum AuditEvent: string
     case USER_DELETED = 'user.deleted';
     case PROFILE_UPDATED = 'user.profile_updated';
     case USER_TERMS_ACCEPTED = 'user.terms_accepted';
+    case USER_DATA_EXPORTED = 'user.data_exported';
+    case USER_DELETION_REQUESTED = 'user.deletion_requested';
+    case USER_DELETION_REQUEST_CANCELLED = 'user.deletion_request_cancelled';
+    case TENANT_DELETED = 'tenant.deleted';
     case SIGNUP_APPROVED = 'signup.approved';
     case SIGNUP_REJECTED = 'signup.rejected';
     case INSTANCE_RESTORED = 'instance.restored';

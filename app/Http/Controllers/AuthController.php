@@ -121,6 +121,7 @@ final class AuthController extends Controller
                 'is_admin' => $subject->isAdmin,
                 'locale' => $subject->locale,
                 'terms' => LegalTerms::statusFor($subject->user),
+                'deletion_requested_at' => $subject->user?->deletion_requested_at?->toIso8601String(),
             ],
         ]);
     }
