@@ -14,7 +14,7 @@ use RuntimeException;
 final class JotterRestoreCommand extends Command
 {
     protected $signature = 'jotter:restore
-        {archive : Path to a jotter-backup-*.zip}
+        {archive : Path to a jotter-backup-*.zip, or *.zip.enc (decrypted with JOTTER_BACKUP_KEY or JOTTER_BACKUP_PREVIOUS_KEYS)}
         {--vault-root= : Put each vault under this folder (keeps its folder name) and update vault paths}
         {--force : Do not ask for confirmation}
         {--json : Emit JSON}';

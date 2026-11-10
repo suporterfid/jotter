@@ -4,6 +4,13 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### LGPD block 4a: encrypted instance backups — 2026-11-10
+
+- With `JOTTER_BACKUP_KEY` set, `jotter:backup` encrypts the whole archive with libsodium's secretstream (XChaCha20-Poly1305, 1 MiB chunks, pure PHP) and writes `jotter-backup-<timestamp>.zip.enc`. File names inside are hidden, and the plain ZIP only ever exists in a private scratch folder. A truncated, altered or wrongly keyed archive is refused before anything is restored.
+- `jotter:restore` (and the manifest check) recognises encrypted archives and decrypts them to a private temporary file that is always removed. `JOTTER_BACKUP_PREVIOUS_KEYS` (comma-separated) opens archives made before a key rotation; each archive records the key id it needs.
+- New `php artisan jotter:backup-key` prints a fresh key. `jotter:backup --unencrypted` forces a plain ZIP. Pruning (`JOTTER_BACKUP_KEEP`) and the doctor's newest-archive check count both `.zip` and `.zip.enc`. The `instance.backed_up` audit row records `encrypted`.
+- `jotter:doctor` gains `backup_encryption`: a warning when nightly backups are on without a key, or when a configured key is malformed.
+- Without a key nothing changes. `docs/deployment.md` ("Encrypted backups") explains key custody: keep a copy off the server, because without it no backup can be restored.
 ### LGPD block 3: data subject self-service and `tenant:delete` — 2026-11-10
 
 - **Your profile → Your data** (LGPD art. 18). **Download my data** (`GET /api/user/data-export`) returns one JSON document (`jotter.user-data/1`) with the account, sign-in identities, memberships, groups, note permissions, own comments (in full), watched notes, authored revisions and reviews (metadata only), public links created, notification settings and history, access tokens and connected apps (no secrets), PDF exports and the person's activity log. Note bodies stay out: they belong to the workspace. Limited to 5 per hour per person; audited as `user.data_exported`.

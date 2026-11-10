@@ -93,6 +93,7 @@ final class InstanceDoctor
             ...$this->checkOAuth(),
             $this->checkSemantic(),
             $this->checkBackup(),
+            $this->checkBackupEncryption(),
             $this->checkQuotas(),
             $this->checkDeletionRequests($databaseCheck->passed),
         ];
@@ -231,7 +232,7 @@ final class InstanceDoctor
     private function checkBackup(): DoctorCheck
     {
         $directory = rtrim((string) config('jotter.backup.path'), '/');
-        $archives = glob($directory.'/jotter-backup-*.zip') ?: [];
+        $archives = array_merge(glob($directory.'/jotter-backup-*.zip') ?: [], glob($directory.'/jotter-backup-*.zip'.\App\Domain\Backup\BackupCipher::EXTENSION) ?: []);
         $newest = $archives === [] ? null : max(array_map('filemtime', $archives));
         $details = ['path' => $directory, 'archives' => count($archives), 'newest_at' => $newest === null ? null : date(DATE_ATOM, (int) $newest)];
 
@@ -247,6 +248,34 @@ final class InstanceDoctor
         }
 
         return DoctorCheck::pass('backup', 'Instance backup', false, sprintf('Nightly backup on; newest archive %s, %d kept.', date('Y-m-d H:i', (int) $newest), count($archives)), $details);
+    }
+
+    /**
+     * LGPD art. 46: a backup holds every note and password hash. With nightly
+     * backups on, it should be encrypted (JOTTER_BACKUP_KEY). A warning only.
+     */
+    private function checkBackupEncryption(): DoctorCheck
+    {
+        $cipher = \App\Domain\Backup\BackupCipher::fromConfig();
+        $daily = (bool) config('jotter.backup.daily', false);
+        $details = ['key_set' => $cipher->enabled(), 'daily' => $daily, 'previous_keys' => count((array) config('jotter.backup.previous_keys', []))];
+
+        try {
+            $cipher->assertUsable();
+        } catch (\RuntimeException $exception) {
+            return $cipher->enabled() || $details['previous_keys'] > 0
+                ? DoctorCheck::fail('backup_encryption', 'Backup encryption', false, $exception->getMessage(), $details)
+                : DoctorCheck::pass('backup_encryption', 'Backup encryption', false, 'No backup key set. '.$exception->getMessage(), $details);
+        }
+
+        if ($cipher->enabled()) {
+            return DoctorCheck::pass('backup_encryption', 'Backup encryption', false, 'Backups are encrypted (*.zip.enc). Keep a copy of JOTTER_BACKUP_KEY off this server.', $details);
+        }
+        if ($daily) {
+            return DoctorCheck::fail('backup_encryption', 'Backup encryption', false, 'Nightly backups are not encrypted: they hold every note and password hash. Set JOTTER_BACKUP_KEY (php artisan jotter:backup-key).', $details);
+        }
+
+        return DoctorCheck::pass('backup_encryption', 'Backup encryption', false, 'No backup key set; manual backups are plain ZIPs. Set JOTTER_BACKUP_KEY to encrypt them.', $details);
     }
 
     /**

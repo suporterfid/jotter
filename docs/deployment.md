@@ -314,17 +314,45 @@ JOTTER_BACKUP_PATH=                       # default storage/app/private/backups
 - Only this installation's tables are read (those with `DB_PREFIX`), never GrandpaSSOn's
   tables that may share the database.
 - `jotter:doctor` reports the newest archive; with `JOTTER_BACKUP_DAILY=true` it warns
-  when that archive is more than 48 hours old.
+  when that archive is more than 48 hours old, and (`backup_encryption`) when the
+  archives are not encrypted.
 - cPanel's own backups (Files + MySQL) remain a good second copy. `jotter:backup` adds an
   archive you can restore with one command, onto any host.
+
+### Encrypted backups
+
+Set a key and every archive is encrypted as a whole (libsodium XChaCha20-Poly1305, pure
+PHP, `ext-sodium`). It is written as `jotter-backup-<timestamp>.zip.enc`, and even the
+file names inside are hidden:
+
+```sh
+php artisan jotter:backup-key             # prints JOTTER_BACKUP_KEY=base64:…; paste it into .env
+```
+
+```dotenv
+JOTTER_BACKUP_KEY=base64:…                # encrypts every new backup
+JOTTER_BACKUP_PREVIOUS_KEYS=              # old keys, comma-separated, after a rotation
+```
+
+- **Keep a copy of the key off this server**, for example in a password manager. Without
+  it, no backup can be restored. A key kept only in this server's `.env` is lost along with
+  the server.
+- `jotter:restore` recognises an encrypted archive and decrypts it to a private temporary
+  file, which is deleted afterwards. A damaged or altered archive is refused before
+  anything changes.
+- **Rotating:** generate a new key, move the old one to `JOTTER_BACKUP_PREVIOUS_KEYS`, and
+  keep it there until the last archive made with it has rotated out
+  (`JOTTER_BACKUP_KEEP`).
+- `jotter:backup --unencrypted` writes a plain ZIP for a one-off need, even with a key set.
 
 ### Restore (runbook)
 
 1. Deploy the **same or a newer** Jotter release, with `.env` pointing at the target
    database (an empty one is fine), then run `php artisan migrate --force`.
 2. Upload the archive outside the document root and check it:
-   `php artisan jotter:restore /path/jotter-backup-….zip` prints its date and size and
-   asks for confirmation. Add `--force` to skip the question.
+   `php artisan jotter:restore /path/jotter-backup-….zip` (or `….zip.enc`, with the same
+   `JOTTER_BACKUP_KEY` in `.env`) prints its date and size and asks for confirmation. Add
+   `--force` to skip the question.
 3. If the vaults live somewhere else on the new host, add
    `--vault-root=/home/<user>/vaults`: each vault goes to `<root>/<original folder>` and
    the workspace paths are updated.
