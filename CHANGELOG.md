@@ -19,6 +19,32 @@ All notable changes to Jotter will be documented here. Decision records live in 
 - **`JOTTER_2FA_REQUIRED_FOR_ADMINS`** (default `false`). Administrators of a local-provider installation get `403 two_factor_setup_required` on `/api/admin/*` and a banner pointing to their profile until they turn it on.
 - **`php artisan user:two-factor-reset <e-mail>`** handles a lost authenticator. `jotter:doctor` gains `admin_two_factor`, which lists active administrators without it. `GET /api/auth/me` and the sign-in answer carry `two_factor` (`available`, `enabled`, `required`, `recovery_codes_left`).
 - Audit events `user.two_factor_enabled`, `user.two_factor_disabled`, `user.two_factor_recovery_codes_regenerated`, `user.two_factor_recovery_code_used` and `user.two_factor_reset`.
+### LGPD block 4a: encrypted instance backups — 2026-11-10
+
+- With `JOTTER_BACKUP_KEY` set, `jotter:backup` encrypts the whole archive with libsodium's secretstream (XChaCha20-Poly1305, 1 MiB chunks, pure PHP) and writes `jotter-backup-<timestamp>.zip.enc`. File names inside are hidden, and the plain ZIP only ever exists in a private scratch folder. A truncated, altered or wrongly keyed archive is refused before anything is restored.
+- `jotter:restore` (and the manifest check) recognises encrypted archives and decrypts them to a private temporary file that is always removed. `JOTTER_BACKUP_PREVIOUS_KEYS` (comma-separated) opens archives made before a key rotation; each archive records the key id it needs.
+- New `php artisan jotter:backup-key` prints a fresh key. `jotter:backup --unencrypted` forces a plain ZIP. Pruning (`JOTTER_BACKUP_KEEP`) and the doctor's newest-archive check count both `.zip` and `.zip.enc`. The `instance.backed_up` audit row records `encrypted`.
+- `jotter:doctor` gains `backup_encryption`: a warning when nightly backups are on without a key, or when a configured key is malformed.
+- Without a key nothing changes. `docs/deployment.md` ("Encrypted backups") explains key custody: keep a copy off the server, because without it no backup can be restored.
+### LGPD block 3: data subject self-service and `tenant:delete` — 2026-11-10
+
+- **Your profile → Your data** (LGPD art. 18). **Download my data** (`GET /api/user/data-export`) returns one JSON document (`jotter.user-data/1`) with the account, sign-in identities, memberships, groups, note permissions, own comments (in full), watched notes, authored revisions and reviews (metadata only), public links created, notification settings and history, access tokens and connected apps (no secrets), PDF exports and the person's activity log. Note bodies stay out: they belong to the workspace. Limited to 5 per hour per person; audited as `user.data_exported`.
+- **Ask for my account to be deleted** (`POST /api/user/deletion-request`, withdrawn with `DELETE`) records `users.deletion_requested_at` (migration `2026_11_10_000001`) and e-mails the other active administrators. Administration → Users lists the requests above the user list with a **Delete** button, `GET /api/auth/me` returns the date, and `jotter:doctor` warns (`deletion_requests`) once a request is older than 15 days, half of the 30 the privacy policy promises. The last active administrator cannot ask (409). Audit events `user.deletion_requested` and `user.deletion_request_cancelled`. Browser sessions only.
+- **`php artisan tenant:delete {slug}`** replaces the manual `tinker` runbook. It supports `--dry-run`, `--export-to=` (a `tenant:export` ZIP first; nothing is deleted if it fails), confirmation or `--force`, and `--json`. It deletes the accounts that belong only to the tenant through `UserDeletion`; administrators and members of other tenants only lose their memberships. It keeps access records for the Marco Civil window, detached from the tenant, deletes the rest of the tenant's audit history and the tenant row (with cascades), and removes vault folders only when they are inside `VAULT_BASE_PATH`. It refuses the installation's only tenant. Audit event `tenant.deleted`.
+- `docs/hosted-operations.md` ("Remove a tenant", new "Account deletion requests"), the privacy-policy draft (§7) and `docs/deployment.md` describe the new flows.
+### Security: dependency updates — 2026-11-10
+
+- **Composer** (`composer audit`: 10 packages with advisories → **0**), updated within the existing constraints, still PHP 8.2:
+  - `laravel/framework` 12.64 → 12.72 (critical TokenGuard authentication bypass, relationship-inclusion data destruction, debug-page XSS);
+  - `league/commonmark` 2.8.3 → 2.10.7 (XSS and denial-of-service fixes in the server-side Markdown renderer);
+  - `symfony/yaml` 7.4.14 → 7.4.23 (front-matter parser: unbounded recursion and exponential parse time);
+  - `symfony/http-foundation`, `http-kernel`, `routing` and `mime` → 7.4.22–7.4.23;
+  - `guzzlehttp/guzzle` → 7.16.1, `phpseclib/phpseclib` → 3.0.58, `league/flysystem` → 3.36.0, plus their dependencies.
+- **npm, production** (`npm audit --omit=dev`: 13 → **0**):
+  - `npm audit fix` brought `dompurify` (critical XSS), `axios`, `vue`, `prosemirror-view`, `follow-redirects`, `vite`, `vitest`, `postcss`, `nanoid` and others to fixed versions;
+  - **`vue-i18n` 9 → 11** (the app already used the Composition API, `legacy: false`; no code change);
+  - **`@milkdown/kit` 7.22.0 → 7.23.0**: the patched `prosemirror-view` requires `prosemirror-model` ≥ 1.25.12, which validates node attributes, and Milkdown 7.22 created images with `title: null`, so images without a title vanished from the WYSIWYG editor. The round-trip fidelity test caught it; 7.23.0 fixes it.
+- **Left, development only** (6 moderate): `eslint` 10 → `@eslint/config-array` → `minimatch`, and `@vue/test-utils` → `js-beautify` → `editorconfig`/`glob`/`minimatch`. None ships in the release ZIP, and npm's only remedy is downgrading `eslint` to 9. Revisit when upstream releases fixes.
 
 ### LGPD block 1: access records, versioned terms, secure defaults — 2026-11-09
 

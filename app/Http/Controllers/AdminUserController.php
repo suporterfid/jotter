@@ -24,7 +24,7 @@ final class AdminUserController extends Controller
         $this->authorizeAdmin($request);
 
         $users = User::query()
-            ->select(['id', 'name', 'email', 'is_admin', 'is_active', 'signup_status', 'signup_requested_at', 'created_at'])
+            ->select(['id', 'name', 'email', 'is_admin', 'is_active', 'signup_status', 'signup_requested_at', 'deletion_requested_at', 'created_at'])
             ->orderBy('id')
             ->get();
 

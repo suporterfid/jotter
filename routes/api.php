@@ -42,6 +42,9 @@ Route::post('/user/two-factor', [\App\Http\Controllers\UserTwoFactorController::
 Route::post('/user/two-factor/confirm', [\App\Http\Controllers\UserTwoFactorController::class, 'confirm']);
 Route::delete('/user/two-factor', [\App\Http\Controllers\UserTwoFactorController::class, 'disable']);
 Route::post('/user/two-factor/recovery-codes', [\App\Http\Controllers\UserTwoFactorController::class, 'regenerateRecoveryCodes']);
+Route::get('/user/data-export', [\App\Http\Controllers\UserDataController::class, 'export']);
+Route::post('/user/deletion-request', [\App\Http\Controllers\UserDataController::class, 'requestDeletion']);
+Route::delete('/user/deletion-request', [\App\Http\Controllers\UserDataController::class, 'cancelDeletion']);
 Route::get('/user/notification-preferences', [NotificationPreferenceController::class, 'index']);
 Route::put('/user/notification-preferences/{type}', [NotificationPreferenceController::class, 'update']);
 Route::post('/mcp', [\App\Http\Controllers\McpController::class, 'handle']);

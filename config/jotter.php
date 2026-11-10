@@ -195,6 +195,12 @@ return [
         'path' => env('JOTTER_BACKUP_PATH') ?: storage_path('app/private/backups'),
         'daily' => (bool) env('JOTTER_BACKUP_DAILY', false),
         'keep' => (int) env('JOTTER_BACKUP_KEEP', 7),
+        // Encrypts each archive (libsodium, `*.zip.enc`). Generate with
+        // `php artisan jotter:backup-key` and keep a copy OFF this server: without
+        // it the backups cannot be restored. After a rotation, list old keys in
+        // JOTTER_BACKUP_PREVIOUS_KEYS (comma-separated) so older archives still open.
+        'key' => env('JOTTER_BACKUP_KEY') ?: null,
+        'previous_keys' => array_values(array_filter(array_map('trim', explode(',', (string) env('JOTTER_BACKUP_PREVIOUS_KEYS', ''))))),
         // Never backed up: ephemeral state and projections rebuilt by commands.
         'exclude_tables' => ['sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens', 'note_embeddings'],
     ],

@@ -86,6 +86,8 @@ outra garantia].
 Senhas, tokens e códigos de acesso são guardados apenas como *hash*. O tráfego usa HTTPS.
 Você pode ligar a verificação em duas etapas (código de um app autenticador) em **Seu
 perfil**[; para administradores ela é obrigatória].
+[Se `JOTTER_BACKUP_KEY` estiver configurada] As cópias de segurança são criptografadas, e a
+chave fica guardada fora do servidor.
 O acesso aos workspaces segue papéis e permissões por nota. As credenciais de agentes de
 IA são limitadas por escopo, workspace e pasta, e nunca têm poderes de administrador. As
 cópias de segurança ficam fora da área pública do site. Nenhum sistema é perfeitamente
@@ -108,8 +110,17 @@ Você pode, a qualquer momento e sem custo (LGPD, art. 18):
 - revogar consentimentos e se opor a tratamentos baseados em legítimo interesse;
 - reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
 
-Para exercer esses direitos, escreva para **[E-MAIL DO ENCARREGADO]**. Responderemos em
-até 15 dias. Podemos pedir uma confirmação de identidade antes de atender.
+Dois desses direitos você exerce sozinho, em **Seu perfil → Seus dados**:
+
+- **Baixar meus dados:** um arquivo JSON com tudo o que guardamos sobre você (conta,
+  acessos aos workspaces, comentários, tokens, aplicativos conectados e histórico de
+  atividade). O texto das notas não entra, porque pertence ao workspace; para levar as
+  notas, use a exportação do workspace.
+- **Pedir a exclusão da minha conta:** um administrador conclui a exclusão em até
+  [30] dias. Você pode cancelar o pedido até lá.
+
+Para os demais, escreva para **[E-MAIL DO ENCARREGADO]**. Responderemos em até 15 dias.
+Podemos pedir uma confirmação de identidade antes de atender.
 
 Quando a conta é excluída, apagamos seus dados de conta, seus acessos aos workspaces,
 seus tokens e as autorizações dos aplicativos que você conectou. Seu e-mail também sai dos

@@ -161,6 +161,7 @@ final class AuthController extends Controller
                 'locale' => $subject->locale,
                 'terms' => LegalTerms::statusFor($subject->user),
                 'two_factor' => TwoFactorPolicy::statusFor($subject->user),
+                'deletion_requested_at' => $subject->user?->deletion_requested_at?->toIso8601String(),
             ],
         ]);
     }

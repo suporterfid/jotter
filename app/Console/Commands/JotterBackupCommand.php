@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Backup\BackupCipher;
 use App\Domain\Backup\InstanceBackup;
 use Illuminate\Console\Command;
+use RuntimeException;
 
 /**
  * One ZIP with every Jotter table and every vault file (#390). Pure PHP, so it
@@ -16,6 +18,7 @@ final class JotterBackupCommand extends Command
         {--keep= : Archives to keep in the default folder (default: JOTTER_BACKUP_KEEP, 7)}
         {--no-vaults : Database only}
         {--no-database : Vault files only}
+        {--unencrypted : Write a plain ZIP even when JOTTER_BACKUP_KEY is set}
         {--json : Emit JSON}';
 
     protected $description = 'Back up the whole instance (all Jotter tables and vault files) into one ZIP.';
@@ -23,7 +26,8 @@ final class JotterBackupCommand extends Command
     public function handle(InstanceBackup $backup): int
     {
         $directory = rtrim((string) config('jotter.backup.path'), '/');
-        $to = (string) ($this->option('to') ?: $directory.'/jotter-backup-'.now()->format('Ymd-His').'.zip');
+        $encrypt = ! $this->option('unencrypted') && $backup->encrypts();
+        $to = (string) ($this->option('to') ?: $directory.'/jotter-backup-'.now()->format('Ymd-His').'.zip'.($encrypt ? BackupCipher::EXTENSION : ''));
         if (str_starts_with((string) realpath(dirname($to)) ?: dirname($to), public_path()) || str_starts_with($to, public_path())) {
             $this->error('Refusing to write the backup under the document root: it holds password hashes and every note.');
 
@@ -35,7 +39,13 @@ final class JotterBackupCommand extends Command
             return self::FAILURE;
         }
 
-        $summary = $backup->create($to, withDatabase: ! $this->option('no-database'), withVaults: ! $this->option('no-vaults'));
+        try {
+            $summary = $backup->create($to, withDatabase: ! $this->option('no-database'), withVaults: ! $this->option('no-vaults'), encrypt: $encrypt);
+        } catch (RuntimeException $exception) {
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
         $deleted = $this->option('to') ? [] : $backup->prune($directory, (int) ($this->option('keep') ?? config('jotter.backup.keep', 7)));
 
         if ($this->option('json')) {
@@ -44,12 +54,15 @@ final class JotterBackupCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->info(sprintf('Backup written: %d table(s), %d row(s), %d vault file(s), %s.', $summary['tables'], $summary['rows'], $summary['files'], $this->human($summary['bytes'])));
+        $this->info(sprintf('Backup written%s: %d table(s), %d row(s), %d vault file(s), %s.', $summary['encrypted'] ? ' (encrypted)' : '', $summary['tables'], $summary['rows'], $summary['files'], $this->human($summary['bytes'])));
         $this->line('  '.$summary['path']);
         if ($deleted !== []) {
             $this->line('  pruned: '.implode(', ', $deleted));
         }
         $this->comment('  Copy it off this server: a backup on the same disk does not survive the disk.');
+        if (! $summary['encrypted']) {
+            $this->comment('  Not encrypted: it holds password hashes and every note. Set JOTTER_BACKUP_KEY (php artisan jotter:backup-key).');
+        }
 
         return self::SUCCESS;
     }

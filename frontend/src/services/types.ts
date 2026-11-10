@@ -197,6 +197,8 @@ export interface AuthUser {
   locale: string
   terms?: TermsStatus
   two_factor?: TwoFactorStatus
+  /** LGPD: when the person asked for their account to be deleted (null = no request). */
+  deletion_requested_at?: string | null
 }
 
 export interface NoteRevisionMeta {

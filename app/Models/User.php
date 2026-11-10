@@ -36,6 +36,7 @@ class User extends Authenticatable
         'signup_requested_at',
         'terms_accepted_at',
         'terms_version',
+        'deletion_requested_at',
     ];
 
     /**
@@ -68,6 +69,7 @@ class User extends Authenticatable
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
             'two_factor_last_used_step' => 'integer',
+            'deletion_requested_at' => 'datetime',
         ];
     }
 

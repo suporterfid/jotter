@@ -17,6 +17,9 @@ final class InstanceDoctor
 {
     public const MINIMUM_PHP_VERSION = '8.2.0';
 
+    /** A deletion request this old is half-way to the 30 days the privacy policy promises. */
+    public const DELETION_REQUEST_WARN_DAYS = 15;
+
     /** Six months, counted generously (the longest six-month span is 184 days). */
     public const ACCESS_RECORD_DAYS = 184;
 
@@ -90,8 +93,10 @@ final class InstanceDoctor
             ...$this->checkOAuth(),
             $this->checkSemantic(),
             $this->checkBackup(),
+            $this->checkBackupEncryption(),
             $this->checkQuotas(),
             $this->checkAdminTwoFactor($databaseCheck->passed),
+            $this->checkDeletionRequests($databaseCheck->passed),
         ];
 
         return new DoctorReport(
@@ -228,7 +233,7 @@ final class InstanceDoctor
     private function checkBackup(): DoctorCheck
     {
         $directory = rtrim((string) config('jotter.backup.path'), '/');
-        $archives = glob($directory.'/jotter-backup-*.zip') ?: [];
+        $archives = array_merge(glob($directory.'/jotter-backup-*.zip') ?: [], glob($directory.'/jotter-backup-*.zip'.\App\Domain\Backup\BackupCipher::EXTENSION) ?: []);
         $newest = $archives === [] ? null : max(array_map('filemtime', $archives));
         $details = ['path' => $directory, 'archives' => count($archives), 'newest_at' => $newest === null ? null : date(DATE_ATOM, (int) $newest)];
 
@@ -244,6 +249,34 @@ final class InstanceDoctor
         }
 
         return DoctorCheck::pass('backup', 'Instance backup', false, sprintf('Nightly backup on; newest archive %s, %d kept.', date('Y-m-d H:i', (int) $newest), count($archives)), $details);
+    }
+
+    /**
+     * LGPD art. 46: a backup holds every note and password hash. With nightly
+     * backups on, it should be encrypted (JOTTER_BACKUP_KEY). A warning only.
+     */
+    private function checkBackupEncryption(): DoctorCheck
+    {
+        $cipher = \App\Domain\Backup\BackupCipher::fromConfig();
+        $daily = (bool) config('jotter.backup.daily', false);
+        $details = ['key_set' => $cipher->enabled(), 'daily' => $daily, 'previous_keys' => count((array) config('jotter.backup.previous_keys', []))];
+
+        try {
+            $cipher->assertUsable();
+        } catch (\RuntimeException $exception) {
+            return $cipher->enabled() || $details['previous_keys'] > 0
+                ? DoctorCheck::fail('backup_encryption', 'Backup encryption', false, $exception->getMessage(), $details)
+                : DoctorCheck::pass('backup_encryption', 'Backup encryption', false, 'No backup key set. '.$exception->getMessage(), $details);
+        }
+
+        if ($cipher->enabled()) {
+            return DoctorCheck::pass('backup_encryption', 'Backup encryption', false, 'Backups are encrypted (*.zip.enc). Keep a copy of JOTTER_BACKUP_KEY off this server.', $details);
+        }
+        if ($daily) {
+            return DoctorCheck::fail('backup_encryption', 'Backup encryption', false, 'Nightly backups are not encrypted: they hold every note and password hash. Set JOTTER_BACKUP_KEY (php artisan jotter:backup-key).', $details);
+        }
+
+        return DoctorCheck::pass('backup_encryption', 'Backup encryption', false, 'No backup key set; manual backups are plain ZIPs. Set JOTTER_BACKUP_KEY to encrypt them.', $details);
     }
 
     /**
@@ -303,6 +336,34 @@ final class InstanceDoctor
             implode(', ', $without),
             $required ? ' They must set it up before using Administration.' : ' Set JOTTER_2FA_REQUIRED_FOR_ADMINS=true to make it mandatory.',
         ), $details);
+    }
+
+    /**
+     * LGPD art. 18 VI: people ask for deletion from "Your profile → Your data";
+     * an administrator carries it out. Warns before the 30-day promise lapses.
+     */
+    private function checkDeletionRequests(bool $databaseReachable): DoctorCheck
+    {
+        if (! $databaseReachable) {
+            return DoctorCheck::pass('deletion_requests', 'Account deletion requests', false, 'Skipped: the database is not reachable.');
+        }
+
+        $pending = \App\Models\User::query()->whereNotNull('deletion_requested_at')->orderBy('deletion_requested_at')->get(['id', 'email', 'deletion_requested_at']);
+        $overdue = $pending->filter(static fn (\App\Models\User $user): bool => $user->deletion_requested_at->lt(now()->subDays(self::DELETION_REQUEST_WARN_DAYS)));
+        $details = ['pending' => $pending->count(), 'older_than_days' => self::DELETION_REQUEST_WARN_DAYS, 'overdue_user_ids' => $overdue->pluck('id')->all()];
+
+        if ($overdue->isNotEmpty()) {
+            return DoctorCheck::fail('deletion_requests', 'Account deletion requests', false, sprintf(
+                '%d request(s) older than %d days; the privacy policy promises 30. Delete in Administration → Users or with php artisan user:delete <e-mail>: %s.',
+                $overdue->count(),
+                self::DELETION_REQUEST_WARN_DAYS,
+                $overdue->map(static fn (\App\Models\User $user): string => $user->email.' ('.$user->deletion_requested_at->toDateString().')')->implode(', '),
+            ), $details);
+        }
+
+        return DoctorCheck::pass('deletion_requests', 'Account deletion requests', false, $pending->isEmpty()
+            ? 'No pending requests.'
+            : sprintf('%d pending, all newer than %d days.', $pending->count(), self::DELETION_REQUEST_WARN_DAYS), $details);
     }
 
     private function isProduction(): bool

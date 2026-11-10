@@ -264,4 +264,39 @@ final class JotterDoctorCommandTest extends TestCase
         config(['jotter.auth_provider' => 'oidc']);
         $this->assertSame('pass', $this->checksById()['admin_two_factor']['status']);
     }
+
+    public function test_doctor_checks_backup_encryption(): void
+    {
+        $this->healthyProductionConfig();
+        config(['jotter.backup.daily' => false, 'jotter.backup.key' => null, 'jotter.backup.previous_keys' => []]);
+        $this->assertSame('pass', $this->checksById()['backup_encryption']['status']);
+
+        config(['jotter.backup.daily' => true]);
+        $check = $this->checksById()['backup_encryption'];
+        $this->assertSame('warn', $check['status']);
+        $this->assertStringContainsString('jotter:backup-key', $check['message']);
+
+        config(['jotter.backup.key' => 'base64:'.base64_encode('too-short')]);
+        $this->assertSame('warn', $this->checksById()['backup_encryption']['status']);
+
+        config(['jotter.backup.key' => \App\Domain\Backup\BackupCipher::generateKey()]);
+        $this->assertSame('pass', $this->checksById()['backup_encryption']['status']);
+    }
+
+    public function test_doctor_warns_about_deletion_requests_close_to_the_deadline(): void
+    {
+        $this->healthyProductionConfig();
+        $this->assertSame('pass', $this->checksById()['deletion_requests']['status']);
+
+        \App\Models\User::factory()->create(['email' => 'recent@example.com', 'deletion_requested_at' => now()->subDays(3)]);
+        $check = $this->checksById()['deletion_requests'];
+        $this->assertSame('pass', $check['status']);
+        $this->assertSame(1, $check['details']['pending']);
+
+        $old = \App\Models\User::factory()->create(['email' => 'old@example.com', 'deletion_requested_at' => now()->subDays(20)]);
+        $check = $this->checksById()['deletion_requests'];
+        $this->assertSame('warn', $check['status']);
+        $this->assertStringContainsString('old@example.com', $check['message']);
+        $this->assertSame([$old->id], $check['details']['overdue_user_ids']);
+    }
 }
