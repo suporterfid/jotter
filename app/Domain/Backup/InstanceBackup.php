@@ -4,6 +4,8 @@ namespace App\Domain\Backup;
 
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Privacy\ErasureLog;
+use App\Domain\Privacy\ErasureReplay;
 use App\Models\Workspace;
 use App\Support\ReleaseVersion;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +94,11 @@ final class InstanceBackup
                 }
             }
 
+            // Block 4c: every archive carries the erasure log, so the newest backup
+            // anywhere always knows every deletion made before it.
+            $erasures = (new ErasureLog)->entries();
+            $zip->addFromString(ErasureLog::FILE_IN_BACKUP, implode('', array_map(static fn (array $entry): string => json_encode($entry, JSON_UNESCAPED_SLASHES).PHP_EOL, $erasures)));
+
             $zip->addFromString('manifest.json', (string) json_encode([
                 'format' => self::FORMAT,
                 'created_at' => now()->toIso8601String(),
@@ -101,6 +108,7 @@ final class InstanceBackup
                 'tables' => $tables,
                 'workspaces' => $workspaces,
                 'includes' => ['database' => $withDatabase, 'vaults' => $withVaults],
+                'erasure_log' => count($erasures),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
             if (! $zip->close()) {
@@ -135,19 +143,31 @@ final class InstanceBackup
      * With $vaultRoot, each vault goes to `<vaultRoot>/<original folder name>` and
      * `workspaces.vault_path` is updated to match.
      *
-     * @return array{tables: int, rows: int, files: int, pending_migrations: bool}
+     * Then (block 4c) every tenant and account named in the erasure log is
+     * deleted again: the log of this server, the archive's own copy, and the
+     * $extraErasures (`--erasure-log`), merged and written back as the live log.
+     *
+     * @param  list<array<string, mixed>>  $extraErasures
+     * @return array{tables: int, rows: int, files: int, pending_migrations: bool, erasures: array{tenants: int, users: int, already_gone: int, refused: list<string>}, erasure_log: int}
      */
-    public function restore(string $zipPath, ?string $vaultRoot = null): array
+    public function restore(string $zipPath, ?string $vaultRoot = null, array $extraErasures = []): array
     {
-        [$manifest, $tables, $rows, $files] = $this->withArchive($zipPath, function (ZipArchive $zip) use ($vaultRoot): array {
+        [$manifest, $tables, $rows, $files, $archiveErasures] = $this->withArchive($zipPath, function (ZipArchive $zip) use ($vaultRoot): array {
             $manifest = $this->manifest($zip);
             $this->assertCompatible($manifest);
 
             [$tables, $rows] = ($manifest['includes']['database'] ?? true) ? $this->restoreDatabase($zip, (array) $manifest['tables']) : [0, 0];
             $files = ($manifest['includes']['vaults'] ?? true) ? $this->restoreVaults($zip, (array) $manifest['workspaces'], $vaultRoot) : 0;
 
-            return [$manifest, $tables, $rows, $files];
+            return [$manifest, $tables, $rows, $files, ErasureLog::parse((string) $zip->getFromName(ErasureLog::FILE_IN_BACKUP))];
         });
+
+        $log = new ErasureLog;
+        $erasureEntries = ErasureLog::merge($log->entries(), $archiveErasures, $extraErasures);
+        if ($erasureEntries !== []) {
+            $log->replace($erasureEntries);
+        }
+        $erasures = (new ErasureReplay($this->audit))->replay($erasureEntries);
 
         $known = array_map(static fn (string $path): string => basename($path, '.php'), File::glob(database_path('migrations/*.php')));
         $pending = array_diff($known, (array) $manifest['migrations']) !== [];
@@ -156,7 +176,17 @@ final class InstanceBackup
             'archive' => basename($zipPath), 'created_at' => $manifest['created_at'] ?? null, 'tables' => $tables, 'rows' => $rows, 'files' => $files,
         ]);
 
-        return ['tables' => $tables, 'rows' => $rows, 'files' => $files, 'pending_migrations' => $pending];
+        return ['tables' => $tables, 'rows' => $rows, 'files' => $files, 'pending_migrations' => $pending, 'erasures' => $erasures, 'erasure_log' => count($erasureEntries)];
+    }
+
+    /**
+     * The erasure log stored in another archive (for `--erasure-log=<newer backup>`).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function erasureLogOf(string $zipPath): array
+    {
+        return $this->withArchive($zipPath, static fn (ZipArchive $zip): array => ErasureLog::parse((string) $zip->getFromName(ErasureLog::FILE_IN_BACKUP)));
     }
 
     /**

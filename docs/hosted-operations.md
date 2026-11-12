@@ -161,7 +161,11 @@ php artisan tenant:delete acme --export-to=/home/user/exports/acme.zip
 
 It refuses to delete the installation's only tenant. Instance backups taken before
 keep the tenant until they rotate out (`JOTTER_BACKUP_KEEP`), as the privacy policy
-says. Keep the exported ZIP as the record of what existed for as long as your contract
+says. They are never used to bring it back: the deletion is written to the erasure log,
+which travels inside every later backup, and `jotter:restore` deletes the tenant again
+after any restore. **Rotate your off-server copies within 30 days** (the window the
+privacy policy states), and keep the erasure log longer than any copy
+(`JOTTER_ERASURE_LOG_DAYS`, 400). Keep the exported ZIP as the record of what existed for as long as your contract
 requires, and no longer.
 
 ## Account deletion requests

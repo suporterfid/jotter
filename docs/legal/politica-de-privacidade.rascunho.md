@@ -78,7 +78,7 @@ outra garantia].
 | Demais registros de auditoria (inclui IP) | 90 dias (`JOTTER_AUDIT_RETENTION_DAYS`, `audit:prune`); as estatísticas agregadas, sem IP, podem ficar por mais tempo |
 | Exportações em PDF | 24 horas |
 | Tokens e autorizações OAuth | até expirarem ou serem revogados; códigos e tokens vencidos são apagados diariamente |
-| Cópias de segurança | as [7] mais recentes (`JOTTER_BACKUP_KEEP`); um dado apagado some das cópias quando a mais antiga que o contém é descartada |
+| Cópias de segurança | as [7] mais recentes no servidor (`JOTTER_BACKUP_KEEP`) e até [30] dias fora dele; um dado apagado some das cópias quando a mais antiga que o contém é descartada. Até lá, as cópias ficam protegidas e **nunca trazem de volta um dado apagado**: toda restauração reaplica as exclusões já feitas |
 | Outros registros exigidos por lei | pelo prazo legal |
 
 ## 6. Segurança

@@ -50,7 +50,8 @@ final class UserDeletion
         $userId = (int) $user->id;
         $counts = [];
 
-        DB::transaction(function () use ($user, $subjectIds, $email, $userId, &$counts): void {
+        $createdAt = $user->created_at?->toIso8601String();
+        DB::transaction(function () use ($user, $subjectIds, $email, $userId, $createdAt, $actorId, &$counts): void {
             $counts['memberships'] = Membership::query()->whereIn('subject_id', $subjectIds)->delete();
             $counts['tokens'] = MachineToken::query()->where(static fn ($q) => $q->whereIn('subject_id', $subjectIds)->orWhere('user_id', $userId))->delete();
             $counts['oauth_grants'] = OAuthGrant::query()->where(static fn ($q) => $q->whereIn('subject_id', $subjectIds)->orWhere('user_id', $userId))->delete();
@@ -69,6 +70,10 @@ final class UserDeletion
             }
 
             $user->delete();
+
+            // Block 4c: a tombstone, so a restore of an older backup deletes this account again.
+            // Written last, inside the transaction: if it cannot be written, nothing is deleted.
+            (new \App\Domain\Privacy\ErasureLog)->record('user', $userId, $createdAt, $actorId);
         });
 
         // Recorded after the deletion, with no personal data about the person.

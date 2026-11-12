@@ -351,20 +351,32 @@ JOTTER_BACKUP_PREVIOUS_KEYS=              # old keys, comma-separated, after a r
 
 1. Deploy the **same or a newer** Jotter release, with `.env` pointing at the target
    database (an empty one is fine), then run `php artisan migrate --force`.
-2. Upload the archive outside the document root and check it:
+2. Upload the archive outside the document root. **On a new host**, also upload the
+   **newest** backup you have (or its `erasure-log.ndjson`): the erasure log of the old
+   server is gone, and without it accounts or tenants deleted after the archive was made
+   would come back. Pass it as `--erasure-log=<newest backup>`. Without a log on the
+   server and without `--erasure-log`, the restore refuses unless you add `--force`.
+3. Check the archive:
    `php artisan jotter:restore /path/jotter-backup-….zip` (or `….zip.enc`, with the same
    `JOTTER_BACKUP_KEY` in `.env`) prints its date and size and asks for confirmation. Add
    `--force` to skip the question.
-3. If the vaults live somewhere else on the new host, add
+4. If the vaults live somewhere else on the new host, add
    `--vault-root=/home/<user>/vaults`: each vault goes to `<root>/<original folder>` and
    the workspace paths are updated.
-4. After the restore:
+5. After the restore:
    ```sh
    php artisan migrate --force          # when the code is newer than the backup
    php artisan vault:reindex --all      # rebuild the projection from the restored files
    php artisan semantic:index           # only if semantic search is on
    php artisan jotter:doctor
    ```
+
+After writing the tables and files back, the restore **replays the erasure log** (LGPD).
+It deletes again every tenant and account that `tenant:delete` or `user:delete` removed,
+taken from this server's log, the archive's own copy and every `--erasure-log`. It prints
+how many it re-deleted and records `instance.erasures_replayed`. A row is only deleted
+when its id and creation time both match the tombstone. See `docs/decisions.md`,
+"Erasure from backups".
 
 The restore replaces every table found in the archive. The database part runs in one
 transaction, so a corrupt archive leaves the database as it was. Vault files are written

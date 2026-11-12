@@ -93,7 +93,11 @@ final class TenantDeletion
             $counts['audit_deleted'] = DB::table('audit_log')->where($scope)->delete();
             $counts['memberships'] = Membership::query()->where('tenant_id', $tenantId)->delete();
 
+            $createdAt = $tenant->created_at?->toIso8601String();
             $tenant->delete();
+
+            // Block 4c: a tombstone, so a restore of an older backup deletes this tenant again.
+            (new \App\Domain\Privacy\ErasureLog)->record('tenant', $tenantId, $createdAt, $actorId, ['slug' => (string) $tenant->slug]);
         });
 
         $removed = [];
