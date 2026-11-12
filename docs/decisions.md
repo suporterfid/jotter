@@ -269,3 +269,75 @@ Where are embeddings computed and stored, how do they stay current without a wor
 - Dual licence (AGPL + commercial): rejected; it restricts the self-hosting audience the product is built for (shared hosting, "the cPanel your grandpa never gave up").
 - Open core with a proprietary add-on: rejected for now; there is no add-on worth separating, and two codebases double the maintenance on shared hosting.
 - Keep MIT: selected.
+
+---
+
+## Decision — Erasure from backups: tombstones replayed on restore, no crypto-shredding yet (LGPD block 4c)
+
+**Status: Proposed 2026-11-12, awaiting the owner's approval.** Nothing is implemented until this entry reads "Decided". Background: `BACKLOG.md` → "LGPD compliance on shared hosting", block 4c.
+
+### Question
+
+`tenant:delete` and `user:delete` (LGPD art. 16 and 18 VI) remove data from the live installation. Copies of that data remain in:
+
+- the nightly instance backups: every Jotter table plus every vault file, encrypted as a whole when `JOTTER_BACKUP_KEY` is set, with the newest `JOTTER_BACKUP_KEEP` (7) kept on the server;
+- the copies the operator keeps off the server, under a retention Jotter does not control.
+
+Two risks follow:
+
+1. **Resurrection.** `jotter:restore` replaces every table in the archive, so restoring a backup taken before a deletion brings the deleted tenant or person back, vault files included.
+2. **Lingering copies.** The data stays readable, to whoever holds both the archive and its key, until the last copy that contains it is gone.
+
+What should Jotter guarantee, and how, on shared hosting (no daemon, no `exec`, pure PHP)?
+
+### Proposed contract
+
+1. **Tombstones (the erasure log).** Every `tenant:delete` and `user:delete` appends one line to an append-only erasure log:
+   - each line is `{type: tenant|user, id, deleted_at, actor}`, plus the tenant `slug`;
+   - there are no names or e-mails: the internal id is enough, because a restore brings rows back with the same ids.
+
+   The log lives in `storage/app/private/erasure-log.ndjson`, outside the database, so a restore that rewrites the tables cannot erase it. **Every new backup also carries a copy** (`erasure-log.ndjson` inside the archive), so the newest archive anywhere always has the full log.
+2. **Replay on restore.** After the database and vault files are restored, `jotter:restore` reads the tombstones from three sources:
+   - the live log, if present;
+   - the archive's own copy;
+   - any `--erasure-log=<file|newer archive>` the operator passes.
+
+   It deletes again, through the same `TenantDeletion` / `UserDeletion` code, every tenant or account named there, and it never asks for confirmation for this step. The restore summary lists what it re-deleted, and an audit row records it (`instance.erasures_replayed`).
+
+   Restoring an archive older than the newest tombstone without a log that covers it prints a warning and needs `--force`. That protects a disaster recovery onto a new host, where the live log is gone, from silently bringing data back.
+3. **Bounded copies.** The retention of everything stays explicit:
+   - `JOTTER_BACKUP_KEEP` stays the on-server limit;
+   - the deployment and hosted-operations docs ask operators to rotate their off-server copies within a stated window (proposed: 30 days);
+   - `jotter:doctor` warns when backups are not encrypted (4a) and when the erasure log is missing or not writable.
+4. **Privacy policy.** The draft says it plainly: deleted data disappears from the backups when the oldest copy that contains it is discarded (at most N days); backups are encrypted; and **a restore never brings deleted data back**.
+5. **Retention of the log itself.** Tombstones hold ids, a tenant slug and timestamps, not names or e-mails. They are kept for as long as the longest backup retention plus a margin (`JOTTER_ERASURE_LOG_DAYS`, proposed default 400), then pruned by the nightly retention commands.
+
+### Options considered
+
+- **A. Status quo + documentation only.** Rejected: a restore would still resurrect deleted data, which contradicts the deletion the person was promised.
+- **B. Tombstones replayed on restore + bounded, encrypted backups (proposed).**
+  - Small: one log file, one replay step in `jotter:restore`, docs and a doctor check.
+  - It keeps every backup restorable with the key the operator already holds, and it fits pure PHP and cron.
+  - What it does not do: make old copies unreadable before they rotate out. That is the usual practice for backups. European data-protection regulators (the UK ICO calls it "putting the data beyond use") accept it when the copies are protected, never used to restore the deleted data, and deleted on a schedule. **Whether the ANPD reads the LGPD the same way is for the owner's lawyer to confirm.**
+- **C. Scrub the local backups on deletion.** Rewrite every archive on the server without the deleted tenant: decrypt, filter, rebuild, re-encrypt. Rejected:
+  - it means gigabytes of work per deletion, inside shared-hosting time limits;
+  - it never reaches off-server copies;
+  - B already prevents the only harmful use of the copies, which is restoring them.
+- **D. Crypto-shredding with per-tenant keys.** Each tenant's rows and vault files would be encrypted in the backup with a tenant key kept in a keyring outside the backups; deleting the tenant destroys its key. Rejected for now:
+  - **Every copy of the keyring must be destroyed too.** Backups are useless without it, so it has to be copied off the server, and those copies bring the problem back in a smaller file.
+  - **Losing the keyring loses every backup.** That is a worse risk than the one it removes, for operators on shared hosting.
+  - **Accounts are global, not per tenant.** A person can belong to several tenants, so per-tenant keys do not cover the `users` table and its references. Per-user keys would multiply the problem.
+  - **It means redesigning the backup format** (per-tenant streams instead of per-table NDJSON, and partial restores).
+
+  Revisit when an operator can use an external key service whose deletion is authoritative (HashiCorp Vault Transit, OpenBao, or a cloud KMS), or when a customer contract or the ANPD requires immediate unreadability of backups.
+- **E. Encrypt `note_revisions.content` at rest** (Laravel `encrypted` cast with `APP_KEY`). Rejected for now:
+  - the database and `APP_KEY` sit on the same server, so it adds little against the realistic threats;
+  - backups are already encrypted as a whole (4a);
+  - it ties revision history to `APP_KEY`: restoring under a different key would lose the history, and rotation needs `APP_PREVIOUS_KEYS`.
+- **F. Encrypt the vault.** Out of scope: it changes the "plain `.md` on disk" invariant (spec §1) and needs its own decision.
+
+### Consequences if approved
+
+- New PR (block 4c), in this order: the erasure log and its writes in `TenantDeletion` / `UserDeletion`; the copy inside backups; replay and the `--erasure-log` / `--force` rules in `jotter:restore`; the doctor check; docs and the privacy-policy draft.
+- `BACKLOG.md` block 4c changes from "crypto-shredding" to "erasure log replayed on restore". Crypto-shredding (D) moves to a revisit condition.
+- Operators get one new duty: rotate off-server backup copies within the stated window.
