@@ -191,6 +191,15 @@ return [
     // Instance backup (#390): `php artisan jotter:backup` writes one ZIP with every
     // Jotter table (NDJSON) and every vault file, in pure PHP (no mysqldump, no exec).
     // `daily` schedules it at 01:30; `keep` is how many archives stay in `path`.
+    // Erasure log (LGPD block 4c): tombstones of deleted tenants and accounts,
+    // kept outside the database and copied into every backup, replayed by
+    // `jotter:restore` so a restore never brings deleted data back. Entries
+    // hold ids and timestamps only and are pruned after `days`.
+    'erasure_log' => [
+        'path' => env('JOTTER_ERASURE_LOG_PATH') ?: storage_path('app/private/erasure-log.ndjson'),
+        'days' => (int) env('JOTTER_ERASURE_LOG_DAYS', 400),
+    ],
+
     'backup' => [
         'path' => env('JOTTER_BACKUP_PATH') ?: storage_path('app/private/backups'),
         'daily' => (bool) env('JOTTER_BACKUP_DAILY', false),

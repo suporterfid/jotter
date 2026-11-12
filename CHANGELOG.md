@@ -4,6 +4,18 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### LGPD block 4c: a restore never brings deleted data back — 2026-11-12
+
+- **Erasure log.** `tenant:delete` and `user:delete` append a tombstone (`type`, `id`, the row's `created_at`, the tenant `slug`, `deleted_at`, `actor`; no names or e-mails) to `storage/app/private/erasure-log.ndjson` (`JOTTER_ERASURE_LOG_PATH`). It is written last inside the deletion's transaction, so nothing is deleted without a tombstone.
+- **Every backup carries it** (`erasure-log.ndjson` inside the archive; `manifest.json` → `erasure_log` count).
+- **`jotter:restore` replays it** after writing the tables and files back. Its sources are this server's log, the archive's copy and any `--erasure-log=<file or newer backup>` (repeatable).
+  - It deletes again, through the same code, every tenant and account named there.
+  - It only deletes a row whose id **and** `created_at` match, so a new row that reused a deleted id is safe.
+  - It rewrites the live log as the union of all the sources, prints how many it re-deleted, and audits `instance.erasures_replayed`.
+- **New-host guard.** Without a log on the server and without `--erasure-log`, the restore warns and refuses unless `--force`.
+- **Maintenance.** New `erasure-log:prune` runs nightly at 02:50 and keeps `JOTTER_ERASURE_LOG_DAYS`, 400 days. `jotter:doctor` gains `erasure_log`.
+- **Docs.** The decision is recorded in `docs/decisions.md` ("Erasure from backups"). The restore runbook covers the new-host case. Operators should rotate off-server backup copies within 30 days, and the privacy-policy draft says so.
+
 ### LGPD block 4b: TOTP two-step verification — 2026-11-10
 
 - **Your profile → Two-step verification.** Anyone who signs in with a password (local provider, or GrandpaSSOn's local fallback) can turn it on.

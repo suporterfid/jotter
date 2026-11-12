@@ -57,6 +57,7 @@ Schedule::command('vault:prune-revisions', ['--days=30'])->dailyAt('02:15')->wit
 // Retention comes from JOTTER_AUDIT_RETENTION_DAYS / JOTTER_ACCESS_LOG_RETENTION_DAYS.
 Schedule::command('audit:prune')->dailyAt('02:30')->withoutOverlapping(60);
 Schedule::command('oauth:prune')->dailyAt('02:45')->withoutOverlapping(60);
+Schedule::command('erasure-log:prune')->dailyAt('02:50')->withoutOverlapping(30);
 
 // Hosted mode only: trial reminders (3 days before), then trials past their
 // deadline become read_only (audited) and owners are e-mailed once. A

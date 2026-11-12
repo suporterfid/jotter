@@ -43,6 +43,7 @@ final class SchedulerRegistrationTest extends TestCase
             'vault:prune-revisions',
             'audit:prune',
             'oauth:prune',
+            'erasure-log:prune',
             'tenant:expire-trials',
             'jotter:scheduler-heartbeat',
         ] as $expected) {

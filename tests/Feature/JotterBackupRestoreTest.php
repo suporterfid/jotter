@@ -235,4 +235,79 @@ final class JotterBackupRestoreTest extends TestCase
         (new \App\Domain\Backup\BackupCipher($match[1]))->assertUsable();
         $this->assertStringContainsString('OFF this server', $output);
     }
+
+    public function test_a_restore_never_brings_a_deleted_account_back(): void
+    {
+        User::factory()->create(['email' => 'gone@acme.test']);
+        $this->assertSame(0, Artisan::call('jotter:backup', ['--json' => true]));
+        $archive = json_decode(Artisan::output(), true)['path'];
+
+        $zip = new ZipArchive;
+        $zip->open($archive);
+        $this->assertSame(0, json_decode((string) $zip->getFromName('manifest.json'), true)['erasure_log']);
+        $this->assertNotFalse($zip->locateName('erasure-log.ndjson'));
+        $zip->close();
+
+        $this->assertSame(0, Artisan::call('user:delete', ['email' => 'gone@acme.test', '--force' => true]));
+
+        $status = Artisan::call('jotter:restore', ['archive' => $archive, '--force' => true]);
+        $output = Artisan::output();
+        $this->assertSame(0, $status, $output);
+        $this->assertStringContainsString('deleted again: 0 tenant(s), 1 account(s)', $output);
+
+        $this->assertNull(User::query()->where('email', 'gone@acme.test')->first(), 'the deleted account stays deleted');
+        $this->assertNotNull(User::query()->where('email', 'joe@acme.test')->first());
+        $this->assertDatabaseHas('audit_log', ['event' => 'instance.erasures_replayed']);
+    }
+
+    public function test_a_restore_never_brings_a_deleted_tenant_or_its_vault_back(): void
+    {
+        config(['vault.base_path' => storage_path('app/vaults')]);
+        $other = Tenant::create(['slug' => 'other', 'name' => 'Other']);
+        $otherVault = storage_path('app/vaults/other_'.uniqid());
+        File::ensureDirectoryExists($otherVault);
+        File::put($otherVault.'/segredo.md', "# Segredo\n");
+        Workspace::create(['tenant_id' => $other->id, 'slug' => 'docs', 'name' => 'Docs', 'vault_path' => $otherVault]);
+
+        try {
+            Artisan::call('jotter:backup', ['--json' => true]);
+            $archive = json_decode(Artisan::output(), true)['path'];
+            $this->assertSame(0, Artisan::call('tenant:delete', ['slug' => 'other', '--force' => true]), Artisan::output());
+            $this->assertDirectoryDoesNotExist($otherVault);
+
+            $this->assertSame(0, Artisan::call('jotter:restore', ['archive' => $archive, '--force' => true]), Artisan::output());
+
+            $this->assertNull(Tenant::query()->where('slug', 'other')->first());
+            $this->assertDirectoryDoesNotExist($otherVault, 'the restored vault files are removed again');
+            $this->assertNotNull(Tenant::query()->where('slug', 'acme')->first());
+        } finally {
+            File::deleteDirectory($otherVault);
+        }
+    }
+
+    public function test_without_an_erasure_log_a_restore_needs_force_or_a_newer_backup_log(): void
+    {
+        User::factory()->create(['email' => 'gone@acme.test']);
+        Artisan::call('jotter:backup', ['--json' => true]);
+        $old = json_decode(Artisan::output(), true)['path'];
+        Artisan::call('user:delete', ['email' => 'gone@acme.test', '--force' => true]);
+        $this->travel(1)->minutes();
+        Artisan::call('jotter:backup', ['--json' => true]);
+        $newer = json_decode(Artisan::output(), true)['path'];
+
+        // A new host: the live erasure log is gone.
+        unlink(\App\Domain\Privacy\ErasureLog::path());
+
+        $this->artisan('jotter:restore', ['archive' => $old])
+            ->expectsOutputToContain('Refusing to restore without an erasure log')
+            ->assertFailed();
+
+        $this->artisan('jotter:restore', ['archive' => $old, '--erasure-log' => [$newer]])
+            ->expectsConfirmation('This REPLACES every table in the archive (users, notes, tokens…) and overwrites vault files. Continue?', 'yes')
+            ->expectsOutputToContain('deleted again: 0 tenant(s), 1 account(s)')
+            ->assertSuccessful();
+
+        $this->assertNull(User::query()->where('email', 'gone@acme.test')->first());
+        $this->assertCount(1, (new \App\Domain\Privacy\ErasureLog)->entries(), 'the live log is rebuilt from the newer backup');
+    }
 }

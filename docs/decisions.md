@@ -274,7 +274,7 @@ Where are embeddings computed and stored, how do they stay current without a wor
 
 ## Decision — Erasure from backups: tombstones replayed on restore, no crypto-shredding yet (LGPD block 4c)
 
-**Status: Proposed 2026-11-12, awaiting the owner's approval.** Nothing is implemented until this entry reads "Decided". Background: `BACKLOG.md` → "LGPD compliance on shared hosting", block 4c.
+**Decided 2026-11-12 by the owner** (proposed the same day, approved as written, with one refinement found while implementing it: see "Row identity" below). Background: `BACKLOG.md` → "LGPD compliance on shared hosting", block 4c.
 
 ### Question
 
@@ -312,6 +312,10 @@ What should Jotter guarantee, and how, on shared hosting (no daemon, no `exec`, 
 4. **Privacy policy.** The draft says it plainly: deleted data disappears from the backups when the oldest copy that contains it is discarded (at most N days); backups are encrypted; and **a restore never brings deleted data back**.
 5. **Retention of the log itself.** Tombstones hold ids, a tenant slug and timestamps, not names or e-mails. They are kept for as long as the longest backup retention plus a margin (`JOTTER_ERASURE_LOG_DAYS`, proposed default 400), then pruned by the nightly retention commands.
 
+### Row identity (refinement made while implementing)
+
+After a restore, MySQL's auto-increment counter follows the restored rows, so a row created later can receive the id of a row that was deleted. A tombstone that matched by id alone would then delete an innocent new account at the next restore. Each tombstone therefore also records the erased row's own `created_at`, which is not personal data. The replay deletes only a row whose id **and** `created_at` both match; anything else counts as "already gone".
+
 ### Options considered
 
 - **A. Status quo + documentation only.** Rejected: a restore would still resurrect deleted data, which contradicts the deletion the person was promised.
@@ -336,8 +340,14 @@ What should Jotter guarantee, and how, on shared hosting (no daemon, no `exec`, 
   - it ties revision history to `APP_KEY`: restoring under a different key would lose the history, and rotation needs `APP_PREVIOUS_KEYS`.
 - **F. Encrypt the vault.** Out of scope: it changes the "plain `.md` on disk" invariant (spec §1) and needs its own decision.
 
-### Consequences if approved
+### Consequences
 
-- New PR (block 4c), in this order: the erasure log and its writes in `TenantDeletion` / `UserDeletion`; the copy inside backups; replay and the `--erasure-log` / `--force` rules in `jotter:restore`; the doctor check; docs and the privacy-policy draft.
-- `BACKLOG.md` block 4c changes from "crypto-shredding" to "erasure log replayed on restore". Crypto-shredding (D) moves to a revisit condition.
-- Operators get one new duty: rotate off-server backup copies within the stated window.
+- **Implemented in the same PR as this decision:**
+  - `App\Domain\Privacy\ErasureLog` and `ErasureReplay`;
+  - tombstones written last inside the `UserDeletion` / `TenantDeletion` transaction, so nothing is deleted without a tombstone;
+  - `erasure-log.ndjson` inside every backup;
+  - replay, `--erasure-log` and the `--force` rule in `jotter:restore`;
+  - `erasure-log:prune` (nightly) and the `erasure_log` doctor check;
+  - docs and the privacy-policy draft.
+- `BACKLOG.md` block 4c now reads "erasure log replayed on restore". Crypto-shredding (D) stays a revisit condition.
+- Operators get one new duty: rotate off-server backup copies within the stated window (30 days, `docs/hosted-operations.md`).

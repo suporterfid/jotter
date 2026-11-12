@@ -94,6 +94,7 @@ final class InstanceDoctor
             $this->checkSemantic(),
             $this->checkBackup(),
             $this->checkBackupEncryption(),
+            $this->checkErasureLog(),
             $this->checkQuotas(),
             $this->checkAdminTwoFactor($databaseCheck->passed),
             $this->checkDeletionRequests($databaseCheck->passed),
@@ -277,6 +278,26 @@ final class InstanceDoctor
         }
 
         return DoctorCheck::pass('backup_encryption', 'Backup encryption', false, 'No backup key set; manual backups are plain ZIPs. Set JOTTER_BACKUP_KEY to encrypt them.', $details);
+    }
+
+    /**
+     * Block 4c: the erasure log must be writable, or `tenant:delete` and
+     * `user:delete` refuse to run (nothing is deleted without a tombstone).
+     */
+    private function checkErasureLog(): DoctorCheck
+    {
+        $path = \App\Domain\Privacy\ErasureLog::path();
+        $entries = is_file($path) ? count((new \App\Domain\Privacy\ErasureLog)->entries()) : 0;
+        $details = ['path' => $path, 'exists' => is_file($path), 'entries' => $entries, 'days' => (int) config('jotter.erasure_log.days', 400)];
+        $writable = is_file($path) ? is_writable($path) : (is_dir(dirname($path)) ? is_writable(dirname($path)) : is_writable(dirname($path, 2)));
+
+        if (! $writable) {
+            return DoctorCheck::fail('erasure_log', 'Erasure log', false, sprintf('%s is not writable: deleting tenants or accounts will fail until it is.', $path), $details);
+        }
+
+        return DoctorCheck::pass('erasure_log', 'Erasure log', false, is_file($path)
+            ? sprintf('%d tombstone(s); every backup carries a copy and jotter:restore replays it.', $entries)
+            : 'No deletion recorded yet; the log is created at the first tenant:delete or user:delete.', $details);
     }
 
     /**
