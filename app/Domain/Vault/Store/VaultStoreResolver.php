@@ -63,6 +63,7 @@ class VaultStoreResolver
             ),
             // D1: one repository per workspace, so the prefix is always '' on GitHub.
             VaultStoreDrivers::GITHUB => app(GitHub\GitHubStoreFactory::class)->store($record, $workspace),
+            VaultStoreDrivers::S3 => app(S3\S3StoreFactory::class)->store($record, $workspace, $prefix),
             default => throw new StoreUnavailable("Vault driver [{$record->driver}] is not available in this version of Jotter."),
         };
     }

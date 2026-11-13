@@ -27,12 +27,12 @@ The roadmap's historical Phase 1 gaps are already delivered in this repository: 
 
 ## Pluggable vault stores epic (#429, planned 2026-11-13)
 
-Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. #434–#437 implemented 2026-11-13 in one PR (common base, epic #430); #438–#445 implemented 2026-11-13 in one PR (GitHub, epic #431). **Next:** the owner's live checks for GitHub (below), then S3 (#432).
+Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. #434–#437 implemented 2026-11-13 in one PR (common base, epic #430); #438–#445 implemented 2026-11-13 in one PR (GitHub, epic #431); #446–#448 implemented 2026-11-13 in one PR (S3, epic #432). **Next:** the owner's live checks for GitHub and for S3 (below).
 
 1. ~~**Common base — epic #430.**~~ **Implemented 2026-11-13** (see CHANGELOG).
    1. ~~#434 — PR A: dated decision in `docs/decisions.md` (D1–D10, G1–G5), amending spec §1/§2 and `docs/architecture.md`.~~
    2. ~~#435 — PR B: `VaultStore` interface + `LocalVaultStore`, refactor, contract test suite, no behaviour change.~~ Instance backup/restore, `tenant:delete` and provisioning still read the local folder directly: remote-store handling for them is #444.
-   3. ~~#436 — PR C: `vault_stores` (admin API + Storage tab, encrypted credentials, SSRF guard, audit, doctor, `JOTTER_VAULT_DRIVERS`).~~ Only the `local` driver (a second server folder) is implemented; `s3`/`github` stores can be registered but "Test connection" and moves refuse them until #432/#431.
+   3. ~~#436 — PR C: `vault_stores` (admin API + Storage tab, encrypted credentials, SSRF guard, audit, doctor, `JOTTER_VAULT_DRIVERS`).~~ The `s3` and `github` drivers followed with #432 and #431.
    4. ~~#437 — PR E: `vault:move` engine (preflight, batched copy, SHA-256 verification, swap, HTTP 423, rollback, 7-day retention).~~
 2. ~~**GitHub vault — epic #431.**~~ **Implemented 2026-11-13** (see CHANGELOG). Code namespace is `App\Domain\Vault\Store\GitHub` (the plan said `Stores/GitHub`; it follows the common base).
    1. ~~#438 — Phase 2: validation spike.~~ Answered from docs and the test simulator in `docs/20261113-jotter-github-vault-spike.md`, with `scripts/github-vault-spike.sh`.
@@ -48,10 +48,15 @@ Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–
       - with a real App and a test repository, run the live checks V1–V8 of the spike doc, including G5: an external push visible in ≤ 10 s with the webhook;
       - then turn it on for one or two tenants with `JOTTER_GITHUB_BETA_TENANTS`.
    10. Follow-ups (P3): an opt-in `Co-authored-by` trailer from the user profile (G2; off is the safe default); a commit-count estimate in the move preflight (moves only get delayed by the budget, never fail).
-3. **S3-compatible vault — epic #432**, after #445.
-   1. #446 — PR D: S3 driver (`async-aws/s3`) + MinIO in `compose.ci.yaml`.
-   2. #447 — S3 in `vault:move`, backup rule by bucket versioning, LGPD in the bucket.
-   3. #448 — PR H (S3 part): contract test against real providers (GCS only announced if it passes), guides.
+3. ~~**S3-compatible vault — epic #432.**~~ **Implemented 2026-11-13** (see CHANGELOG). Code namespace is `App\Domain\Vault\Store\S3`.
+   1. ~~#446 — PR D: S3 driver (`async-aws/s3`) + MinIO in `compose.ci.yaml`.~~ There is no "move folder" feature in the app, so the plan's "folder move over N objects becomes a cron job" has nothing to apply to: the store moves one object at a time.
+   2. ~~#447 — S3 in `vault:move`, backup rule by bucket versioning, LGPD in the bucket.~~
+   3. ~~#448 — PR H (S3 part): guides and operations docs.~~ Validated against an in-memory S3 API and a local S3 server (moto); real providers still pending (below).
+   4. **Owner action (P1, before offering S3 to tenants):**
+      - run `jt ci` (it now starts MinIO and runs `S3VaultStoreMinioContractTest` against it) and `jt release` / `release:verify`, and note the release ZIP size (≈ +6.6 MB measured with `zip -r`);
+      - run `S3VaultStoreMinioContractTest` against real AWS S3 and Cloudflare R2 with throwaway buckets (`JOTTER_TEST_S3_*`, see `docs/guia-conectar-s3.md`), then update its *Provedores testados* table;
+      - GCS stays unsupported until the same run passes against it with HMAC keys.
+   5. Follow-ups (P3): a storage-screen hint for the bucket's versioning and lifecycle (the API already returns `settings.bucket_state`); a shorter reindex interval for S3 workspaces if the hourly `vault:reindex --all` is too slow for edits made directly in the bucket (an S3 event notification is the push equivalent of the GitHub webhook).
 4. **Later — #433 (on hold).** GitLab/Forgejo, monorepo, Git LFS, native GCS, mirror replica, 3-way merge, and the research ideas (backup destination, Drive export, SFTP, "Cofre BR", KMS crypto-shredding, Object Lock, attachment offload). Each needs its own decision record first.
 
 ## Brain multi-agent epic (spec 2026-11-03)

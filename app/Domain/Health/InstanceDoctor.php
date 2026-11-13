@@ -98,6 +98,7 @@ final class InstanceDoctor
             $this->checkQuotas(),
             $this->checkVaultStores($databaseCheck->passed),
             (new \App\Domain\Vault\Store\GitHub\GitHubDoctor)->check($databaseCheck->passed),
+            (new \App\Domain\Vault\Store\S3\S3Doctor)->check($databaseCheck->passed),
             $this->checkAdminTwoFactor($databaseCheck->passed),
             $this->checkDeletionRequests($databaseCheck->passed),
         ];

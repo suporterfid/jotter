@@ -54,7 +54,7 @@ final class AdminVaultMoveController extends Controller
             return response()->json(['message' => __('messages.vault_move_not_allowed', ['reason' => $refused->getMessage()])], 409);
         }
 
-        return response()->json(['data' => $move->toApiArray()], 202);
+        return response()->json(['data' => $move->toApiArray(), 'warnings' => $this->mover->warnings], 202);
     }
 
     public function rollback(Request $request, VaultMove $vaultMove): JsonResponse

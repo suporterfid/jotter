@@ -67,18 +67,46 @@ describe('Vault stores (Storage tab)', () => {
     await inputs[0].setValue('Bucket')
     await inputs[1].setValue('https://s3.example.com')
     await inputs[2].setValue('acme-vaults')
-    await inputs[5].setValue('AKIA')
-    await inputs[6].setValue('secret')
+    await wrapper.find('[data-testid="vault-store-path-style"]').setValue(true)
+    await inputs[6].setValue('AKIA')
+    await inputs[7].setValue('secret')
     await wrapper.find('[data-testid="vault-store-form"]').trigger('submit')
     await flushPromises()
 
     expect(apiPost).toHaveBeenCalledWith('/admin/tenants/1/vault-stores', {
       name: 'Bucket',
       driver: 's3',
-      settings: { endpoint: 'https://s3.example.com', bucket: 'acme-vaults' },
+      settings: { endpoint: 'https://s3.example.com', bucket: 'acme-vaults', path_style: true },
       credentials: { access_key_id: 'AKIA', secret_access_key: 'secret' },
     })
-    expect((wrapper.findAll('[data-testid="vault-store-form"] input')[6].element as HTMLInputElement).value).toBe('')
+    expect((wrapper.findAll('[data-testid="vault-store-form"] input')[7].element as HTMLInputElement).value).toBe('')
+  })
+
+  it('shows the bucket versioning state and the move preflight warnings', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/admin/tenants/1/vault-stores') {
+        return Promise.resolve({ data: { data: [{ id: 7, name: 'R2', driver: 's3', status: 'ok', last_error: null, workspaces: 0, settings: { bucket_state: { versioning: 'Off' } } }] } })
+      }
+      if (url === '/admin/workspaces/4/vault-moves') return Promise.resolve({ data: { data: { moves: [] } } })
+      return Promise.resolve({ data: { data: [] } })
+    })
+    apiPost.mockResolvedValue({ data: { data: { id: 3 }, warnings: ['R2: bucket versioning is off'] } })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const wrapper = mount(VaultStoresPanel, {
+      props: { tenants: [{ id: 1, slug: 'acme', name: 'Acme' }], workspaces: [{ id: 4, tenant_id: 1, slug: 'docs', name: 'Docs' }], drivers: ['local', 's3'] },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="vault-store-versioning-7"]').text()).toContain('backups include this workspace')
+
+    const selects = wrapper.findAll('[data-testid="vault-move-form"] select')
+    await selects[0].setValue(4)
+    await selects[1].setValue('7')
+    await wrapper.find('[data-testid="vault-move-form"]').trigger('submit')
+    await flushPromises()
+
+    expect(apiPost).toHaveBeenCalledWith('/admin/workspaces/4/vault-moves', { to_store_id: 7 })
+    expect(wrapper.find('[data-testid="vault-move-warnings"]').text()).toContain('bucket versioning is off')
   })
 
   it('connects a GitHub repository through the installed App', async () => {

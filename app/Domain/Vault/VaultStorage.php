@@ -49,17 +49,26 @@ final class VaultStorage
         $store = $this->store($workspace);
 
         // Storage quota (#390): only growth is refused.
-        $delta = strlen($contents) - ($store->stat($relative)?->size ?? 0);
+        $before = $store->stat($relative);
+        $delta = strlen($contents) - ($before?->size ?? 0);
         $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
         $quota->assertCanGrow($workspace, $delta);
 
-        $store->write($relative, $contents);
+        // S3 (#446): write only over the object just seen (If-Match), so an edit made
+        // directly in the bucket meanwhile is refused (409), never overwritten.
+        $expected = $store->driver() === Store\VaultStoreDrivers::S3 ? ($before?->version ?? '') : null;
+        $entry = $store->write($relative, $contents, $expected);
         $quota->recordDelta($workspace, $delta);
 
         $document = MarkdownDocument::parse($contents, $this->fallbackTitle($relative));
 
         $note = $this->projector->project($workspace, $relative, $document);
         $this->revisions->recordRevision($note, $contents, $actorId);
+        if ($store->driver() === Store\VaultStoreDrivers::S3 && $entry->version !== null) {
+            // The ETag we wrote: vault:reindex skips the object until someone else changes it.
+            Note::query()->whereKey($note->id)->toBase()->update(['remote_version' => $entry->version]);
+            $note->remote_version = $entry->version;
+        }
 
         return $note;
     }

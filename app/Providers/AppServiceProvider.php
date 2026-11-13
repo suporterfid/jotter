@@ -12,6 +12,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // One S3 client and store view per request: reads are memoized per request (#446).
+        $this->app->scoped(\App\Domain\Vault\Store\S3\S3StoreFactory::class);
+
         $this->app->singleton(\App\Domain\Auth\Oidc\OidcClientInterface::class, function (): \App\Domain\Auth\Oidc\OidcClientInterface {
             return new \App\Domain\Auth\Oidc\JumbojettOidcClient;
         });

@@ -90,7 +90,7 @@ final class TenantDeleteCommand extends Command
             $this->warn('  not removed (outside the vault base path or missing): '.$path);
         }
         foreach ($counts['remote_vaults'] ?? [] as $remote) {
-            $this->line(sprintf('  GitHub %s: %s', $remote['repository'], $remote['status']));
+            $this->line(sprintf('  %s %s: %s', str_starts_with($remote['repository'], 's3://') ? 'S3' : 'GitHub', $remote['repository'], $remote['status']));
             $this->warn('  '.$remote['guidance']);
         }
         $this->comment('Instance backups keep this tenant until they rotate out (JOTTER_BACKUP_KEEP).');
@@ -108,7 +108,9 @@ final class TenantDeleteCommand extends Command
             $this->line(sprintf('  workspace %s → %s%s', $workspace['slug'], $workspace['vault_path'], $workspace['removable'] ? '' : ' (folder kept: outside the vault base path or missing)'));
         }
         foreach ($plan['remote_vaults'] ?? [] as $repository) {
-            $this->line(sprintf('  GitHub repository %s → every file removed in a final commit (history stays: archive or delete it on GitHub)', $repository));
+            $this->line(str_starts_with($repository, 's3://')
+                ? sprintf('  S3 location %s → every object deleted (old versions stay until the bucket lifecycle expires them)', $repository)
+                : sprintf('  GitHub repository %s → every file removed in a final commit (history stays: archive or delete it on GitHub)', $repository));
         }
         $this->line('  accounts deleted: '.($plan['delete_users'] === [] ? 'none' : implode(', ', $plan['delete_users'])));
         $this->line('  accounts kept (administrators or members elsewhere): '.($plan['keep_users'] === [] ? 'none' : implode(', ', $plan['keep_users'])));

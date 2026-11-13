@@ -105,7 +105,10 @@ class GitHubLifecycle
             return null;
         }
         if ($record->driver !== 'github') {
-            return ['driver' => (string) $record->driver, 'state' => 'synced', 'pending' => 0];
+            // S3 writes are synchronous: synced, or read-only once the provider refused the credentials.
+            $state = $record->status === TenantVaultStore::STATUS_FAILED ? 'read_only' : 'synced';
+
+            return ['driver' => (string) $record->driver, 'state' => $state, 'pending' => 0];
         }
 
         $pending = VaultJournalEntry::query()->where('vault_store_id', $record->id)->whereNull('flushed_at')->count();

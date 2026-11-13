@@ -163,6 +163,11 @@ php artisan tenant:delete acme --export-to=/home/user/exports/acme.zip
   content, and Jotter never rewrites it. The customer controls the repository, so send
   them this advice. An unreachable repository (revoked token, uninstalled App) does not
   block the deletion; it is reported as `unreachable`;
+- for each workspace in an **S3 bucket**, deletes every object under its prefix and
+  under every prefix a storage move of it used, and audits `vault.remote_erased`. With
+  bucket versioning on, old versions stay until the bucket's lifecycle rule expires them
+  (the guidance says so); an unreachable bucket is reported as `failed: …` and does not
+  block the deletion;
 - records `tenant.deleted` (slug and counts, no personal data).
 
 It refuses to delete the installation's only tenant. Instance backups taken before
@@ -274,6 +279,41 @@ differs. `php artisan vault:pull --store=<id>` pulls at once.
 
 **Erasure.** See *Remove a tenant*. Backups leave workspaces on GitHub out unless you
 pass `jotter:backup --with-remote-vaults`.
+
+## Workspaces in S3 buckets
+
+Setup is in `docs/deployment.md` ("S3-compatible buckets"); the customer guide is
+`docs/guia-conectar-s3.md`. Validated so far against an in-memory S3 API, a local S3
+server and the MinIO of `jt ci`. **Before offering S3 to customers**, run
+`S3VaultStoreMinioContractTest` against a throwaway AWS S3 bucket and a throwaway R2
+bucket (`JOTTER_TEST_S3_*`), and keep GCS off until it passes the same run.
+
+`jotter:doctor` (`s3_vault`) reads each bucket's versioning and lifecycle and fails for:
+
+- a store the provider refused (revoked key, deleted bucket): its workspaces are
+  read-only (writes answer `423`) until the customer updates the key and clicks
+  **Test connection**;
+- a `degraded` workspace: the bucket was unreachable (network error or 5xx). Reads and
+  writes answered `503` meanwhile; nothing was lost. The first successful write, or a
+  passing test, clears it.
+
+It warns when versioning is off (backups then include the workspace, so the archives
+grow), and when old versions never expire or expire after more than 30 days (a deleted
+note must not outlive the backup window). Ask the customer to fix the bucket, not
+Jotter.
+
+**Edits made directly in the bucket** show up at the hourly `vault:reindex --all`, or at
+once with `php artisan vault:reindex --workspace=<id>`: it downloads only objects whose
+ETag changed, and skips (with a warning) a workspace whose bucket is unreachable, never
+deleting notes because of an outage. A save never overwrites
+them: on AWS, R2 and MinIO the save is conditional and answers `409` when the object
+changed.
+
+**Backups.** S3 workspaces enter `jotter:backup` unless their bucket is versioned. An
+unreachable bucket is reported in the command output and in the manifest, and the rest of
+the backup goes on. After `jotter:restore`, objects the bucket lost are written back
+(never over an existing object) and the workspace is reindexed from the bucket; if a
+bucket was unreachable, its files stay in `<vault_path>.remote-copy` for you.
 
 ## Health and diagnostics
 

@@ -17,8 +17,8 @@ final class VaultStoreDrivers
 
     public const KNOWN = [self::LOCAL, self::S3, self::GITHUB];
 
-    /** Drivers with a VaultStore implementation in this version (#432 adds S3). */
-    public const IMPLEMENTED = [self::LOCAL, self::GITHUB];
+    /** Drivers with a VaultStore implementation in this version. */
+    public const IMPLEMENTED = [self::LOCAL, self::S3, self::GITHUB];
 
     /**
      * @return list<string>
@@ -65,6 +65,8 @@ final class VaultStoreDrivers
                 'settings.bucket' => [$required, 'string', 'max:63', 'regex:/^[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]$/'],
                 'settings.prefix' => ['sometimes', 'nullable', 'string', 'max:500'],
                 'settings.path_style' => ['sometimes', 'boolean'],
+                // null = detect (off for GCS until its contract run passes, #448).
+                'settings.conditional_writes' => ['sometimes', 'nullable', 'boolean'],
                 'credentials.access_key_id' => [$required, 'string', 'max:256'],
                 'credentials.secret_access_key' => [$required, 'string', 'max:256'],
             ],

@@ -30,6 +30,7 @@ use RuntimeException;
  *   notes, revisions, comments, tokens, grants, groups and projections;
  * - each workspace vault directory is removed from disk, but only when it lies
  *   inside the configured vault base path;
+ * - every object under the tenant's S3 workspace prefixes is deleted;
  * - each GitHub repository of the tenant gets a final commit removing every
  *   file, before anything else (#444); its Git history stays, so the command
  *   prints and audits the advice to archive or delete the repository.
@@ -54,7 +55,10 @@ final class TenantDeletion
         [$delete, $keep] = $this->partitionUsers($tenant);
 
         return [
-            'remote_vaults' => app(\App\Domain\Vault\Store\GitHub\GitHubLifecycle::class)->repositoriesOf($tenant),
+            'remote_vaults' => [
+                ...app(\App\Domain\Vault\Store\GitHub\GitHubLifecycle::class)->repositoriesOf($tenant),
+                ...app(\App\Domain\Vault\Store\S3\S3Lifecycle::class)->locationsOf($tenant),
+            ],
             'tenant' => (string) $tenant->slug,
             'workspaces' => $tenant->workspaces()->orderBy('id')->get()->map(fn (Workspace $workspace): array => [
                 'slug' => (string) $workspace->slug,
@@ -84,7 +88,10 @@ final class TenantDeletion
         $counts = ['workspaces' => count($workspaceIds), 'users_deleted' => 0];
 
         // Remote repositories first: once the tenant row goes, their credentials go with it.
-        $counts['remote_vaults'] = app(\App\Domain\Vault\Store\GitHub\GitHubLifecycle::class)->erase($tenant, $actorId);
+        $counts['remote_vaults'] = [
+            ...app(\App\Domain\Vault\Store\GitHub\GitHubLifecycle::class)->erase($tenant, $actorId),
+            ...app(\App\Domain\Vault\Store\S3\S3Lifecycle::class)->erase($tenant, $actorId),
+        ];
 
         DB::transaction(function () use ($tenant, $tenantId, $workspaceIds, $deleteUsers, $actorId, &$counts): void {
             foreach ($deleteUsers as $user) {

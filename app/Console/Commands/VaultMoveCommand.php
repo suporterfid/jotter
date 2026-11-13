@@ -67,6 +67,9 @@ final class VaultMoveCommand extends Command
             }
 
             $move = $mover->start($workspace, $target, 'cli:vault:move');
+            foreach ($mover->warnings as $warning) {
+                $this->warn('Warning: '.$warning);
+            }
             if ($this->option('sync')) {
                 $move = $mover->runToCompletion($move, (int) config('jotter.vault_stores.move_batch_size', 200));
             }

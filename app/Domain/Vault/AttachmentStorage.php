@@ -63,7 +63,8 @@ final class AttachmentStorage
         $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
         $quota->assertCanGrow($workspace, $delta);
 
-        $size = $store->write($relative, $contents)->size;
+        $entry = $store->write($relative, $contents);
+        $size = $entry->size;
         $quota->recordDelta($workspace, $delta);
 
         /** @var Attachment $attachment */
@@ -77,6 +78,9 @@ final class AttachmentStorage
                 'size' => $size,
             ],
         );
+        if ($store->driver() === Store\VaultStoreDrivers::S3) {
+            Attachment::query()->whereKey($attachment->id)->toBase()->update(['remote_version' => $entry->version]);
+        }
 
         (new \App\Domain\Audit\AuditRecorder)->record(
             \App\Domain\Audit\AuditEvent::ATTACHMENT_CREATED,

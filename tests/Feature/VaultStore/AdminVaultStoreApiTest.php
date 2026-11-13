@@ -114,7 +114,7 @@ class AdminVaultStoreApiTest extends TestCase
         $this->assertSame(0, TenantVaultStore::query()->count());
     }
 
-    public function test_test_connection_round_trips_a_local_store_and_reports_unimplemented_drivers(): void
+    public function test_test_connection_round_trips_a_local_store_and_reports_a_refused_s3_key(): void
     {
         $this->enable();
         $root = storage_path('app/vaults/store-tests/disk-b');
@@ -132,9 +132,13 @@ class AdminVaultStoreApiTest extends TestCase
             'settings' => ['endpoint' => 'https://s3.example.com', 'bucket' => 'b'],
             'credentials' => ['access_key_id' => 'a', 'secret_access_key' => self::SECRET],
         ]);
+        // The provider refuses the key (no network in tests: a mock HTTP client answers).
+        app(\App\Domain\Vault\Store\S3\S3StoreFactory::class)->useHttpClient(new \Symfony\Component\HttpClient\MockHttpClient(
+            new \Symfony\Component\HttpClient\Response\MockResponse('<?xml version="1.0"?><Error><Code>InvalidAccessKeyId</Code><Message>The key does not exist.</Message></Error>', ['http_code' => 403]),
+        ));
         $failed = $this->actingAs($this->admin)->postJson("/api/admin/vault-stores/{$s3->id}/test")
             ->assertStatus(422)->assertJsonPath('data.status', 'failed');
-        $this->assertStringContainsString('not available', (string) $failed->json('data.last_error'));
+        $this->assertStringContainsString('InvalidAccessKeyId', (string) $failed->json('data.last_error'));
         $this->assertStringNotContainsString(self::SECRET, $failed->getContent());
         $this->assertDatabaseHas('audit_log', ['event' => 'vault_store.tested']);
     }

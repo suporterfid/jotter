@@ -4,6 +4,13 @@
 services:
   app:
     ports: !override []
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      JOTTER_TEST_S3_ENDPOINT: http://minio:9000
+      JOTTER_TEST_S3_KEY: jotter-ci
+      JOTTER_TEST_S3_SECRET: jotter-ci-secret
 
   mysql:
     ports: !override []
@@ -11,3 +18,15 @@ services:
   node:
     environment:
       CI: "true"
+
+  # S3 contract suite (#446): tests/Feature/S3Vault/S3VaultStoreMinioContractTest
+  # runs against this MinIO when JOTTER_TEST_S3_ENDPOINT is set. Upstream archived
+  # the MinIO community edition in 2026; the pinned image keeps working offline.
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--address", ":9000"]
+    environment:
+      MINIO_ROOT_USER: jotter-ci
+      MINIO_ROOT_PASSWORD: jotter-ci-secret
+    tmpfs:
+      - /data
