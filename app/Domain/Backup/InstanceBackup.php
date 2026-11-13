@@ -54,7 +54,7 @@ final class InstanceBackup
      * @param  bool  $encrypt  false writes a plain ZIP even when JOTTER_BACKUP_KEY is set
      * @return array{path: string, tables: int, rows: int, files: int, bytes: int, encrypted: bool}
      */
-    public function create(string $zipPath, bool $withDatabase = true, bool $withVaults = true, bool $encrypt = true): array
+    public function create(string $zipPath, bool $withDatabase = true, bool $withVaults = true, bool $encrypt = true, bool $withRemoteVaults = false): array
     {
         $encrypt = $encrypt && $this->encrypts();
         if ($encrypt) {
@@ -87,10 +87,15 @@ final class InstanceBackup
 
             $files = 0;
             $workspaces = [];
-            foreach (Workspace::query()->orderBy('id')->get(['id', 'slug', 'vault_path']) as $workspace) {
-                $workspaces[] = ['id' => $workspace->id, 'slug' => $workspace->slug, 'vault_path' => $workspace->vault_path];
-                if ($withVaults) {
+            foreach (Workspace::query()->orderBy('id')->get(['id', 'tenant_id', 'slug', 'vault_path', 'vault_store_id', 'vault_prefix']) as $workspace) {
+                // A workspace on a remote store (GitHub): the repository is its backup;
+                // its files enter the archive only with --with-remote-vaults (#444).
+                $remote = $workspace->vault_store_id !== null;
+                $workspaces[] = ['id' => $workspace->id, 'slug' => $workspace->slug, 'vault_path' => $workspace->vault_path, 'remote' => $remote];
+                if ($withVaults && ! $remote) {
                     $files += $this->addVault($zip, (string) $workspace->vault_path, 'vaults/'.$workspace->id.'/');
+                } elseif ($withVaults && $withRemoteVaults) {
+                    $files += $this->addRemoteVault($zip, $workspace, 'vaults/'.$workspace->id.'/');
                 }
             }
 
@@ -107,7 +112,7 @@ final class InstanceBackup
                 'migrations' => $withDatabase ? DB::table('migrations')->orderBy('id')->pluck('migration')->all() : [],
                 'tables' => $tables,
                 'workspaces' => $workspaces,
-                'includes' => ['database' => $withDatabase, 'vaults' => $withVaults],
+                'includes' => ['database' => $withDatabase, 'vaults' => $withVaults, 'remote_vaults' => $withVaults && $withRemoteVaults],
                 'erasure_log' => count($erasures),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
@@ -161,6 +166,9 @@ final class InstanceBackup
 
             return [$manifest, $tables, $rows, $files, ErasureLog::parse((string) $zip->getFromName(ErasureLog::FILE_IN_BACKUP))];
         });
+
+        // The repositories are the truth for remote workspaces: rebuild their sync state from them.
+        app(\App\Domain\Vault\Store\GitHub\GitHubLifecycle::class)->afterRestore();
 
         $log = new ErasureLog;
         $erasureEntries = ErasureLog::merge($log->entries(), $archiveErasures, $extraErasures);
@@ -265,6 +273,23 @@ final class InstanceBackup
         fclose($handle);
 
         return $count;
+    }
+
+    private function addRemoteVault(ZipArchive $zip, Workspace $workspace, string $prefix): int
+    {
+        $store = app(\App\Domain\Vault\Store\VaultStoreResolver::class)->for($workspace);
+        $files = 0;
+        $cursor = null;
+        do {
+            $page = $store->list('', $cursor, 500);
+            foreach ($page->entries as $entry) {
+                $zip->addFromString($prefix.$entry->path, $store->read($entry->path));
+                $files++;
+            }
+            $cursor = $page->nextCursor;
+        } while ($cursor !== null);
+
+        return $files;
     }
 
     private function addVault(ZipArchive $zip, string $vaultPath, string $prefix): int
@@ -455,7 +480,9 @@ final class InstanceBackup
                 $path = rtrim($vaultRoot, '/').'/'.basename(rtrim($path, '/'));
                 Workspace::query()->whereKey($workspace['id'])->update(['vault_path' => $path]);
             }
-            $targets[(int) $workspace['id']] = rtrim($path, '/');
+            // A remote workspace's files (--with-remote-vaults) land beside its folder, for
+            // manual recovery: the folder itself must stay empty for a later move back.
+            $targets[(int) $workspace['id']] = rtrim($path, '/').(($workspace['remote'] ?? false) ? '.remote-copy' : '');
         }
 
         $files = 0;

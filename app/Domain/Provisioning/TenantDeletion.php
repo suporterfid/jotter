@@ -29,7 +29,10 @@ use RuntimeException;
  * - the tenant row goes, and with it (foreign-key cascades) its workspaces,
  *   notes, revisions, comments, tokens, grants, groups and projections;
  * - each workspace vault directory is removed from disk, but only when it lies
- *   inside the configured vault base path.
+ *   inside the configured vault base path;
+ * - each GitHub repository of the tenant gets a final commit removing every
+ *   file, before anything else (#444); its Git history stays, so the command
+ *   prints and audits the advice to archive or delete the repository.
  *
  * Instance backups taken before this keep the data until they rotate out
  * (JOTTER_BACKUP_KEEP); the privacy policy says so.
@@ -44,13 +47,14 @@ final class TenantDeletion
     /**
      * What a deletion would do, without changing anything.
      *
-     * @return array{tenant: string, workspaces: list<array{slug: string, vault_path: string, removable: bool}>, delete_users: list<string>, keep_users: list<string>}
+     * @return array{tenant: string, workspaces: list<array{slug: string, vault_path: string, removable: bool}>, remote_vaults: list<string>, delete_users: list<string>, keep_users: list<string>}
      */
     public function plan(Tenant $tenant): array
     {
         [$delete, $keep] = $this->partitionUsers($tenant);
 
         return [
+            'remote_vaults' => app(\App\Domain\Vault\Store\GitHub\GitHubLifecycle::class)->repositoriesOf($tenant),
             'tenant' => (string) $tenant->slug,
             'workspaces' => $tenant->workspaces()->orderBy('id')->get()->map(fn (Workspace $workspace): array => [
                 'slug' => (string) $workspace->slug,
@@ -64,7 +68,7 @@ final class TenantDeletion
 
     /**
      * @throws RuntimeException when the tenant must not be deleted
-     * @return array<string, int|list<string>>
+     * @return array<string, mixed>
      */
     public function delete(Tenant $tenant, ?string $actorId = null): array
     {
@@ -78,6 +82,9 @@ final class TenantDeletion
         $workspaceIds = $workspaces->pluck('id')->map(static fn ($id): int => (int) $id)->all();
         [$deleteUsers] = $this->partitionUsers($tenant);
         $counts = ['workspaces' => count($workspaceIds), 'users_deleted' => 0];
+
+        // Remote repositories first: once the tenant row goes, their credentials go with it.
+        $counts['remote_vaults'] = app(\App\Domain\Vault\Store\GitHub\GitHubLifecycle::class)->erase($tenant, $actorId);
 
         DB::transaction(function () use ($tenant, $tenantId, $workspaceIds, $deleteUsers, $actorId, &$counts): void {
             foreach ($deleteUsers as $user) {
@@ -123,6 +130,7 @@ final class TenantDeletion
             'access_records_kept' => $counts['access_records_kept'],
             'vaults_removed' => $counts['vaults_removed'],
             'vaults_skipped' => count($skipped),
+            'remote_vaults' => array_map(static fn (array $r): string => $r['repository'].': '.$r['status'], $counts['remote_vaults']),
         ]);
 
         return $counts;

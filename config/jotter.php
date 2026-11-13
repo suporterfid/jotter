@@ -267,7 +267,9 @@ return [
         'key' => env('JOTTER_BACKUP_KEY') ?: null,
         'previous_keys' => array_values(array_filter(array_map('trim', explode(',', (string) env('JOTTER_BACKUP_PREVIOUS_KEYS', ''))))),
         // Never backed up: ephemeral state and projections rebuilt by commands.
-        'exclude_tables' => ['sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens', 'note_embeddings'],
+        // GitHub sync state is rebuilt from the repository after a restore (#444).
+        'exclude_tables' => ['sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens', 'note_embeddings',
+            'vault_remote_files', 'vault_blob_cache', 'vault_sync_states', 'github_write_budgets', 'github_webhook_deliveries', 'github_install_states'],
     ],
 
     'auth_provider' => env('JOTTER_AUTH_PROVIDER', env('AUTH_PROVIDER', 'local')),

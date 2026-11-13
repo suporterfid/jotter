@@ -17,6 +17,7 @@ final class JotterBackupCommand extends Command
         {--to= : Output ZIP (default: JOTTER_BACKUP_PATH/jotter-backup-<timestamp>.zip)}
         {--keep= : Archives to keep in the default folder (default: JOTTER_BACKUP_KEEP, 7)}
         {--no-vaults : Database only}
+        {--with-remote-vaults : Also copy the files of workspaces stored on GitHub (by default the repository is their backup)}
         {--no-database : Vault files only}
         {--unencrypted : Write a plain ZIP even when JOTTER_BACKUP_KEY is set}
         {--json : Emit JSON}';
@@ -40,7 +41,7 @@ final class JotterBackupCommand extends Command
         }
 
         try {
-            $summary = $backup->create($to, withDatabase: ! $this->option('no-database'), withVaults: ! $this->option('no-vaults'), encrypt: $encrypt);
+            $summary = $backup->create($to, withDatabase: ! $this->option('no-database'), withVaults: ! $this->option('no-vaults'), encrypt: $encrypt, withRemoteVaults: (bool) $this->option('with-remote-vaults'));
         } catch (RuntimeException $exception) {
             $this->error($exception->getMessage());
 
