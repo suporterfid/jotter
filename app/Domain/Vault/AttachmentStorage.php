@@ -29,6 +29,7 @@ final class AttachmentStorage
         ?string $relativePath = null,
         ?string $clientMime = null,
     ): Attachment {
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
         $filename = null;
         $contents = null;
 
@@ -118,6 +119,7 @@ final class AttachmentStorage
 
     public function deleteAttachment(Workspace $workspace, string|int $idOrPath): void
     {
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
         $attachment = $this->findAttachment($workspace, $idOrPath);
         $relativePath = $attachment ? $attachment->path : (string) $idOrPath;
 

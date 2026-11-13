@@ -22,6 +22,10 @@ Membership uniqueness uses a generated workspace scope key so MySQL also rejects
 
 Audit-log models reject instance updates and deletes, while restricted scope foreign keys prevent cascading history changes. Query-builder or direct-SQL mutation is not blocked at the database layer yet; the least-privilege/trigger and retention contract remains a required security decision before PR7.
 
+### Vault stores
+
+`VaultStoreResolver::for($workspace)` returns the workspace's `VaultStore`: `LocalVaultStore` over `vault_path` when `workspaces.vault_store_id` is null (always, unless an operator lists a remote driver in `JOTTER_VAULT_DRIVERS`), otherwise the driver of its row in `vault_stores` under `vault_prefix`. Nothing outside the resolver knows the driver. `vault:move` copies a workspace between stores in cron batches while the workspace is `moving` (writes answer 423), verifies every file by SHA-256, swaps atomically and keeps the source for rollback (`JOTTER_VAULT_MOVE_RETAIN_DAYS`).
+
 ## Modular monolith and provider seams
 
 Laravel is the shared-hosting-compatible modular monolith; Vue is a separately built SPA served by Laravel's public web root. Feature code will depend on Jotter-owned interfaces where identity or background-work boundaries are needed.

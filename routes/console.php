@@ -38,6 +38,11 @@ Schedule::command('analytics:rollup')->everyFiveMinutes()->withoutOverlapping(10
 // Hourly: reconcile the on-disk vaults into the MySQL projection.
 Schedule::command('vault:reindex', ['--all'])->hourly()->withoutOverlapping(55);
 
+// Every minute: copy the next batch of every vault move in progress (#437); daily,
+// delete the sources kept for rollback once JOTTER_VAULT_MOVE_RETAIN_DAYS ends.
+Schedule::command('vault:process-moves')->everyMinute()->withoutOverlapping(10);
+Schedule::command('vault:finalize-moves')->dailyAt('02:20')->withoutOverlapping(60);
+
 // Hourly at :30: re-measure workspace storage for the quotas (#390).
 Schedule::command('workspace:storage', ['--measure'])->hourlyAt(30)->withoutOverlapping(30);
 

@@ -85,6 +85,7 @@ final class NoteTrash
         if (! $note->trashed()) {
             throw new \InvalidArgumentException("Note {$note->id} is not in the trash.");
         }
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
 
         $relative = $this->paths->normalize($workspace, (string) $note->path);
         $store = $this->storage->store($workspace);
@@ -112,11 +113,17 @@ final class NoteTrash
             ->limit($batchSize)
             ->get();
 
+        $purged = 0;
         foreach ($expired as $note) {
-            $this->permanentlyDelete($note->workspace, $note);
+            try {
+                $this->permanentlyDelete($note->workspace, $note);
+                $purged++;
+            } catch (Store\WorkspaceStorageMoving) {
+                // Retried by the next run, once the move has finished.
+            }
         }
 
-        return $expired->count();
+        return $purged;
     }
 
     private function assertWorkspace(Workspace $workspace, Note $note): void

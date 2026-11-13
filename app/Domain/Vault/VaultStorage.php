@@ -44,6 +44,7 @@ final class VaultStorage
 
     public function write(Workspace $workspace, string $relativePath, string $contents, ?string $actorId = null): Note
     {
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
         $relative = $this->paths->normalize($workspace, $relativePath);
         $store = $this->store($workspace);
 
@@ -89,6 +90,7 @@ final class VaultStorage
 
     public function moveFile(Workspace $workspace, string $oldPath, string $newPath): void
     {
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
         $from = $this->paths->normalize($workspace, $oldPath);
         $to = $this->paths->normalize($workspace, $newPath);
 
@@ -97,6 +99,7 @@ final class VaultStorage
 
     public function delete(Workspace $workspace, string $relativePath): void
     {
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
         $relative = $this->paths->normalize($workspace, $relativePath);
 
         $this->store($workspace)->delete($relative);
@@ -109,6 +112,7 @@ final class VaultStorage
 
     public function move(Workspace $workspace, string $oldPath, string $newPath): Note
     {
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
         $store = $this->store($workspace);
         $oldRelative = $this->paths->normalize($workspace, $oldPath);
         $newRelative = $this->paths->normalize($workspace, $newPath);

@@ -96,6 +96,7 @@ final class InstanceDoctor
             $this->checkBackupEncryption(),
             $this->checkErasureLog(),
             $this->checkQuotas(),
+            $this->checkVaultStores($databaseCheck->passed),
             $this->checkAdminTwoFactor($databaseCheck->passed),
             $this->checkDeletionRequests($databaseCheck->passed),
         ];
@@ -329,6 +330,56 @@ final class InstanceDoctor
         return DoctorCheck::pass('storage_quota', 'Workspace storage quotas', false, $defaultMb > 0
             ? sprintf('Every workspace is under %d%% of its quota (default %d MB).', (int) config('jotter.quota.warn_percent', 80), $defaultMb)
             : 'Unlimited by default (JOTTER_WORKSPACE_QUOTA_MB=0).', $details);
+    }
+
+    /**
+     * Pluggable vault stores (#436): the state of every registered store, and a
+     * store whose credentials no longer decrypt (APP_KEY rotated) must be reconnected.
+     */
+    private function checkVaultStores(bool $databaseReachable): DoctorCheck
+    {
+        $drivers = (new \App\Domain\Vault\Store\VaultStoreDrivers)->enabled();
+        $details = ['drivers' => $drivers, 'stores' => []];
+        $note = ' Rotating APP_KEY requires reconnecting every store (their credentials are encrypted with it).';
+
+        if (! $databaseReachable || ! \Illuminate\Support\Facades\Schema::hasTable('vault_stores')) {
+            return DoctorCheck::pass('vault_stores', 'Vault stores', false, 'Every workspace uses its local folder.', $details);
+        }
+
+        $problems = [];
+        foreach (\App\Models\TenantVaultStore::query()->orderBy('id')->get() as $store) {
+            $undecryptable = $store->decryptedCredentials() === null;
+            $details['stores'][] = [
+                'id' => $store->id,
+                'tenant_id' => $store->tenant_id,
+                'name' => $store->name,
+                'driver' => $store->driver,
+                'status' => $undecryptable ? 'reconnect' : $store->status,
+                'workspaces' => $store->workspaces()->count(),
+                'last_checked_at' => $store->last_checked_at?->toIso8601String(),
+            ];
+
+            if ($undecryptable) {
+                $problems[] = "{$store->name}: credentials no longer decrypt (APP_KEY changed); reconnect it";
+            } elseif ($store->status === \App\Models\TenantVaultStore::STATUS_FAILED) {
+                $problems[] = "{$store->name}: last test failed";
+            } elseif (! in_array($store->driver, $drivers, true)) {
+                $problems[] = "{$store->name}: driver {$store->driver} is not in JOTTER_VAULT_DRIVERS";
+            }
+        }
+
+        $moving = \App\Models\Workspace::query()->where('storage_state', 'moving')->pluck('slug')->all();
+        $details['moving'] = $moving;
+
+        if ($problems !== []) {
+            return DoctorCheck::fail('vault_stores', 'Vault stores', false, implode('; ', $problems).'.'.$note, $details);
+        }
+
+        $count = count($details['stores']);
+
+        return DoctorCheck::pass('vault_stores', 'Vault stores', false, $count === 0
+            ? 'Every workspace uses its local folder.'
+            : sprintf('%d store%s healthy%s.%s', $count, $count === 1 ? '' : 's', $moving === [] ? '' : '; moving: '.implode(', ', $moving), $note), $details);
     }
 
     /**

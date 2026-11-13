@@ -43,6 +43,7 @@ final class VaultExtractor
         if (! file_exists($archivePath)) {
             throw new InvalidArgumentException("Archive file does not exist: {$archivePath}");
         }
+        \App\Domain\Vault\Store\WorkspaceStorageMoving::assertWritable($workspace);
 
         $ext = strtolower(pathinfo($archivePath, PATHINFO_EXTENSION));
         if ($ext === 'json') {

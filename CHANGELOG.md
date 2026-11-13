@@ -4,6 +4,16 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Pluggable vault stores: common base (epic #430) — 2026-11-13
+
+Nothing changes for an installation that does not set `JOTTER_VAULT_DRIVERS`: every workspace keeps its local folder.
+
+- **Decision (#434).** `docs/decisions.md` records that a workspace vault is the same portable Markdown layout in the local folder (default), an S3-compatible bucket or a Git repository; it accepts D1–D10 and G1–G5. Spec §1/§2 and `docs/architecture.md` say the same.
+- **`VaultStore` (#435).** Every vault read and write goes through `App\Domain\Vault\Store\VaultStore` (`read`, `readStream`, `stat`, `write` with an expected version, `writeStream`, `delete`, `move`, paginated `list`, `makeDirectory`, `deleteDirectory`, `capabilities`), resolved per workspace by `VaultStoreResolver`. `LocalVaultStore` keeps every realpath/symlink check of `VaultPathGuard`. `VaultPathNormalizer` holds the shared path rules (`..`, absolute, NUL, `\`, `.git`, 1024 bytes, NFC for remote drivers). Storage, attachments, trash, reindex, quotas, WebDAV, MCP, sharing, exports, publish, import and tenant export use it. `tests/Support/VaultStoreContractTest.php` is the suite every driver must pass.
+- **Vault stores (#436).** Table `vault_stores` (credentials encrypted with `APP_KEY`, never returned), `workspaces.vault_store_id`/`vault_prefix`/`storage_state`, `notes`/`attachments.remote_version`. Admin API `/api/admin/tenants/{tenant}/vault-stores` (+ update, delete, "test connection") for instance admins and tenant owners/admins, and a **Storage** tab in the admin panel; both exist only when `JOTTER_VAULT_DRIVERS` lists `s3` or `github`. SSRF guard for S3 endpoints (HTTPS, public addresses only after DNS; `JOTTER_VAULT_ALLOWED_PRIVATE_HOSTS` for an internal MinIO). Audit `vault_store.created|tested|updated|deleted`. `jotter:doctor` gains `vault_stores` and warns that rotating `APP_KEY` requires reconnecting stores. Only the `local` driver (another server folder) is implemented; S3 and GitHub arrive with #432 and #431.
+- **`vault:move` (#437).** `vault:move <workspace> --to=<store>|--local [--sync]` preflights (probe, empty destination, driver file limit), turns the workspace read-only (REST, WebDAV and MCP writes answer 423 / a tool error), and `vault:process-moves` (cron, every minute, `JOTTER_VAULT_MOVE_BATCH`) copies it in resumable batches, verifying each file by SHA-256, then swaps the store atomically and records `remote_version`. The source is kept `JOTTER_VAULT_MOVE_RETAIN_DAYS` (7) for `vault:move --rollback`; `vault:finalize-moves` (daily, 02:20) deletes it. Audit `vault.move_started|completed|failed|rolled_back|finalized`. The Storage tab starts moves and shows their progress.
+- **Not yet:** instance backup/restore, `tenant:delete` and provisioning still handle only the local folder (#444).
+
 ### LGPD block 4c: a restore never brings deleted data back — 2026-11-12
 
 - **Erasure log.** `tenant:delete` and `user:delete` append a tombstone (`type`, `id`, the row's `created_at`, the tenant `slug`, `deleted_at`, `actor`; no names or e-mails) to `storage/app/private/erasure-log.ndjson` (`JOTTER_ERASURE_LOG_PATH`). It is written last inside the deletion's transaction, so nothing is deleted without a tombstone.

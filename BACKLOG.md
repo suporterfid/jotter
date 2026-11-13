@@ -27,13 +27,13 @@ The roadmap's historical Phase 1 gaps are already delivered in this repository: 
 
 ## Pluggable vault stores epic (#429, planned 2026-11-13)
 
-Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. #434 decided 2026-11-13.
+Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. #434–#437 implemented 2026-11-13 in one PR (common base, epic #430); **next:** the GitHub spike #438 and phases.
 
-1. **Common base — epic #430.**
-   1. #434 — PR A: dated decision in `docs/decisions.md` (D1–D10, G1–G5), amending spec §1/§2 and `docs/architecture.md`. Docs only.
-   2. #435 — PR B: `VaultStore` interface + `LocalVaultStore`, refactor of the 36 files, contract test suite, no behaviour change.
-   3. #436 — PR C: `vault_stores` (admin CRUD, encrypted credentials, SSRF guard, audit, doctor, `JOTTER_VAULT_DRIVERS`).
-   4. #437 — PR E: `vault:move` engine (preflight, batched copy, verification, swap, HTTP 423, rollback, 7-day retention).
+1. ~~**Common base — epic #430.**~~ **Implemented 2026-11-13** (see CHANGELOG).
+   1. ~~#434 — PR A: dated decision in `docs/decisions.md` (D1–D10, G1–G5), amending spec §1/§2 and `docs/architecture.md`.~~
+   2. ~~#435 — PR B: `VaultStore` interface + `LocalVaultStore`, refactor, contract test suite, no behaviour change.~~ Instance backup/restore, `tenant:delete` and provisioning still read the local folder directly: remote-store handling for them is #444.
+   3. ~~#436 — PR C: `vault_stores` (admin API + Storage tab, encrypted credentials, SSRF guard, audit, doctor, `JOTTER_VAULT_DRIVERS`).~~ Only the `local` driver (a second server folder) is implemented; `s3`/`github` stores can be registered but "Test connection" and moves refuse them until #432/#431.
+   4. ~~#437 — PR E: `vault:move` engine (preflight, batched copy, SHA-256 verification, swap, HTTP 423, rollback, 7-day retention).~~
 2. **GitHub vault — epic #431.**
    1. #438 — Phase 2: validation spike for V1–V6 (can run alongside #435–#437).
    2. #439 — Phase 3 (PR F1): GitHub App + fine-grained PAT, install flow, read-only probe.

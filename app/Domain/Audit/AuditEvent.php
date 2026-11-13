@@ -79,6 +79,16 @@ enum AuditEvent: string
     case PLAN_WRITE_BLOCKED = 'plan.write_blocked';
     case PLAN_SEAT_LIMIT_REACHED = 'plan.seat_limit_reached';
 
+    case VAULT_STORE_CREATED = 'vault_store.created';
+    case VAULT_STORE_TESTED = 'vault_store.tested';
+    case VAULT_STORE_UPDATED = 'vault_store.updated';
+    case VAULT_STORE_DELETED = 'vault_store.deleted';
+    case VAULT_MOVE_STARTED = 'vault.move_started';
+    case VAULT_MOVE_COMPLETED = 'vault.move_completed';
+    case VAULT_MOVE_FAILED = 'vault.move_failed';
+    case VAULT_MOVE_ROLLED_BACK = 'vault.move_rolled_back';
+    case VAULT_MOVE_FINALIZED = 'vault.move_finalized';
+
     case SYSTEM_AUDIT_PRUNED = 'system.audit_pruned';
 
     /**

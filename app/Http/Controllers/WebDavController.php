@@ -9,6 +9,7 @@ use App\Domain\Auth\NoteAccess;
 use App\Domain\Plan\TenantPlan;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\Store\VaultStore;
+use App\Domain\Vault\Store\WorkspaceStorageMoving;
 use App\Domain\Vault\VaultPathGuard;
 use App\Domain\Vault\VaultStorage;
 use App\Models\Note;
@@ -78,6 +79,14 @@ final class WebDavController extends Controller
             && $workspace->tenant !== null
             && ! $this->tenantPlan->allowsWrites($workspace->tenant)) {
             return $this->tenantPlan->denyWrite($workspace->tenant, $request, $workspace->id, $subject->subjectId);
+        }
+
+        if (in_array($method, ['PUT', 'MKCOL', 'DELETE'], true)) {
+            try {
+                WorkspaceStorageMoving::assertWritable($workspace);
+            } catch (WorkspaceStorageMoving $moving) {
+                return response($moving->getMessage(), 423);
+            }
         }
 
         $targetPath = trim($path ?? '', '/');
