@@ -30,7 +30,7 @@ class WorkspaceController extends Controller
         }
 
         $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
-        $query->addSelect(['vault_path', 'storage_quota_mb', 'storage_bytes']);
+        $query->addSelect(['vault_path', 'storage_quota_mb', 'storage_bytes', 'vault_store_id', 'storage_state']);
 
         return response()->json(['data' => $query->get()->map(static fn (Workspace $workspace): array => [
             'id' => $workspace->id,
@@ -39,6 +39,8 @@ class WorkspaceController extends Controller
             'name' => $workspace->name,
             // Storage quota (#390): drives the "almost full" warning in the SPA.
             'storage' => $quota->status($workspace) + ['quota_mb' => $workspace->storage_quota_mb],
+            // Remote store sync badge (#441): pending / synced / delayed / read_only; null = local folder.
+            'sync' => \App\Domain\Vault\Store\GitHub\GitHubLifecycle::status($workspace),
         ])->values()]);
     }
 }

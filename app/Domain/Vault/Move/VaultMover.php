@@ -61,6 +61,18 @@ final class VaultMover
         if ($target !== null && ! $this->drivers->isImplemented($target->driver)) {
             throw new VaultMoveRefused("the {$target->driver} driver is not available in this version.");
         }
+        if ($target !== null && $target->driver === VaultStoreDrivers::GITHUB) {
+            // D1: a repository holds exactly one workspace.
+            $taken = Workspace::query()->where('vault_store_id', $target->id)->whereKeyNot($workspace->id)->exists()
+                || VaultMove::query()->where('to_store_id', $target->id)->whereIn('status', [VaultMove::COPYING, VaultMove::COMPLETED])
+                    ->where('workspace_id', '!=', $workspace->id)->exists();
+            if ($taken) {
+                throw new VaultMoveRefused('this GitHub repository already holds another workspace.');
+            }
+            if ($target->status === TenantVaultStore::STATUS_FAILED) {
+                throw new VaultMoveRefused('the GitHub store failed its last check; test the connection first.');
+            }
+        }
 
         $toPrefix = $target === null ? '' : $this->prefixFor($workspace, $target);
         $source = $this->resolver->for($workspace);
@@ -268,11 +280,23 @@ final class VaultMover
     private function complete(VaultMove $move, Workspace $workspace, VaultStore $source, VaultStore $destination): void
     {
         // Final check: every source file is in the destination with the same size.
-        [$files] = $this->measure($source);
+        // Files that appeared in the destination meanwhile (an external push to the
+        // repository) are kept and indexed after the swap, never deleted.
+        $files = 0;
+        $cursor = null;
+        do {
+            $page = $source->list('', $cursor, 1000);
+            foreach ($page->entries as $entry) {
+                $files++;
+                $copy = $destination->stat($entry->path);
+                if ($copy === null || $copy->size !== $entry->size) {
+                    throw new \RuntimeException("Verification failed: [{$entry->path}] is missing or differs in the destination.");
+                }
+            }
+            $cursor = $page->nextCursor;
+        } while ($cursor !== null);
         [$copied] = $this->measure($destination);
-        if ($copied !== $files) {
-            throw new \RuntimeException("Verification failed: {$files} source files, {$copied} in the destination.");
-        }
+        $extras = $copied > $files;
 
         DB::transaction(function () use ($move, $workspace): void {
             $workspace->forceFill([
@@ -292,7 +316,12 @@ final class VaultMover
             'move_id' => $move->id,
             'files' => $move->files_copied,
             'bytes' => $move->bytes_copied,
+            'extra_destination_files' => $extras ? $copied - $files : 0,
         ]);
+
+        if ($extras) {
+            app(\App\Domain\Vault\VaultReindexer::class)->reindex($workspace->fresh());
+        }
     }
 
     private function fail(VaultMove $move, Workspace $workspace, \Throwable $exception): void
@@ -306,7 +335,13 @@ final class VaultMover
         });
 
         try {
-            $this->destinationView($move, $workspace)->deleteDirectory('');
+            $destination = $this->destinationView($move, $workspace);
+            if ($destination->capabilities()->writeBehind) {
+                // Remote repository: remove only what this move copied, never files someone else pushed.
+                $this->deleteCopied($move, $workspace, $destination);
+            } else {
+                $destination->deleteDirectory('');
+            }
         } catch (\Throwable) {
             // Best effort: a leftover partial copy only blocks a retry's "destination empty" check.
         }
@@ -315,6 +350,27 @@ final class VaultMover
             'move_id' => $move->id,
             'error' => $message,
         ]);
+    }
+
+    private function deleteCopied(VaultMove $move, Workspace $workspace, VaultStore $destination): void
+    {
+        if ($move->cursor === null) {
+            return;
+        }
+        $source = $this->sourceView($move, $workspace);
+        $cursor = null;
+        do {
+            $page = $source->list('', $cursor, 1000);
+            foreach ($page->entries as $entry) {
+                if (strcmp($entry->path, (string) $move->cursor) > 0) {
+                    return;
+                }
+                if ($destination->exists($entry->path)) {
+                    $destination->delete($entry->path);
+                }
+            }
+            $cursor = $page->nextCursor;
+        } while ($cursor !== null);
     }
 
     private function copyVerified(VaultStore $source, VaultStore $destination, StoreEntry $entry): StoreEntry

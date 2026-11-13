@@ -67,6 +67,9 @@ final class AdminVaultStoreController extends Controller
         $validated = array_merge($validated, $request->validate($this->drivers->rules($validated['driver'], creating: true)));
         $settings = $this->checkedSettings($validated['driver'], $this->onlyRuleKeys('settings', $validated['driver'], $validated['settings']));
         $credentials = $this->onlyRuleKeys('credentials', $validated['driver'], $validated['credentials'] ?? []);
+        if ($validated['driver'] === VaultStoreDrivers::GITHUB) {
+            [$settings, $credentials] = $this->checkedGitHub($tenant, $settings, $credentials);
+        }
 
         $record = TenantVaultStore::create([
             'tenant_id' => $tenant->id,
@@ -107,11 +110,21 @@ final class AdminVaultStoreController extends Controller
             }
             $merged = array_merge($vaultStore->settings ?? [], $this->onlyRuleKeys('settings', $vaultStore->driver, $validated['settings']));
             $vaultStore->settings = $this->checkedSettings($vaultStore->driver, $merged, $vaultStore->id);
+            if ($vaultStore->driver === VaultStoreDrivers::GITHUB) {
+                [$vaultStore->settings] = $this->checkedGitHub($vaultStore->tenant, $vaultStore->settings, $vaultStore->decryptedCredentials() ?? [], $vaultStore->id);
+            }
             $changed[] = 'settings';
         }
         if (isset($validated['credentials'])) {
             // Replacing credentials never needs the old ones: they cannot be read back.
             $credentials = $this->onlyRuleKeys('credentials', $vaultStore->driver, $validated['credentials']);
+            if ($vaultStore->driver === VaultStoreDrivers::GITHUB) {
+                // The repository webhook secret is not a credential the admin types: keep it.
+                $previous = $vaultStore->decryptedCredentials() ?? [];
+                if (! empty($previous['webhook_secret'])) {
+                    $credentials['webhook_secret'] = $previous['webhook_secret'];
+                }
+            }
             $vaultStore->credentials = $credentials === [] ? null : $credentials;
             $changed[] = 'credentials';
         }
@@ -198,6 +211,54 @@ final class AdminVaultStoreController extends Controller
         }
 
         return $settings;
+    }
+
+    /**
+     * GitHub stores (#439): the tenant is in the beta; App mode only with an
+     * installation this tenant completed; PAT mode needs a token and gets a
+     * generated repository-webhook secret; one store per repository and branch (D1).
+     *
+     * @param  array<string, mixed>  $settings
+     * @param  array<string, mixed>  $credentials
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+     */
+    private function checkedGitHub(?Tenant $tenant, array $settings, array $credentials, ?int $ignoreStoreId = null): array
+    {
+        if (! GitHubConnectController::tenantInBeta($tenant)) {
+            throw ValidationException::withMessages(['driver' => [__('messages.github_not_in_beta')]]);
+        }
+
+        $installationId = $settings['installation_id'] ?? null;
+        if ($installationId !== null && $installationId !== '') {
+            $bound = \App\Models\GitHubInstallation::query()->where('tenant_id', $tenant?->id)
+                ->where('installation_id', (int) $installationId)->whereNull('suspended_at')->exists();
+            if (! $bound) {
+                throw ValidationException::withMessages(['settings.installation_id' => [__('messages.github_installation_unknown')]]);
+            }
+            $settings['installation_id'] = (int) $installationId;
+            unset($credentials['token']);
+        } else {
+            unset($settings['installation_id']);
+            if ($ignoreStoreId === null && empty($credentials['token'])) {
+                throw ValidationException::withMessages(['credentials.token' => [__('validation.required', ['attribute' => 'token'])]]);
+            }
+            if ($ignoreStoreId === null) {
+                $credentials['webhook_secret'] = \Illuminate\Support\Str::random(40);
+            }
+        }
+        $settings['controller_confirmed'] = true;
+
+        $fullName = strtolower(($settings['owner'] ?? '').'/'.($settings['repo'] ?? ''));
+        $taken = TenantVaultStore::query()->where('driver', VaultStoreDrivers::GITHUB)
+            ->when($ignoreStoreId, fn ($query) => $query->whereKeyNot($ignoreStoreId))
+            ->get()
+            ->contains(fn (TenantVaultStore $other): bool => strtolower(($other->settings['owner'] ?? '').'/'.($other->settings['repo'] ?? '')) === $fullName
+                && (string) ($other->settings['branch'] ?? 'main') === (string) ($settings['branch'] ?? 'main'));
+        if ($taken) {
+            throw ValidationException::withMessages(['settings.repo' => [__('messages.github_repository_in_use')]]);
+        }
+
+        return [$settings, $credentials];
     }
 
     private function overlaps(string $a, string $b): bool

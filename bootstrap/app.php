@@ -26,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // purpose: the session, cookie, and throttle middleware all touch the
             // database, and this route must answer 503 (not 500) when MySQL is down.
             Route::get('/api/health', HealthController::class)->name('health');
+            // GitHub push/installation webhook (#440): no session, cookies or CSRF;
+            // authenticated by its HMAC signature only.
+            Route::post('/webhooks/github', \App\Http\Controllers\GitHubWebhookController::class)->name('webhooks.github');
         },
     )
     ->withCommands([

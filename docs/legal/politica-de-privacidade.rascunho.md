@@ -60,6 +60,7 @@ Compartilhamos dados apenas com quem precisamos para operar o Serviço:
 - **[Se a busca semântica estiver ligada]** **Provedor de embeddings:** [NOME, ex.: OpenAI / servidor próprio] ([PAÍS]). Recebe o texto das notas dos workspaces em que a busca semântica foi ativada, e o texto das buscas feitas neles. Workspaces sem essa ativação nunca são enviados.
 - **[Se usar login externo]** **Provedor de identidade:** [GrandpaSSOn / Google Workspace / Entra ID / outro], que confirma sua identidade no login.
 - **Aplicativos que você conectar:** assistentes de IA e outros clientes que você autorizar por OAuth ou token recebem o Conteúdo dos workspaces e pastas que você liberou. O que eles fazem depois segue a política de quem os fornece.
+- **[Se o armazenamento no GitHub estiver ligado]** **GitHub (GitHub, Inc., Estados Unidos):** quando a sua organização escolhe guardar um workspace num repositório privado do GitHub, todo o Conteúdo desse workspace (notas e anexos) é gravado nesse repositório. Os commits levam o nome de quem editou, nunca o e-mail. O repositório pertence à sua organização, que é a **controladora** dele: ela decide quem tem acesso e por quanto tempo o guarda, e confirma isso ao conectar. **Quem tem acesso ao repositório vê o workspace inteiro**, inclusive pastas e notas que o Serviço restringe a algumas pessoas. Workspaces que continuam na pasta do servidor nunca são enviados ao GitHub.
 - **Autoridades:** quando a lei ou uma ordem judicial exigir.
 
 **Transferência internacional:** quando algum desses fornecedores trata dados fora do
@@ -79,6 +80,7 @@ outra garantia].
 | Exportações em PDF | 24 horas |
 | Tokens e autorizações OAuth | até expirarem ou serem revogados; códigos e tokens vencidos são apagados diariamente |
 | Cópias de segurança | as [7] mais recentes no servidor (`JOTTER_BACKUP_KEEP`) e até [30] dias fora dele; um dado apagado some das cópias quando a mais antiga que o contém é descartada. Até lá, as cópias ficam protegidas e **nunca trazem de volta um dado apagado**: toda restauração reaplica as exclusões já feitas |
+| Workspace guardado no GitHub | enquanto a organização mantiver o repositório. Quando uma nota é apagada, ou a organização é excluída do Serviço, o arquivo sai do repositório num novo commit. **O histórico do Git continua guardando as versões anteriores, e o Serviço nunca reescreve esse histórico.** Para apagar de vez, a organização arquiva ou exclui o repositório no GitHub; o Serviço avisa isso na exclusão. As nossas cópias de segurança não incluem esses workspaces, salvo se o operador pedir |
 | Outros registros exigidos por lei | pelo prazo legal |
 
 ## 6. Segurança

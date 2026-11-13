@@ -43,6 +43,14 @@ Schedule::command('vault:reindex', ['--all'])->hourly()->withoutOverlapping(55);
 Schedule::command('vault:process-moves')->everyMinute()->withoutOverlapping(10);
 Schedule::command('vault:finalize-moves')->dailyAt('02:20')->withoutOverlapping(60);
 
+// GitHub vault stores (#431): commit pending edits every minute; pull what the
+// push webhook could not finish every minute; poll every store every 5 minutes
+// (a ref that did not change answers 304 and costs nothing).
+Schedule::command('vault:flush')->everyMinute()->withoutOverlapping(10);
+Schedule::command('vault:pull', ['--pending'])->everyMinute()->withoutOverlapping(10);
+Schedule::command('vault:pull')->everyFiveMinutes()->withoutOverlapping(10);
+Schedule::command('github:prune-deliveries')->dailyAt('02:55')->withoutOverlapping(30);
+
 // Hourly at :30: re-measure workspace storage for the quotas (#390).
 Schedule::command('workspace:storage', ['--measure'])->hourlyAt(30)->withoutOverlapping(30);
 
