@@ -351,3 +351,39 @@ After a restore, MySQL's auto-increment counter follows the restored rows, so a 
   - docs and the privacy-policy draft.
 - `BACKLOG.md` block 4c now reads "erasure log replayed on restore". Crypto-shredding (D) stays a revisit condition.
 - Operators get one new duty: rotate off-server backup copies within the stated window (30 days, `docs/hosted-operations.md`).
+
+---
+
+## Decision — Pluggable vault stores: local folder (default), S3-compatible bucket or Git repository (#429 / #434)
+
+**Decided 2026-11-13** by the product owner. Amends spec §1/§2 and the *Source of truth* section of `docs/architecture.md`. Supersedes the "remote channels only as replicas" recommendation of `docs/20261113-jotter-tenant-vault-channels-research.md` (its cost, security and provider findings stay valid).
+
+Sources: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (G1–G5, phases 0–8, checks V1–V6), `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs).
+
+### Question
+
+Can a tenant keep a workspace's vault somewhere other than the local folder that PHP reads and writes, and if so, what stays invariant?
+
+### Selected contract
+
+1. **The invariant is the file layout, not the medium.** A workspace vault is portable Markdown (plus `_resources/` attachments and `.trash/`) laid out exactly as today. It lives in **one** of:
+   - the **local folder** under `vault_path` (default, unchanged);
+   - an **S3-compatible bucket** (AWS S3, Cloudflare R2, MinIO, GCS via HMAC), under a per-workspace prefix;
+   - a **private Git repository** (GitHub first), one workspace per repository and branch.
+
+   The store is authoritative; MySQL stays a rebuildable index. A workspace without a store is the local folder, so an unconfigured install behaves byte-for-byte as before.
+2. **Accepted product decisions D1–D10** of the general plan §1: several stores per tenant with 1 workspace = 1 repository (D1); stores registered on the tenant, workspaces point at one (D2); GitHub writes are write-behind through a local journal (D3); S3 writes are synchronous with `If-Match` where supported (D4); attachments live in the repository up to a configurable limit (D5); the tenant creates the repository/bucket, Jotter never does (D6); GitHub App when hosted, fine-grained PAT when self-hosted (D7); external-edit conflicts keep both versions (D8); a workspace is read-only (HTTP 423) while its store changes, with the source retained 7 days (D9); `JOTTER_VAULT_DRIVERS=local` by default (D10).
+3. **Accepted GitHub proposals G1–G5** of the GitHub plan: G1 manifest flow for a self-hosted operator's own App; G2 commit identity uses the display name only, no e-mail trailer by default; G3 PRs F/G split into phases 2–8; **G4 GitHub ships before S3** (order A → B → C → E → GitHub phases → D); **G5 the first version uses a `push` webhook** so external edits appear in seconds, with polling only as fallback.
+4. **Code seam.** Every vault read/write goes through a `VaultStore` interface resolved by `VaultStoreResolver::for(Workspace)`; nothing outside the resolver knows the driver. The shared-hosting rules of spec §4 still hold: pure PHP over HTTP, no `git` CLI, no daemons, all background work through `schedule:run`.
+
+### Options considered
+
+- **Replicas only** (previous research recommendation): rejected by the owner; the remote copy would never be the place a tenant actually edits from.
+- **One repository per tenant with subfolders**: rejected for v1 (permissions leak across workspaces, quota contention); `vault_prefix` keeps it possible later.
+- **Synchronous GitHub commits per save**: rejected; 500 writes/hour per actor cannot carry one commit per save.
+
+### Consequences
+
+- Implemented as epic #430: PR B (`VaultStore` + `LocalVaultStore`), PR C (`vault_stores`), PR E (`vault:move`); drivers follow in #431 (GitHub) and #432 (S3).
+- Direct repository/bucket access sees the whole workspace, the same as direct folder access today; the connection screen says so.
+- Git history keeps deleted content; the tenant is the controller of that history (general plan §6.1).

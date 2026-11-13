@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-Jotter's vault data lives as plain `.md` files under a workspace-specific directory. Those files—not database rows—are authoritative. MySQL stores application state and a rebuildable projection for metadata, links, tags, and full-text search. Removing or rebuilding the index must never destroy note content.
+Jotter's vault data lives as plain `.md` files in a workspace-specific vault. By default that vault is a directory under `vault_path` that PHP reads and writes directly; a tenant may instead place a workspace's vault in an S3-compatible bucket or a private Git repository (`docs/decisions.md`, "Pluggable vault stores"), always with the same portable file layout. Those files—not database rows—are authoritative, whichever store holds them, and every access goes through the `VaultStore` interface (`App\Domain\Vault\Store`). MySQL stores application state and a rebuildable projection for metadata, links, tags, and full-text search. Removing or rebuilding the index must never destroy note content.
 
 The initial hierarchy is tenant → workspace → note/attachment, with note links, tags, identities, memberships, and an append-only audit log. Tenant and workspace foreign keys make ownership explicit, while paths and tag names are unique only within their owning workspace.
 

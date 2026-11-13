@@ -19,7 +19,7 @@ As of 2026-08-20, every previously-tracked Milestone and Confluence-parity issue
 
 All roadmap/spec decisions are resolved — see `docs/decisions.md`. New decision work must add a dated decision record before implementation is planned.
 
-- **Pluggable per-workspace vault stores (proposed 2026-11-13).** A tenant can move a workspace's vault from the local folder (default, unchanged) to a private GitHub repository (one repo per workspace; write-behind journal because of GitHub's 500 writes/hour limit) or to an S3-compatible bucket (AWS S3, R2, MinIO, GCS). Plan, decisions D1–D10 and the PR sequence A–H: `docs/20261113-jotter-pluggable-vault-stores-plan.md`; provider costs: `docs/20261113-jotter-tenant-vault-channels-research.md`. GitHub driver detail (auth, sync, conflicts, costs, phases replacing PRs F/G): `docs/20261113-jotter-github-vault-implementation-plan.md`. Owner decided 2026-11-13: GitHub ships before S3 (PR D after the GitHub phases), and the first version uses a `push` webhook so external edits show up in seconds. PR A must record a dated `docs/decisions.md` entry amending spec §1/§2 and the *Source of truth* section of `docs/architecture.md` ("on disk" → local folder, S3-compatible bucket or Git repository, same portable Markdown layout) before any code. Implementation is tracked as epic **#429**; see *Pluggable vault stores epic* below.
+- ~~**Pluggable per-workspace vault stores.**~~ **Decided 2026-11-13** (`docs/decisions.md`, "Pluggable vault stores", #434). Moved to the implementation queue: see *Pluggable vault stores epic* below.
 
 ## Current implementation queue
 
@@ -27,7 +27,7 @@ The roadmap's historical Phase 1 gaps are already delivered in this repository: 
 
 ## Pluggable vault stores epic (#429, planned 2026-11-13)
 
-Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. **Next:** #434. No code before it.
+Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. #434 decided 2026-11-13.
 
 1. **Common base — epic #430.**
    1. #434 — PR A: dated decision in `docs/decisions.md` (D1–D10, G1–G5), amending spec §1/§2 and `docs/architecture.md`. Docs only.
