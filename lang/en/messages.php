@@ -104,4 +104,15 @@ return [
     'github_installation_unknown' => 'This GitHub installation was not connected by this organization.',
     'github_repository_in_use' => 'Another store already uses this repository and branch.',
     'github_controller_required' => 'Confirm that your organization controls the repository and its Git history.',
+    'github_webhook' => [
+        'not_found' => 'Not Found',
+        'too_large' => 'Payload too large',
+        'invalid_signature' => 'Invalid signature',
+        'duplicate' => 'Duplicate delivery ignored',
+        'pong' => 'pong',
+        'ignored' => 'Ignored',
+        'not_branch' => 'Not a branch',
+        'no_store' => 'No store follows this branch',
+        'accepted' => 'Accepted',
+    ],
 ];

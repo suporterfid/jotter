@@ -104,4 +104,15 @@ return [
     'github_installation_unknown' => 'Esta instalação do GitHub não foi conectada por esta organização.',
     'github_repository_in_use' => 'Outro armazenamento já usa este repositório e branch.',
     'github_controller_required' => 'Confirme que a sua organização controla o repositório e o histórico Git dele.',
+    'github_webhook' => [
+        'not_found' => 'Não encontrado',
+        'too_large' => 'Conteúdo grande demais',
+        'invalid_signature' => 'Assinatura inválida',
+        'duplicate' => 'Entrega repetida ignorada',
+        'pong' => 'pong',
+        'ignored' => 'Ignorado',
+        'not_branch' => 'Não é um ramo',
+        'no_store' => 'Nenhum armazenamento acompanha este ramo',
+        'accepted' => 'Aceito',
+    ],
 ];

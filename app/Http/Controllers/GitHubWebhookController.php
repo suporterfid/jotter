@@ -39,12 +39,12 @@ final class GitHubWebhookController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         if (! $this->drivers->isEnabled(VaultStoreDrivers::GITHUB)) {
-            return response()->json(['message' => 'Not Found'], 404);
+            return response()->json(['message' => __('messages.github_webhook.not_found')], 404);
         }
 
         $body = $request->getContent();
         if (strlen($body) > self::MAX_BODY_BYTES) {
-            return response()->json(['message' => 'Payload too large'], 413);
+            return response()->json(['message' => __('messages.github_webhook.too_large')], 413);
         }
 
         $payload = json_decode($body, true);
@@ -59,7 +59,7 @@ final class GitHubWebhookController extends Controller
         $appSigned = $this->signedWith($body, $signature, (string) config('jotter.github.webhook_secret', ''));
         $patStores = $appSigned ? collect() : $this->patStoresSignedFor($payload, $body, $signature);
         if (! $appSigned && $patStores->isEmpty()) {
-            return response()->json(['message' => 'Invalid signature'], 401);
+            return response()->json(['message' => __('messages.github_webhook.invalid_signature')], 401);
         }
 
         if ($delivery !== '') {
@@ -69,16 +69,16 @@ final class GitHubWebhookController extends Controller
                 'received_at' => now(),
             ]);
             if ($inserted === 0) {
-                return response()->json(['message' => 'Duplicate delivery ignored'], 200);
+                return response()->json(['message' => __('messages.github_webhook.duplicate')], 200);
             }
         }
 
         return match ($event) {
-            'ping' => response()->json(['message' => 'pong']),
+            'ping' => response()->json(['message' => __('messages.github_webhook.pong')]),
             'push' => $this->push($payload, $appSigned, $patStores),
-            'installation' => $appSigned ? $this->installation($payload) : response()->json(['message' => 'Ignored'], 202),
-            'installation_repositories' => $appSigned ? $this->installationRepositories($payload) : response()->json(['message' => 'Ignored'], 202),
-            default => response()->json(['message' => 'Ignored'], 202),
+            'installation' => $appSigned ? $this->installation($payload) : response()->json(['message' => __('messages.github_webhook.ignored')], 202),
+            'installation_repositories' => $appSigned ? $this->installationRepositories($payload) : response()->json(['message' => __('messages.github_webhook.ignored')], 202),
+            default => response()->json(['message' => __('messages.github_webhook.ignored')], 202),
         };
     }
 
@@ -90,7 +90,7 @@ final class GitHubWebhookController extends Controller
     {
         $ref = (string) ($payload['ref'] ?? '');
         if (! str_starts_with($ref, 'refs/heads/')) {
-            return response()->json(['message' => 'Not a branch'], 202);
+            return response()->json(['message' => __('messages.github_webhook.not_branch')], 202);
         }
         $branch = substr($ref, strlen('refs/heads/'));
         $fullName = strtolower((string) ($payload['repository']['full_name'] ?? ''));
@@ -102,7 +102,7 @@ final class GitHubWebhookController extends Controller
         $stores = $candidates->filter(fn (TenantVaultStore $store): bool => app(GitHubStoreFactory::class)->branch($store) === $branch)->values();
 
         if ($stores->isEmpty()) {
-            return response()->json(['message' => 'No store follows this branch'], 202);
+            return response()->json(['message' => __('messages.github_webhook.no_store')], 202);
         }
 
         foreach ($stores as $store) {
@@ -135,7 +135,7 @@ final class GitHubWebhookController extends Controller
             }
         });
 
-        return response()->json(['message' => 'Accepted', 'stores' => count($ids)], 202);
+        return response()->json(['message' => __('messages.github_webhook.accepted'), 'stores' => count($ids)], 202);
     }
 
     /**
@@ -159,7 +159,7 @@ final class GitHubWebhookController extends Controller
             GitHubInstallation::query()->where('installation_id', $installationId)->update(['suspended_at' => null]);
         }
 
-        return response()->json(['message' => 'Accepted'], 202);
+        return response()->json(['message' => __('messages.github_webhook.accepted')], 202);
     }
 
     /**
@@ -184,7 +184,7 @@ final class GitHubWebhookController extends Controller
             );
         }
 
-        return response()->json(['message' => 'Accepted'], 202);
+        return response()->json(['message' => __('messages.github_webhook.accepted')], 202);
     }
 
     /**
