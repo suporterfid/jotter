@@ -88,6 +88,12 @@ enum AuditEvent: string
     case VAULT_MOVE_FAILED = 'vault.move_failed';
     case VAULT_MOVE_ROLLED_BACK = 'vault.move_rolled_back';
     case VAULT_MOVE_FINALIZED = 'vault.move_finalized';
+    // GitHub vault store (#431).
+    case VAULT_CONFLICT = 'vault.conflict';
+    case VAULT_FLUSH_FAILED = 'vault.flush_failed';
+    case VAULT_STORE_FAILED = 'vault_store.failed';
+    case VAULT_STORE_GITHUB_INSTALLED = 'vault_store.github_installed';
+    case VAULT_REMOTE_ERASED = 'vault.remote_erased';
 
     case SYSTEM_AUDIT_PRUNED = 'system.audit_pruned';
 

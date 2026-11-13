@@ -74,6 +74,43 @@ return [
         'move_batch_size' => (int) env('JOTTER_VAULT_MOVE_BATCH', 200),
     ],
 
+    // GitHub vault store (#431, docs/20261113-jotter-github-vault-implementation-plan.md).
+    // Only used when JOTTER_VAULT_DRIVERS lists `github`. Hosted installs register one
+    // GitHub App (app_id, slug, private key, webhook secret); self-hosted installs may
+    // use a fine-grained PAT per store instead and leave the App settings empty.
+    'github' => [
+        'api_url' => rtrim((string) env('JOTTER_GITHUB_API_URL', 'https://api.github.com'), '/'),
+        'web_url' => rtrim((string) env('JOTTER_GITHUB_WEB_URL', 'https://github.com'), '/'),
+        'app_id' => env('JOTTER_GITHUB_APP_ID') ?: null,
+        'app_slug' => env('JOTTER_GITHUB_APP_SLUG') ?: null,
+        // Outside public/ and never in the release zip.
+        'private_key_path' => env('JOTTER_GITHUB_APP_PRIVATE_KEY_PATH') ?: null,
+        // Required in hosted mode (App webhook, `push` + `installation*` events).
+        'webhook_secret' => env('JOTTER_GITHUB_WEBHOOK_SECRET') ?: null,
+        // Seconds: connect / whole request.
+        'connect_timeout' => (int) env('JOTTER_GITHUB_CONNECT_TIMEOUT', 3),
+        'timeout' => (int) env('JOTTER_GITHUB_TIMEOUT', 10),
+        // D5: attachments up to 10 MB by default, never above GitHub's 100 MiB.
+        'max_file_bytes' => min(100 * 1024 * 1024, (int) env('JOTTER_GITHUB_MAX_FILE_BYTES', 10 * 1024 * 1024)),
+        // Files per commit in vault:flush (§5.4).
+        'flush_batch' => (int) env('JOTTER_GITHUB_FLUSH_BATCH', 100),
+        // Write budget per actor, below GitHub's 500/h and 80/min (§5.7).
+        'writes_per_hour' => (int) env('JOTTER_GITHUB_WRITES_PER_HOUR', 400),
+        'writes_per_minute' => (int) env('JOTTER_GITHUB_WRITES_PER_MINUTE', 60),
+        // Blob cache cap per store, bytes (LRU).
+        'blob_cache_bytes' => (int) env('JOTTER_GITHUB_BLOB_CACHE_BYTES', 50 * 1024 * 1024),
+        // Webhook pull limits (§5.5): time and files handled after the 202.
+        'webhook_pull_seconds' => (int) env('JOTTER_GITHUB_WEBHOOK_PULL_SECONDS', 20),
+        'webhook_pull_files' => (int) env('JOTTER_GITHUB_WEBHOOK_PULL_FILES', 200),
+        // Doctor warns when a repository grows past this (KB, GitHub's `size`).
+        'repo_warn_kb' => (int) env('JOTTER_GITHUB_REPO_WARN_KB', 800 * 1024),
+        // Gradual launch (#445): when non-empty, only these tenant ids or slugs may connect GitHub.
+        'beta_tenants' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('JOTTER_GITHUB_BETA_TENANTS', '')),
+        ))),
+    ],
+
     'trash' => [
         'retention_days' => (int) env('JOTTER_TRASH_RETENTION_DAYS', 30),
         'purge_batch_size' => (int) env('JOTTER_TRASH_PURGE_BATCH', 100),

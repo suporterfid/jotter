@@ -17,8 +17,8 @@ final class VaultStoreDrivers
 
     public const KNOWN = [self::LOCAL, self::S3, self::GITHUB];
 
-    /** Drivers with a VaultStore implementation in this version (#431 adds GitHub, #432 S3). */
-    public const IMPLEMENTED = [self::LOCAL];
+    /** Drivers with a VaultStore implementation in this version (#432 adds S3). */
+    public const IMPLEMENTED = [self::LOCAL, self::GITHUB];
 
     /**
      * @return list<string>
