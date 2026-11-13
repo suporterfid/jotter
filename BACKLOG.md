@@ -17,7 +17,9 @@ As of 2026-08-20, every previously-tracked Milestone and Confluence-parity issue
 
 ## Needs a decision (spec §14.5)
 
-All roadmap/spec decisions are resolved — see `docs/decisions.md`. This section is intentionally empty; new decision work must add a dated decision record before implementation is planned.
+All roadmap/spec decisions are resolved — see `docs/decisions.md`. New decision work must add a dated decision record before implementation is planned.
+
+- **Per-tenant vault channels (proposed 2026-11-13).** Optional external mirrors/backup destinations per tenant (S3-compatible: R2, B2, S3, GCS, Magalu; GitHub App; WebDAV/SFTP). Research, costs and a phased plan: `docs/20261113-jotter-tenant-vault-channels-research.md`. Needs a dated entry in `docs/decisions.md` confirming that channels are replicas and local disk stays the source of truth (spec §1) before any code; attachment offload and two-way Git sync each need their own decision.
 
 ## Current implementation queue
 
