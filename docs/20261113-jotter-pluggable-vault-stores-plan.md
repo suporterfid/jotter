@@ -15,7 +15,7 @@
 |---|---|---|---|
 | D1 | Um repositório por org ou vários? | **Vários por org, 1 workspace = 1 repositório (e 1 branch)**. Repositório único com subpastas por workspace fica para depois, só se houver demanda. | Ver §2. |
 | D2 | Onde fica a configuração? | **"Armazenamentos" (stores) registrados na org**; cada workspace aponta para um store. Workspace sem store = pasta local, como hoje. | Uma org pode ter um bucket R2 e três repositórios ao mesmo tempo. |
-| D3 | GitHub: salvar é imediato? | **Não.** O Jotter grava na hora num *journal* local e **envia ao GitHub em lotes**, um commit a cada 1–5 min. A interface mostra "pendente / sincronizado". | O GitHub permite no máximo **80 escritas/min e 500/h** por ator. Um commit custa 3 escritas, então são no máximo ≈ 160 commits/h para a instalação inteira. Um commit por salvamento é inviável; em lote, um commit leva muitos salvamentos. |
+| D3 | GitHub: salvar é imediato? | **Não.** O Jotter grava na hora num *journal* local e **envia ao GitHub em lotes**, um commit a cada 1–5 min. A interface mostra "pendente / sincronizado". | O GitHub permite no máximo **80 escritas/min e 500/h** por ator. O ator é a **instalação do GitHub App** na org (ou o PAT, no self-hosted), não o servidor Jotter. Se a cota vale por instalação ou pelo App inteiro ainda está em aberto (V1 em `docs/20261113-jotter-github-vault-implementation-plan.md`). Um commit custa 3 escritas, então são no máximo ≈ 160 commits/h por ator. Um commit por salvamento é inviável; em lote, um commit leva muitos salvamentos. |
 | D4 | S3: salvar é imediato? | **Sim**, escrita direta e síncrona, com `If-Match` onde o provedor suportar. | S3, R2, MinIO e GCS têm consistência forte; um PUT leva ~50–150 ms. |
 | D5 | Anexos no modo GitHub | **No próprio repositório**, até um limite configurável (padrão 10 MB/arquivo; o GitHub bloqueia > 100 MiB). Acima disso, recusa com mensagem clara. Git LFS fica para depois. | Quem clona o repositório (Obsidian, Claude Code) precisa ver as imagens. |
 | D6 | Quem cria o repositório/bucket? | **A org cria** (repositório privado vazio, bucket vazio) e conecta no Jotter. O Jotter não cria repositórios. | Evita pedir permissão de administração no GitHub/IAM. |
@@ -32,7 +32,7 @@
 |---|---|---|
 | Permissões | O GitHub dá acesso ao repositório inteiro: quem acessa o repositório vê **todos** os workspaces, inclusive os que o Jotter restringe | Acesso no GitHub = acesso ao workspace; casa com as memberships do Jotter |
 | Obsidian / `obsidian-git` / Claude Code | Clona tudo; o usuário precisa abrir uma subpasta como vault | 1 repositório = 1 vault, direto |
-| Limite de escrita (500/h) | Todos os workspaces disputam o mesmo branch: mais conflitos de *fast-forward* | Cada repositório tem seu branch; a cota continua sendo por instalação, mas sem disputa de ref |
+| Limite de escrita (500/h) | Todos os workspaces disputam o mesmo branch: mais conflitos de *fast-forward* | Cada repositório tem seu branch; a cota continua sendo por ator do GitHub (instalação do App ou PAT; ver D3), mas sem disputa de ref |
 | Tamanho (recomendado < 1 GB, forte < 5 GB) | Estoura mais cedo | Distribuído |
 | Excluir workspace / LGPD | Exige reescrever histórico ou apagar subpasta (que continua no histórico) | Arquivar/apagar o repositório resolve |
 | Gestão | 1 repositório só | N repositórios: a org instala o App nos repositórios escolhidos |
@@ -43,14 +43,14 @@
 
 ## 3. Impacto no código (inventário real)
 
-**28 arquivos** usam `vault_path`/`VaultPathGuard` ou funções de arquivo diretas (`file_get_contents`, `RecursiveDirectoryIterator`, `realpath`, `response()->file()`…):
+**36 arquivos** usam `vault_path`/`VaultPathGuard` ou funções de arquivo diretas (`file_get_contents`, `RecursiveDirectoryIterator`, `realpath`, `response()->file()`…):
 
 | Grupo | Arquivos | O que muda |
 |---|---|---|
 | Núcleo do vault | `VaultStorage`, `AttachmentStorage`, `NoteTrash`, `VaultReindexer`, `VaultPathGuard`, `VaultRootGuard`, `WorkspaceQuota` | Passam a usar `VaultStore`. O reindex lista pelo store; a quota usa o delta (já existe) e a listagem do store. |
 | Protocolos | `WebDavController` (`is_dir`, `file_get_contents`, ETag do disco), `McpNoteWriter` (`diskHash`), `AttachmentController` (`response()->file`), `PublicShareAssetController`, `SharedAssetResolver`, `SharedNoteRenderer` | Leitura e ETag pelo store; anexos por *stream* (ou URL pré-assinada no S3). |
 | Exportar/importar | `WorkspaceExportController`, `WorkspaceImportController`, `VaultExtractor`, `TenantExporter`, `WorkspaceJsonBackup`, `PdfAssetResolver`/`PdfDocumentRenderer`/`PdfExportRunner`, `WorkspacePublishController`, `BrainPack`, `TemplatePack`, `WorkspaceTemplateController` | Leem e gravam pelo store. O PDF baixa os assets para um diretório temporário. |
-| Ciclo de vida | `TenantProvisioner`, `TenantDeletion`/`TenantDeleteCommand`, `AdminWorkspaceController`, `WorkspaceController`, `InstanceBackup`/`JotterRestoreCommand`, `InstanceDoctor`, `DemoSeedCommand`, `Workspace` (model) | Provisionar/apagar no store; backup decide o que incluir (§6.4); doctor checa stores. |
+| Ciclo de vida | `TenantProvisioner`/`TenantProvisionCommand`, `TenantDeletion`/`TenantDeleteCommand`, `AdminWorkspaceController`, `WorkspaceController`, `InstanceBackup`/`JotterRestoreCommand`, `InstanceDoctor`, `DemoSeedCommand`, `Workspace` (model) | Provisionar/apagar no store; backup decide o que incluir (§6.4); doctor checa stores. |
 
 O que **não** muda, porque a arquitetura já ajuda: busca, backlinks, tags, propriedades, árvore e listagens leem o **índice MySQL**, nunca o disco. Só abrir uma nota, exportar, WebDAV `GET`, PDF, publicação e reindex leem o arquivo. Por isso a latência de um store remoto aparece em poucos lugares.
 
@@ -118,7 +118,7 @@ salvar ──▶ vault_journal (MySQL, síncrono, rápido) ──▶ projeção/
 ```
 
 - **Ler:** journal pendente → `vault_blob_cache` (pelo SHA, imutável) → `GET /git/blobs/{sha}` → grava no cache.
-- **Orçamento:** um *token bucket* por instalação de ≈ 400 escritas/h (folga sob 500). Se apertar, o intervalo do flush cresce sozinho (1 → 5 → 15 min) e a interface avisa.
+- **Orçamento:** um *token bucket* por ator do GitHub (instalação do App ou PAT, ver D3) de ≈ 400 escritas/h (folga sob 500). Se apertar, o intervalo do flush cresce sozinho (1 → 5 → 15 min) e a interface avisa.
 - **Coalescência:** dez salvamentos da mesma nota entre dois flushes viram uma única entrada da árvore.
 - **Mensagem do commit:** `jotter: 3 notas por Ana (via Jotter)`. O autor real fica como *co-author trailer* quando há e-mail.
 - **Puxar mudanças externas** (`vault:pull`, a cada 5 min): `GET` do ref com `If-None-Match`; a resposta `304` não gasta cota. Se o head mudou, `compare` → baixa os blobs alterados → reprojeta → revisão com ator `github:<login>`. Um webhook `push` opcional antecipa o pull.
@@ -179,7 +179,8 @@ O `jotter:restore`, ao repetir *tombstones*, também apaga no store remoto (S3) 
 
 ### 6.4 Backup
 
-- **Workspaces remotos não entram no ZIP por padrão.** O provedor já guarda o conteúdo (histórico Git, versionamento S3); `--with-remote-vaults` inclui.
+- **Workspaces no GitHub não entram no ZIP por padrão:** o histórico Git já guarda cada versão. `--with-remote-vaults` inclui.
+- **Workspaces no S3 só ficam fora do ZIP quando o bucket tem versionamento ligado.** Sem versionamento, um apagão por engano (pelo Jotter, por outra ferramenta ou por credencial vazada) não teria de onde voltar, então o backup os inclui. O preflight do `vault:move` e o `jotter:doctor` checam o versionamento (`GetBucketVersioning`) e avisam quando estiver desligado; `--without-remote-vaults` deixa o operador excluir mesmo assim, por conta própria.
 - **Depois de um restore**, esses workspaces recebem reindex automático: o store remoto é a verdade.
 
 ### 6.5 Falhas
@@ -198,8 +199,8 @@ Cada PR é mesclada com `jt ci` verde antes da próxima.
 
 | PR | Entrega | Tamanho | Estimativa* |
 |---|---|---|---|
-| **A** | Decisão datada em `docs/decisions.md`, alterando o spec §1/§2: o vault é Markdown em **disco local (padrão), bucket S3-compatível ou repositório Git**, sempre o mesmo layout de arquivos portáteis; registra D1–D10 | S | 0,5 dia |
-| **B** | Interface `VaultStore` + `LocalVaultStore` + refatoração dos 28 arquivos, **sem mudar comportamento**; suíte de contrato `VaultStoreContractTest` | L | 4–6 dias |
+| **A** | Decisão datada em `docs/decisions.md`, alterando o spec §1/§2 e a seção *Source of truth* de `docs/architecture.md`: o vault é Markdown em **disco local (padrão), bucket S3-compatível ou repositório Git**, sempre o mesmo layout de arquivos portáteis; registra D1–D10 | S | 0,5 dia |
+| **B** | Interface `VaultStore` + `LocalVaultStore` + refatoração dos 36 arquivos, **sem mudar comportamento**; suíte de contrato `VaultStoreContractTest` | L | 4–6 dias |
 | **C** | `vault_stores`: CRUD admin, credenciais cifradas, "testar conexão", guarda SSRF, auditoria, `JOTTER_VAULT_DRIVERS`, checagens no doctor | M | 2–3 dias |
 | **D** | Driver **S3** + serviço **MinIO** no `compose.ci.yaml` para a suíte de contrato; anexos por stream/URL pré-assinada; reindex por listagem | M–L | 3–4 dias |
 | **E** | Motor `vault:move` (preflight, cópia em lotes, verificação, troca, 423, rollback, retenção) + tela de progresso. **Aqui o S3 vira entregável (MVP).** | M–L | 3–4 dias |
