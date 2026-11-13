@@ -27,22 +27,27 @@ The roadmap's historical Phase 1 gaps are already delivered in this repository: 
 
 ## Pluggable vault stores epic (#429, planned 2026-11-13)
 
-Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. #434–#437 implemented 2026-11-13 in one PR (common base, epic #430); **next:** the GitHub spike #438 and phases.
+Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. #434–#437 implemented 2026-11-13 in one PR (common base, epic #430); #438–#445 implemented 2026-11-13 in one PR (GitHub, epic #431). **Next:** the owner's live checks for GitHub (below), then S3 (#432).
 
 1. ~~**Common base — epic #430.**~~ **Implemented 2026-11-13** (see CHANGELOG).
    1. ~~#434 — PR A: dated decision in `docs/decisions.md` (D1–D10, G1–G5), amending spec §1/§2 and `docs/architecture.md`.~~
    2. ~~#435 — PR B: `VaultStore` interface + `LocalVaultStore`, refactor, contract test suite, no behaviour change.~~ Instance backup/restore, `tenant:delete` and provisioning still read the local folder directly: remote-store handling for them is #444.
    3. ~~#436 — PR C: `vault_stores` (admin API + Storage tab, encrypted credentials, SSRF guard, audit, doctor, `JOTTER_VAULT_DRIVERS`).~~ Only the `local` driver (a second server folder) is implemented; `s3`/`github` stores can be registered but "Test connection" and moves refuse them until #432/#431.
    4. ~~#437 — PR E: `vault:move` engine (preflight, batched copy, SHA-256 verification, swap, HTTP 423, rollback, 7-day retention).~~
-2. **GitHub vault — epic #431.**
-   1. #438 — Phase 2: validation spike for V1–V6 (can run alongside #435–#437).
-   2. #439 — Phase 3 (PR F1): GitHub App + fine-grained PAT, install flow, read-only probe.
-   3. #440 — Phase 4 (PR F2): read driver, blob cache, `vault:pull`, `push` webhook (external edits in ≤ 10 s, G5).
-   4. #441 — Phase 5 (PR G1): write-behind journal, `vault:flush`, write budget, pending/synced badge.
-   5. #442 — Phase 6 (PR G2): conflicts and external changes (D8), one test per edge case.
-   6. #443 — Phase 7 (PR G3): `vault:move` local ↔ GitHub.
-   7. #444 — Lifecycle and LGPD with a remote vault (`tenant:delete`, restore, backup, doctor). Added because the GitHub phases did not place the general plan's §6 work in any PR.
-   8. #445 — Phase 8 (PR H, GitHub part): docs, privacy policy draft, gradual rollout.
+2. ~~**GitHub vault — epic #431.**~~ **Implemented 2026-11-13** (see CHANGELOG). Code namespace is `App\Domain\Vault\Store\GitHub` (the plan said `Stores/GitHub`; it follows the common base).
+   1. ~~#438 — Phase 2: validation spike.~~ Answered from docs and the test simulator in `docs/20261113-jotter-github-vault-spike.md`, with `scripts/github-vault-spike.sh`.
+   2. ~~#439 — Phase 3 (PR F1): GitHub App + fine-grained PAT, install flow, read-only probe.~~
+   3. ~~#440 — Phase 4 (PR F2): read driver, blob cache, `vault:pull`, `push` webhook.~~
+   4. ~~#441 — Phase 5 (PR G1): write-behind journal, `vault:flush`, write budget, sync badge.~~
+   5. ~~#442 — Phase 6 (PR G2): conflicts and external changes (D8).~~
+   6. ~~#443 — Phase 7 (PR G3): `vault:move` local ↔ GitHub.~~
+   7. ~~#444 — Lifecycle and LGPD with a remote vault.~~
+   8. ~~#445 — Phase 8 (PR H, GitHub part): docs, privacy policy draft, gradual rollout.~~
+   9. **Owner action (P1, before opening GitHub to everyone):**
+      - run `jt ci` and `jt release` / `release:verify` on the PR (Docker was not available where it was built);
+      - with a real App and a test repository, run the live checks V1–V8 of the spike doc, including G5: an external push visible in ≤ 10 s with the webhook;
+      - then turn it on for one or two tenants with `JOTTER_GITHUB_BETA_TENANTS`.
+   10. Follow-ups (P3): an opt-in `Co-authored-by` trailer from the user profile (G2; off is the safe default); a commit-count estimate in the move preflight (moves only get delayed by the budget, never fail).
 3. **S3-compatible vault — epic #432**, after #445.
    1. #446 — PR D: S3 driver (`async-aws/s3`) + MinIO in `compose.ci.yaml`.
    2. #447 — S3 in `vault:move`, backup rule by bucket versioning, LGPD in the bucket.

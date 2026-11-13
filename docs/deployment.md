@@ -146,6 +146,12 @@ runs are prevented with cache locks (`CACHE_STORE=database`).
 | `semantic:index --limit=100` | every 5 minutes | Embeds changed notes of workspaces that opted in to semantic search; clears the index while `JOTTER_SEMANTIC_ENABLED=false` (see `docs/mcp.md`). |
 | `workspace:storage --measure` | hourly at :30 | Re-measures each vault on disk for the storage quotas; between runs, writes keep the running total. |
 | `jotter:backup` | daily 01:30, only when `JOTTER_BACKUP_DAILY=true` | Writes one ZIP with every Jotter table and vault file to `JOTTER_BACKUP_PATH` and keeps the newest `JOTTER_BACKUP_KEEP` (see *Backup and restore*). |
+| `vault:process-moves` | every minute | Copies workspaces being moved between vault stores, in resumable batches (see *Vault stores*). |
+| `vault:finalize-moves` | daily 02:20 | Deletes move sources past `JOTTER_VAULT_MOVE_RETAIN_DAYS`. |
+| `vault:flush` | every minute | Workspaces on GitHub: commits each store's queued saves in one batch per run, within the write budget. No-op without GitHub stores. |
+| `vault:pull --pending` | every minute | Workspaces on GitHub: finishes pulls that a push webhook started but could not complete after its response. |
+| `vault:pull` | every 5 minutes | Workspaces on GitHub: safety poll for external edits when no webhook arrived (a conditional ref read; `304` costs nothing). |
+| `github:prune-deliveries` | daily 02:55 | Deletes GitHub webhook delivery ids older than 7 days (replay protection). |
 | `oauth:prune` | daily 02:45 | Deletes expired OAuth codes and tokens, and idle OAuth clients without active grants. |
 | `tenant:expire-trials` | daily 03:00 | Hosted mode only: e-mails owners 3 days before a trial ends, moves trials past `trial_ends_at` to `read_only` (audited), and e-mails them once more. No-op for self-hosted tenants. |
 | `queue:work --stop-when-empty --max-time=50` | every minute, only when `QUEUE_CONNECTION=database` | Drains a database queue without a daemon. Mail is synchronous by default, so this is normally not registered. |
@@ -300,8 +306,42 @@ JOTTER_VAULT_MOVE_BATCH=200            # files copied per vault:process-moves ru
 
 - Store credentials are encrypted with `APP_KEY`. **Rotating `APP_KEY` means re-entering every store's credentials**; `jotter:doctor` (`vault_stores`) lists the stores to reconnect.
 - `php artisan vault:move <workspace> --to=<store id>` (or `--local`) starts a move; the workspace is read-only until `vault:process-moves`, run every minute by the scheduler, finishes. `--sync` copies everything at once (CLI only). `vault:move <workspace> --rollback` returns to the kept source; `vault:finalize-moves` (daily) deletes sources past their retention, `--now` immediately.
-- This version implements the `local` driver (another folder under `VAULT_BASE_PATH`). S3-compatible buckets and GitHub repositories can be registered, but tests and moves refuse them until their drivers ship (#432, #431).
-- Instance backups still cover local folders only (#444).
+- Implemented drivers: `local` (another folder under `VAULT_BASE_PATH`) and `github` (below). S3-compatible buckets can be registered, but tests and moves refuse them until their driver ships (#432).
+- Instance backups leave workspaces on GitHub out by default, because the repository is their backup; `jotter:backup --with-remote-vaults` copies their files too (see *Backup and restore*).
+
+### GitHub repositories (epic #431)
+
+A workspace can live in a **private** GitHub repository, one repository per workspace. Saves go to a journal in MySQL at once and reach GitHub in batched commits (`vault:flush`, every minute); edits pushed from outside arrive through a webhook within seconds, with `vault:pull` every 5 minutes as the fallback. The tenant-facing guide is `docs/guia-conectar-github.md`.
+
+```dotenv
+JOTTER_VAULT_DRIVERS=local,github
+# GitHub App (hosted installs; optional for self-hosted, where a fine-grained PAT per store works)
+JOTTER_GITHUB_APP_ID=
+JOTTER_GITHUB_APP_SLUG=
+JOTTER_GITHUB_APP_PRIVATE_KEY_PATH=     # absolute path OUTSIDE public/, e.g. storage/app/private/github-app-123.pem, mode 0600
+JOTTER_GITHUB_WEBHOOK_SECRET=           # the App's webhook secret
+# Gradual launch: when set, only these tenant ids or slugs may connect GitHub (empty = every tenant)
+JOTTER_GITHUB_BETA_TENANTS=
+```
+
+**Registering the App (hosted).** Either:
+
+1. *Manifest flow (recommended).* As an instance administrator, `GET /api/admin/github/manifest?organization=<org>` returns the GitHub URL and the manifest to post. It already has: permissions `Contents: read & write` and `Metadata: read`, the `push` event, webhook `https://<host>/webhooks/github`, Setup URL `https://<host>/api/github/setup` (with "redirect on update"), and the callback. GitHub sends you back to `/api/admin/github/manifest/callback`. That callback stores the private key in `storage/app/private/` (mode 0600) and shows, once, the four `JOTTER_GITHUB_*` values to put in `.env`.
+2. *By hand.* In GitHub, open **Settings → Developer settings → GitHub Apps → New GitHub App** and use the same values. Generate a private key and copy it outside `public/`. Pick a random webhook secret.
+
+Then run `php artisan config:cache` if you cache configuration, and check with `php artisan jotter:doctor` (`github_vault`).
+
+**Self-hosted without an App.** Each store takes a fine-grained personal access token limited to its repository with `Contents: Read and write`. Jotter generates a per-store webhook secret, and the admin panel shows the URL and secret to paste into the repository's webhook (`push` only). Without it, external edits show up within 5 minutes.
+
+**Notes for operators**
+
+- The webhook route `POST /webhooks/github` has no session or CSRF. It checks `X-Hub-Signature-256` against the App secret or the store's own secret, ignores repeated deliveries, answers `202`, and pulls after the response (PHP-FPM `fastcgi_finish_request`). Keep it reachable from GitHub; a WAF that blocks it only delays edits to the 5-minute poll.
+- Write budget: `JOTTER_GITHUB_WRITES_PER_HOUR` (400) and `_PER_MINUTE` (60) per App installation or PAT, below GitHub's secondary limits. A batch costs about 3 writes (tree, commit, ref) plus one per binary or text over 1 MiB. When the budget or GitHub's rate limit runs out, flushes wait; nothing is lost and the workspace keeps working from the journal.
+- Other knobs: `JOTTER_GITHUB_MAX_FILE_BYTES` (10 MB, capped at 100 MiB, GitHub's limit), `JOTTER_GITHUB_FLUSH_BATCH` (100 files per commit), `JOTTER_GITHUB_BLOB_CACHE_BYTES` (50 MB of cached file contents in MySQL), `JOTTER_GITHUB_WEBHOOK_PULL_SECONDS` (20) and `_FILES` (200), `JOTTER_GITHUB_REPO_WARN_KB` (doctor warning, 800 MB), `JOTTER_GITHUB_CONNECT_TIMEOUT` (3) and `JOTTER_GITHUB_TIMEOUT` (10), `JOTTER_GITHUB_API_URL` and `JOTTER_GITHUB_WEB_URL` (GitHub Enterprise Server).
+- A revoked token, an uninstalled App or a repository removed from the installation turns the store `failed` and its workspaces read-only (REST/WebDAV/MCP writes answer 423). Admins get a notification. A successful "Test connection" restores them.
+- `tenant:delete` empties the tenant's repositories with a final commit and prints the advice to archive or delete them. Git history keeps the old content, and Jotter never rewrites history. Restores replay this through the erasure log.
+- After `jotter:restore`, the sync state is rebuilt from each repository on the next `vault:pull`. Queued saves restored from the backup that are older than GitHub's version become conflict copies; they never overwrite.
+- Validation still to run against a real App and repository: `docs/20261113-jotter-github-vault-spike.md`.
 
 ## Backup and restore
 
@@ -315,6 +355,7 @@ from the same cron as everything else.
 php artisan jotter:backup                 # storage/app/private/backups/jotter-backup-<timestamp>.zip
 php artisan jotter:backup --to=/home/u/backups/jotter.zip
 php artisan jotter:backup --no-vaults     # database only (small, quick)
+php artisan jotter:backup --with-remote-vaults  # also the files of workspaces on GitHub
 ```
 
 ```dotenv
@@ -327,8 +368,14 @@ JOTTER_BACKUP_PATH=                       # default storage/app/private/backups
   document root (the command refuses `public/`). **Copy it off the server**, for
   example by downloading it over SFTP or with the host's remote backup: a backup on the
   same disk does not survive that disk.
-- Left out on purpose: sessions, cache, queue tables, password-reset tokens, and the
-  semantic-search index (`note_embeddings`), which `semantic:index` rebuilds.
+- Left out on purpose: sessions, cache, queue tables, password-reset tokens, the
+  semantic-search index (`note_embeddings`), which `semantic:index` rebuilds, and the
+  GitHub sync state (manifest, blob cache, cursors, write budgets, webhook deliveries),
+  which the next `vault:pull` rebuilds from each repository.
+- Workspaces on GitHub: their files are left out unless `--with-remote-vaults` (the
+  repository is their backup). Their queued, not yet committed saves are in the database
+  and are kept. A restore writes copied remote files beside the workspace folder, as
+  `<vault_path>.remote-copy`, never over the repository.
 - Only this installation's tables are read (those with `DB_PREFIX`), never GrandpaSSOn's
   tables that may share the database.
 - `jotter:doctor` reports the newest archive; with `JOTTER_BACKUP_DAILY=true` it warns

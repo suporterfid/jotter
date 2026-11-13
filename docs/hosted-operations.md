@@ -157,6 +157,12 @@ php artisan tenant:delete acme --export-to=/home/user/exports/acme.zip
   comments, tokens, grants, groups and projections;
 - removes each workspace's vault folder from disk, but only when it lies inside
   `VAULT_BASE_PATH`. A folder elsewhere is listed as "not removed" for you to check;
+- for each workspace on **GitHub**, first commits the removal of every file in its
+  repository, then prints and audits (`vault.remote_erased`, kept after the tenant goes)
+  the advice to **archive or delete the repository**: Git history still holds the
+  content, and Jotter never rewrites it. The customer controls the repository, so send
+  them this advice. An unreachable repository (revoked token, uninstalled App) does not
+  block the deletion; it is reported as `unreachable`;
 - records `tenant.deleted` (slug and counts, no personal data).
 
 It refuses to delete the installation's only tenant. Instance backups taken before
@@ -213,6 +219,61 @@ php artisan demo:seed <workspace-slug> [--tenant=<slug>] [--overwrite]
 
 Writes 25 interlinked pt-BR notes (wiki, ADRs, meeting notes, runbooks) for
 demos and screenshots; never touches other notes.
+
+## Workspaces on GitHub
+
+Setup is in `docs/deployment.md` ("GitHub repositories"); the customer guide is
+`docs/guia-conectar-github.md`.
+
+**Gradual launch.** Start with `JOTTER_GITHUB_BETA_TENANTS=acme,globex` (tenant slugs or
+ids). Only those tenants can connect GitHub; the others get "not in beta" when they
+try. Once the beta runs clean for a few weeks (no stuck flushes, no unexpected
+conflicts, the doctor green), empty the variable to open it to everyone.
+
+**Quota.** Each App installation (or PAT) gets its own write budget:
+`JOTTER_GITHUB_WRITES_PER_HOUR=400` and `JOTTER_GITHUB_WRITES_PER_MINUTE=60`. A batch
+of up to 100 files costs about 3 writes, so one tenant can commit about 130 batches an
+hour. If GitHub turns out to count the quota per App instead of per installation
+(live check V1 in `docs/20261113-jotter-github-vault-spike.md`), lower the hourly
+budget or register a second App.
+
+**Doctor.** `php artisan jotter:doctor` (`github_vault`) **fails** on:
+
+- an App that is half configured, or a key file that is missing or unreadable;
+- a store in `failed` (the workspace is read-only);
+- changes that have not reached GitHub for 24 hours.
+
+It **warns** about:
+
+- a flush that is retrying;
+- edits waiting more than 30 minutes (usually the write budget);
+- a PAT that expires within 14 days;
+- a repository larger than `JOTTER_GITHUB_REPO_WARN_KB`;
+- no webhook delivery received yet;
+- paths the sync ignores (symlinks, submodules, oversize files) or renamed (case twins, NFD names).
+
+`--json` lists each store with its queue, its last flush, pull and webhook, and those paths.
+
+**A flush is delayed.** The workspace banner says "Sending to GitHub is delayed".
+Nothing is lost: saves stay in the journal and every read sees them.
+
+1. `php artisan jotter:doctor` gives the reason. A rate limit clears by itself: Jotter
+   waits 60 s, then 300 s, then 900 s. Other errors back off up to 30 minutes, and the
+   tenant admins are notified after 24 hours.
+2. `php artisan vault:flush --store=<id> --now` retries at once, ignoring the backoff.
+3. If the token was revoked or the App uninstalled, the store is `failed` and the
+   workspace read-only. The customer reconnects (new token, or reinstall the App), then
+   runs "Test connection" in the Storage tab, which lifts the read-only state.
+4. If the branch moved under Jotter, the next flush pulls first and re-applies the
+   journal. When both sides changed the same note, the GitHub version keeps the
+   original name and Jotter's version becomes a `(conflito GitHub …)` copy.
+
+**External edits not showing up.** Check that `vault:pull` runs (the scheduler
+heartbeat). Check the webhook's "Recent deliveries" on GitHub: a `401` means the secret
+differs. `php artisan vault:pull --store=<id>` pulls at once.
+
+**Erasure.** See *Remove a tenant*. Backups leave workspaces on GitHub out unless you
+pass `jotter:backup --with-remote-vaults`.
 
 ## Health and diagnostics
 
