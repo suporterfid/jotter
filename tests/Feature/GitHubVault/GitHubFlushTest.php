@@ -87,6 +87,19 @@ class GitHubFlushTest extends TestCase
         $this->assertStringNotContainsString('@', $message);
     }
 
+    public function test_a_text_over_the_inline_limit_goes_as_a_blob(): void
+    {
+        $big = "# Big\n\n".str_repeat("linha de texto ção\n", 70000);
+        $this->assertGreaterThan(\App\Domain\Vault\Store\GitHub\GitHubGit::INLINE_MAX_BYTES, strlen($big));
+        $store = app(VaultStorage::class)->store($this->workspace);
+        $store->write('big.md', $big);
+        $store->write('small.md', "# Small\n");
+        app(GitHubFlusher::class)->flush($this->store);
+
+        $this->assertSame(1, $this->github->countRequests('POST', '/git/blobs'), 'Only the big text leaves the tree request.');
+        $this->assertSame($big, $this->github->files('acme/notes')['big.md']);
+    }
+
     public function test_binary_attachments_go_as_blobs_and_deletes_and_moves_reach_github(): void
     {
         $storage = app(VaultStorage::class);

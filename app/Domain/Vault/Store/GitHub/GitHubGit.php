@@ -11,9 +11,16 @@ final class GitHubGit
         return sha1('blob '.strlen($contents)."\0".$contents);
     }
 
-    /** True when $contents can travel inline as `content` in POST /git/trees (UTF-8 text). */
+    /**
+     * Largest text sent inline in POST /git/trees. GitHub documents no limit
+     * (spike V3); larger texts go through POST /git/blobs like binaries, which
+     * costs one more write but never hits an undocumented ceiling.
+     */
+    public const INLINE_MAX_BYTES = 1024 * 1024;
+
+    /** True when $contents can travel inline as `content` in POST /git/trees (UTF-8 text, ≤ 1 MiB). */
     public static function isInlineText(string $contents): bool
     {
-        return ! str_contains($contents, "\0") && mb_check_encoding($contents, 'UTF-8');
+        return strlen($contents) <= self::INLINE_MAX_BYTES && ! str_contains($contents, "\0") && mb_check_encoding($contents, 'UTF-8');
     }
 }
