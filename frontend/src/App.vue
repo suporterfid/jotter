@@ -93,7 +93,7 @@
       <TermsBanner :terms="currentUser?.terms" @accepted="handleTermsAccepted" />
       <TwoFactorBanner :status="currentUser?.two_factor" @open-profile="isProfileOpen = true" />
       <PlanBanner :plan="activeTenantPlan" :plan-limit="planLimitActive" />
-      <StorageBanner :storage="activeWorkspaceStorage" />
+      <StorageBanner :storage="activeWorkspaceStorage" :sync="activeWorkspaceSync" />
       <!-- Graph View Mode -->
       <GraphView
         v-if="isGraphViewActive"
@@ -453,6 +453,7 @@ const { t } = useI18n()
 const workspaces = ref<Workspace[]>([])
 const activeWorkspaceId = ref<number>(1)
 const activeWorkspaceStorage = computed(() => workspaces.value.find((ws) => ws.id === activeWorkspaceId.value)?.storage ?? null)
+const activeWorkspaceSync = computed(() => workspaces.value.find((ws) => ws.id === activeWorkspaceId.value)?.sync ?? null)
 const tenants = ref<Tenant[]>([])
 const activeTenantId = ref<number | null>(null)
 const activeTenantPlan = computed(() => tenants.value.find((tenant) => tenant.id === activeTenantId.value)?.plan ?? null)
@@ -574,7 +575,7 @@ function openNotificationPreferencesFromUrl(): void {
   const params = new URLSearchParams(window.location.search)
   if (params.get('notification-preferences') !== '1') return
   const unsubscribe = params.get('unsubscribe')
-  const validTypes: NotificationType[] = ['mention', 'note_commented', 'comment_reply', 'note_edited', 'note_moved', 'note_deleted']
+  const validTypes: NotificationType[] = ['mention', 'note_commented', 'comment_reply', 'note_edited', 'note_moved', 'note_deleted', 'vault_sync']
   notificationPreferencesUnsubscribeType.value = validTypes.includes(unsubscribe as NotificationType)
     ? unsubscribe as NotificationType
     : null
@@ -688,6 +689,7 @@ onMounted(async () => {
 
   await initWorkspace()
   openNotificationPreferencesFromUrl()
+  if (new URLSearchParams(window.location.search).get('storage') === 'github') isAdminPanelOpen.value = true
 })
 
 onBeforeUnmount(() => {

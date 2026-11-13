@@ -19,6 +19,8 @@ export default {
   storage: {
     nearlyFull: 'Este workspace usa {used} de {limit} ({percent}%). Apague notas ou anexos, ou peça mais espaço a um administrador.',
     full: 'Este workspace está cheio ({used} de {limit}). Novas notas e uploads ficam bloqueados até liberar espaço ou aumentar a cota.',
+    syncReadOnly: 'O acesso ao repositório do GitHub foi perdido: este workspace está só para leitura até um administrador reconectar o armazenamento.',
+    syncDelayed: 'O envio ao GitHub está atrasado ({count} alterações na fila). Tudo continua salvo no Jotter e vai ao repositório assim que o GitHub liberar.',
   },
   terms: {
     updated: 'Nossos textos mudaram. Leia os',
@@ -145,6 +147,7 @@ export default {
       note_edited: 'Edições de notas',
       note_moved: 'Movimentações de notas',
       note_deleted: 'Exclusões de notas',
+      vault_sync: 'Sincronização com o GitHub',
     },
   },
   theme: {
@@ -558,6 +561,20 @@ export default {
     rollbackConfirm: 'Voltar o workspace para onde estava antes desta mudança?',
     retainedUntil: 'Cópia anterior guardada até {date}',
     moveStatus: { copying: 'copiando', completed: 'concluída', failed: 'falhou', rolled_back: 'desfeita', finalized: 'concluída (cópia anterior removida)' },
+    github: {
+      accessWarning: 'Quem tem acesso ao repositório vê o workspace inteiro, inclusive pastas e notas que o Jotter restringe. Use um repositório privado, um por workspace, e dê acesso só a quem pode ver tudo.',
+      install: 'Conectar o GitHub (instalar o App)',
+      patMode: 'Token pessoal (self-hosted)',
+      installation: 'App instalado em {account}',
+      chooseRepository: 'Escolha o repositório',
+      public: 'público: não permitido',
+      controller: 'A organização é a controladora deste repositório (LGPD): decide quem o acessa e por quanto tempo o guarda.',
+      webhook: 'Webhook',
+      webhookApp: 'O App do Jotter já recebe os pushes deste repositório; não há nada a configurar.',
+      webhookPat: 'Para ver edições feitas fora do Jotter em segundos, crie no GitHub (Settings → Webhooks → Add webhook) um webhook com estes dados:',
+      webhookEvents: 'Content type: application/json · Evento: só push. Sem o webhook, as edições externas aparecem em até 5 minutos.',
+      close: 'Fechar',
+    },
   },
   adminPanel: {
     requestFailed: 'A solicitação falhou.',

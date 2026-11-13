@@ -23,11 +23,23 @@
           </span>
           <span>
             <button :disabled="loading" :data-testid="`vault-store-test-${store.id}`" @click="testStore(store)">{{ t('vaultStores.test') }}</button>
+            <button v-if="store.driver === 'github'" :disabled="loading" :data-testid="`vault-store-webhook-${store.id}`" @click="showWebhook(store)">{{ t('vaultStores.github.webhook') }}</button>
             <button class="warning-btn" :disabled="loading || store.workspaces > 0" @click="deleteStore(store)">{{ t('vaultStores.delete') }}</button>
           </span>
         </li>
         <li v-if="stores.length === 0" class="admin-note">{{ t('vaultStores.empty') }}</li>
       </ul>
+
+      <div v-if="webhook" class="admin-note github-webhook" data-testid="vault-store-webhook-info">
+        <template v-if="webhook.mode === 'app'">{{ t('vaultStores.github.webhookApp') }}</template>
+        <template v-else>
+          {{ t('vaultStores.github.webhookPat') }}
+          <br /><strong>URL:</strong> <code>{{ webhook.url }}</code>
+          <br /><strong>Secret:</strong> <code data-testid="vault-store-webhook-secret">{{ webhook.secret }}</code>
+          <br />{{ t('vaultStores.github.webhookEvents') }}
+        </template>
+        <button type="button" @click="webhook = null">{{ t('vaultStores.github.close') }}</button>
+      </div>
 
       <h4>{{ t('vaultStores.add') }}</h4>
       <form class="admin-form" data-testid="vault-store-form" @submit.prevent="createStore">
@@ -47,10 +59,32 @@
           <input v-model="form.credentials.secret_access_key" type="password" :placeholder="t('vaultStores.fields.secretKey')" autocomplete="new-password" required />
         </template>
         <template v-else-if="form.driver === 'github'">
-          <input v-model="form.settings.owner" :placeholder="t('vaultStores.fields.owner')" required />
-          <input v-model="form.settings.repo" :placeholder="t('vaultStores.fields.repo')" required />
+          <p class="admin-note vault-warning" data-testid="github-access-warning">{{ t('vaultStores.github.accessWarning') }}</p>
+          <button v-if="github?.app_configured" type="button" :disabled="loading" data-testid="github-install" @click="installApp">
+            {{ t('vaultStores.github.install') }}
+          </button>
+          <select v-model="form.settings.installation_id" data-testid="github-installation" @change="loadRepositories">
+            <option value="">{{ t('vaultStores.github.patMode') }}</option>
+            <option v-for="installation in github?.installations ?? []" :key="installation.installation_id" :value="String(installation.installation_id)">
+              {{ t('vaultStores.github.installation', { account: installation.account_login ?? installation.installation_id }) }}
+            </option>
+          </select>
+          <select v-if="form.settings.installation_id" v-model="pickedRepository" data-testid="github-repository" required @change="pickRepository">
+            <option value="" disabled>{{ t('vaultStores.github.chooseRepository') }}</option>
+            <option v-for="repository in repositories" :key="repository.full_name" :value="repository.full_name" :disabled="!repository.private">
+              {{ repository.full_name }}{{ repository.private ? '' : ` (${t('vaultStores.github.public')})` }}
+            </option>
+          </select>
+          <template v-else>
+            <input v-model="form.settings.owner" :placeholder="t('vaultStores.fields.owner')" required />
+            <input v-model="form.settings.repo" :placeholder="t('vaultStores.fields.repo')" required />
+          </template>
           <input v-model="form.settings.branch" placeholder="main" />
-          <input v-model="form.credentials.token" type="password" :placeholder="t('vaultStores.fields.token')" autocomplete="new-password" />
+          <input v-if="!form.settings.installation_id" v-model="form.credentials.token" type="password" :placeholder="t('vaultStores.fields.token')" autocomplete="new-password" required />
+          <label class="github-controller">
+            <input v-model="controllerConfirmed" type="checkbox" required data-testid="github-controller" />
+            {{ t('vaultStores.github.controller') }}
+          </label>
         </template>
         <button type="submit" :disabled="loading" data-testid="vault-store-submit">{{ t('vaultStores.save') }}</button>
       </form>
@@ -104,6 +138,27 @@ interface VaultStoreRow {
   workspaces: number
 }
 
+interface GitHubConfig {
+  app_configured: boolean
+  app_slug: string | null
+  webhook_url: string
+  installations: Array<{ installation_id: number; account_login: string | null }>
+}
+
+interface GitHubRepository {
+  owner: string
+  repo: string
+  full_name: string
+  private: boolean
+  default_branch: string
+}
+
+interface WebhookInfo {
+  mode: 'app' | 'pat'
+  url: string
+  secret: string | null
+}
+
 interface VaultMoveRow {
   id: number
   status: 'copying' | 'completed' | 'failed' | 'rolled_back' | 'finalized'
@@ -125,11 +180,25 @@ const moveTarget = ref('local')
 const error = ref('')
 const loading = ref(false)
 let poller: ReturnType<typeof setInterval> | null = null
+// GitHub (#439): App installs of this tenant, the chosen installation's repositories, the PAT webhook.
+const github = ref<GitHubConfig | null>(null)
+const repositories = ref<GitHubRepository[]>([])
+const pickedRepository = ref('')
+const controllerConfirmed = ref(false)
+const webhook = ref<WebhookInfo | null>(null)
+// Back from GitHub's install screen: /?storage=github&tenant=…&installation=…
+const returning = new URLSearchParams(window.location.search)
+if (returning.get('storage') === 'github') {
+  const returnedTenant = Number(returning.get('tenant'))
+  if (returnedTenant) tenantId.value = returnedTenant
+  window.history.replaceState(null, '', window.location.pathname)
+}
+const returnedInstallation = returning.get('storage') === 'github' ? (returning.get('installation') ?? '') : ''
 
 const emptyForm = () => ({
   name: '',
   driver: props.drivers.find((driver) => driver !== 'local') ?? 'local',
-  settings: {} as Record<string, string>,
+  settings: { installation_id: '' } as Record<string, string>,
   credentials: {} as Record<string, string>,
 })
 const form = ref(emptyForm())
@@ -159,6 +228,67 @@ async function refresh() {
   } catch (e: unknown) {
     error.value = message(e, t('adminPanel.requestFailed'))
   }
+  await fetchGitHub()
+}
+
+async function fetchGitHub() {
+  if (!tenantId.value || !props.drivers.includes('github')) return
+  try {
+    const response = await api.get<{ data: GitHubConfig }>(`/admin/tenants/${tenantId.value}/github`)
+    github.value = response.data.data
+    if (returnedInstallation && github.value.installations.some((i) => String(i.installation_id) === returnedInstallation) && !form.value.settings.installation_id) {
+      form.value.driver = 'github'
+      form.value.settings.installation_id = returnedInstallation
+      await loadRepositories()
+    }
+  } catch {
+    github.value = null
+  }
+}
+
+async function installApp() {
+  if (!tenantId.value) return
+  loading.value = true
+  error.value = ''
+  try {
+    const response = await api.post<{ data: { url: string } }>(`/admin/tenants/${tenantId.value}/github/install`)
+    window.location.href = response.data.data.url
+  } catch (e: unknown) {
+    error.value = message(e, t('adminPanel.requestFailed'))
+    loading.value = false
+  }
+}
+
+async function loadRepositories() {
+  repositories.value = []
+  pickedRepository.value = ''
+  const installation = form.value.settings.installation_id
+  if (!tenantId.value || !installation) return
+  try {
+    const response = await api.get<{ data: { repositories: GitHubRepository[] } }>(`/admin/tenants/${tenantId.value}/github/installations/${installation}/repositories`)
+    repositories.value = response.data.data.repositories
+  } catch (e: unknown) {
+    error.value = message(e, t('adminPanel.requestFailed'))
+  }
+}
+
+function pickRepository() {
+  const repository = repositories.value.find((r) => r.full_name === pickedRepository.value)
+  if (!repository) return
+  form.value.settings.owner = repository.owner
+  form.value.settings.repo = repository.repo
+  form.value.settings.branch = repository.default_branch
+  if (!form.value.name) form.value.name = repository.full_name
+}
+
+async function showWebhook(store: VaultStoreRow) {
+  error.value = ''
+  try {
+    const response = await api.get<{ data: WebhookInfo }>(`/admin/vault-stores/${store.id}/github/webhook`)
+    webhook.value = response.data.data
+  } catch (e: unknown) {
+    error.value = message(e, t('adminPanel.requestFailed'))
+  }
 }
 
 async function createStore() {
@@ -167,13 +297,23 @@ async function createStore() {
   error.value = ''
   try {
     const credentials = Object.fromEntries(Object.entries(form.value.credentials).filter(([, value]) => value))
-    await api.post(`/admin/tenants/${tenantId.value}/vault-stores`, {
+    const settings: Record<string, string | boolean> = Object.fromEntries(Object.entries(form.value.settings).filter(([, value]) => value))
+    if (form.value.driver === 'github') settings.controller_confirmed = controllerConfirmed.value
+    const response = await api.post<{ data?: { id: number } }>(`/admin/tenants/${tenantId.value}/vault-stores`, {
       name: form.value.name,
       driver: form.value.driver,
-      settings: Object.fromEntries(Object.entries(form.value.settings).filter(([, value]) => value)),
+      settings,
       ...(Object.keys(credentials).length ? { credentials } : {}),
     })
+    // A PAT store needs its repository webhook: show the URL and secret right away.
+    const created = response.data?.data
+    if (form.value.driver === 'github' && !form.value.settings.installation_id && created?.id) {
+      await showWebhook({ id: created.id } as VaultStoreRow)
+    }
     form.value = emptyForm()
+    controllerConfirmed.value = false
+    repositories.value = []
+    pickedRepository.value = ''
     await refresh()
   } catch (e: unknown) {
     error.value = message(e, t('adminPanel.requestFailed'))
@@ -280,6 +420,14 @@ onBeforeUnmount(() => {
 <style scoped>
 .vault-warning {
   color: var(--color-warning-fg);
+}
+.github-controller {
+  display: flex;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+.github-webhook code {
+  word-break: break-all;
 }
 progress {
   width: 8rem;

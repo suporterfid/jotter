@@ -14,6 +14,14 @@ export interface Workspace {
   name: string
   /** Storage quota status (#390); absent on older servers. */
   storage?: WorkspaceStorage
+  /** Remote vault sync badge (#441); null for the local folder, absent on older servers. */
+  sync?: WorkspaceSync | null
+}
+
+export interface WorkspaceSync {
+  driver: string
+  state: 'synced' | 'pending' | 'delayed' | 'read_only'
+  pending: number
 }
 
 export type PlanStatus = 'self_hosted' | 'trial' | 'active' | 'past_due' | 'read_only'
@@ -309,7 +317,7 @@ export interface LinkReport {
   orphans: OrphanNote[]
 }
 
-export type NotificationType = 'mention' | 'note_commented' | 'comment_reply' | 'note_edited' | 'note_moved' | 'note_deleted'
+export type NotificationType = 'mention' | 'note_commented' | 'comment_reply' | 'note_edited' | 'note_moved' | 'note_deleted' | 'vault_sync'
 export type NotificationEmailMode = 'immediate' | 'digest' | 'off'
 
 export interface NotificationPreference {

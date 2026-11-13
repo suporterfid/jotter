@@ -19,6 +19,8 @@ export default {
   storage: {
     nearlyFull: 'This workspace uses {used} of {limit} ({percent}%). Delete notes or attachments, or ask an administrator for more space.',
     full: 'This workspace is full ({used} of {limit}). New notes and uploads are refused until space is freed or the quota is raised.',
+    syncReadOnly: 'Access to the GitHub repository was lost: this workspace is read-only until an administrator reconnects its storage.',
+    syncDelayed: 'Sending to GitHub is delayed ({count} changes queued). Everything is saved in Jotter and reaches the repository as soon as GitHub allows.',
   },
   terms: {
     updated: 'Our texts changed. Please review the',
@@ -145,6 +147,7 @@ export default {
       note_edited: 'Note edits',
       note_moved: 'Note moves',
       note_deleted: 'Note deletions',
+      vault_sync: 'GitHub sync',
     },
   },
   theme: {
@@ -558,6 +561,20 @@ export default {
     rollbackConfirm: 'Put the workspace back where it was before this move?',
     retainedUntil: 'Previous copy kept until {date}',
     moveStatus: { copying: 'copying', completed: 'done', failed: 'failed', rolled_back: 'undone', finalized: 'done (previous copy removed)' },
+    github: {
+      accessWarning: 'Anyone with access to the repository sees the whole workspace, including folders and notes Jotter restricts. Use a private repository, one per workspace, and give access only to people who may see everything.',
+      install: 'Connect GitHub (install the App)',
+      patMode: 'Personal token (self-hosted)',
+      installation: 'App installed on {account}',
+      chooseRepository: 'Choose the repository',
+      public: 'public: not allowed',
+      controller: 'The organization is the controller of this repository (LGPD): it decides who accesses it and how long it is kept.',
+      webhook: 'Webhook',
+      webhookApp: 'The Jotter App already receives the pushes of this repository; nothing to set up.',
+      webhookPat: 'To see edits made outside Jotter within seconds, create a webhook on GitHub (Settings → Webhooks → Add webhook) with:',
+      webhookEvents: 'Content type: application/json · Event: push only. Without the webhook, outside edits show up within 5 minutes.',
+      close: 'Close',
+    },
   },
   adminPanel: {
     requestFailed: 'Request failed.',

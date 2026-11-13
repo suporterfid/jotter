@@ -29,4 +29,14 @@ describe('StorageBanner (#390 workspace quota)', () => {
     expect(formatBytes(1536, 'en')).toBe('1.5 KB')
     expect(formatBytes(1024 * MB, 'en')).toBe('1.0 GB')
   })
+
+  it('shows the GitHub sync state only when it needs attention (#441)', () => {
+    const banner = (state: 'synced' | 'pending' | 'delayed' | 'read_only') =>
+      mount(StorageBanner, { props: { storage: null, sync: { driver: 'github', state, pending: 4 } } })
+    expect(banner('synced').find('[data-testid="storage-banner"]').exists()).toBe(false)
+    expect(banner('pending').find('[data-testid="storage-banner"]').exists()).toBe(false)
+    expect(banner('delayed').text()).toContain('4 changes queued')
+    expect(banner('read_only').text()).toContain('read-only')
+    expect(banner('read_only').find('[data-testid="storage-banner"]').classes()).toContain('storage-banner--full')
+  })
 })
