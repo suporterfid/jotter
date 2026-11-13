@@ -19,7 +19,7 @@ As of 2026-08-20, every previously-tracked Milestone and Confluence-parity issue
 
 All roadmap/spec decisions are resolved — see `docs/decisions.md`. New decision work must add a dated decision record before implementation is planned.
 
-- **Per-tenant vault channels (proposed 2026-11-13).** Optional external mirrors/backup destinations per tenant (S3-compatible: R2, B2, S3, GCS, Magalu; GitHub App; WebDAV/SFTP). Research, costs and a phased plan: `docs/20261113-jotter-tenant-vault-channels-research.md`. Needs a dated entry in `docs/decisions.md` confirming that channels are replicas and local disk stays the source of truth (spec §1) before any code; attachment offload and two-way Git sync each need their own decision.
+- **Pluggable per-workspace vault stores (proposed 2026-11-13).** A tenant can move a workspace's vault from the local folder (default, unchanged) to a private GitHub repository (one repo per workspace; write-behind journal because of GitHub's 500 writes/hour limit) or to an S3-compatible bucket (AWS S3, R2, MinIO, GCS). Plan, decisions D1–D10 and the PR sequence A–H: `docs/20261113-jotter-pluggable-vault-stores-plan.md`; provider costs: `docs/20261113-jotter-tenant-vault-channels-research.md`. PR A must record a dated `docs/decisions.md` entry amending spec §1/§2 ("on disk" → local folder, S3-compatible bucket or Git repository, same portable Markdown layout) before any code.
 
 ## Current implementation queue
 

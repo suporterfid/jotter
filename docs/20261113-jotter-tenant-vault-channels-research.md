@@ -2,6 +2,7 @@
 
 - **Data:** 2026-11-13
 - **Status:** Pesquisa / proposta. **Não é decisão.** Antes de qualquer código, um registro datado em `docs/decisions.md` precisa aceitar (ou recusar) a arquitetura da §3 — regra de `BACKLOG.md` → *Needs a decision*.
+- **Atualização (mesmo dia):** o dono do produto decidiu oferecer GitHub/S3 como vault **primário** por workspace. A recomendação "só réplicas" das §1, §3 e §7 foi substituída por `docs/20261113-jotter-pluggable-vault-stores-plan.md`. Custos, provedores e segurança daqui continuam valendo.
 - **Pergunta:** quais canais/integrações opcionais o Jotter pode oferecer como "vault de arquivos", configuráveis por tenant (ex.: GitHub, S3, Cloudflare, GCP)? Quanto custam?
 
 ---
