@@ -2,6 +2,7 @@
 
 - **Data:** 2026-11-13
 - **Status:** Plano proposto. Detalha o driver GitHub do plano geral. Nenhum código antes da Fase 0 (regra de `BACKLOG.md`).
+- **Decisões do dono do produto (2026-11-13):** o **GitHub sai antes do S3**, e na primeira versão **mudanças feitas fora do Jotter aparecem em segundos** (webhook). Ver §9; as duas entram no registro da PR A como G4 e G5.
 - **Pedido:** uma organização (tenant) pode mover o **vault padrão** dela da pasta local, lida e escrita pelo PHP, para um **repositório privado no GitHub**. O vault padrão é o workspace que `TenantProvisioner` cria junto com o tenant.
 - **Base (Fase 0):** a PR #426 (`docs/20261113-jotter-pluggable-vault-stores-plan.md`, decisões D1–D10, PRs A–H). Este documento **não reabre** nenhuma dessas decisões. Ele detalha as PRs **F** e **G** daquele plano: o que cada fase entrega, como testar e o que ainda precisa ser confirmado. Onde este plano propõe algo novo, a proposta está marcada como **G1, G2…** e entra no registro de decisão da PR A.
 - **Custos e provedores:** `docs/20261113-jotter-tenant-vault-channels-research.md`.
@@ -13,8 +14,9 @@
 1. **Um repositório por workspace** (D1). O vault padrão da org vira **um** repositório privado. Um repositório compartilhado por várias orgs fica descartado: o GitHub dá acesso ao repositório inteiro, então seria vazamento entre clientes.
 2. **GitHub App** no modo hospedado, **fine-grained PAT** como alternativa no self-hosted (D7). O token do App dura 1 hora, vale só para os repositórios que a org escolheu e precisa só de `Contents: read/write`.
 3. **Salvar continua instantâneo.** A edição vai para um *journal* no MySQL e sobe para o GitHub em **commits em lote** a cada 1–5 min (D3). O motivo é o limite do GitHub: **80 escritas/min e 500/h**.
-4. **Nada se perde em conflito** (D8). Se alguém editou o mesmo arquivo fora do Jotter, as duas versões ficam visíveis: a do Jotter no caminho original, a do GitHub numa cópia de conflito.
-5. **Custo no GitHub: zero.** Repositório privado, GitHub App e API são grátis, inclusive no plano Free. O custo real é **desenvolvimento: ≈ 13–19 dias** depois dos pré-requisitos da PR #426 (§7).
+4. **Mudanças feitas fora do Jotter aparecem em segundos.** Um webhook `push` do GitHub dispara o pull na hora; o cron fica só como rede de segurança (§5.5).
+5. **Nada se perde em conflito** (D8). Se alguém editou o mesmo arquivo fora do Jotter, as duas versões ficam visíveis: a do Jotter no caminho original, a do GitHub numa cópia de conflito.
+6. **Custo no GitHub: zero.** Repositório privado, GitHub App e API são grátis, inclusive no plano Free. O custo real é **desenvolvimento: ≈ 13–19 dias** depois dos pré-requisitos da PR #426 (§7). O GitHub é o primeiro driver remoto; o S3 (PR D) vem depois.
 
 ---
 
@@ -32,7 +34,7 @@
 | D9 | Durante a mudança, workspace só-leitura (HTTP 423). Origem guardada 7 dias para rollback. |
 | D10 | `JOTTER_VAULT_DRIVERS=local` é o padrão. Sem configuração, nada muda. |
 
-E as PRs de base: **A** (decisão), **B** (`VaultStore` + `LocalVaultStore`), **C** (`vault_stores`, credenciais, SSRF, doctor), **E** (motor `vault:move`). A **D** (driver S3) não é pré-requisito do GitHub (ver §7, pergunta P1).
+E as PRs de base: **A** (decisão), **B** (`VaultStore` + `LocalVaultStore`), **C** (`vault_stores`, credenciais, SSRF, doctor), **E** (motor `vault:move`). A **D** (driver S3) não é pré-requisito do GitHub e, por decisão G4, passa a vir **depois** do GitHub. Isso altera a ordem da §7 da #426, onde o MVP era o S3.
 
 ---
 
@@ -62,10 +64,10 @@ E as PRs de base: **A** (decisão), **B** (`VaultStore` + `LocalVaultStore`), **
 
 ### 4.2 GitHub App — fluxo de instalação (hospedado)
 
-1. O **operador** registra um App uma vez (ex.: `cadernia-vault`). Configuração no `.env`:
+1. O **operador** registra um App uma vez (ex.: `cadernia-vault`), com o webhook do App apontando para `https://<instância>/webhooks/github` e inscrito no evento `push`. Como o webhook é do App, ele vale para todas as instalações: a org não configura nada no repositório. Configuração no `.env`:
    - `JOTTER_GITHUB_APP_ID`, `JOTTER_GITHUB_APP_SLUG`;
    - `JOTTER_GITHUB_APP_PRIVATE_KEY_PATH` (fora de `public/`, nunca no zip de release);
-   - `JOTTER_GITHUB_WEBHOOK_SECRET` (opcional, Fase 7).
+   - `JOTTER_GITHUB_WEBHOOK_SECRET` (obrigatório no modo hospedado, Fase 4).
 2. No admin do tenant, **Armazenamento → Conectar GitHub** redireciona para `https://github.com/apps/<slug>/installations/new?state=<nonce>`.
 3. O cliente escolhe **"Only select repositories"** e marca o repositório vazio. O GitHub volta para o *Setup URL* com `installation_id` e `state`.
 4. O Jotter confere o `state` (nonce de uso único, ligado ao tenant e ao admin), lista os repositórios da instalação e o admin escolhe o repositório e o branch.
@@ -81,6 +83,7 @@ E as PRs de base: **A** (decisão), **B** (`VaultStore` + `LocalVaultStore`), **
 - O admin cola o token; ele vai cifrado para `vault_stores.credentials` e nunca volta pela API.
 - O doctor avisa **14 dias antes** da expiração (`github-authentication-token-expiration` no header da resposta) e o workspace vira `degraded` se o token expirar.
 - A tela explica que o token conta na cota pessoal de quem o criou.
+- **Webhook no modo PAT:** o PAT não recebe webhook do App. A tela mostra a URL e o segredo gerado para o admin criar um webhook `push` no próprio repositório (exige permissão de admin no repositório). Sem isso, o workspace funciona só com polling e a tela avisa que mudanças externas levam até 5 min.
 
 ### 4.4 Identidade dos commits (G2)
 
@@ -103,9 +106,10 @@ E as PRs de base: **A** (decisão), **B** (`VaultStore` + `LocalVaultStore`), **
 | `vault_sync_cursors` | MySQL | `remote_head`, `etag_of_ref`, `last_pull_at`, `last_flush_at` |
 | `github_write_budget` | MySQL | Token bucket por ator (instalação ou PAT) |
 | `vault:flush` | cron, todo minuto, `withoutOverlapping` | Envia o journal |
-| `vault:pull` | cron, a cada 5 min | Traz mudanças externas |
+| `POST /webhooks/github` | rota pública, sem sessão | Recebe `push`, `installation`, `installation_repositories`; dispara o pull na hora (§5.5) |
+| `vault:pull` | cron, a cada 5 min | Rede de segurança: pega o que o webhook perdeu |
 
-Tudo roda por `schedule:run`, como `pdf:process-exports` e `semantic:index` hoje. Sem daemon, sem `git` CLI.
+Tudo roda por `schedule:run` (como `pdf:process-exports` e `semantic:index` hoje) ou no fim de uma requisição HTTP. Sem daemon, sem `git` CLI.
 
 ### 5.2 Gravar (caminho síncrono)
 
@@ -152,7 +156,22 @@ O hash que MCP (`expected_sha256`) e WebDAV (ETag) usam continua sendo o **SHA-2
 3. Para cada arquivo alterado: baixa o blob, aplica as regras de §5.6, reprojeta e grava revisão com ator `github:<login>` (ou `github` quando o autor não é um usuário GitHub conhecido).
 4. Atualiza `remote_head` e o ETag.
 
-O webhook `push` (Fase 7) só antecipa este pull. Sem webhook, o atraso máximo é o intervalo do cron.
+#### Webhook: mudanças externas em segundos (G5)
+
+Requisito do dono do produto: na primeira versão, um push feito fora do Jotter aparece em **segundos**. Sem daemon e sem fila permanente, o caminho é:
+
+1. O GitHub chama `POST /webhooks/github`.
+2. O Jotter confere a assinatura `X-Hub-Signature-256` (HMAC-SHA256 com `JOTTER_GITHUB_WEBHOOK_SECRET`, comparação em tempo constante) e ignora `X-GitHub-Delivery` já visto (tabela pequena, 24 h).
+3. Acha o store pelo `installation.id` + repositório + branch do `ref`. Push em outro branch é ignorado.
+4. Responde **202** na hora (o GitHub espera no máximo 10 s).
+5. **Depois da resposta** (`afterResponse()` do Laravel, que no PHP-FPM usa `fastcgi_finish_request`), roda o pull daquele workspace com teto de tempo (20 s) e de arquivos (200). O payload do `push` já lista os arquivos `added/modified/removed` de cada commit (até 20 commits), então dá para pular o `compare` no caso comum.
+6. Se o pull não terminou (teto, erro ou servidor sem FPM), o workspace fica marcado `pull_pending` e o próximo `vault:pull` do cron, **todo minuto só para quem está marcado**, termina o serviço.
+
+- **Rajadas:** um lock por workspace; se chega outro push durante o pull, marca `pull_pending` e roda de novo uma vez no fim.
+- **Meta:** mudança externa visível no Jotter em **≤ 10 s** (p95) com webhook; **≤ 5 min** se o webhook falhar.
+- **Eventos `installation` e `installation_repositories`:** App desinstalado ou repositório removido da instalação → store `failed` na hora, sem esperar o pull.
+- **Self-hosted sem URL pública** (instância numa rede interna): o GitHub não alcança o Jotter. Funciona só com polling; o doctor e a tela de conexão avisam.
+- **Segurança:** a rota não usa sessão nem CSRF; rejeita corpo acima de 1 MB; nunca confia no conteúdo do payload para gravar arquivos. O payload só diz **quais** caminhos olhar; o conteúdo sempre vem da API, com o token do Jotter.
 
 ### 5.6 Conflitos e casos de borda
 
@@ -224,7 +243,7 @@ Cada fase é uma PR, mesclada com `jt ci` verde antes da próxima (AGENTS.md). A
 
 ### Fase 0 — Plano e decisão *(PR #426 + PR A)*
 
-- **Entrega:** PR #426 mesclada; PR A grava em `docs/decisions.md` o registro datado que altera o spec §1/§2 e aceita D1–D10, mais as propostas deste documento (G1 manifest flow, G2 identidade dos commits, G3 divisão de F/G em fases).
+- **Entrega:** PR #426 mesclada; PR A grava em `docs/decisions.md` o registro datado que altera o spec §1/§2 e aceita D1–D10, mais G1–G5 deste documento (G1 manifest flow, G2 identidade dos commits, G3 divisão de F/G em fases, G4 GitHub antes do S3, G5 webhook na v1).
 - **Aceite:** registro mesclado. Nenhum código.
 
 ### Fase 1 — Base comum *(PRs B, C, E da #426)*
@@ -234,7 +253,7 @@ Cada fase é uma PR, mesclada com `jt ci` verde antes da próxima (AGENTS.md). A
 
 ### Fase 2 — Spike de validação *(pode correr em paralelo com a Fase 1)* — 0,5–1 dia
 
-- **Entrega:** script descartável contra um repositório de teste, e uma nota em `docs/` com os números medidos para V1–V5 (§8).
+- **Entrega:** script descartável contra um repositório de teste, e uma nota em `docs/` com os números medidos para V1–V6 (§8).
 - **Aceite:** cada item de §8 respondido com evidência (headers, códigos de resposta). Se V1 mostrar que a cota é por App, revisar §5.7 antes da Fase 5.
 
 ### Fase 3 — Conexão e autenticação *(PR F1)* — 2–3 dias
@@ -248,11 +267,14 @@ Cada fase é uma PR, mesclada com `jt ci` verde antes da próxima (AGENTS.md). A
 - **Testes:** `Http::fake` para o GitHub; JWT conferido contra uma chave de teste gerada no próprio teste (nada de chave no repositório).
 - **Aceite:** um admin conecta um repositório e vê "conexão ok"; sem `github` em `JOTTER_VAULT_DRIVERS` a tela nem aparece.
 
-### Fase 4 — Driver de leitura *(PR F2)* — 2–3 dias
+### Fase 4 — Driver de leitura e webhook *(PR F2)* — 3–4 dias
 
-- **Entrega:** `GitHubVaultStore::read/readStream/stat/list`, `vault_blob_cache`, reindex por árvore recursiva, `vault:pull` só com o caminho "só o GitHub mudou".
+- **Entrega:**
+  - `GitHubVaultStore::read/readStream/stat/list`, `vault_blob_cache`, reindex por árvore recursiva;
+  - `vault:pull` com o caminho "só o GitHub mudou";
+  - **webhook** `POST /webhooks/github` (§5.5): assinatura, deduplicação, pull depois da resposta, `pull_pending`, eventos `installation*`.
 - **Testes:** um **GitHub falso em memória** (refs, árvores, blobs, commits, compare, ETag, 422) usado por toda a suíte; `VaultStoreContractTest` da PR B rodando no driver.
-- **Aceite:** um repositório com notas existentes aparece no Jotter, buscável, com backlinks iguais aos da pasta local.
+- **Aceite:** um repositório com notas existentes aparece no Jotter, buscável, com backlinks iguais aos da pasta local; um push feito fora aparece em **≤ 10 s** com webhook e em ≤ 5 min sem ele; assinatura inválida responde 401 e não dispara nada.
 
 ### Fase 5 — Escrita em lote *(PR G1)* — 3–4 dias
 
@@ -264,18 +286,21 @@ Cada fase é uma PR, mesclada com `jt ci` verde antes da próxima (AGENTS.md). A
 - **Entrega:** todas as linhas de §5.6, cópias de conflito (D8), notificação via `NoteNotificationService`, revisão com ator `github:<login>`, detecção de *force-push*.
 - **Aceite:** um teste por linha de §5.6; edição simultânea nunca perde conteúdo.
 
-### Fase 7 — Mudança de armazenamento e webhook *(PR G3)* — 2–3 dias
+### Fase 7 — Mudança de armazenamento *(PR G3)* — 1,5–2 dias
 
 - **Entrega:**
-  - `vault:move` local → GitHub e GitHub → local, ~100 arquivos por commit, verificação pelo SHA de blob calculado localmente, rollback;
-  - endpoint opcional `POST /webhooks/github` (assinatura `X-Hub-Signature-256`, eventos `push`, `installation`, `installation_repositories`), que só agenda um `vault:pull` ou marca o store como `failed`.
-- **Aceite:** o vault padrão de uma org vai para o GitHub e volta sem perder arquivo (SHA conferido); sem webhook tudo funciona, só com até 5 min de atraso.
+  - `vault:move` local → GitHub e GitHub → local, ~100 arquivos por commit, verificação pelo SHA de blob calculado localmente, rollback.
+- **Aceite:** o vault padrão de uma org vai para o GitHub e volta sem perder arquivo (SHA conferido).
 
 ### Fase 8 — Lançamento *(PR H, parte GitHub)* — 1–2 dias
 
 - **Entrega:** guia "Conectar o GitHub" (com o aviso de que quem acessa o repositório vê o workspace inteiro), `deployment.md` (registro do App, manifest flow), `hosted-operations.md` (cota, doctor), rascunho da política de privacidade (histórico Git), CHANGELOG, `STATUS.md` e `BACKLOG.md`.
 - **Lançamento gradual:** liberar por tenant (beta) antes de ligar para todos.
-- **Aceite:** critérios do plano geral §8 que tocam o GitHub, conferidos num repositório real.
+- **Aceite:** critérios do plano geral §8 que tocam o GitHub, conferidos num repositório real, com uma mudança: "um push feito fora aparece no Jotter em ≤ 5 min" passa a ser **≤ 10 s com webhook** (G5).
+
+### Depois do GitHub — driver S3 *(PR D da #426)*
+
+Pela decisão G4, a PR D (S3 + MinIO no CI) vem depois da Fase 8, reaproveitando a base da Fase 1 e o motor de mudança já validado com o GitHub.
 
 ---
 
@@ -284,22 +309,26 @@ Cada fase é uma PR, mesclada com `jt ci` verde antes da próxima (AGENTS.md). A
 | # | Pergunta | Por que importa |
 |---|---|---|
 | V1 | O limite de 80/min e 500/h de escrita vale **por instalação** ou **por App** inteiro? | No hospedado, um App atende todas as orgs. Se for por App, 200 tenants dividem 500 escritas/h e o intervalo do flush precisa crescer ou o operador precisa de mais de um App. |
-| V2 | `GET /git/ref` com `If-None-Match` devolve `304` sem gastar a cota primária com token de instalação? | Base do pull a cada 5 min sem custo. |
+| V2 | `GET /git/ref` com `If-None-Match` devolve `304` sem gastar a cota primária com token de instalação? | Base do polling de segurança sem custo. |
+| V6 | Latência real de entrega do webhook `push` e comportamento de `afterResponse()` no PHP-FPM da hospedagem compartilhada alvo | Base da meta de ≤ 10 s (G5). |
 | V3 | Tamanho máximo de `content` inline em `POST /git/trees` | Define quando um texto grande vira `POST /git/blobs` à parte. |
 | V4 | Comportamento do compare com mais de 300 arquivos e com histórico reescrito | Define quando cair para a árvore recursiva. |
 | V5 | Restrição do token de instalação a um repositório com `repositories=[repo]` funciona com a instalação "selected repositories" | Mínimo privilégio por workspace. |
 
-## 9. Perguntas para o dono do produto
+## 9. Decisões do dono do produto (2026-11-13)
 
-- **P1 — GitHub antes do S3?** O plano geral entrega o S3 primeiro (MVP após A–E). Se o GitHub for a prioridade, dá para pular a PR D e começar as Fases 3–8 logo depois de B, C e E. Isso economiza ≈ 3–4 dias até o GitHub, mas o motor `vault:move` passa a ser validado primeiro com o driver mais difícil.
-- **P2 — Webhook na v1?** Sem ele, mudanças feitas fora aparecem em até 5 min. Com ele, em segundos, mas o operador precisa de URL pública e segredo.
+- **G4 — GitHub antes do S3.** A sequência passa a ser A → B → C → E → Fases 2–8 (GitHub) → D (S3). O GitHub chega ≈ 3–4 dias mais cedo. Custo: o motor `vault:move` é validado primeiro com o driver mais difícil, por isso a Fase 7 tem testes de recuperação próprios.
+- **G5 — Mudanças externas em segundos na v1.** O webhook `push` entra na Fase 4 e é obrigatório no modo hospedado (§5.5). O polling a cada 5 min fica como rede de segurança e como único caminho para instâncias sem URL pública.
+
+As duas entram no registro datado da PR A, junto com G1–G3.
 
 ## 10. Riscos
 
 1. **Cota do GitHub por App (V1).** Mitigação: medir na Fase 2; orçamento adaptativo; opção de vários Apps por operador.
 2. **Divergência entre journal e GitHub após falha.** Mitigação: `commit_sha` gravado antes do `PATCH`, testes de recuperação na Fase 5, reconcile completo no `vault:reindex`.
 3. **Histórico do Git guarda dado apagado.** Mitigação: a org confirma ser controladora ao conectar; mínimo de dado pessoal nos commits (G2); política de privacidade.
-4. **Tamanho do repositório.** Mitigação: limite de 10 MB por anexo, aviso aos 800 MB, LFS como evolução com decisão própria.
+4. **Webhook perdido ou atrasado** (GitHub fora, servidor sem FPM, firewall). Mitigação: polling de segurança, `pull_pending` processado todo minuto, doctor mostra a idade da última entrega.
+5. **Tamanho do repositório.** Mitigação: limite de 10 MB por anexo, aviso aos 800 MB, LFS como evolução com decisão própria.
 
 ## Fontes
 
