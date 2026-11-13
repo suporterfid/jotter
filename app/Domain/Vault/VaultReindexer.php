@@ -34,21 +34,29 @@ final class VaultReindexer
         $upserted = 0;
         $batch = [];
 
-        foreach ($this->iterateMarkdownFiles($store, $batchSize) as $relative) {
-            $batch[] = $relative;
+        // S3 (#446): an object whose listed ETag equals the note's remote_version is
+        // unchanged since Jotter last read or wrote it, so it is not downloaded again.
+        $byVersion = $store->driver() === Store\VaultStoreDrivers::S3;
+
+        $listed = [];
+        foreach ($this->iterateMarkdownFiles($store, $batchSize) as $relative => $version) {
+            $batch[$relative] = $version;
             $scanned++;
+            if ($byVersion) {
+                $listed[(string) $relative] = true;
+            }
 
             if (count($batch) >= $batchSize) {
-                $upserted += $this->projectBatch($workspace, $store, $batch, $actorId);
+                $upserted += $this->projectBatch($workspace, $store, $batch, $actorId, $byVersion);
                 $batch = [];
             }
         }
 
         if ($batch !== []) {
-            $upserted += $this->projectBatch($workspace, $store, $batch, $actorId);
+            $upserted += $this->projectBatch($workspace, $store, $batch, $actorId, $byVersion);
         }
 
-        $removed = $this->removeMissingNotes($workspace, $store, $batchSize);
+        $removed = $this->removeMissingNotes($workspace, $store, $batchSize, $byVersion ? $listed : null);
         $this->wikilinks->resolveWorkspaceLinks($workspace);
 
         return [
@@ -59,7 +67,7 @@ final class VaultReindexer
     }
 
     /**
-     * @return \Generator<int, string>
+     * @return \Generator<string, ?string> path => listed version
      */
     private function iterateMarkdownFiles(VaultStore $store, int $pageSize): \Generator
     {
@@ -85,7 +93,7 @@ final class VaultReindexer
                     continue;
                 }
 
-                yield $relative;
+                yield $relative => $entry->version;
             }
 
             $cursor = $page->nextCursor;
@@ -93,13 +101,22 @@ final class VaultReindexer
     }
 
     /**
-     * @param  list<string>  $batch
+     * @param  array<string, ?string>  $batch  path => listed version
      */
-    private function projectBatch(Workspace $workspace, VaultStore $store, array $batch, ?string $actorId): int
+    private function projectBatch(Workspace $workspace, VaultStore $store, array $batch, ?string $actorId, bool $byVersion = false): int
     {
         $count = 0;
+        $known = $byVersion
+            ? Note::query()->where('workspace_id', $workspace->id)->whereIn('path', array_map('strval', array_keys($batch)))
+                ->whereNotNull('remote_version')->pluck('remote_version', 'path')->all()
+            : [];
 
-        foreach ($batch as $relative) {
+        foreach ($batch as $relative => $version) {
+            $relative = (string) $relative;
+            if ($byVersion && $version !== null && ($known[$relative] ?? null) === $version) {
+                continue;
+            }
+
             try {
                 $relative = $this->paths->normalize($workspace, $relative);
                 $raw = $store->read($relative);
@@ -110,23 +127,35 @@ final class VaultReindexer
             $document = MarkdownDocument::parse($raw, $this->fallbackTitle($relative));
             $note = $this->projector->project($workspace, $relative, $document);
             $this->revisions->recordRevision($note, $raw, $actorId);
+            if ($byVersion && $version !== null) {
+                Note::query()->whereKey($note->id)->toBase()->update(['remote_version' => $version]);
+            }
             $count++;
         }
 
         return $count;
     }
 
-    private function removeMissingNotes(Workspace $workspace, VaultStore $store, int $batchSize): int
+    /**
+     * @param  array<string, true>|null  $listed  paths the listing returned (S3: no HEAD for those)
+     */
+    private function removeMissingNotes(Workspace $workspace, VaultStore $store, int $batchSize, ?array $listed = null): int
     {
         $removed = 0;
 
         Note::query()
             ->where('workspace_id', $workspace->id)
             ->orderBy('id')
-            ->chunkById($batchSize, function ($notes) use ($store, &$removed): void {
+            ->chunkById($batchSize, function ($notes) use ($store, $listed, &$removed): void {
                 foreach ($notes as $note) {
+                    if ($listed !== null && isset($listed[(string) $note->path])) {
+                        continue;
+                    }
                     try {
                         $exists = $store->exists((string) $note->path);
+                    } catch (Store\StoreUnavailable $unavailable) {
+                        // A remote store that cannot answer proves nothing: never delete on an outage.
+                        throw $unavailable;
                     } catch (\Throwable) {
                         $exists = false;
                     }

@@ -12,9 +12,9 @@ use RuntimeException;
  */
 final class WorkspaceStorageReadOnly extends RuntimeException
 {
-    public function __construct(public readonly int $vaultStoreId, string $reason = '')
+    public function __construct(public readonly int $vaultStoreId, string $reason = '', string $messageKey = 'messages.workspace_storage_read_only')
     {
-        parent::__construct(trim(__('messages.workspace_storage_read_only').' '.$reason));
+        parent::__construct(trim(__($messageKey).' '.$reason));
     }
 
     public function render(): JsonResponse

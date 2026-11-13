@@ -52,9 +52,13 @@ final class InstanceBackup
 
     /**
      * @param  bool  $encrypt  false writes a plain ZIP even when JOTTER_BACKUP_KEY is set
-     * @return array{path: string, tables: int, rows: int, files: int, bytes: int, encrypted: bool}
+     * @param  bool|null  $withRemoteVaults  true = every remote workspace (`--with-remote-vaults`),
+     *                                       false = none (`--without-remote-vaults`), null = the
+     *                                       default rule: S3 workspaces unless their bucket is
+     *                                       versioned (plan §6.4), never GitHub ones (#444)
+     * @return array{path: string, tables: int, rows: int, files: int, bytes: int, encrypted: bool, remote_vaults: list<array{workspace: string, driver: string, included: bool, reason: string}>}
      */
-    public function create(string $zipPath, bool $withDatabase = true, bool $withVaults = true, bool $encrypt = true, bool $withRemoteVaults = false): array
+    public function create(string $zipPath, bool $withDatabase = true, bool $withVaults = true, bool $encrypt = true, ?bool $withRemoteVaults = null): array
     {
         $encrypt = $encrypt && $this->encrypts();
         if ($encrypt) {
@@ -87,16 +91,27 @@ final class InstanceBackup
 
             $files = 0;
             $workspaces = [];
+            $remoteVaults = [];
             foreach (Workspace::query()->orderBy('id')->get(['id', 'tenant_id', 'slug', 'vault_path', 'vault_store_id', 'vault_prefix']) as $workspace) {
-                // A workspace on a remote store (GitHub): the repository is its backup;
-                // its files enter the archive only with --with-remote-vaults (#444).
                 $remote = $workspace->vault_store_id !== null;
-                $workspaces[] = ['id' => $workspace->id, 'slug' => $workspace->slug, 'vault_path' => $workspace->vault_path, 'remote' => $remote];
+                $driver = $remote ? (string) $workspace->vaultStore?->driver : null;
+                $entry = ['id' => $workspace->id, 'slug' => $workspace->slug, 'vault_path' => $workspace->vault_path, 'remote' => $remote, 'driver' => $driver];
                 if ($withVaults && ! $remote) {
                     $files += $this->addVault($zip, (string) $workspace->vault_path, 'vaults/'.$workspace->id.'/');
-                } elseif ($withVaults && $withRemoteVaults) {
-                    $files += $this->addRemoteVault($zip, $workspace, 'vaults/'.$workspace->id.'/');
+                } elseif ($withVaults) {
+                    [$include, $reason] = $this->remoteRule($workspace, $driver, $withRemoteVaults);
+                    if ($include) {
+                        try {
+                            $files += $this->addRemoteVault($zip, $workspace, 'vaults/'.$workspace->id.'/');
+                        } catch (\Throwable $exception) {
+                            // One unreachable bucket must not cost every other tenant its backup.
+                            [$include, $reason] = [false, 'unreachable: '.mb_substr($exception->getMessage(), 0, 200)];
+                        }
+                    }
+                    $entry['included'] = $include;
+                    $remoteVaults[] = ['workspace' => (string) $workspace->slug, 'driver' => (string) $driver, 'included' => $include, 'reason' => $reason];
                 }
+                $workspaces[] = $entry;
             }
 
             // Block 4c: every archive carries the erasure log, so the newest backup
@@ -112,7 +127,8 @@ final class InstanceBackup
                 'migrations' => $withDatabase ? DB::table('migrations')->orderBy('id')->pluck('migration')->all() : [],
                 'tables' => $tables,
                 'workspaces' => $workspaces,
-                'includes' => ['database' => $withDatabase, 'vaults' => $withVaults, 'remote_vaults' => $withVaults && $withRemoteVaults],
+                'includes' => ['database' => $withDatabase, 'vaults' => $withVaults, 'remote_vaults' => $withVaults && $withRemoteVaults === true],
+                'remote_vaults' => $remoteVaults,
                 'erasure_log' => count($erasures),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
@@ -128,9 +144,33 @@ final class InstanceBackup
 
         $this->audit->record(event: AuditEvent::INSTANCE_BACKED_UP, actorId: 'cli:jotter:backup', metadata: [
             'path' => basename($target), 'tables' => count($tables), 'rows' => $rows, 'files' => $files, 'encrypted' => $encrypt,
+            'remote_vaults' => array_map(static fn (array $r): string => $r['workspace'].': '.($r['included'] ? 'included' : 'skipped').' ('.$r['reason'].')', $remoteVaults),
         ]);
 
-        return ['path' => $target, 'tables' => count($tables), 'rows' => $rows, 'files' => $files, 'bytes' => (int) filesize($target), 'encrypted' => $encrypt];
+        return ['path' => $target, 'tables' => count($tables), 'rows' => $rows, 'files' => $files, 'bytes' => (int) filesize($target), 'encrypted' => $encrypt, 'remote_vaults' => $remoteVaults];
+    }
+
+    /**
+     * Whether a remote workspace's files enter this backup, and why.
+     *
+     * @return array{0: bool, 1: string}
+     */
+    private function remoteRule(Workspace $workspace, ?string $driver, ?bool $force): array
+    {
+        if ($force === true) {
+            return [true, '--with-remote-vaults'];
+        }
+        if ($force === false) {
+            return [false, '--without-remote-vaults'];
+        }
+        if ($driver === \App\Domain\Vault\Store\VaultStoreDrivers::S3) {
+            // §6.4: only a versioned bucket can bring back what was deleted by mistake.
+            return app(\App\Domain\Vault\Store\S3\S3Lifecycle::class)->backupIncludes($workspace)
+                ? [true, 'bucket versioning off or unknown']
+                : [false, 'bucket versioning on'];
+        }
+
+        return [false, 'the repository history is its backup'];
     }
 
     /**
@@ -175,7 +215,11 @@ final class InstanceBackup
         if ($erasureEntries !== []) {
             $log->replace($erasureEntries);
         }
+        // Tombstones first: an erased tenant's bucket prefixes are emptied again (§6.3).
         $erasures = (new ErasureReplay($this->audit))->replay($erasureEntries);
+
+        // Buckets are the truth for S3 workspaces (§6.4): put back what the bucket lost, reindex.
+        $s3 = $this->afterRestoreS3();
 
         $known = array_map(static fn (string $path): string => basename($path, '.php'), File::glob(database_path('migrations/*.php')));
         $pending = array_diff($known, (array) $manifest['migrations']) !== [];
@@ -184,7 +228,43 @@ final class InstanceBackup
             'archive' => basename($zipPath), 'created_at' => $manifest['created_at'] ?? null, 'tables' => $tables, 'rows' => $rows, 'files' => $files,
         ]);
 
-        return ['tables' => $tables, 'rows' => $rows, 'files' => $files, 'pending_migrations' => $pending, 'erasures' => $erasures, 'erasure_log' => count($erasureEntries)];
+        return ['tables' => $tables, 'rows' => $rows, 'files' => $files, 'pending_migrations' => $pending, 'erasures' => $erasures, 'erasure_log' => count($erasureEntries), 's3' => $s3];
+    }
+
+    /**
+     * S3 workspaces whose files came back in `<vault_path>.remote-copy`: missing
+     * objects are written back to the bucket (never over an existing one), the
+     * workspace is reindexed from the bucket, and the copy is removed once it
+     * is all safely in the bucket. Kept when anything failed, for manual recovery.
+     *
+     * @return array{restored: int, reindexed: int, failed: list<string>}
+     */
+    private function afterRestoreS3(): array
+    {
+        $copies = [];
+        $files = [];
+        $workspaces = Workspace::query()->whereNotNull('vault_store_id')
+            ->whereHas('vaultStore', fn ($query) => $query->where('driver', \App\Domain\Vault\Store\VaultStoreDrivers::S3))->get(['id', 'vault_path']);
+        foreach ($workspaces as $workspace) {
+            $copy = rtrim((string) $workspace->vault_path, '/').'.remote-copy';
+            if ((string) $workspace->vault_path === '' || ! is_dir($copy) || is_link($copy)) {
+                continue;
+            }
+            $copies[(int) $workspace->id] = $copy;
+            foreach (File::allFiles($copy, true) as $file) {
+                $relative = str_replace('\\', '/', $file->getRelativePathname());
+                $files[(int) $workspace->id][$relative] = $file->getPathname();
+            }
+        }
+
+        $summary = app(\App\Domain\Vault\Store\S3\S3Lifecycle::class)->afterRestore($files);
+        if ($summary['failed'] === []) {
+            foreach ($copies as $copy) {
+                File::deleteDirectory($copy);
+            }
+        }
+
+        return $summary;
     }
 
     /**

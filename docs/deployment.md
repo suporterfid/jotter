@@ -306,8 +306,30 @@ JOTTER_VAULT_MOVE_BATCH=200            # files copied per vault:process-moves ru
 
 - Store credentials are encrypted with `APP_KEY`. **Rotating `APP_KEY` means re-entering every store's credentials**; `jotter:doctor` (`vault_stores`) lists the stores to reconnect.
 - `php artisan vault:move <workspace> --to=<store id>` (or `--local`) starts a move; the workspace is read-only until `vault:process-moves`, run every minute by the scheduler, finishes. `--sync` copies everything at once (CLI only). `vault:move <workspace> --rollback` returns to the kept source; `vault:finalize-moves` (daily) deletes sources past their retention, `--now` immediately.
-- Implemented drivers: `local` (another folder under `VAULT_BASE_PATH`) and `github` (below). S3-compatible buckets can be registered, but tests and moves refuse them until their driver ships (#432).
-- Instance backups leave workspaces on GitHub out by default, because the repository is their backup; `jotter:backup --with-remote-vaults` copies their files too (see *Backup and restore*).
+- Implemented drivers: `local` (another folder under `VAULT_BASE_PATH`), `s3` (S3-compatible buckets, below) and `github` (below).
+- Instance backups leave workspaces on GitHub out by default, because the repository is their backup. Workspaces in S3 buckets are copied unless the bucket has versioning on. `jotter:backup --with-remote-vaults` copies every remote workspace, `--without-remote-vaults` none (see *Backup and restore*).
+
+### S3-compatible buckets (epic #432)
+
+A workspace can live in a bucket of AWS S3, Cloudflare R2 or MinIO, under its own key prefix (`<store prefix>/<workspace slug>-<id>/`). Saves are written to the bucket at once, with no queue. The tenant-facing guide is `docs/guia-conectar-s3.md`.
+
+```dotenv
+JOTTER_VAULT_DRIVERS=local,s3
+JOTTER_VAULT_ALLOWED_PRIVATE_HOSTS=minio.internal   # only for a MinIO on a private address
+JOTTER_S3_MAX_FILE_BYTES=5368709120                 # largest single PUT (5 GiB)
+JOTTER_S3_PRESIGN_OVER_BYTES=8388608                # larger attachments redirect to a 60-second pre-signed URL; 0 = always stream through PHP
+```
+
+- **Endpoints are checked against SSRF.** A tenant's endpoint must be `https://` and resolve to public addresses only. Each connection is pinned to the addresses that were checked. A MinIO on a private network needs its host name in `JOTTER_VAULT_ALLOWED_PRIVATE_HOSTS`, and only then may it use `http://`.
+- Every object carries `x-amz-meta-sha256`. A `vault:move` verifies each copy with that hash and the MD5 ETag. When the ETag is not an MD5 (multipart, SSE-KMS), it downloads the object again to check it.
+- **Concurrent edits.** On AWS, R2 and MinIO a save uses `If-Match` (or `If-None-Match: *` to create), so an edit made directly in the bucket is never overwritten. GCS is detected by its endpoint (`storage.googleapis.com`). There, and wherever `settings.conditional_writes` is `false`, Jotter serializes its own writes with a MySQL lock plus a `HEAD` comparison. A direct edit in the bucket can then be lost if it lands between the two calls.
+- External changes reach Jotter with the hourly `vault:reindex --all`: it compares each listed ETag with the note's `remote_version` and downloads only what changed. A workspace whose bucket is unreachable is skipped with a warning, and no note is deleted because of an outage.
+- Timeouts are 3 s to connect and 10 s per call. **Provider down** (network error or 5xx): reads and writes answer `503`, and the workspace turns `degraded`. The first write that reaches the bucket clears it, and so does a passing "Test connection". **Credentials refused** (401/403, unknown key, missing bucket): the store turns `failed` and writes answer `423` until an admin tests the connection again.
+- `jotter:doctor` (`s3_vault`) reads each bucket's versioning and lifecycle. It warns when versioning is off, because backups then include the workspace. It also warns when old versions never expire, or expire after more than 30 days. It fails for refused stores and degraded workspaces.
+- `tenant:delete` deletes every object under the tenant's workspace prefixes, and under every prefix a move of those workspaces used. With versioning on, old versions remain until the bucket's lifecycle rule expires them, and the command says so. Restores replay this through the erasure log.
+- After `jotter:restore`, objects the bucket lost since the backup are written back from the archive. An object that still exists is never overwritten. Each S3 workspace is then reindexed from its bucket.
+- Release ZIP: the driver adds `async-aws/s3`, `async-aws/core`, `symfony/http-client` and `psr/cache`: about 11 MB on disk and 6.6 MB in the ZIP (measured with `zip -r` in the cloud sandbox; confirm with `jt release`).
+- Tested against: an in-memory S3 API (every test run), and the S3 protocol through a local S3 server (moto, in the cloud sandbox). `jt ci` runs the same contract suite against MinIO. **Not yet validated against real AWS S3, Cloudflare R2 or GCS**: see `docs/guia-conectar-s3.md`, *Provedores testados*.
 
 ### GitHub repositories (epic #431)
 
@@ -355,7 +377,8 @@ from the same cron as everything else.
 php artisan jotter:backup                 # storage/app/private/backups/jotter-backup-<timestamp>.zip
 php artisan jotter:backup --to=/home/u/backups/jotter.zip
 php artisan jotter:backup --no-vaults     # database only (small, quick)
-php artisan jotter:backup --with-remote-vaults  # also the files of workspaces on GitHub
+php artisan jotter:backup --with-remote-vaults     # every remote workspace, GitHub included
+php artisan jotter:backup --without-remote-vaults  # no remote workspace, even S3 without versioning
 ```
 
 ```dotenv
@@ -372,6 +395,10 @@ JOTTER_BACKUP_PATH=                       # default storage/app/private/backups
   semantic-search index (`note_embeddings`), which `semantic:index` rebuilds, and the
   GitHub sync state (manifest, blob cache, cursors, write budgets, webhook deliveries),
   which the next `vault:pull` rebuilds from each repository.
+- Workspaces in S3 buckets: their files are copied unless the bucket has versioning on
+  (`GetBucketVersioning`, checked at backup time; unknown counts as off). An unreachable
+  bucket does not fail the backup: the command warns, and the manifest records it.
+  `--without-remote-vaults` leaves them out at your own risk.
 - Workspaces on GitHub: their files are left out unless `--with-remote-vaults` (the
   repository is their backup). Their queued, not yet committed saves are in the database
   and are kept. A restore writes copied remote files beside the workspace folder, as

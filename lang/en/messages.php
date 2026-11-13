@@ -89,6 +89,8 @@ return [
     'profile_managed_by_provider' => 'Your name comes from your sign-in provider; change it there.',
     // GitHub vault store (#431).
     'workspace_storage_read_only' => 'This workspace’s GitHub repository cannot be reached with the saved credentials, so it is read-only. An administrator must reconnect it in Storage.',
+    'workspace_storage_read_only_s3' => 'This workspace’s bucket refused the saved credentials, so it is read-only. An administrator must update or test the connection in Storage.',
+    'vault_store_unavailable' => 'The external storage is unavailable. Try again in a few minutes.',
     'vault_file_too_large' => 'This file is larger than the :limit MB this workspace’s storage accepts.',
     'github_conflict_label' => 'GitHub conflict :date',
     'github_commit_message' => '{1} jotter: :count note by :names (via Jotter)|[0,*] jotter: :count notes by :names (via Jotter)',

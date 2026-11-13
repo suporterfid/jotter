@@ -102,6 +102,12 @@ final class JotterRestoreCommand extends Command
         $this->info(sprintf('Restored %d table(s), %d row(s), %d vault file(s).', $result['tables'], $result['rows'], $result['files']));
         $erasures = $result['erasures'];
         $this->line(sprintf('Erasure log: %d entr%s; deleted again: %d tenant(s), %d account(s).', $result['erasure_log'], $result['erasure_log'] === 1 ? 'y' : 'ies', $erasures['tenants'], $erasures['users']));
+        if (($result['s3']['reindexed'] ?? 0) > 0 || ($result['s3']['failed'] ?? []) !== []) {
+            $this->line(sprintf('S3 workspaces: %d reindexed from their bucket, %d missing file(s) put back.', $result['s3']['reindexed'], $result['s3']['restored']));
+            foreach ($result['s3']['failed'] as $failed) {
+                $this->warn('  S3 workspace not restored: '.$failed.' (its files stay in <vault_path>.remote-copy)');
+            }
+        }
         foreach ($erasures['refused'] as $refused) {
             $this->warn('  not deleted again: '.$refused);
         }

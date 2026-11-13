@@ -20,6 +20,9 @@
             · {{ t('vaultStores.workspaceCount', { count: store.workspaces }) }}
             <br />
             <small v-if="store.last_error" class="admin-note">{{ store.last_error }}</small>
+            <small v-if="store.driver === 's3' && store.settings?.bucket_state" class="admin-note" :data-testid="`vault-store-versioning-${store.id}`">
+              {{ t(`vaultStores.s3.versioning.${store.settings.bucket_state.versioning ?? 'unknown'}`) }}
+            </small>
           </span>
           <span>
             <button :disabled="loading" :data-testid="`vault-store-test-${store.id}`" @click="testStore(store)">{{ t('vaultStores.test') }}</button>
@@ -55,6 +58,8 @@
           <input v-model="form.settings.bucket" :placeholder="t('vaultStores.fields.bucket')" required />
           <input v-model="form.settings.region" :placeholder="t('vaultStores.fields.region')" />
           <input v-model="form.settings.prefix" :placeholder="t('vaultStores.fields.prefix')" />
+          <label class="admin-check"><input v-model="pathStyle" type="checkbox" data-testid="vault-store-path-style" /> {{ t('vaultStores.fields.pathStyle') }}</label>
+          <p class="admin-note">{{ t('vaultStores.s3.versioningHelp') }}</p>
           <input v-model="form.credentials.access_key_id" :placeholder="t('vaultStores.fields.accessKey')" autocomplete="off" required />
           <input v-model="form.credentials.secret_access_key" type="password" :placeholder="t('vaultStores.fields.secretKey')" autocomplete="new-password" required />
         </template>
@@ -104,6 +109,9 @@
         <button type="submit" :disabled="loading || !moveWorkspaceId" data-testid="vault-move-submit">{{ t('vaultStores.startMove') }}</button>
       </form>
 
+      <ul v-if="moveWarnings.length" class="admin-note vault-warning" data-testid="vault-move-warnings">
+        <li v-for="warning in moveWarnings" :key="warning">{{ warning }}</li>
+      </ul>
       <ul v-if="moves.length" class="admin-list" data-testid="vault-move-list">
         <li v-for="move in moves" :key="move.id" class="admin-list-item">
           <span>
@@ -136,6 +144,7 @@ interface VaultStoreRow {
   status: 'untested' | 'ok' | 'failed'
   last_error: string | null
   workspaces: number
+  settings?: { bucket_state?: { versioning: 'Enabled' | 'Suspended' | 'Off' | null } }
 }
 
 interface GitHubConfig {
@@ -202,6 +211,8 @@ const emptyForm = () => ({
   credentials: {} as Record<string, string>,
 })
 const form = ref(emptyForm())
+const pathStyle = ref(false)
+const moveWarnings = ref<string[]>([])
 
 const tenantWorkspaces = computed(() => props.workspaces.filter((ws) => ws.tenant_id === tenantId.value))
 
@@ -299,6 +310,7 @@ async function createStore() {
     const credentials = Object.fromEntries(Object.entries(form.value.credentials).filter(([, value]) => value))
     const settings: Record<string, string | boolean> = Object.fromEntries(Object.entries(form.value.settings).filter(([, value]) => value))
     if (form.value.driver === 'github') settings.controller_confirmed = controllerConfirmed.value
+    if (form.value.driver === 's3') settings.path_style = pathStyle.value
     const response = await api.post<{ data?: { id: number } }>(`/admin/tenants/${tenantId.value}/vault-stores`, {
       name: form.value.name,
       driver: form.value.driver,
@@ -311,6 +323,7 @@ async function createStore() {
       await showWebhook({ id: created.id } as VaultStoreRow)
     }
     form.value = emptyForm()
+    pathStyle.value = false
     controllerConfirmed.value = false
     repositories.value = []
     pickedRepository.value = ''
@@ -376,9 +389,11 @@ async function startMove() {
   loading.value = true
   error.value = ''
   try {
-    await api.post(`/admin/workspaces/${moveWorkspaceId.value}/vault-moves`, {
+    moveWarnings.value = []
+    const response = await api.post<{ warnings?: string[] }>(`/admin/workspaces/${moveWorkspaceId.value}/vault-moves`, {
       to_store_id: moveTarget.value === 'local' ? null : Number(moveTarget.value),
     })
+    moveWarnings.value = response.data?.warnings ?? []
     await fetchMoves()
   } catch (e: unknown) {
     error.value = message(e, t('adminPanel.requestFailed'))

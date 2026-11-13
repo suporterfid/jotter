@@ -42,7 +42,9 @@ final class VaultStoreProbe
             }
 
             $context = new Workspace(['tenant_id' => $record->tenant_id, 'slug' => 'probe', 'name' => 'probe']);
-            $store = $this->resolver->forStore($record, $context);
+            // S3: under the configured prefix, the only place a prefix-scoped IAM policy allows.
+            $prefix = $record->driver === VaultStoreDrivers::S3 ? (string) ($record->settings['prefix'] ?? '') : '';
+            $store = $this->resolver->forStore($record, $context, $prefix);
             $path = '.jotter-probe-'.bin2hex(random_bytes(6)).'.txt';
             $payload = 'jotter probe '.now()->toIso8601String();
 
@@ -53,6 +55,11 @@ final class VaultStoreProbe
                 }
             } finally {
                 $store->delete($path);
+            }
+
+            if ($record->driver === VaultStoreDrivers::S3) {
+                // Versioning and lifecycle, kept for the storage screen, backups and the doctor (#447).
+                app(S3\S3BucketInspector::class)->inspect($record);
             }
         } catch (\Throwable $exception) {
             $error = mb_substr($exception->getMessage(), 0, 1000);

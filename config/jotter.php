@@ -74,6 +74,18 @@ return [
         'move_batch_size' => (int) env('JOTTER_VAULT_MOVE_BATCH', 200),
     ],
 
+    // S3-compatible vault store (#432). Only used when JOTTER_VAULT_DRIVERS lists `s3`.
+    's3' => [
+        // Largest object Jotter writes with a single PUT (S3 allows 5 GiB).
+        'max_file_bytes' => (int) env('JOTTER_S3_MAX_FILE_BYTES', 5 * 1024 * 1024 * 1024),
+        // Attachments larger than this are served by a 60-second pre-signed URL
+        // instead of streaming through PHP (0 = always stream).
+        'presign_over_bytes' => (int) env('JOTTER_S3_PRESIGN_OVER_BYTES', 8 * 1024 * 1024),
+        'presign_seconds' => 60,
+        // jotter:doctor recommends expiring noncurrent versions within this many days (plan §6.2).
+        'noncurrent_expiry_max_days' => 30,
+    ],
+
     // GitHub vault store (#431, docs/20261113-jotter-github-vault-implementation-plan.md).
     // Only used when JOTTER_VAULT_DRIVERS lists `github`. Hosted installs register one
     // GitHub App (app_id, slug, private key, webhook secret); self-hosted installs may

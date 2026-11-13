@@ -89,6 +89,8 @@ return [
     'profile_managed_by_provider' => 'Seu nome vem do seu provedor de login; altere-o por lá.',
     // Vault no GitHub (#431).
     'workspace_storage_read_only' => 'O repositório GitHub deste workspace não aceita mais as credenciais salvas, por isso ele está só para leitura. Um administrador precisa reconectá-lo em Armazenamento.',
+    'workspace_storage_read_only_s3' => 'O bucket deste workspace recusou as credenciais salvas, por isso ele está só para leitura. Um administrador precisa atualizar ou testar a conexão em Armazenamento.',
+    'vault_store_unavailable' => 'O armazenamento externo está indisponível. Tente de novo em alguns minutos.',
     'vault_file_too_large' => 'Este arquivo passa do limite de :limit MB do armazenamento deste workspace.',
     'github_conflict_label' => 'conflito GitHub :date',
     'github_commit_message' => '{1} jotter: :count nota por :names (via Jotter)|[0,*] jotter: :count notas por :names (via Jotter)',

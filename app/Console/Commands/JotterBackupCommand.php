@@ -17,7 +17,8 @@ final class JotterBackupCommand extends Command
         {--to= : Output ZIP (default: JOTTER_BACKUP_PATH/jotter-backup-<timestamp>.zip)}
         {--keep= : Archives to keep in the default folder (default: JOTTER_BACKUP_KEEP, 7)}
         {--no-vaults : Database only}
-        {--with-remote-vaults : Also copy the files of workspaces stored on GitHub (by default the repository is their backup)}
+        {--with-remote-vaults : Copy the files of every remote workspace (by default: S3 workspaces whose bucket is not versioned; never GitHub ones)}
+        {--without-remote-vaults : Leave every remote workspace out, even S3 buckets without versioning (at your own risk)}
         {--no-database : Vault files only}
         {--unencrypted : Write a plain ZIP even when JOTTER_BACKUP_KEY is set}
         {--json : Emit JSON}';
@@ -34,6 +35,11 @@ final class JotterBackupCommand extends Command
 
             return self::FAILURE;
         }
+        if ($this->option('with-remote-vaults') && $this->option('without-remote-vaults')) {
+            $this->error('--with-remote-vaults and --without-remote-vaults cannot be used together.');
+
+            return self::FAILURE;
+        }
         if ($this->option('no-vaults') && $this->option('no-database')) {
             $this->error('--no-vaults and --no-database together leave nothing to back up.');
 
@@ -41,7 +47,7 @@ final class JotterBackupCommand extends Command
         }
 
         try {
-            $summary = $backup->create($to, withDatabase: ! $this->option('no-database'), withVaults: ! $this->option('no-vaults'), encrypt: $encrypt, withRemoteVaults: (bool) $this->option('with-remote-vaults'));
+            $summary = $backup->create($to, withDatabase: ! $this->option('no-database'), withVaults: ! $this->option('no-vaults'), encrypt: $encrypt, withRemoteVaults: $this->option('with-remote-vaults') ? true : ($this->option('without-remote-vaults') ? false : null));
         } catch (RuntimeException $exception) {
             $this->error($exception->getMessage());
 
@@ -57,6 +63,11 @@ final class JotterBackupCommand extends Command
 
         $this->info(sprintf('Backup written%s: %d table(s), %d row(s), %d vault file(s), %s.', $summary['encrypted'] ? ' (encrypted)' : '', $summary['tables'], $summary['rows'], $summary['files'], $this->human($summary['bytes'])));
         $this->line('  '.$summary['path']);
+        foreach ($summary['remote_vaults'] as $remote) {
+            $line = sprintf('  %s (%s): %s, %s', $remote['workspace'], $remote['driver'], $remote['included'] ? 'included' : 'not included', $remote['reason']);
+            str_starts_with($remote['reason'], 'unreachable') || ($remote['driver'] === 's3' && ! $remote['included'] && $remote['reason'] !== 'bucket versioning on')
+                ? $this->warn($line) : $this->line($line);
+        }
         if ($deleted !== []) {
             $this->line('  pruned: '.implode(', ', $deleted));
         }

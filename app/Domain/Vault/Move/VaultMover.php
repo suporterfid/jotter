@@ -22,7 +22,9 @@ use Illuminate\Support\Facades\DB;
  * 1. preflight: destination writable (probe), empty, files fit the driver limit;
  * 2. the workspace turns `moving`: writes answer 423, reads stay on the source;
  * 3. copy in bounded batches from cron (`vault:process-moves`), resumable by cursor;
- * 4. every copy is verified by SHA-256 of the bytes read back;
+ * 4. every copy is verified by SHA-256 of the bytes read back (S3: the
+ *    `x-amz-meta-sha256` the object was written with, plus its MD5 ETag when
+ *    the provider returns one, so the object is not downloaded again);
  * 5. atomic swap of `vault_store_id`/`vault_prefix`, recording `remote_version`;
  * 6. the source stays until `retain_until` for `--rollback`; `vault:finalize-moves`
  *    deletes it afterwards, audited.
@@ -31,6 +33,9 @@ use Illuminate\Support\Facades\DB;
  */
 final class VaultMover
 {
+    /** Non-blocking preflight findings of the last start() (S3: bucket versioning off, #447). */
+    public array $warnings = [];
+
     public function __construct(
         private readonly VaultStoreResolver $resolver,
         private readonly AuditRecorder $audit = new AuditRecorder,
@@ -45,6 +50,7 @@ final class VaultMover
     public function start(Workspace $workspace, ?TenantVaultStore $target, ?string $actorId = null): VaultMove
     {
         $workspace->refresh();
+        $this->warnings = [];
 
         if ($workspace->isMovingStorage() || VaultMove::query()->where('workspace_id', $workspace->id)->where('status', VaultMove::COPYING)->exists()) {
             throw new VaultMoveRefused('the workspace is already moving.');
@@ -91,6 +97,11 @@ final class VaultMover
         $this->probe($destination);
         if ($destination->list('', null, 1)->entries !== []) {
             throw new VaultMoveRefused('the destination is not empty.');
+        }
+        if ($target !== null && $target->driver === VaultStoreDrivers::S3) {
+            // §6.4: backups only leave an S3 workspace out when its bucket keeps old versions.
+            $state = app(\App\Domain\Vault\Store\S3\S3BucketInspector::class)->inspect($target);
+            $this->warnings = \App\Domain\Vault\Store\S3\S3BucketInspector::warnings($state, (string) $target->name);
         }
 
         $move = DB::transaction(function () use ($workspace, $target, $toPrefix, $files, $bytes, $actorId): VaultMove {
@@ -384,21 +395,28 @@ final class VaultMover
 
         try {
             $hash = hash_init('sha256');
+            $md5 = hash_init('md5');
             while (! feof($in)) {
                 $chunk = fread($in, 1024 * 1024);
                 if ($chunk === false) {
                     throw new \RuntimeException("Unable to read [{$entry->path}] from the source.");
                 }
                 hash_update($hash, $chunk);
+                hash_update($md5, $chunk);
                 fwrite($buffer, $chunk);
             }
             $expected = hash_final($hash);
+            $md5 = hash_final($md5);
             rewind($buffer);
 
             $written = $destination->writeStream($entry->path, $buffer);
         } finally {
             fclose($in);
             fclose($buffer);
+        }
+
+        if ($destination instanceof \App\Domain\Vault\Store\S3\S3VaultStore && $this->verifiedOnS3($destination, $entry->path, $expected, $md5 ?? null)) {
+            return $written;
         }
 
         $check = $destination->readStream($entry->path);
@@ -415,6 +433,24 @@ final class VaultMover
         }
 
         return $written;
+    }
+
+    /**
+     * S3 check without downloading the copy again: the object must carry the
+     * SHA-256 it was written with, and its ETag must be the MD5 of the bytes
+     * (single-part PUT without KMS). When the ETag is not an MD5, the caller
+     * falls back to reading the object back.
+     */
+    private function verifiedOnS3(\App\Domain\Vault\Store\S3\S3VaultStore $destination, string $path, string $sha256, ?string $md5): bool
+    {
+        $stored = $destination->storedSha256($path);
+        if ($stored === null || ! hash_equals($sha256, $stored)) {
+            throw new \RuntimeException("Verification failed for [{$path}]: the object's SHA-256 metadata differs after the copy.");
+        }
+
+        $etag = $destination->stat($path)?->version;
+
+        return $md5 !== null && $etag !== null && preg_match('/^[0-9a-f]{32}$/', $etag) === 1 && hash_equals($md5, $etag);
     }
 
     /**

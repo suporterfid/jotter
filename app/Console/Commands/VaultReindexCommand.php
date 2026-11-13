@@ -69,8 +69,17 @@ class VaultReindexCommand extends Command
     private function reindexAll(VaultReindexer $reindexer): int
     {
         $count = 0;
-        Workspace::query()->orderBy('id')->each(function (Workspace $workspace) use ($reindexer, &$count): void {
-            $result = $reindexer->reindex($workspace, null);
+        $failed = 0;
+        Workspace::query()->orderBy('id')->each(function (Workspace $workspace) use ($reindexer, &$count, &$failed): void {
+            try {
+                $result = $reindexer->reindex($workspace, null);
+            } catch (\App\Domain\Vault\Store\StoreUnavailable $unavailable) {
+                // One unreachable bucket must not stop the hourly reconcile of every other workspace.
+                $failed++;
+                $this->warn(sprintf('Skipped workspace %d (%s): %s', $workspace->id, $workspace->slug, $unavailable->getMessage()));
+
+                return;
+            }
             $count++;
 
             $this->line(sprintf(
@@ -83,7 +92,7 @@ class VaultReindexCommand extends Command
             ));
         });
 
-        $this->info("Reindexed {$count} workspace(s).");
+        $this->info("Reindexed {$count} workspace(s).".($failed > 0 ? " Skipped {$failed} with an unreachable store." : ''));
 
         return self::SUCCESS;
     }
