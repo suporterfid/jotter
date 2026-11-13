@@ -28,9 +28,26 @@ final class VaultPathGuard
         bool $mustExist = false,
         bool $mustBeMarkdown = true,
     ): string {
+        return $this->resolveUnder((string) $workspace->vault_path, $workspace, $relativePath, $mustExist, $mustBeMarkdown);
+    }
+
+    /**
+     * Same as resolve(), against an explicit root directory (a LocalVaultStore root),
+     * auditing rejections against $workspace.
+     *
+     * @throws PathTraversalRejected
+     * @throws VaultNoteNotFound
+     */
+    public function resolveUnder(
+        string $configuredRoot,
+        Workspace $workspace,
+        string $relativePath,
+        bool $mustExist = false,
+        bool $mustBeMarkdown = true,
+    ): string {
         // Validate the candidate path string before any filesystem access (§7.1 / §8 S2).
         $relative = $this->assertSafeRelativePath($workspace, $relativePath, $mustBeMarkdown);
-        $root = $this->canonicalVaultRoot($workspace);
+        $root = $this->ensureRoot($configuredRoot);
         $absolute = $this->join($root, $relative);
 
         if (! $this->isUnderVaultRoot($root, $absolute)) {
@@ -79,7 +96,15 @@ final class VaultPathGuard
      */
     public function ensureVaultRoot(Workspace $workspace): string
     {
-        $configured = $this->normalizeConfiguredRoot((string) $workspace->vault_path);
+        return $this->ensureRoot((string) $workspace->vault_path);
+    }
+
+    /**
+     * Ensure a root directory exists and return its canonical absolute path.
+     */
+    public function ensureRoot(string $configuredRoot): string
+    {
+        $configured = $this->normalizeConfiguredRoot($configuredRoot);
 
         if (! is_dir($configured) && ! file_exists($configured)) {
             if (! mkdir($configured, 0755, true) && ! is_dir($configured)) {
@@ -97,7 +122,12 @@ final class VaultPathGuard
 
     public function toRelative(Workspace $workspace, string $absolutePath, bool $mustBeMarkdown = true): string
     {
-        $root = $this->canonicalVaultRoot($workspace);
+        return $this->toRelativeUnder((string) $workspace->vault_path, $workspace, $absolutePath, $mustBeMarkdown);
+    }
+
+    public function toRelativeUnder(string $configuredRoot, Workspace $workspace, string $absolutePath, bool $mustBeMarkdown = true): string
+    {
+        $root = $this->ensureRoot($configuredRoot);
         $absolute = str_replace('\\', '/', $absolutePath);
         $rootNormalized = str_replace('\\', '/', $root);
 
@@ -111,9 +141,15 @@ final class VaultPathGuard
         return $this->assertSafeRelativePath($workspace, $relative, $mustBeMarkdown);
     }
 
-    private function canonicalVaultRoot(Workspace $workspace): string
+    /**
+     * Validate a workspace-relative path string (no filesystem access) and return it
+     * normalized. Rejections are audited against $workspace, exactly like resolve().
+     *
+     * @throws PathTraversalRejected
+     */
+    public function normalize(Workspace $workspace, string $relativePath, bool $mustBeMarkdown = true): string
     {
-        return $this->ensureVaultRoot($workspace);
+        return $this->assertSafeRelativePath($workspace, $relativePath, $mustBeMarkdown);
     }
 
     private function assertSafeRelativePath(Workspace $workspace, string $relativePath, bool $mustBeMarkdown = true): string

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
 use App\Domain\Export\WorkspaceJsonBackup;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Domain\Vault\VaultPathGuard;
 use App\Models\Note;
 use App\Models\Workspace;
@@ -60,10 +61,11 @@ final class WorkspaceExportController extends Controller
         $hasFiles = false;
 
         $pathGuard = new VaultPathGuard;
+        $store = app(VaultStoreResolver::class)->for($workspace);
         foreach ($notes as $note) {
             try {
-                $fullPath = $pathGuard->resolve($workspace, $note->path, mustExist: true, mustBeMarkdown: false);
-                $zip->addFile($fullPath, $note->path);
+                $relative = $pathGuard->normalize($workspace, $note->path, mustBeMarkdown: false);
+                $zip->addFromString($note->path, $store->read($relative));
                 $hasFiles = true;
             } catch (\Throwable) {
                 // file missing

@@ -32,6 +32,23 @@ class Workspace extends Model
         return $this->belongsTo(Tenant::class);
     }
 
+    /** Remote vault store; null = the local `vault_path` folder. */
+    public function vaultStore(): BelongsTo
+    {
+        return $this->belongsTo(TenantVaultStore::class, 'vault_store_id');
+    }
+
+    /** `moving` while vault:move copies it (writes answer 423), `degraded` when its store fails. */
+    public function storageState(): string
+    {
+        return (string) ($this->storage_state ?: 'active');
+    }
+
+    public function isMovingStorage(): bool
+    {
+        return $this->storageState() === 'moving';
+    }
+
     public function notes(): HasMany
     {
         return $this->hasMany(Note::class);

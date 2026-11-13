@@ -7,6 +7,7 @@ use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\AuthenticatedSubject;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Plan\TenantPlan;
+use App\Domain\Vault\Store\WorkspaceStorageMoving;
 use App\Models\Workspace;
 use Closure;
 use Illuminate\Http\Request;
@@ -69,6 +70,15 @@ final class AuthorizeWorkspaceWrite
         $tenant = $workspace?->tenant;
         if ($tenant !== null && ! $this->tenantPlan->allowsWrites($tenant)) {
             return $this->tenantPlan->denyWrite($tenant, $request, $workspaceId, $subject->subjectId);
+        }
+
+        // D9: while vault:move copies the workspace, writes answer 423 and reads go on.
+        if ($workspace !== null) {
+            try {
+                WorkspaceStorageMoving::assertWritable($workspace);
+            } catch (WorkspaceStorageMoving $moving) {
+                return $moving->render();
+            }
         }
 
         return $next($request);

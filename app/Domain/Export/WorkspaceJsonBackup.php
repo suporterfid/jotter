@@ -2,6 +2,7 @@
 
 namespace App\Domain\Export;
 
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Domain\Vault\VaultPathGuard;
 use App\Models\Note;
 use App\Models\Workspace;
@@ -25,12 +26,13 @@ final class WorkspaceJsonBackup
     public function build(Workspace $workspace, iterable $notes): array
     {
         $exported = [];
+        $store = app(VaultStoreResolver::class)->for($workspace);
         foreach ($notes as $note) {
             try {
-                $fullPath = $this->pathGuard->resolve($workspace, $note->path, mustExist: true, mustBeMarkdown: false);
-                $exported[] = ['path' => $note->path, 'content' => (string) file_get_contents($fullPath)];
+                $relative = $this->pathGuard->normalize($workspace, $note->path, mustBeMarkdown: false);
+                $exported[] = ['path' => $note->path, 'content' => $store->read($relative)];
             } catch (\Throwable) {
-                // File missing on disk: the projection is rebuildable, skip it.
+                // File missing from the vault store: the projection is rebuildable, skip it.
             }
         }
 

@@ -8,6 +8,8 @@ use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Auth\NoteAccess;
 use App\Domain\Plan\TenantPlan;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
+use App\Domain\Vault\Store\VaultStore;
+use App\Domain\Vault\Store\WorkspaceStorageMoving;
 use App\Domain\Vault\VaultPathGuard;
 use App\Domain\Vault\VaultStorage;
 use App\Models\Note;
@@ -79,6 +81,14 @@ final class WebDavController extends Controller
             return $this->tenantPlan->denyWrite($workspace->tenant, $request, $workspace->id, $subject->subjectId);
         }
 
+        if (in_array($method, ['PUT', 'MKCOL', 'DELETE'], true)) {
+            try {
+                WorkspaceStorageMoving::assertWritable($workspace);
+            } catch (WorkspaceStorageMoving $moving) {
+                return response($moving->getMessage(), 423);
+            }
+        }
+
         $targetPath = trim($path ?? '', '/');
 
         $note = $targetPath === '' ? null : Note::query()
@@ -93,30 +103,35 @@ final class WebDavController extends Controller
             }
         }
 
+        $store = $this->storage->store($workspace);
+
         try {
-            $fullPath = $targetPath === ''
-                ? $this->pathGuard->ensureVaultRoot($workspace)
-                : $this->pathGuard->resolve($workspace, $targetPath, mustExist: false, mustBeMarkdown: false);
+            $relative = $targetPath === ''
+                ? ''
+                : $this->pathGuard->normalize($workspace, $targetPath, mustBeMarkdown: false);
+            // Resolve once up front so traversal and symlink escapes answer 400 before any work.
+            $relative === '' ? $store->makeDirectory('') : $store->isDirectory($relative);
+
+            return match ($method) {
+                'PROPFIND' => $this->handlePropfind($store, $relative, $targetPath),
+                'GET', 'HEAD' => $this->handleGet($request, $store, $relative),
+                'PUT' => $this->conditionally($request, $workspace, $targetPath, $store, $relative,
+                    fn (): Response => $this->handlePut($workspace, $targetPath, $request->getContent(), $subject->subjectId)),
+                'MKCOL' => $this->handleMkcol($store, $relative),
+                'DELETE' => $this->conditionally($request, $workspace, $targetPath, $store, $relative,
+                    fn (): Response => $this->handleDelete($workspace, $targetPath)),
+                'OPTIONS' => response('', 200, ['Allow' => 'OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, MKCOL', 'DAV' => '1, 2']),
+                default => response("Method {$request->method()} not implemented", 405),
+            };
         } catch (PathTraversalRejected) {
             return response()->json(['message' => __('messages.invalid_path_traversal')], 400);
         }
-
-        return match ($method) {
-            'PROPFIND' => $this->handlePropfind($fullPath, $targetPath),
-            'GET', 'HEAD' => $this->handleGet($request, $fullPath),
-            'PUT' => $this->conditionally($request, $workspace, $targetPath, $fullPath,
-                fn (): Response => $this->handlePut($workspace, $targetPath, $request->getContent(), $subject->subjectId)),
-            'MKCOL' => $this->handleMkcol($fullPath),
-            'DELETE' => $this->conditionally($request, $workspace, $targetPath, $fullPath,
-                fn (): Response => $this->handleDelete($workspace, $targetPath)),
-            'OPTIONS' => response('', 200, ['Allow' => 'OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, MKCOL', 'DAV' => '1, 2']),
-            default => response("Method {$request->method()} not implemented", 405),
-        };
     }
 
-    private function handlePropfind(string $fullPath, string $relativePath): Response
+    private function handlePropfind(VaultStore $store, string $relative, string $relativePath): Response
     {
-        $isDir = is_dir($fullPath);
+        $isDir = $store->isDirectory($relative);
+        $isFile = $relative !== '' && $store->exists($relative);
         $xml = '<?xml version="1.0" encoding="utf-8"?>'."\n".
             '<d:multistatus xmlns:d="DAV:">'."\n".
             '  <d:response>'."\n".
@@ -125,7 +140,7 @@ final class WebDavController extends Controller
             '      <d:prop>'."\n".
             '        <d:resourcetype>'.($isDir ? '<d:collection/>' : '').'</d:resourcetype>'."\n".
             '        <d:displayname>'.htmlspecialchars(basename($relativePath)).'</d:displayname>'."\n".
-            (is_file($fullPath) ? '        <d:getetag>'.htmlspecialchars(self::etagOf($fullPath)).'</d:getetag>'."\n" : '').
+            ($isFile ? '        <d:getetag>'.htmlspecialchars(self::etagOf($store, $relative)).'</d:getetag>'."\n" : '').
             '      </d:prop>'."\n".
             '      <d:status>HTTP/1.1 200 OK</d:status>'."\n".
             '    </d:propstat>'."\n".
@@ -135,13 +150,13 @@ final class WebDavController extends Controller
         return response($xml, 207, ['Content-Type' => 'application/xml; charset=utf-8']);
     }
 
-    private function handleGet(Request $request, string $fullPath): Response
+    private function handleGet(Request $request, VaultStore $store, string $relative): Response
     {
-        if (! file_exists($fullPath) || is_dir($fullPath)) {
+        if ($relative === '' || ! $store->exists($relative)) {
             return response('Not found', 404);
         }
 
-        $contents = (string) file_get_contents($fullPath);
+        $contents = $store->read($relative);
         $etag = self::etag($contents);
         if (self::listMatches((string) $request->header('If-None-Match', ''), $etag, weak: true)) {
             return response('', 304, ['ETag' => $etag]);
@@ -169,7 +184,7 @@ final class WebDavController extends Controller
      *
      * @param callable(): Response $write
      */
-    private function conditionally(Request $request, Workspace $workspace, string $relativePath, string $fullPath, callable $write): Response
+    private function conditionally(Request $request, Workspace $workspace, string $relativePath, VaultStore $store, string $relative, callable $write): Response
     {
         $ifMatch = trim((string) $request->header('If-Match', ''));
         $ifNoneMatch = trim((string) $request->header('If-None-Match', ''));
@@ -178,9 +193,8 @@ final class WebDavController extends Controller
             return $write();
         }
 
-        $guarded = function () use ($ifMatch, $ifNoneMatch, $fullPath, $write): Response {
-            clearstatcache(true, $fullPath);
-            $current = is_file($fullPath) ? self::etagOf($fullPath) : null;
+        $guarded = function () use ($ifMatch, $ifNoneMatch, $store, $relative, $write): Response {
+            $current = $relative !== '' && $store->exists($relative) ? self::etagOf($store, $relative) : null;
 
             // If-Match: "*" needs the file; a tag list needs a strong match.
             if ($ifMatch !== '' && ($current === null || ! self::listMatches($ifMatch, $current, weak: false))) {
@@ -211,9 +225,9 @@ final class WebDavController extends Controller
         return '"'.hash('sha256', $contents).'"';
     }
 
-    private static function etagOf(string $fullPath): string
+    private static function etagOf(VaultStore $store, string $relative): string
     {
-        return self::etag((string) file_get_contents($fullPath));
+        return self::etag($store->read($relative));
     }
 
     /**
@@ -253,10 +267,16 @@ final class WebDavController extends Controller
         return response('', 204);
     }
 
-    private function handleMkcol(string $fullPath): Response
+    private function handleMkcol(VaultStore $store, string $relative): Response
     {
-        if (! is_dir($fullPath)) {
-            @mkdir($fullPath, 0755, true);
+        if (! $store->isDirectory($relative)) {
+            try {
+                $store->makeDirectory($relative);
+            } catch (PathTraversalRejected $exception) {
+                throw $exception;
+            } catch (\Throwable) {
+                // As before: MKCOL is best-effort and still answers 201.
+            }
         }
 
         return response('', 201);

@@ -3,15 +3,13 @@
 namespace App\Domain\Vault;
 
 use App\Domain\Links\WikilinkProjector;
+use App\Domain\Vault\Store\VaultStore;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Models\Note;
 use App\Models\Workspace;
-use FilesystemIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
 
 /**
- * Bounded reconcile of the notes projection from on-disk Markdown (cron-safe).
+ * Bounded reconcile of the notes projection from the workspace's vault store (cron-safe).
  */
 final class VaultReindexer
 {
@@ -20,6 +18,7 @@ final class VaultReindexer
         private readonly NoteProjector $projector = new NoteProjector,
         private readonly WikilinkProjector $wikilinks = new WikilinkProjector,
         private readonly NoteRevisions $revisions = new NoteRevisions,
+        private readonly ?VaultStoreResolver $stores = null,
     ) {}
 
     /**
@@ -28,29 +27,28 @@ final class VaultReindexer
     public function reindex(Workspace $workspace, ?int $batchSize = null, ?string $actorId = null): array
     {
         $batchSize = max(1, $batchSize ?? (int) config('jotter.vault.reindex_batch_size', 50));
-        $root = $this->paths->ensureVaultRoot($workspace);
+        $store = ($this->stores ?? app(VaultStoreResolver::class))->for($workspace);
+        $store->makeDirectory('');
 
         $scanned = 0;
         $upserted = 0;
         $batch = [];
 
-        foreach ($this->iterateMarkdownFiles($root) as $file) {
-            $absolute = $file->getPathname();
-            $relative = $this->paths->toRelative($workspace, $absolute);
-            $batch[] = [$absolute, $relative];
+        foreach ($this->iterateMarkdownFiles($store, $batchSize) as $relative) {
+            $batch[] = $relative;
             $scanned++;
 
             if (count($batch) >= $batchSize) {
-                $upserted += $this->projectBatch($workspace, $batch, $actorId);
+                $upserted += $this->projectBatch($workspace, $store, $batch, $actorId);
                 $batch = [];
             }
         }
 
         if ($batch !== []) {
-            $upserted += $this->projectBatch($workspace, $batch, $actorId);
+            $upserted += $this->projectBatch($workspace, $store, $batch, $actorId);
         }
 
-        $removed = $this->removeMissingNotes($workspace, $root, $batchSize);
+        $removed = $this->removeMissingNotes($workspace, $store, $batchSize);
         $this->wikilinks->resolveWorkspaceLinks($workspace);
 
         return [
@@ -61,72 +59,51 @@ final class VaultReindexer
     }
 
     /**
-     * @return \Generator<int, SplFileInfo>
+     * @return \Generator<int, string>
      */
-    private function iterateMarkdownFiles(string $root): \Generator
+    private function iterateMarkdownFiles(VaultStore $store, int $pageSize): \Generator
     {
-        if (! is_dir($root)) {
-            return;
-        }
+        $cursor = null;
 
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator(
-                $root,
-                FilesystemIterator::SKIP_DOTS | FilesystemIterator::CURRENT_AS_FILEINFO,
-            ),
-            RecursiveIteratorIterator::LEAVES_ONLY,
-        );
+        do {
+            $page = $store->list('', $cursor, max($pageSize, 200));
 
-        /** @var SplFileInfo $file */
-        foreach ($iterator as $file) {
-            if (! $file->isFile()) {
-                continue;
+            foreach ($page->entries as $entry) {
+                $relative = $entry->path;
+                if ($relative === '.trash' || str_starts_with($relative, '.trash/')) {
+                    continue;
+                }
+
+                $name = strtolower(basename($relative));
+                if (! str_ends_with($name, '.md')) {
+                    continue;
+                }
+
+                // Excalidraw diagrams are stored as `*.excalidraw.md` (JSON payload,
+                // not readable Markdown). Never index them as notes; leave in the vault.
+                if (str_ends_with($name, '.excalidraw.md')) {
+                    continue;
+                }
+
+                yield $relative;
             }
 
-            $rootNormalized = rtrim(str_replace('\\', '/', $root), '/');
-            $fileNormalized = str_replace('\\', '/', $file->getPathname());
-            $relative = ltrim(substr($fileNormalized, strlen($rootNormalized)), '/');
-            if ($relative === '.trash' || str_starts_with($relative, '.trash/')) {
-                continue;
-            }
-
-            $name = strtolower($file->getFilename());
-            if (! str_ends_with($name, '.md')) {
-                continue;
-            }
-
-            // Excalidraw diagrams are stored as `*.excalidraw.md` (JSON payload,
-            // not readable Markdown). Never index them as notes; leave on disk.
-            if (str_ends_with($name, '.excalidraw.md')) {
-                continue;
-            }
-
-            // Skip symlink escapes: only yield files whose realpath stays inside root.
-            $real = realpath($file->getPathname());
-            if ($real === false) {
-                continue;
-            }
-
-            $rootNormalized = rtrim(str_replace('\\', '/', $root), '/');
-            $realNormalized = str_replace('\\', '/', $real);
-            if (! str_starts_with($realNormalized, $rootNormalized.'/')) {
-                continue;
-            }
-
-            yield $file;
-        }
+            $cursor = $page->nextCursor;
+        } while ($cursor !== null);
     }
 
     /**
-     * @param  list<array{0: string, 1: string}>  $batch
+     * @param  list<string>  $batch
      */
-    private function projectBatch(Workspace $workspace, array $batch, ?string $actorId): int
+    private function projectBatch(Workspace $workspace, VaultStore $store, array $batch, ?string $actorId): int
     {
         $count = 0;
 
-        foreach ($batch as [$absolute, $relative]) {
-            $raw = file_get_contents($absolute);
-            if ($raw === false) {
+        foreach ($batch as $relative) {
+            try {
+                $relative = $this->paths->normalize($workspace, $relative);
+                $raw = $store->read($relative);
+            } catch (\Throwable) {
                 continue;
             }
 
@@ -134,33 +111,27 @@ final class VaultReindexer
             $note = $this->projector->project($workspace, $relative, $document);
             $this->revisions->recordRevision($note, $raw, $actorId);
             $count++;
-
         }
 
         return $count;
     }
 
-    private function removeMissingNotes(Workspace $workspace, string $root, int $batchSize): int
+    private function removeMissingNotes(Workspace $workspace, VaultStore $store, int $batchSize): int
     {
         $removed = 0;
-        $rootNormalized = rtrim(str_replace('\\', '/', $root), '/');
 
         Note::query()
             ->where('workspace_id', $workspace->id)
             ->orderBy('id')
-            ->chunkById($batchSize, function ($notes) use ($workspace, $rootNormalized, &$removed): void {
+            ->chunkById($batchSize, function ($notes) use ($store, &$removed): void {
                 foreach ($notes as $note) {
                     try {
-                        $absolute = $this->paths->resolve($workspace, (string) $note->path, mustExist: false);
+                        $exists = $store->exists((string) $note->path);
                     } catch (\Throwable) {
-                        $note->delete();
-                        $removed++;
-
-                        continue;
+                        $exists = false;
                     }
 
-                    $absoluteNormalized = str_replace('\\', '/', $absolute);
-                    if (! is_file($absolute) || ! str_starts_with($absoluteNormalized, $rootNormalized.'/')) {
+                    if (! $exists) {
                         $note->delete();
                         $removed++;
                     }
@@ -169,7 +140,6 @@ final class VaultReindexer
 
         return $removed;
     }
-
     private function fallbackTitle(string $relativePath): string
     {
         $base = basename(str_replace('\\', '/', $relativePath));

@@ -164,8 +164,7 @@ final class McpNoteWriter
     private function guard(AuthenticatedSubject $subject, Workspace $workspace, string $path, string $op, string $content): string|McpWriteResult
     {
         try {
-            $absolute = $this->paths->resolve($workspace, $path, mustExist: false);
-            $relative = $this->paths->toRelative($workspace, $absolute);
+            $relative = $this->paths->normalize($workspace, $path);
         } catch (PathTraversalRejected) {
             return McpWriteResult::error("Invalid note path: {$path}. Use a relative path ending in .md.");
         }
@@ -237,6 +236,8 @@ final class McpNoteWriter
             $note = $this->storage->write($workspace, $relative, $contents, $subject->subjectId);
         } catch (\App\Domain\Quota\QuotaExceeded $full) {
             return McpWriteResult::error($full->getMessage(), ['path' => $relative, 'used_bytes' => $full->usedBytes, 'limit_bytes' => $full->limitBytes]);
+        } catch (\App\Domain\Vault\Store\WorkspaceStorageMoving $moving) {
+            return McpWriteResult::error($moving->getMessage(), ['path' => $relative, 'status' => 423, 'storage_state' => 'moving']);
         }
         if ($existing !== null) {
             $this->events->emitNoteEdited($note, $subject);

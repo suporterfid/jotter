@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Vault\Store\VaultFileResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use App\Domain\Vault\AttachmentStorage;
 use App\Domain\Vault\Exceptions\PathTraversalRejected;
 use App\Domain\Vault\Exceptions\VaultNoteNotFound;
@@ -80,12 +82,12 @@ class AttachmentController extends Controller
         return response()->json(['data' => $data], 201);
     }
 
-    public function show(Request $request, Workspace $workspace, string $path): BinaryFileResponse|JsonResponse
+    public function show(Request $request, Workspace $workspace, string $path): SymfonyResponse|JsonResponse
     {
         try {
-            [$absolutePath, $mime, $size] = $this->storage->readAttachmentInfo($workspace, $path);
+            [$relativePath, $mime, $size] = $this->storage->readAttachmentInfo($workspace, $path);
 
-            return response()->file($absolutePath, [
+            return VaultFileResponse::make($this->storage->store($workspace), $relativePath, [
                 'Content-Type' => $mime,
                 'Content-Length' => (string) $size,
                 'Cache-Control' => 'private, max-age=86400',

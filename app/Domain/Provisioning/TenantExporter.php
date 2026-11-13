@@ -11,9 +11,7 @@ use App\Models\Note;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Workspace;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use ZipArchive;
 
 /**
@@ -83,26 +81,26 @@ final class TenantExporter
 
     private function addVault(ZipArchive $zip, Workspace $workspace, string $prefix): int
     {
-        $root = realpath($workspace->vault_path);
-        if ($root === false || ! is_dir($root)) {
-            return 0;
-        }
-
+        $store = app(VaultStoreResolver::class)->for($workspace);
         $count = 0;
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST,
-        );
-        /** @var SplFileInfo $entry */
-        foreach ($iterator as $entry) {
-            $relative = ltrim(str_replace('\\', '/', substr($entry->getPathname(), strlen($root))), '/');
-            if ($entry->isDir()) {
-                $zip->addEmptyDir($prefix.$relative);
-            } elseif ($entry->isFile() && ! $entry->isLink()) {
-                $zip->addFile($entry->getPathname(), $prefix.$relative);
+        $directories = [];
+        $cursor = null;
+
+        do {
+            $page = $store->list('', $cursor, 500);
+            foreach ($page->entries as $entry) {
+                $parent = dirname($entry->path);
+                while ($parent !== '.' && $parent !== '' && ! isset($directories[$parent])) {
+                    $directories[$parent] = true;
+                    $zip->addEmptyDir($prefix.$parent);
+                    $parent = dirname($parent);
+                }
+
+                $zip->addFromString($prefix.$entry->path, $store->read($entry->path));
                 $count++;
             }
-        }
+            $cursor = $page->nextCursor;
+        } while ($cursor !== null);
 
         return $count;
     }

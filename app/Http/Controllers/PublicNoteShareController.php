@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Vault\Store\VaultFileResponse;
 use App\Domain\Sharing\NoteShareService;
 use App\Domain\Sharing\SharedAssetResolver;
 use App\Domain\Sharing\SharedNoteRenderer;
@@ -49,7 +50,7 @@ final class PublicNoteShareController extends Controller
         ]);
     }
 
-    public function attachment(string $token, string $path): BinaryFileResponse
+    public function attachment(string $token, string $path): \Symfony\Component\HttpFoundation\Response
     {
         $share = $this->shares->activeForToken($token);
         if ($share === null) {
@@ -62,7 +63,7 @@ final class PublicNoteShareController extends Controller
             if ($attachment === null) {
                 abort(404);
             }
-            [$absolutePath, $mime, $size] = $this->attachments->readAttachmentInfo(
+            [$relativePath, $mime, $size] = $this->attachments->readAttachmentInfo(
                 $share->note->workspace,
                 $attachment->path,
             );
@@ -70,7 +71,7 @@ final class PublicNoteShareController extends Controller
             abort(404);
         }
 
-        return response()->file($absolutePath, [
+        return VaultFileResponse::make($this->attachments->store($share->note->workspace), $relativePath, [
             'Content-Type' => $mime,
             'Content-Length' => (string) $size,
             'Cache-Control' => 'no-store',

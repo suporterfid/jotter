@@ -55,6 +55,25 @@ return [
         'reindex_batch_size' => (int) env('JOTTER_VAULT_REINDEX_BATCH', 50),
     ],
 
+    // Pluggable vault stores (docs/decisions.md, "Pluggable vault stores"). `local`
+    // (the workspace folder) is always on; listing `s3` and/or `github` turns on the
+    // tenant "Storage" screen. With the default, nothing changes for anyone.
+    'vault_stores' => [
+        'drivers' => array_values(array_unique(array_filter(array_map(
+            'trim',
+            explode(',', strtolower((string) env('JOTTER_VAULT_DRIVERS', 'local'))),
+        )))),
+        // Hosts (exact names or IPs) allowed to resolve to private addresses, e.g. an internal MinIO.
+        'allowed_private_hosts' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', strtolower((string) env('JOTTER_VAULT_ALLOWED_PRIVATE_HOSTS', ''))),
+        ))),
+        // vault:move keeps the source this many days for --rollback (D9).
+        'move_retain_days' => (int) env('JOTTER_VAULT_MOVE_RETAIN_DAYS', 7),
+        // Files copied per vault:process-moves run (cron, every minute).
+        'move_batch_size' => (int) env('JOTTER_VAULT_MOVE_BATCH', 200),
+    ],
+
     'trash' => [
         'retention_days' => (int) env('JOTTER_TRASH_RETENTION_DAYS', 30),
         'purge_batch_size' => (int) env('JOTTER_TRASH_PURGE_BATCH', 100),

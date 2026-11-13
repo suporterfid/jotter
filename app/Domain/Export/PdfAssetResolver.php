@@ -2,6 +2,7 @@
 
 namespace App\Domain\Export;
 
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Domain\Vault\VaultPathGuard;
 use App\Models\Note;
 use App\Models\Workspace;
@@ -53,22 +54,24 @@ final class PdfAssetResolver
         }
 
         try {
-            $absolutePath = $this->paths->resolve($workspace, $relativePath, mustExist: true, mustBeMarkdown: false);
+            $relative = $this->paths->normalize($workspace, $relativePath, mustBeMarkdown: false);
+            $store = app(VaultStoreResolver::class)->for($workspace);
+            $stat = $store->stat($relative);
+            if ($stat === null || $stat->size > 5_000_000) {
+                return null;
+            }
+
+            $mime = strtolower((string) ($store->mimeType($relative) ?: ''));
+            if (! str_starts_with($mime, 'image/')) {
+                return null;
+            }
+
+            $contents = $store->read($relative);
         } catch (\Throwable) {
             return null;
         }
 
-        if (! is_file($absolutePath)) {
-            return null;
-        }
-
-        $mime = strtolower((string) (mime_content_type($absolutePath) ?: ''));
-        if (! str_starts_with($mime, 'image/')) {
-            return null;
-        }
-
-        $contents = file_get_contents($absolutePath);
-        if ($contents === false || strlen($contents) > 5_000_000) {
+        if (strlen($contents) > 5_000_000) {
             return null;
         }
 

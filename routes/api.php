@@ -76,6 +76,16 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::put('/admin/workspaces/{workspace}', [\App\Http\Controllers\AdminWorkspaceController::class, 'update'])->middleware('workspace.write');
     Route::post('/admin/workspaces/{workspace}/archive', [\App\Http\Controllers\AdminWorkspaceController::class, 'archive'])->middleware('workspace.write');
 
+    Route::get('/admin/vault-stores/config', [\App\Http\Controllers\AdminVaultStoreController::class, 'config']);
+    Route::get('/admin/tenants/{tenant}/vault-stores', [\App\Http\Controllers\AdminVaultStoreController::class, 'index'])->whereNumber('tenant');
+    Route::post('/admin/tenants/{tenant}/vault-stores', [\App\Http\Controllers\AdminVaultStoreController::class, 'store'])->whereNumber('tenant');
+    Route::put('/admin/vault-stores/{vaultStore}', [\App\Http\Controllers\AdminVaultStoreController::class, 'update'])->whereNumber('vaultStore');
+    Route::delete('/admin/vault-stores/{vaultStore}', [\App\Http\Controllers\AdminVaultStoreController::class, 'destroy'])->whereNumber('vaultStore');
+    Route::post('/admin/vault-stores/{vaultStore}/test', [\App\Http\Controllers\AdminVaultStoreController::class, 'test'])->whereNumber('vaultStore');
+    Route::get('/admin/workspaces/{workspace}/vault-moves', [\App\Http\Controllers\AdminVaultMoveController::class, 'index'])->whereNumber('workspace');
+    Route::post('/admin/workspaces/{workspace}/vault-moves', [\App\Http\Controllers\AdminVaultMoveController::class, 'store'])->whereNumber('workspace');
+    Route::post('/admin/vault-moves/{vaultMove}/rollback', [\App\Http\Controllers\AdminVaultMoveController::class, 'rollback'])->whereNumber('vaultMove');
+
     Route::get('/admin/workspaces/{workspace}/members', [\App\Http\Controllers\AdminMembershipController::class, 'index']);
     Route::post('/admin/workspaces/{workspace}/members', [\App\Http\Controllers\AdminMembershipController::class, 'store'])->middleware('workspace.write');
     Route::put('/admin/workspaces/{workspace}/members/{member}', [\App\Http\Controllers\AdminMembershipController::class, 'update'])->middleware('workspace.write');

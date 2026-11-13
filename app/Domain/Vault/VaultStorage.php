@@ -2,12 +2,15 @@
 
 namespace App\Domain\Vault;
 
+use App\Domain\Vault\Store\VaultStore;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Models\Note;
 use App\Models\NoteLink;
 use App\Models\Workspace;
 
 /**
- * Path-safe read/write for workspace Markdown vaults. Disk files are source of truth;
+ * Path-safe read/write for workspace Markdown vaults. Vault files (in the
+ * workspace's VaultStore: local folder by default) are the source of truth;
  * MySQL is updated as a rebuildable projection on every successful write.
  */
 final class VaultStorage
@@ -16,7 +19,13 @@ final class VaultStorage
         private readonly VaultPathGuard $paths = new VaultPathGuard,
         private readonly NoteProjector $projector = new NoteProjector,
         private readonly NoteRevisions $revisions = new NoteRevisions,
+        private readonly ?VaultStoreResolver $stores = null,
     ) {}
+
+    public function store(Workspace $workspace): VaultStore
+    {
+        return ($this->stores ?? app(VaultStoreResolver::class))->for($workspace);
+    }
 
     public function read(Workspace $workspace, string $relativePath): MarkdownDocument
     {
@@ -28,36 +37,23 @@ final class VaultStorage
 
     public function readContents(Workspace $workspace, string $relativePath): string
     {
-        $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: true);
+        $relative = $this->paths->normalize($workspace, $relativePath);
 
-        $raw = file_get_contents($absolute);
-        if ($raw === false) {
-            throw new \RuntimeException("Unable to read vault note [{$relativePath}].");
-        }
-
-        return $raw;
+        return $this->store($workspace)->read($relative);
     }
 
     public function write(Workspace $workspace, string $relativePath, string $contents, ?string $actorId = null): Note
     {
-        $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: false);
-        $relative = $this->paths->toRelative($workspace, $absolute);
-
-        $this->ensureParentDirectory($workspace, $absolute);
-
-        // Re-resolve after parents exist so symlink escapes are caught before write.
-        $absolute = $this->paths->resolve($workspace, $relative, mustExist: false);
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
+        $relative = $this->paths->normalize($workspace, $relativePath);
+        $store = $this->store($workspace);
 
         // Storage quota (#390): only growth is refused.
-        clearstatcache(true, $absolute);
-        $delta = strlen($contents) - (is_file($absolute) ? (int) filesize($absolute) : 0);
+        $delta = strlen($contents) - ($store->stat($relative)?->size ?? 0);
         $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
         $quota->assertCanGrow($workspace, $delta);
 
-        $written = file_put_contents($absolute, $contents, LOCK_EX);
-        if ($written === false) {
-            throw new \RuntimeException("Unable to write vault note [{$relative}].");
-        }
+        $store->write($relative, $contents);
         $quota->recordDelta($workspace, $delta);
 
         $document = MarkdownDocument::parse($contents, $this->fallbackTitle($relative));
@@ -84,38 +80,29 @@ final class VaultStorage
     public function exists(Workspace $workspace, string $relativePath): bool
     {
         try {
-            $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: false);
+            $relative = $this->paths->normalize($workspace, $relativePath);
+
+            return $this->store($workspace)->exists($relative);
         } catch (\Throwable) {
             return false;
         }
-
-        return is_file($absolute);
     }
 
     public function moveFile(Workspace $workspace, string $oldPath, string $newPath): void
     {
-        $oldAbsolute = $this->paths->resolve($workspace, $oldPath, mustExist: true);
-        $newAbsolute = $this->paths->resolve($workspace, $newPath, mustExist: false);
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
+        $from = $this->paths->normalize($workspace, $oldPath);
+        $to = $this->paths->normalize($workspace, $newPath);
 
-        if ($this->exists($workspace, $newPath)) {
-            throw new \RuntimeException("Vault destination [{$newPath}] already exists.");
-        }
-
-        $this->ensureParentDirectory($workspace, $newAbsolute);
-
-        if (! rename($oldAbsolute, $newAbsolute)) {
-            throw new \RuntimeException("Unable to move vault note from [{$oldPath}] to [{$newPath}].");
-        }
+        $this->store($workspace)->move($from, $to);
     }
 
     public function delete(Workspace $workspace, string $relativePath): void
     {
-        $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: true);
-        $relative = $this->paths->toRelative($workspace, $absolute);
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
+        $relative = $this->paths->normalize($workspace, $relativePath);
 
-        if (! unlink($absolute)) {
-            throw new \RuntimeException("Unable to delete vault note [{$relative}].");
-        }
+        $this->store($workspace)->delete($relative);
 
         Note::query()
             ->where('workspace_id', $workspace->id)
@@ -125,11 +112,14 @@ final class VaultStorage
 
     public function move(Workspace $workspace, string $oldPath, string $newPath): Note
     {
-        $oldAbsolute = $this->paths->resolve($workspace, $oldPath, mustExist: true);
-        $newAbsolute = $this->paths->resolve($workspace, $newPath, mustExist: false);
-        $newRelative = $this->paths->toRelative($workspace, $newAbsolute);
+        Store\WorkspaceStorageMoving::assertWritable($workspace);
+        $store = $this->store($workspace);
+        $oldRelative = $this->paths->normalize($workspace, $oldPath);
+        $newRelative = $this->paths->normalize($workspace, $newPath);
 
-        $this->ensureParentDirectory($workspace, $newAbsolute);
+        if (! $store->exists($oldRelative)) {
+            throw new Exceptions\VaultNoteNotFound($oldPath);
+        }
 
         $note = Note::query()
             ->where('workspace_id', $workspace->id)
@@ -144,11 +134,9 @@ final class VaultStorage
                 ->pluck('source_note_id')->unique()->all()
             : [];
 
-        if (! rename($oldAbsolute, $newAbsolute)) {
-            throw new \RuntimeException("Unable to move vault note from [{$oldPath}] to [{$newPath}].");
-        }
+        $store->move($oldRelative, $newRelative);
 
-        $contents = file_get_contents($newAbsolute) ?: '';
+        $contents = $store->read($newRelative);
         $document = MarkdownDocument::parse($contents, $this->fallbackTitle($newRelative));
 
         if ($note) {
@@ -231,56 +219,6 @@ final class VaultStorage
             if ($rewritten !== null && $rewritten !== $contents) {
                 $this->write($workspace, (string) $referencingNote->path, $rewritten);
             }
-        }
-    }
-
-    private function ensureParentDirectory(Workspace $workspace, string $absolute): void
-    {
-        $root = $this->paths->ensureVaultRoot($workspace);
-        $parent = dirname($absolute);
-
-        $rootNormalized = rtrim(str_replace('\\', '/', $root), '/');
-        $parentNormalized = rtrim(str_replace('\\', '/', $parent), '/');
-
-        if ($parentNormalized !== $rootNormalized && ! str_starts_with($parentNormalized, $rootNormalized.'/')) {
-            throw new \RuntimeException('Refusing to create directories outside the vault root.');
-        }
-
-        if (is_dir($parent)) {
-            $realParent = realpath($parent);
-            if ($realParent === false) {
-                throw new \RuntimeException('Vault parent directory could not be canonicalized.');
-            }
-
-            $realNormalized = str_replace('\\', '/', $realParent);
-            if ($realNormalized !== $rootNormalized && ! str_starts_with($realNormalized, $rootNormalized.'/')) {
-                throw new \RuntimeException('Refusing to use a vault parent outside the workspace root.');
-            }
-
-            return;
-        }
-
-        $relativeParent = trim(substr($parentNormalized, strlen($rootNormalized)), '/');
-        if ($relativeParent !== '') {
-            foreach (explode('/', $relativeParent) as $segment) {
-                if ($segment === '' || $segment === '.' || $segment === '..' || str_contains($segment, ':')) {
-                    throw new \RuntimeException('Refusing to create unsafe vault directories.');
-                }
-            }
-        }
-
-        if (! mkdir($parent, 0755, true) && ! is_dir($parent)) {
-            throw new \RuntimeException("Unable to create vault directory for [{$absolute}].");
-        }
-
-        $realParent = realpath($parent);
-        if ($realParent === false) {
-            throw new \RuntimeException('Vault parent directory could not be canonicalized.');
-        }
-
-        $realNormalized = str_replace('\\', '/', $realParent);
-        if ($realNormalized !== $rootNormalized && ! str_starts_with($realNormalized, $rootNormalized.'/')) {
-            throw new \RuntimeException('Refusing to use a vault parent outside the workspace root.');
         }
     }
 

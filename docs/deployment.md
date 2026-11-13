@@ -287,6 +287,22 @@ JOTTER_WORKSPACE_QUOTA_WARN_PERCENT=80  # banner and jotter:doctor warning from 
   `php artisan workspace:storage --measure` after deploying, and raise the quota where
   needed.
 
+## Vault stores and moving a workspace
+
+By default every workspace lives in its folder under `VAULT_BASE_PATH`, and nothing below applies. Listing a remote driver turns on the admin **Storage** tab:
+
+```dotenv
+JOTTER_VAULT_DRIVERS=local,s3,github   # default: local
+JOTTER_VAULT_ALLOWED_PRIVATE_HOSTS=    # e.g. minio.internal, for an internal MinIO
+JOTTER_VAULT_MOVE_RETAIN_DAYS=7        # how long a move keeps the source for rollback
+JOTTER_VAULT_MOVE_BATCH=200            # files copied per vault:process-moves run
+```
+
+- Store credentials are encrypted with `APP_KEY`. **Rotating `APP_KEY` means re-entering every store's credentials**; `jotter:doctor` (`vault_stores`) lists the stores to reconnect.
+- `php artisan vault:move <workspace> --to=<store id>` (or `--local`) starts a move; the workspace is read-only until `vault:process-moves`, run every minute by the scheduler, finishes. `--sync` copies everything at once (CLI only). `vault:move <workspace> --rollback` returns to the kept source; `vault:finalize-moves` (daily) deletes sources past their retention, `--now` immediately.
+- This version implements the `local` driver (another folder under `VAULT_BASE_PATH`). S3-compatible buckets and GitHub repositories can be registered, but tests and moves refuse them until their drivers ship (#432, #431).
+- Instance backups still cover local folders only (#444).
+
 ## Backup and restore
 
 Jotter keeps two things: the **vaults** (`.md` files and attachments on disk, the source

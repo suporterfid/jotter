@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-Jotter's vault data lives as plain `.md` files under a workspace-specific directory. Those files—not database rows—are authoritative. MySQL stores application state and a rebuildable projection for metadata, links, tags, and full-text search. Removing or rebuilding the index must never destroy note content.
+Jotter's vault data lives as plain `.md` files in a workspace-specific vault. By default that vault is a directory under `vault_path` that PHP reads and writes directly; a tenant may instead place a workspace's vault in an S3-compatible bucket or a private Git repository (`docs/decisions.md`, "Pluggable vault stores"), always with the same portable file layout. Those files—not database rows—are authoritative, whichever store holds them, and every access goes through the `VaultStore` interface (`App\Domain\Vault\Store`). MySQL stores application state and a rebuildable projection for metadata, links, tags, and full-text search. Removing or rebuilding the index must never destroy note content.
 
 The initial hierarchy is tenant → workspace → note/attachment, with note links, tags, identities, memberships, and an append-only audit log. Tenant and workspace foreign keys make ownership explicit, while paths and tag names are unique only within their owning workspace.
 
@@ -21,6 +21,10 @@ Foreign keys cascade deletion for owned projection/state rows. Nullable referenc
 Membership uniqueness uses a generated workspace scope key so MySQL also rejects duplicate tenant-level memberships when `workspace_id` is `NULL`. A composite tenant/workspace foreign key prevents memberships from crossing tenant boundaries.
 
 Audit-log models reject instance updates and deletes, while restricted scope foreign keys prevent cascading history changes. Query-builder or direct-SQL mutation is not blocked at the database layer yet; the least-privilege/trigger and retention contract remains a required security decision before PR7.
+
+### Vault stores
+
+`VaultStoreResolver::for($workspace)` returns the workspace's `VaultStore`: `LocalVaultStore` over `vault_path` when `workspaces.vault_store_id` is null (always, unless an operator lists a remote driver in `JOTTER_VAULT_DRIVERS`), otherwise the driver of its row in `vault_stores` under `vault_prefix`. Nothing outside the resolver knows the driver. `vault:move` copies a workspace between stores in cron batches while the workspace is `moving` (writes answer 423), verifies every file by SHA-256, swaps atomically and keeps the source for rollback (`JOTTER_VAULT_MOVE_RETAIN_DAYS`).
 
 ## Modular monolith and provider seams
 

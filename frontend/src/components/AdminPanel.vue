@@ -40,6 +40,14 @@
         >
           {{ t('adminPanel.connectedApps') }}
         </button>
+        <button
+          v-if="storageConfig.enabled"
+          :class="['tab-btn', { active: activeTab === 'storage' }]"
+          data-testid="admin-tab-storage"
+          @click="activeTab = 'storage'"
+        >
+          {{ t('vaultStores.tab') }}
+        </button>
       </div>
 
       <div v-if="error" class="admin-error-banner">
@@ -268,6 +276,13 @@
         </ul>
       </div>
 
+      <VaultStoresPanel
+        v-if="activeTab === 'storage' && storageConfig.enabled"
+        :tenants="tenants"
+        :workspaces="workspaces"
+        :drivers="storageConfig.drivers"
+      />
+
       <div v-if="activeTab === 'apps'" class="tab-content" data-testid="admin-apps-tab">
         <h3>{{ t('adminPanel.connectedApps') }}</h3>
         <p class="admin-note">{{ t('adminPanel.connectedAppsHelp') }}</p>
@@ -303,6 +318,7 @@ import { useI18n } from 'vue-i18n'
 import { api, getTenants, adminResetPassword } from '../services/api'
 import type { Tenant } from '../services/types'
 import McpClientSnippets from './McpClientSnippets.vue'
+import VaultStoresPanel from './VaultStoresPanel.vue'
 import { formatBytes } from '../services/formatBytes'
 
 const { t } = useI18n()
@@ -310,7 +326,18 @@ const { t } = useI18n()
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits(['close'])
 
-const activeTab = ref<'workspaces' | 'members' | 'users' | 'mcp' | 'apps'>('workspaces')
+const activeTab = ref<'workspaces' | 'members' | 'users' | 'mcp' | 'apps' | 'storage'>('workspaces')
+// Pluggable vault stores (#436): the Storage tab exists only when the operator enabled a remote driver.
+const storageConfig = ref<{ enabled: boolean; drivers: string[] }>({ enabled: false, drivers: [] })
+
+async function fetchStorageConfig() {
+  try {
+    const response = await api.get<{ data: { enabled: boolean; drivers: string[] } }>('/admin/vault-stores/config')
+    storageConfig.value = response.data.data
+  } catch {
+    storageConfig.value = { enabled: false, drivers: [] }
+  }
+}
 const error = ref('')
 const loading = ref(false)
 
@@ -713,6 +740,7 @@ watch(() => props.isOpen, (val) => {
     fetchMachineTokens()
     fetchWorkspaces()
     fetchUsers()
+    fetchStorageConfig()
   }
 })
 </script>

@@ -2,6 +2,8 @@
 
 namespace App\Domain\Sharing;
 
+use App\Domain\Vault\Exceptions\VaultNoteNotFound;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Domain\Vault\VaultPathGuard;
 use App\Models\Attachment;
 use App\Models\Note;
@@ -14,7 +16,20 @@ final class SharedAssetResolver
 {
     public function __construct(
         private readonly VaultPathGuard $paths,
+        private readonly VaultStoreResolver $stores,
     ) {}
+
+    /**
+     * @throws \App\Domain\Vault\Exceptions\PathTraversalRejected
+     * @throws VaultNoteNotFound
+     */
+    private function assertStored(\App\Models\Workspace $workspace, string $path): void
+    {
+        $relative = $this->paths->normalize($workspace, $path, mustBeMarkdown: false);
+        if (! $this->stores->for($workspace)->exists($relative)) {
+            throw new VaultNoteNotFound($path);
+        }
+    }
 
     public function rewriteAttachmentUrls(string $html, Note $note, string $plainToken): string
     {
@@ -79,7 +94,7 @@ final class SharedAssetResolver
             return null;
         }
 
-        $this->paths->resolve($workspace, $attachment->path, mustExist: true, mustBeMarkdown: false);
+        $this->assertStored($workspace, $attachment->path);
 
         return $attachment;
     }
@@ -109,7 +124,7 @@ final class SharedAssetResolver
             return null;
         }
 
-        $this->paths->resolve($note->workspace, $attachment->path, mustExist: true, mustBeMarkdown: false);
+        $this->assertStored($note->workspace, $attachment->path);
 
         return $attachment;
     }

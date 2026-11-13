@@ -101,7 +101,7 @@ final class WorkspaceTemplateController extends Controller
 
         // Validate path safety (§8 S2)
         try {
-            $this->pathGuard->resolve($workspace, $relativePath, mustExist: false, mustBeMarkdown: true);
+            $this->pathGuard->normalize($workspace, $relativePath, mustBeMarkdown: true);
         } catch (\Throwable) {
             return response()->json(['message' => __('messages.invalid_daily_note_path')], 400);
         }

@@ -35,7 +35,7 @@ This is the **planning + execution authority** for v0. Operate as follows:
 
 ## 1. Mission — what Jotter is
 
-Jotter is a **self-hosted, Obsidian-compatible Markdown knowledge base** that runs on cPanel-style shared hosting (PHP + MySQL). The vault is **plain `.md` files on disk**; the app puts backlinks, full-text search, multi-workspace organization, publishing, and AI-agent access on top — without taking your data hostage.
+Jotter is a **self-hosted, Obsidian-compatible Markdown knowledge base** that runs on cPanel-style shared hosting (PHP + MySQL). The vault is **plain `.md` files** — on local disk by default, or, per workspace, in an S3-compatible bucket or a private Git repository with the same file layout (`docs/decisions.md`, "Pluggable vault stores", 2026-11-13); the app puts backlinks, full-text search, multi-workspace organization, publishing, and AI-agent access on top — without taking your data hostage.
 
 **The defining design decision:** the source of truth is a folder of Markdown files, not a database. The database is only an *index*. This makes Jotter interoperable — desktop/mobile Obsidian can point at the same vault (via WebDAV, a v1 feature) — and durable: if Jotter disappears, you still have a readable folder of notes.
 
@@ -47,7 +47,7 @@ Jotter is one of three small self-hosting tools: **Jotter** (knowledge), **Grand
 
 - **Backend:** PHP 8.2+, **Laravel 12** (modular monolith). Chosen to match `taskconnect` so deploy-by-zip, `public/` web root, Artisan commands, migrations, and the Docker dev loop are shared muscle memory. (GrandpaSSOn's framework-less style is fine for a tiny broker; Jotter's feature surface justifies a framework.)
 - **Frontend:** **Vue 3 SPA** built with **Vite**, in `frontend/` — same as `taskconnect`.
-- **Data:** **MySQL 8.0+** for the *index* (notes metadata, links, tags, search) + app state. **The vault itself is `.md` files on disk**, never in the DB.
+- **Data:** **MySQL 8.0+** for the *index* (notes metadata, links, tags, search) + app state. **The vault itself is `.md` files** (local disk by default; S3-compatible bucket or Git repository per workspace since the 2026-11-13 decision), never in the DB.
 - **Search:** MySQL `FULLTEXT` (InnoDB). No dependency on SQLite FTS5 (not guaranteed on shared hosts).
 - **Markdown:** server-side render with a maintained PHP library (e.g. `league/commonmark`) **plus sanitization**; client-side live preview mirrors it. Wikilink (`[[...]]`) is a custom extension.
 - **Background work:** none in-process for anything slow. v0 uses a single Artisan reconcile command runnable by cron; heavier deferred work is delegated to TaskConnect later (§9).
