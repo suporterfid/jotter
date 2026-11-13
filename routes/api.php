@@ -85,6 +85,14 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::get('/admin/workspaces/{workspace}/vault-moves', [\App\Http\Controllers\AdminVaultMoveController::class, 'index'])->whereNumber('workspace');
     Route::post('/admin/workspaces/{workspace}/vault-moves', [\App\Http\Controllers\AdminVaultMoveController::class, 'store'])->whereNumber('workspace');
     Route::post('/admin/vault-moves/{vaultMove}/rollback', [\App\Http\Controllers\AdminVaultMoveController::class, 'rollback'])->whereNumber('vaultMove');
+    // GitHub vault store connection (#439).
+    Route::get('/admin/tenants/{tenant}/github', [\App\Http\Controllers\GitHubConnectController::class, 'config'])->whereNumber('tenant');
+    Route::post('/admin/tenants/{tenant}/github/install', [\App\Http\Controllers\GitHubConnectController::class, 'install'])->whereNumber('tenant');
+    Route::get('/admin/tenants/{tenant}/github/installations/{installation}/repositories', [\App\Http\Controllers\GitHubConnectController::class, 'repositories'])->whereNumber('tenant')->whereNumber('installation');
+    Route::get('/admin/vault-stores/{vaultStore}/github/webhook', [\App\Http\Controllers\GitHubConnectController::class, 'webhook'])->whereNumber('vaultStore');
+    Route::get('/admin/github/manifest', [\App\Http\Controllers\GitHubConnectController::class, 'manifest']);
+    Route::get('/admin/github/manifest/callback', [\App\Http\Controllers\GitHubConnectController::class, 'manifestCallback']);
+    Route::get('/github/setup', [\App\Http\Controllers\GitHubConnectController::class, 'setup']);
 
     Route::get('/admin/workspaces/{workspace}/members', [\App\Http\Controllers\AdminMembershipController::class, 'index']);
     Route::post('/admin/workspaces/{workspace}/members', [\App\Http\Controllers\AdminMembershipController::class, 'store'])->middleware('workspace.write');

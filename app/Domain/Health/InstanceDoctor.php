@@ -97,6 +97,7 @@ final class InstanceDoctor
             $this->checkErasureLog(),
             $this->checkQuotas(),
             $this->checkVaultStores($databaseCheck->passed),
+            (new \App\Domain\Vault\Store\GitHub\GitHubDoctor)->check($databaseCheck->passed),
             $this->checkAdminTwoFactor($databaseCheck->passed),
             $this->checkDeletionRequests($databaseCheck->passed),
         ];

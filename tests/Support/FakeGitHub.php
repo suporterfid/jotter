@@ -35,6 +35,9 @@ final class FakeGitHub
 
     public ?string $appPublicKey = null;
 
+    /** Headers added to every answer (e.g. a PAT's expiration). */
+    public array $extraHeaders = [];
+
     public ?string $appId = null;
 
     /** Answer the next N write requests with a secondary-rate-limit 403. */
@@ -606,7 +609,7 @@ final class FakeGitHub
 
     private function json(mixed $data, int $status = 200, array $headers = []): PromiseInterface
     {
-        $headers += ['x-ratelimit-remaining' => '4999', 'x-ratelimit-reset' => (string) (time() + 3600)];
+        $headers += $this->extraHeaders + ['x-ratelimit-remaining' => '4999', 'x-ratelimit-reset' => (string) (time() + 3600)];
 
         return Http::response($data, $status, $headers);
     }

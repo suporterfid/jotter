@@ -71,8 +71,10 @@ final class VaultStoreDrivers
             self::GITHUB => [
                 'settings.owner' => [$required, 'string', 'max:100', 'regex:/^[A-Za-z0-9](?:[A-Za-z0-9\-]{0,38})$/'],
                 'settings.repo' => [$required, 'string', 'max:100', 'regex:/^[A-Za-z0-9._\-]+$/'],
-                'settings.branch' => ['sometimes', 'string', 'max:255'],
+                'settings.branch' => ['sometimes', 'string', 'max:255', 'regex:/^(?!\/|.*(?:\.\.|\/\/|@\{|\.lock$|\/$))[^\s~^:?*\[\\\\]+$/'],
                 'settings.installation_id' => ['sometimes', 'nullable', 'integer'],
+                // §6.1: the organization confirms it controls the repository and its Git history.
+                'settings.controller_confirmed' => [$creating ? 'accepted' : 'sometimes', 'boolean'],
                 'credentials.token' => ['sometimes', 'nullable', 'string', 'max:512'],
             ],
             default => [],
