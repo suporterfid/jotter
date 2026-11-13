@@ -17,7 +17,9 @@ As of 2026-08-20, every previously-tracked Milestone and Confluence-parity issue
 
 ## Needs a decision (spec §14.5)
 
-All roadmap/spec decisions are resolved — see `docs/decisions.md`. This section is intentionally empty; new decision work must add a dated decision record before implementation is planned.
+All roadmap/spec decisions are resolved — see `docs/decisions.md`. New decision work must add a dated decision record before implementation is planned.
+
+- **Pluggable per-workspace vault stores (proposed 2026-11-13).** A tenant can move a workspace's vault from the local folder (default, unchanged) to a private GitHub repository (one repo per workspace; write-behind journal because of GitHub's 500 writes/hour limit) or to an S3-compatible bucket (AWS S3, R2, MinIO, GCS). Plan, decisions D1–D10 and the PR sequence A–H: `docs/20261113-jotter-pluggable-vault-stores-plan.md`; provider costs: `docs/20261113-jotter-tenant-vault-channels-research.md`. GitHub driver detail (auth, sync, conflicts, costs, phases replacing PRs F/G): `docs/20261113-jotter-github-vault-implementation-plan.md`. Owner decided 2026-11-13: GitHub ships before S3 (PR D after the GitHub phases), and the first version uses a `push` webhook so external edits show up in seconds. PR A must record a dated `docs/decisions.md` entry amending spec §1/§2 ("on disk" → local folder, S3-compatible bucket or Git repository, same portable Markdown layout) before any code.
 
 ## Current implementation queue
 
