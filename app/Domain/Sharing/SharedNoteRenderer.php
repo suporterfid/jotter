@@ -4,6 +4,7 @@ namespace App\Domain\Sharing;
 
 use App\Domain\Vault\Exceptions\VaultNoteNotFound;
 use App\Domain\Vault\MarkdownServerRenderer;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Domain\Vault\VaultPathGuard;
 use App\Models\NoteShare;
 
@@ -13,6 +14,7 @@ final class SharedNoteRenderer
         private readonly MarkdownServerRenderer $renderer,
         private readonly SharedAssetResolver $assets,
         private readonly VaultPathGuard $paths,
+        private readonly VaultStoreResolver $stores,
     ) {}
 
     /** @return array{title: string, html: string, locale: string, direction: string} */
@@ -25,8 +27,8 @@ final class SharedNoteRenderer
         }
 
         try {
-            $path = $this->paths->resolve($note->workspace, $note->path, mustExist: true, mustBeMarkdown: true);
-            $markdown = file_get_contents($path);
+            $relative = $this->paths->normalize($note->workspace, $note->path, mustBeMarkdown: true);
+            $markdown = $this->stores->for($note->workspace)->read($relative);
         } catch (VaultNoteNotFound) {
             throw new VaultNoteNotFound($note->path);
         }

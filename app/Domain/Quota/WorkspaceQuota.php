@@ -2,11 +2,9 @@
 
 namespace App\Domain\Quota;
 
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
 
 /**
  * Per-workspace storage quota (#390). The limit is `workspaces.storage_quota_mb`
@@ -14,7 +12,7 @@ use SplFileInfo;
  * refused: a write that keeps or shrinks the vault, or any delete, always
  * passes, so a workspace over its quota can still be cleaned up.
  *
- * Usage is `workspaces.storage_bytes`: measured from disk (first use, hourly
+ * Usage is `workspaces.storage_bytes`: measured from the vault store (first use, hourly
  * `workspace:storage --measure`, after imports) and moved by each write's delta
  * in between, so a check costs one row read, not a directory walk.
  */
@@ -35,16 +33,15 @@ final class WorkspaceQuota
     public function measure(Workspace $workspace): int
     {
         $bytes = 0;
-        $root = realpath((string) $workspace->vault_path);
-        if ($root !== false && is_dir($root)) {
-            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS));
-            /** @var SplFileInfo $file */
-            foreach ($iterator as $file) {
-                if ($file->isFile() && ! $file->isLink()) {
-                    $bytes += (int) $file->getSize();
-                }
+        $store = app(VaultStoreResolver::class)->for($workspace);
+        $cursor = null;
+        do {
+            $page = $store->list('', $cursor, 1000);
+            foreach ($page->entries as $entry) {
+                $bytes += $entry->size;
             }
-        }
+            $cursor = $page->nextCursor;
+        } while ($cursor !== null);
 
         $workspace->forceFill(['storage_bytes' => $bytes, 'storage_measured_at' => now()])->saveQuietly();
 

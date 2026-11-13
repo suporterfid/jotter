@@ -2,8 +2,9 @@
 
 namespace App\Domain\Vault;
 
+use App\Domain\Vault\Store\VaultStore;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Models\Attachment;
-use App\Models\AuditLog;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 
@@ -11,7 +12,13 @@ final class AttachmentStorage
 {
     public function __construct(
         private readonly VaultPathGuard $paths = new VaultPathGuard,
+        private readonly ?VaultStoreResolver $stores = null,
     ) {}
+
+    public function store(Workspace $workspace): VaultStore
+    {
+        return ($this->stores ?? app(VaultStoreResolver::class))->for($workspace);
+    }
 
     /**
      * Write an attachment to the vault storage and record it in the database.
@@ -47,27 +54,16 @@ final class AttachmentStorage
             }
         }
 
-        $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: false, mustBeMarkdown: false);
-        $relative = $this->paths->toRelative($workspace, $absolute, mustBeMarkdown: false);
-
-        $this->ensureParentDirectory($workspace, $absolute);
+        $relative = $this->paths->normalize($workspace, $relativePath, mustBeMarkdown: false);
+        $store = $this->store($workspace);
 
         // Storage quota (#390): only growth is refused.
-        clearstatcache(true, $absolute);
-        $delta = strlen($contents) - (is_file($absolute) ? (int) filesize($absolute) : 0);
+        $delta = strlen($contents) - ($store->stat($relative)?->size ?? 0);
         $quota = app(\App\Domain\Quota\WorkspaceQuota::class);
         $quota->assertCanGrow($workspace, $delta);
 
-        $written = file_put_contents($absolute, $contents, LOCK_EX);
-        if ($written === false) {
-            throw new \RuntimeException("Unable to write vault attachment [{$relative}].");
-        }
+        $size = $store->write($relative, $contents)->size;
         $quota->recordDelta($workspace, $delta);
-
-        $size = filesize($absolute);
-        if ($size === false) {
-            $size = strlen($contents);
-        }
 
         /** @var Attachment $attachment */
         $attachment = Attachment::query()->updateOrCreate(
@@ -98,21 +94,26 @@ final class AttachmentStorage
     }
 
     /**
-     * Resolve and read attachment file info.
+     * Resolve attachment file info. The path is validated and must exist in the store.
      *
-     * @return array{0: string, 1: string, 2: int} [absolutePath, mime, size]
+     * @return array{0: string, 1: string, 2: int} [relativePath, mime, size]
      */
     public function readAttachmentInfo(Workspace $workspace, string|int $idOrPath): array
     {
         $attachment = $this->findAttachment($workspace, $idOrPath);
         $relativePath = $attachment ? $attachment->path : (string) $idOrPath;
 
-        $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: true, mustBeMarkdown: false);
+        $relative = $this->paths->normalize($workspace, $relativePath, mustBeMarkdown: false);
+        $store = $this->store($workspace);
+        $stat = $store->stat($relative);
+        if ($stat === null) {
+            throw new Exceptions\VaultNoteNotFound($relativePath);
+        }
 
-        $mime = $attachment?->mime ?: (mime_content_type($absolute) ?: 'application/octet-stream');
-        $size = $attachment?->size ?: (filesize($absolute) ?: 0);
+        $mime = $attachment?->mime ?: ($store->mimeType($relative) ?: 'application/octet-stream');
+        $size = $attachment?->size ?: $stat->size;
 
-        return [$absolute, $mime, $size];
+        return [$relative, $mime, $size];
     }
 
     public function deleteAttachment(Workspace $workspace, string|int $idOrPath): void
@@ -121,9 +122,10 @@ final class AttachmentStorage
         $relativePath = $attachment ? $attachment->path : (string) $idOrPath;
 
         try {
-            $absolute = $this->paths->resolve($workspace, $relativePath, mustExist: true, mustBeMarkdown: false);
-            if (is_file($absolute)) {
-                unlink($absolute);
+            $relative = $this->paths->normalize($workspace, $relativePath, mustBeMarkdown: false);
+            $store = $this->store($workspace);
+            if ($store->exists($relative)) {
+                $store->delete($relative);
             }
         } catch (\Throwable) {
             // File might already be missing on disk
@@ -169,15 +171,5 @@ final class AttachmentStorage
         $basename = basename(str_replace('\\', '/', $filename));
         $clean = preg_replace('/[^a-zA-Z0-9_\.\-]/', '_', $basename);
         return $clean ?: ('attachment_' . time());
-    }
-
-    private function ensureParentDirectory(Workspace $workspace, string $absolute): void
-    {
-        $parent = dirname($absolute);
-        if (! is_dir($parent)) {
-            if (! mkdir($parent, 0755, true) && ! is_dir($parent)) {
-                throw new \RuntimeException("Unable to create attachment directory for [{$absolute}].");
-            }
-        }
     }
 }

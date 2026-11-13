@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Vault\Exceptions\PathTraversalRejected;
+use App\Domain\Vault\VaultStorage;
 use App\Domain\Auth\Contracts\IdentityProvider;
 use App\Domain\Vault\MarkdownServerRenderer;
 use App\Models\Note;
@@ -13,7 +15,8 @@ final class WorkspacePublishController extends Controller
 {
     public function __construct(
         private readonly IdentityProvider $identityProvider,
-        private readonly MarkdownServerRenderer $renderer
+        private readonly MarkdownServerRenderer $renderer,
+        private readonly VaultStorage $vaultStorage,
     ) {}
 
     public function publish(Request $request, int $workspaceId): JsonResponse
@@ -71,10 +74,14 @@ final class WorkspacePublishController extends Controller
         $publishedCount = 0;
         $publishedPages = [];
 
+        $store = $this->vaultStorage->store($workspace);
         foreach ($notes as $note) {
-            $fullPath = rtrim($workspace->vault_path, '/').'/'.$note->path;
-            if (file_exists($fullPath)) {
-                $markdown = file_get_contents($fullPath);
+            try {
+                $markdown = $store->exists((string) $note->path) ? $store->read((string) $note->path) : null;
+            } catch (PathTraversalRejected) {
+                $markdown = null;
+            }
+            if ($markdown !== null) {
                 $html = $this->renderer->render($markdown, allowExternalEmbeds: false);
 
                 $relPath = str_replace('.md', '.html', $note->path);

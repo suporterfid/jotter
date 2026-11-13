@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vault;
 
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Models\Workspace;
@@ -88,6 +89,7 @@ final class VaultExtractor
         $extracted = [];
         $skipped = [];
         $errors = [];
+        $store = app(VaultStoreResolver::class)->for($workspace);
 
         foreach ($notes as $note) {
             $name = $note['path'] ?? null;
@@ -98,7 +100,8 @@ final class VaultExtractor
             }
 
             try {
-                $resolvedPath = $this->pathGuard->resolve($workspace, $name, mustExist: false, mustBeMarkdown: false);
+                $relative = $this->pathGuard->normalize($workspace, $name, mustBeMarkdown: false);
+                $occupied = $store->stat($relative) !== null || $store->isDirectory($relative);
             } catch (\Throwable $e) {
                 $errors[] = "Zip-slip path traversal rejected: {$name}";
                 $skipped[] = $name;
@@ -106,18 +109,20 @@ final class VaultExtractor
                 continue;
             }
 
-            if (! $overwrite && file_exists($resolvedPath)) {
+            if (! $overwrite && $occupied) {
                 $skipped[] = $name;
 
                 continue;
             }
 
-            $destDir = dirname($resolvedPath);
-            if (! is_dir($destDir)) {
-                mkdir($destDir, 0755, true);
-            }
+            try {
+                $store->write($relative, (string) $content);
+            } catch (\Throwable) {
+                $errors[] = "Zip-slip path traversal rejected: {$name}";
+                $skipped[] = $name;
 
-            file_put_contents($resolvedPath, $content);
+                continue;
+            }
             $extracted[] = $name;
         }
 
@@ -158,6 +163,7 @@ final class VaultExtractor
             throw new RuntimeException('Archive exceeds maximum allowed entry count of '.self::MAX_ENTRY_COUNT);
         }
 
+        $store = app(VaultStoreResolver::class)->for($workspace);
         $totalSize = 0;
         $validEntries = [];
         $errors = [];
@@ -215,7 +221,8 @@ final class VaultExtractor
             }
 
             try {
-                $resolvedPath = $this->pathGuard->resolve($workspace, $name, mustExist: false, mustBeMarkdown: false);
+                $relative = $this->pathGuard->normalize($workspace, $name, mustBeMarkdown: false);
+                $occupied = $store->stat($relative) !== null || $store->isDirectory($relative);
             } catch (\Throwable $e) {
                 $this->auditRecorder->record(
                     AuditEvent::VAULT_PATH_TRAVERSAL_REJECTED,
@@ -245,7 +252,7 @@ final class VaultExtractor
                 continue;
             }
 
-            if (! $overwrite && file_exists($resolvedPath)) {
+            if (! $overwrite && $occupied) {
                 $skipped[] = $name;
 
                 continue;
@@ -269,7 +276,7 @@ final class VaultExtractor
                 'index' => $i,
                 'entry' => $entryName,
                 'name' => $name,
-                'destination' => $resolvedPath,
+                'destination' => $relative,
                 'rewrite' => $source === ImportSource::NOTION && in_array($ext, ['md', 'markdown'], true),
             ];
         }
@@ -286,32 +293,21 @@ final class VaultExtractor
                 continue;
             }
 
-            $destDir = dirname($entry['destination']);
-            if (! is_dir($destDir)) {
-                mkdir($destDir, 0755, true);
-            }
-
-            if ($entry['rewrite']) {
-                $markdown = (string) stream_get_contents($stream);
-                fclose($stream);
-                file_put_contents($entry['destination'], $this->normalizer->rewriteNotionMarkdown($markdown));
-                $extracted[] = $entry['name'];
-
-                continue;
-            }
-
-            $outStream = fopen($entry['destination'], 'wb');
-            if (! $outStream) {
-                fclose($stream);
+            try {
+                if ($entry['rewrite']) {
+                    $markdown = (string) stream_get_contents($stream);
+                    $store->write($entry['destination'], $this->normalizer->rewriteNotionMarkdown($markdown));
+                } else {
+                    $store->writeStream($entry['destination'], $stream);
+                }
+            } catch (\Throwable) {
                 $errors[] = "Failed to open output destination: {$entry['destination']}";
                 $skipped[] = $entry['name'];
 
                 continue;
+            } finally {
+                fclose($stream);
             }
-
-            stream_copy_to_stream($stream, $outStream);
-            fclose($stream);
-            fclose($outStream);
 
             $extracted[] = $entry['name'];
         }

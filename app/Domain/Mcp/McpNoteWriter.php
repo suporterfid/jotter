@@ -164,8 +164,7 @@ final class McpNoteWriter
     private function guard(AuthenticatedSubject $subject, Workspace $workspace, string $path, string $op, string $content): string|McpWriteResult
     {
         try {
-            $absolute = $this->paths->resolve($workspace, $path, mustExist: false);
-            $relative = $this->paths->toRelative($workspace, $absolute);
+            $relative = $this->paths->normalize($workspace, $path);
         } catch (PathTraversalRejected) {
             return McpWriteResult::error("Invalid note path: {$path}. Use a relative path ending in .md.");
         }

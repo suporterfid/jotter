@@ -86,9 +86,14 @@ final class NoteTrash
             throw new \InvalidArgumentException("Note {$note->id} is not in the trash.");
         }
 
-        $absolute = $this->paths->resolve($workspace, (string) $note->path, mustExist: false);
-        if (is_file($absolute) && ! unlink($absolute)) {
-            throw new \RuntimeException("Unable to permanently delete trashed note [{$note->path}].");
+        $relative = $this->paths->normalize($workspace, (string) $note->path);
+        $store = $this->storage->store($workspace);
+        if ($store->exists($relative)) {
+            try {
+                $store->delete($relative);
+            } catch (\RuntimeException $exception) {
+                throw new \RuntimeException("Unable to permanently delete trashed note [{$note->path}].", 0, $exception);
+            }
         }
 
         $note->forceDelete();

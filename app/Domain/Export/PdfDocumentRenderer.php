@@ -3,6 +3,7 @@
 namespace App\Domain\Export;
 
 use App\Domain\Vault\MarkdownServerRenderer;
+use App\Domain\Vault\Store\VaultStoreResolver;
 use App\Domain\Vault\VaultPathGuard;
 use App\Models\Note;
 use App\Models\Workspace;
@@ -54,11 +55,8 @@ final class PdfDocumentRenderer
 
     private function htmlFor(Workspace $workspace, Note $note): string
     {
-        $path = $this->paths->resolve($workspace, $note->path, mustExist: true, mustBeMarkdown: true);
-        $markdown = file_get_contents($path);
-        if ($markdown === false) {
-            throw new \RuntimeException("Unable to read note [{$note->path}].");
-        }
+        $relative = $this->paths->normalize($workspace, $note->path, mustBeMarkdown: true);
+        $markdown = app(VaultStoreResolver::class)->for($workspace)->read($relative);
 
         $html = $this->markdownRenderer->render($markdown, allowExternalEmbeds: false);
 
