@@ -19,11 +19,35 @@ As of 2026-08-20, every previously-tracked Milestone and Confluence-parity issue
 
 All roadmap/spec decisions are resolved — see `docs/decisions.md`. New decision work must add a dated decision record before implementation is planned.
 
-- **Pluggable per-workspace vault stores (proposed 2026-11-13).** A tenant can move a workspace's vault from the local folder (default, unchanged) to a private GitHub repository (one repo per workspace; write-behind journal because of GitHub's 500 writes/hour limit) or to an S3-compatible bucket (AWS S3, R2, MinIO, GCS). Plan, decisions D1–D10 and the PR sequence A–H: `docs/20261113-jotter-pluggable-vault-stores-plan.md`; provider costs: `docs/20261113-jotter-tenant-vault-channels-research.md`. GitHub driver detail (auth, sync, conflicts, costs, phases replacing PRs F/G): `docs/20261113-jotter-github-vault-implementation-plan.md`. Owner decided 2026-11-13: GitHub ships before S3 (PR D after the GitHub phases), and the first version uses a `push` webhook so external edits show up in seconds. PR A must record a dated `docs/decisions.md` entry amending spec §1/§2 and the *Source of truth* section of `docs/architecture.md` ("on disk" → local folder, S3-compatible bucket or Git repository, same portable Markdown layout) before any code.
+- **Pluggable per-workspace vault stores (proposed 2026-11-13).** A tenant can move a workspace's vault from the local folder (default, unchanged) to a private GitHub repository (one repo per workspace; write-behind journal because of GitHub's 500 writes/hour limit) or to an S3-compatible bucket (AWS S3, R2, MinIO, GCS). Plan, decisions D1–D10 and the PR sequence A–H: `docs/20261113-jotter-pluggable-vault-stores-plan.md`; provider costs: `docs/20261113-jotter-tenant-vault-channels-research.md`. GitHub driver detail (auth, sync, conflicts, costs, phases replacing PRs F/G): `docs/20261113-jotter-github-vault-implementation-plan.md`. Owner decided 2026-11-13: GitHub ships before S3 (PR D after the GitHub phases), and the first version uses a `push` webhook so external edits show up in seconds. PR A must record a dated `docs/decisions.md` entry amending spec §1/§2 and the *Source of truth* section of `docs/architecture.md` ("on disk" → local folder, S3-compatible bucket or Git repository, same portable Markdown layout) before any code. Implementation is tracked as epic **#429**; see *Pluggable vault stores epic* below.
 
 ## Current implementation queue
 
 The roadmap's historical Phase 1 gaps are already delivered in this repository: search filters (#52), Markdown/JSON import and round-trip backup (#77/#78), templates/daily notes (#56), and version history with restore (#51). Do not create duplicate issues from the roadmap's stale gap summary; select the next new feature from a refreshed issue or audit.
+
+## Pluggable vault stores epic (#429, planned 2026-11-13)
+
+Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–H), `docs/20261113-jotter-github-vault-implementation-plan.md` (GitHub phases 0–8, G1–G5, checks V1–V6) and `docs/20261113-jotter-tenant-vault-channels-research.md` (providers and costs). Order follows the owner's decision G4 (GitHub before S3). Each PR merged and green (`jt ci`) before the next. **Next:** #434. No code before it.
+
+1. **Common base — epic #430.**
+   1. #434 — PR A: dated decision in `docs/decisions.md` (D1–D10, G1–G5), amending spec §1/§2 and `docs/architecture.md`. Docs only.
+   2. #435 — PR B: `VaultStore` interface + `LocalVaultStore`, refactor of the 36 files, contract test suite, no behaviour change.
+   3. #436 — PR C: `vault_stores` (admin CRUD, encrypted credentials, SSRF guard, audit, doctor, `JOTTER_VAULT_DRIVERS`).
+   4. #437 — PR E: `vault:move` engine (preflight, batched copy, verification, swap, HTTP 423, rollback, 7-day retention).
+2. **GitHub vault — epic #431.**
+   1. #438 — Phase 2: validation spike for V1–V6 (can run alongside #435–#437).
+   2. #439 — Phase 3 (PR F1): GitHub App + fine-grained PAT, install flow, read-only probe.
+   3. #440 — Phase 4 (PR F2): read driver, blob cache, `vault:pull`, `push` webhook (external edits in ≤ 10 s, G5).
+   4. #441 — Phase 5 (PR G1): write-behind journal, `vault:flush`, write budget, pending/synced badge.
+   5. #442 — Phase 6 (PR G2): conflicts and external changes (D8), one test per edge case.
+   6. #443 — Phase 7 (PR G3): `vault:move` local ↔ GitHub.
+   7. #444 — Lifecycle and LGPD with a remote vault (`tenant:delete`, restore, backup, doctor). Added because the GitHub phases did not place the general plan's §6 work in any PR.
+   8. #445 — Phase 8 (PR H, GitHub part): docs, privacy policy draft, gradual rollout.
+3. **S3-compatible vault — epic #432**, after #445.
+   1. #446 — PR D: S3 driver (`async-aws/s3`) + MinIO in `compose.ci.yaml`.
+   2. #447 — S3 in `vault:move`, backup rule by bucket versioning, LGPD in the bucket.
+   3. #448 — PR H (S3 part): contract test against real providers (GCS only announced if it passes), guides.
+4. **Later — #433 (on hold).** GitLab/Forgejo, monorepo, Git LFS, native GCS, mirror replica, 3-way merge, and the research ideas (backup destination, Drive export, SFTP, "Cofre BR", KMS crypto-shredding, Object Lock, attachment offload). Each needs its own decision record first.
 
 ## Brain multi-agent epic (spec 2026-11-03)
 
