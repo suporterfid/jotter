@@ -7,10 +7,13 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
  * with the access token, and revocation from Administration → Connected apps.
  *
  * The client's redirect target is a loopback URL (allowed by the default
- * JOTTER_OAUTH_REDIRECT_ALLOWLIST); the browser never reaches it because the
- * test intercepts the navigation and reads the code from the URL.
+ * JOTTER_OAUTH_REDIRECT_ALLOWLIST). Nothing listens there: the test reads the
+ * code from the redirected request's URL and lets the navigation fail. The port
+ * must not be on Chromium's restricted list (9, 25, 6000...), which Chromium
+ * refuses with ERR_UNSAFE_PORT before any request event.
  */
-const REDIRECT_URI = 'http://127.0.0.1:9/oauth/callback'
+const CALLBACK_ORIGIN = 'http://127.0.0.1:47821'
+const REDIRECT_URI = `${CALLBACK_ORIGIN}/oauth/callback`
 
 function base64url(bytes: Buffer): string {
   return bytes.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -55,12 +58,18 @@ function authorizePath(clientId: string, challenge: string, resource: string, st
   return `/oauth/authorize?${query.toString()}`
 }
 
-/** Captures the redirect back to the client instead of letting the browser fail on it. */
+/**
+ * Records the redirect back to the client. page.route() cannot do this: when a
+ * response is a redirect, Playwright routes only the first URL, so the 302 from
+ * POST /oauth/authorize never reaches a route handler. The request event does
+ * fire for the redirected request.
+ */
 async function captureCallback(page: Page): Promise<() => URL | null> {
   let captured: URL | null = null
-  await page.route('http://127.0.0.1:9/**', async (route) => {
-    captured = new URL(route.request().url())
-    await route.fulfill({ status: 200, contentType: 'text/plain', body: 'callback received' })
+  page.on('request', (request) => {
+    if (request.url().startsWith(`${CALLBACK_ORIGIN}/`)) {
+      captured = new URL(request.url())
+    }
   })
 
   return () => captured
@@ -128,7 +137,6 @@ test.describe('OAuth consent for MCP web clients', () => {
     expect(slugs).toEqual([chosen.slug])
 
     // Administration → Connected apps lists the grant and revokes it.
-    await page.unrouteAll()
     await page.goto('/')
     await page.click('[data-testid="more-actions-btn"]')
     await page.click('[data-testid="admin-panel-btn"]')
