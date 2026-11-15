@@ -92,15 +92,26 @@ class ReleaseZipSecurityTest extends TestCase
         }
 
         if (preg_match('/["\']'.$credentialName.'["\']\s*(?:=>|[:=])\s*["\']([^"\']+)["\']/i', $line, $matches) === 1) {
-            $literal = trim($matches[1]);
-
-            return $literal !== '' && strtolower($literal) !== 'hashed';
+            return ! $this->isNonSecretValue(trim($matches[1]));
         }
 
         if (preg_match('/(?:\$|const\s+|let\s+|var\s+)?'.$credentialName.'\s*=\s*["\']([^"\']+)["\']/i', $line, $matches) === 1) {
-            return trim($matches[1]) !== '';
+            return ! $this->isNonSecretValue(trim($matches[1]));
         }
 
         return false;
+    }
+
+    /**
+     * Values that sit where a credential could but are not one: an empty string,
+     * an Eloquent cast ('password' => 'hashed', 'credentials' => 'encrypted:array'),
+     * or a value that is only a JavaScript template interpolation
+     * (`JOTTER_MCP_TOKEN="${props.token}"` in the MCP client snippets).
+     */
+    private function isNonSecretValue(string $literal): bool
+    {
+        return $literal === ''
+            || preg_match('/^(?:hashed|encrypted(?::[a-z\\\\]+)?)$/i', $literal) === 1
+            || preg_match('/^\$\{[^{}]+\}$/', $literal) === 1;
     }
 }
