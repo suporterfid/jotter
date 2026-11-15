@@ -1,5 +1,11 @@
 <template>
-  <div class="app-layout">
+  <!--
+    Nothing of the app shell is rendered (or fetched) until the session is
+    known. Signed out, the person sees only the full-page sign-in screen; a
+    mid-session expiry re-uses the same opaque screen over a hidden, inert
+    shell so unsaved editor state survives the re-login.
+  -->
+  <div v-if="currentUser" class="app-layout" :inert="showLoginModal || undefined" data-testid="app-shell">
     <button
       type="button"
       class="mobile-sidebar-toggle"
@@ -352,11 +358,6 @@
       >&times;</button>
     </div>
 
-    <!-- Login Modal -->
-    <LoginModal
-      :show="showLoginModal"
-      @login-success="handleLoginSuccess"
-    />
 
     <!-- Command Palette (Cmd + K) -->
     <CommandPalette
@@ -368,6 +369,13 @@
       @logout="handleLogout"
     />
   </div>
+  <div v-else class="app-auth-pending" :aria-busy="!authResolved" data-testid="app-auth-pending"></div>
+
+  <!-- Sign-in screen: opaque and full-page, so the app is never visible behind it. -->
+  <LoginModal
+    :show="authResolved && (showLoginModal || !currentUser)"
+    @login-success="handleLoginSuccess"
+  />
 </template>
 
 <script setup lang="ts">
@@ -557,6 +565,8 @@ const isConnectedAppsOpen = ref(false)
 const isNotificationPreferencesOpen = ref(false)
 const notificationPreferencesUnsubscribeType = ref<NotificationType | null>(null)
 const showLoginModal = ref(false)
+/** True once /auth/me (and the brand config) answered, so the sign-in screen can render. */
+const authResolved = ref(false)
 const isMobileSidebarOpen = ref(false)
 const isGraphViewActive = ref(false)
 const revealFolderRequest = ref<{ path: string; nonce: number } | null>(null)
@@ -686,11 +696,23 @@ onMounted(async () => {
     setBrand(null)
   }
   if (typeof document !== 'undefined') document.title = brand.name
+  authResolved.value = true
 
+  // Signed out: show only the sign-in screen and fetch nothing of the app.
+  if (!currentUser.value) {
+    showLoginModal.value = true
+    return
+  }
+
+  await enterApp()
+})
+
+/** Loads the workspace and honours deep-link panels once a session exists. */
+async function enterApp() {
   await initWorkspace()
   openNotificationPreferencesFromUrl()
   if (new URLSearchParams(window.location.search).get('storage') === 'github') isAdminPanelOpen.value = true
-})
+}
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleSplitShortcut)
@@ -848,11 +870,13 @@ function handleTermsAccepted(terms: TermsStatus) {
 }
 
 async function handleLoginSuccess(user: AuthUser) {
+  const wasSignedOut = currentUser.value === null
   currentUser.value = user
   showLoginModal.value = false
   // Signed in to approve an MCP connection: go back to the consent screen.
   if (resumeOAuthConsent()) return
-  await initWorkspace()
+  if (wasSignedOut) await enterApp()
+  else await initWorkspace()
 }
 
 async function handleLogout() {
@@ -1734,6 +1758,12 @@ body {
   border-radius: var(--radius-sm);
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
+
+.app-auth-pending {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg-canvas);
+}
 
 .app-layout {
   display: flex;

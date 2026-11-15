@@ -4,6 +4,11 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Nothing of the app before sign-in — 2026-11-15
+
+- Signed out, the page now shows only the sign-in screen. The app shell (sidebar, notes list, version, command palette) is no longer rendered behind a grey overlay, and no workspace, notes or notification request is sent until a session exists. While `/auth/me` is pending the page stays blank, so the app never flashes on load. Logging out removes the shell from the page.
+- The sign-in screen is opaque and full-page, and scrolls on short screens. When a session expires mid-use it covers the still-mounted app (made `inert`), so unsaved editor content survives the re-login.
+
 ### Vault in an S3-compatible bucket (epic #432) — 2026-11-13
 
 Nothing changes unless `JOTTER_VAULT_DRIVERS` lists `s3`. A workspace lives under its own key prefix (`<store prefix>/<slug>-<id>/`) in an AWS S3, Cloudflare R2 or MinIO bucket, with the same Markdown layout. Code in `App\Domain\Vault\Store\S3`.

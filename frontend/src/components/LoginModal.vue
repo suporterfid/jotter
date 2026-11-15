@@ -311,17 +311,20 @@ async function handleLogin() {
 }
 
 /* Solid overlay — no backdrop-filter (fixes WCAG contrast guarantee) */
+/* Opaque, full-page: nothing of the app may show through before sign-in. */
 .login-overlay {
   position: fixed;
   inset: 0;
-  background: var(--color-overlay-dark);
+  overflow-y: auto;
+  padding: var(--space-4, 16px);
+  background: var(--color-bg-canvas);
   display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 1000;
 }
 
 .login-card {
+  /* margin: auto centres the card yet lets a tall form scroll from its top. */
+  margin: auto;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);

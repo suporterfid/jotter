@@ -1,7 +1,7 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { createNote, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, updateNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote, queueWorkspacePdfExport, getWorkspacePdfExport, downloadWorkspacePdfExport } from './services/api'
+import { createNote, getMe, logout, setUnauthenticatedHandler, getWorkspaces, getAuthConfig, getTenants, getNotes, getNote, updateNote, deleteNote, getNotifications, getTrash, restoreTrashNote, permanentlyDeleteTrashNote, queueWorkspacePdfExport, getWorkspacePdfExport, downloadWorkspacePdfExport } from './services/api'
 
 vi.mock('./services/api', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([
@@ -189,8 +189,9 @@ describe('App Component', () => {
     expect(downloadWorkspacePdfExport).toHaveBeenCalledWith(1, 'export-1')
   })
 
-  it('renders the Jotter sidebar brand title', () => {
+  it('renders the Jotter sidebar brand title', async () => {
     const wrapper = mount(App)
+    await flushPromises()
     expect(wrapper.find('.brand-title').text()).toBe('Jotter')
   })
 
@@ -524,5 +525,85 @@ describe('App tab strip', () => {
     const tabs = wrapper.findComponent({ name: 'TabStrip' }).props('tabs')
     expect(tabs.map((t: { id: number }) => t.id)).toEqual([10, 11])
     expect(wrapper.findComponent({ name: 'TabStrip' }).props('activeId')).toBe(11)
+  })
+})
+
+describe('App before sign-in', () => {
+  const signedIn = { subject_id: '1', email: 'admin@example.com', name: 'Admin', is_admin: true, locale: 'pt-BR' }
+
+  it('renders nothing of the app while the session is still being checked', async () => {
+    let resolveMe: (user: null) => void = () => {}
+    vi.mocked(getMe).mockReturnValueOnce(new Promise((resolve) => { resolveMe = resolve }))
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'Sidebar' }).exists()).toBe(false)
+    expect(wrapper.find('[data-testid="login-heading"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="app-auth-pending"]').exists()).toBe(true)
+
+    resolveMe(null)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="login-heading"]').exists()).toBe(true)
+  })
+
+  it('shows only the sign-in screen and fetches no app data when signed out', async () => {
+    vi.mocked(getMe).mockResolvedValueOnce(null)
+    vi.mocked(getWorkspaces).mockClear()
+    vi.mocked(getNotes).mockClear()
+    vi.mocked(getNotifications).mockClear()
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="login-heading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'Sidebar' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'CommandPalette' }).exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Welcome Note')
+    expect(getWorkspaces).not.toHaveBeenCalled()
+    expect(getNotes).not.toHaveBeenCalled()
+    expect(getNotifications).not.toHaveBeenCalled()
+  })
+
+  it('renders and loads the app only after a successful sign-in', async () => {
+    vi.mocked(getMe).mockResolvedValueOnce(null)
+    vi.mocked(getWorkspaces).mockClear()
+
+    const wrapper = mount(App)
+    await flushPromises()
+    wrapper.findComponent({ name: 'LoginModal' }).vm.$emit('login-success', signedIn)
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="login-heading"]').exists()).toBe(false)
+    expect(getWorkspaces).toHaveBeenCalled()
+  })
+
+  it('removes the app from the page on logout', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(true)
+
+    await wrapper.findComponent({ name: 'CommandPalette' }).vm.$emit('logout')
+    await flushPromises()
+
+    expect(logout).toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="login-heading"]').exists()).toBe(true)
+  })
+
+  it('covers the app with the sign-in screen and makes it inert when the session expires', async () => {
+    vi.mocked(setUnauthenticatedHandler).mockClear()
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const onUnauthenticated = vi.mocked(setUnauthenticatedHandler).mock.calls[0][0]
+    onUnauthenticated()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="login-heading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="app-shell"]').attributes('inert')).toBeDefined()
   })
 })
