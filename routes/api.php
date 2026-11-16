@@ -90,6 +90,8 @@ Route::middleware('workspace.authorization')->group(function (): void {
     Route::post('/admin/tenants/{tenant}/github/install', [\App\Http\Controllers\GitHubConnectController::class, 'install'])->whereNumber('tenant');
     Route::get('/admin/tenants/{tenant}/github/installations/{installation}/repositories', [\App\Http\Controllers\GitHubConnectController::class, 'repositories'])->whereNumber('tenant')->whereNumber('installation');
     Route::get('/admin/vault-stores/{vaultStore}/github/webhook', [\App\Http\Controllers\GitHubConnectController::class, 'webhook'])->whereNumber('vaultStore');
+    Route::get('/admin/github/app', [\App\Http\Controllers\GitHubConnectController::class, 'appStatus']);
+    Route::delete('/admin/github/app', [\App\Http\Controllers\GitHubConnectController::class, 'forgetApp']);
     Route::get('/admin/github/manifest', [\App\Http\Controllers\GitHubConnectController::class, 'manifest']);
     Route::get('/admin/github/manifest/callback', [\App\Http\Controllers\GitHubConnectController::class, 'manifestCallback']);
     Route::get('/github/setup', [\App\Http\Controllers\GitHubConnectController::class, 'setup']);

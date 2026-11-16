@@ -189,26 +189,18 @@ class GitHubConnectTest extends TestCase
         $this->actingAs($this->owner)->postJson("/api/admin/tenants/{$this->tenant->id}/github/install")->assertOk();
     }
 
-    public function test_the_manifest_flow_writes_the_key_outside_public_and_shows_the_env_once(): void
+    public function test_an_app_set_in_env_wins_and_cannot_be_replaced_from_the_panel(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
-        $this->actingAs($this->owner)->getJson('/api/admin/github/manifest')->assertForbidden();
+        $this->actingAs($this->owner)->getJson('/api/admin/github/app')->assertForbidden();
 
-        $manifest = $this->actingAs($admin)->getJson('/api/admin/github/manifest?organization=acme')->assertOk();
-        $this->assertSame(['contents' => 'write', 'metadata' => 'read'], $manifest->json('data.manifest.default_permissions'));
-        $this->assertSame(['push'], $manifest->json('data.manifest.default_events'));
-        parse_str((string) parse_url($manifest->json('data.post_url'), PHP_URL_QUERY), $query);
+        $status = $this->actingAs($admin)->getJson('/api/admin/github/app')->assertOk();
+        $this->assertSame('env', $status->json('data.source'));
+        $this->assertSame('4242', $status->json('data.app_id'));
+        $this->assertSame([], $status->json('data.problems'));
 
-        $this->actingAs($admin)->getJson('/api/admin/github/manifest/callback?code=abc&state=wrong')->assertForbidden();
-        $manifest = $this->actingAs($admin)->getJson('/api/admin/github/manifest')->assertOk();
-        parse_str((string) parse_url($manifest->json('data.post_url'), PHP_URL_QUERY), $query);
-        $result = $this->actingAs($admin)->getJson('/api/admin/github/manifest/callback?code=abc&state='.$query['state'])->assertOk();
-
-        $path = $result->json('data.env.JOTTER_GITHUB_APP_PRIVATE_KEY_PATH');
-        $this->assertStringStartsWith(storage_path('app/private/'), $path);
-        $this->assertSame('600', substr(sprintf('%o', fileperms($path)), -3));
-        $this->assertSame('999', $result->json('data.env.JOTTER_GITHUB_APP_ID'));
-        unlink($path);
+        $this->actingAs($admin)->getJson('/api/admin/github/manifest')->assertStatus(409);
+        $this->actingAs($admin)->deleteJson('/api/admin/github/app')->assertStatus(409);
     }
 
     public function test_doctor_reports_app_problems_and_an_expiring_token(): void

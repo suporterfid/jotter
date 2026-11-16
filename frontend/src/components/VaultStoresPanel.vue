@@ -4,6 +4,8 @@
     <p class="admin-note">{{ t('vaultStores.help') }}</p>
     <p class="admin-note vault-warning" data-testid="vault-store-access-warning">{{ t('vaultStores.directAccessWarning') }}</p>
 
+    <GitHubAppPanel v-if="drivers.includes('github')" />
+
     <div v-if="error" class="admin-error-banner">{{ error }}</div>
 
     <select v-model.number="tenantId" data-testid="vault-store-tenant" @change="refresh">
@@ -136,6 +138,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '../services/api'
 import type { Tenant } from '../services/types'
+import GitHubAppPanel from './GitHubAppPanel.vue'
 
 interface VaultStoreRow {
   id: number

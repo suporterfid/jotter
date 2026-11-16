@@ -737,7 +737,7 @@ async function toggleDeactivate(u: any, deactivate: boolean) {
 watch(() => props.isOpen, (val) => {
   if (val) {
     // Back from installing the GitHub App (#439): straight to the Storage tab.
-    if (new URLSearchParams(window.location.search).get('storage') === 'github') activeTab.value = 'storage'
+    if (['github', 'github-app'].includes(new URLSearchParams(window.location.search).get('storage') ?? '')) activeTab.value = 'storage'
     fetchTenants()
     fetchMachineTokens()
     fetchWorkspaces()

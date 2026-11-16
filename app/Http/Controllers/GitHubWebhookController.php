@@ -56,7 +56,7 @@ final class GitHubWebhookController extends Controller
         $delivery = mb_substr((string) $request->header('X-GitHub-Delivery', ''), 0, 64);
 
         // Which secret signed it decides which stores this delivery may touch.
-        $appSigned = $this->signedWith($body, $signature, (string) config('jotter.github.webhook_secret', ''));
+        $appSigned = $this->signedWith($body, $signature, (string) app(GitHubAppAuth::class)->webhookSecret());
         $patStores = $appSigned ? collect() : $this->patStoresSignedFor($payload, $body, $signature);
         if (! $appSigned && $patStores->isEmpty()) {
             return response()->json(['message' => __('messages.github_webhook.invalid_signature')], 401);

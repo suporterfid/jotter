@@ -179,4 +179,54 @@ describe('Vault stores (Storage tab)', () => {
     })
     expect(wrapper.find('[data-testid="vault-store-webhook-secret"]').text()).toBe('s3cr3t-value')
   })
+
+  it('registers the GitHub App from the panel with a form POST to GitHub', async () => {
+    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {})
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/admin/github/app') {
+        return Promise.resolve({ data: { data: { source: null, app_id: null, slug: null, owner: null, html_url: null, registered_at: null, webhook_secret_set: false, problems: [], webhook_url: 'https://j.test/webhooks/github' } } })
+      }
+      if (url === '/admin/github/manifest?organization=acme') {
+        return Promise.resolve({ data: { data: { post_url: 'https://github.com/organizations/acme/settings/apps/new?state=n', manifest: { name: 'Jotter Vault' } } } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    const wrapper = mount(VaultStoresPanel, {
+      props: { tenants: [{ id: 1, slug: 'acme', name: 'Acme' }], workspaces: [], drivers: ['local', 'github'] },
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="github-app-organization"]').setValue('acme')
+    await wrapper.find('[data-testid="github-app-form"]').trigger('submit')
+    await flushPromises()
+
+    expect(submit).toHaveBeenCalledTimes(1)
+    const form = document.body.querySelector('form[action^="https://github.com/organizations/acme/settings/apps/new"]') as HTMLFormElement
+    expect(form.method).toBe('post')
+    expect(JSON.parse((form.querySelector('input[name="manifest"]') as HTMLInputElement).value)).toEqual({ name: 'Jotter Vault' })
+    form.remove()
+    submit.mockRestore()
+  })
+
+  it('shows the registered App without any secret and hides the panel from non-admins', async () => {
+    apiGet.mockImplementation((url: string) => {
+      if (url === '/admin/github/app') {
+        return Promise.resolve({ data: { data: { source: 'database', app_id: '999', slug: 'brain-vault', owner: 'acme', html_url: 'https://github.com/apps/brain-vault', registered_at: null, webhook_secret_set: true, problems: [], webhook_url: 'https://j.test/webhooks/github' } } })
+      }
+      return Promise.resolve({ data: { data: [] } })
+    })
+    const wrapper = mount(VaultStoresPanel, {
+      props: { tenants: [{ id: 1, slug: 'acme', name: 'Acme' }], workspaces: [], drivers: ['local', 'github'] },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="github-app-status"]').text()).toContain('brain-vault')
+    expect(wrapper.find('[data-testid="github-app-forget"]').exists()).toBe(true)
+
+    apiGet.mockImplementation((url: string) => (url === '/admin/github/app' ? Promise.reject({ response: { status: 403 } }) : Promise.resolve({ data: { data: [] } })))
+    const member = mount(VaultStoresPanel, {
+      props: { tenants: [{ id: 1, slug: 'acme', name: 'Acme' }], workspaces: [], drivers: ['local', 'github'] },
+    })
+    await flushPromises()
+    expect(member.find('[data-testid="github-app-panel"]').exists()).toBe(false)
+  })
 })

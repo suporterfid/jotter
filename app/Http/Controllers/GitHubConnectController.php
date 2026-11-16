@@ -6,8 +6,10 @@ use App\Domain\Audit\AuditEvent;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Vault\Store\GitHub\GitHubApiError;
 use App\Domain\Vault\Store\GitHub\GitHubAppAuth;
+use App\Domain\Vault\Store\GitHub\GitHubAppRegistry;
 use App\Domain\Vault\Store\TenantStorageAccess;
 use App\Domain\Vault\Store\VaultStoreDrivers;
+use App\Models\GitHubAppRegistration;
 use App\Models\GitHubInstallation;
 use App\Models\Tenant;
 use App\Models\TenantVaultStore;
@@ -28,7 +30,8 @@ use Illuminate\Support\Str;
  * PAT (self-hosted): the store form takes the token; this controller only
  * shows the URL and secret for the repository webhook.
  *
- * G1: the instance administrator can register the App from a manifest.
+ * G1: the instance administrator registers the App from Administration →
+ * Storage (manifest flow); it is kept in the database unless .env sets one.
  */
 final class GitHubConnectController extends Controller
 {
@@ -169,14 +172,69 @@ final class GitHubConnectController extends Controller
     }
 
     /**
+     * The instance's GitHub App, for Administration → Storage: where it comes
+     * from and whether it works. Never the key or the secret.
+     */
+    public function appStatus(Request $request): JsonResponse
+    {
+        $this->authorizeInstanceAdmin($request);
+        $source = $this->app->source();
+        $registration = $source === GitHubAppAuth::SOURCE_DATABASE ? $this->app->registration() : null;
+        $slug = $this->app->slug();
+
+        return response()->json(['data' => [
+            'source' => $source,
+            'app_id' => $this->app->appId(),
+            'slug' => $slug,
+            'owner' => $registration?->owner,
+            'html_url' => $registration?->html_url
+                ?? ($slug === null ? null : rtrim((string) config('jotter.github.web_url', 'https://github.com'), '/').'/apps/'.rawurlencode($slug)),
+            'registered_at' => $registration?->created_at?->toIso8601String(),
+            'webhook_secret_set' => $this->app->webhookSecret() !== null,
+            'problems' => $source === null ? [] : $this->app->configurationProblems(),
+            'webhook_url' => url('/webhooks/github'),
+        ]]);
+    }
+
+    /**
+     * Forgets the App registered from the admin panel (the App itself stays on
+     * GitHub; delete it there). Installations and stores that use it stop
+     * working until another App is registered.
+     */
+    public function forgetApp(Request $request): JsonResponse
+    {
+        $this->authorizeInstanceAdmin($request);
+        if ($this->app->source() !== GitHubAppAuth::SOURCE_DATABASE) {
+            return response()->json(['message' => __('messages.github_app_not_registered_here')], 409);
+        }
+
+        $registration = $this->app->registration();
+        GitHubAppRegistration::query()->delete();
+        app(GitHubAppRegistry::class)->forget();
+        $this->audit->record(AuditEvent::VAULT_STORE_GITHUB_INSTALLED, null, null, $this->actorId($request), [
+            'action' => 'app_forgotten',
+            'app_id' => $registration?->app_id,
+            'app_slug' => $registration?->slug,
+        ]);
+
+        return response()->json(['data' => ['source' => $this->app->source()]]);
+    }
+
+    /**
      * G1 manifest flow: the instance administrator registers the App with the
      * right permissions in one step. The browser posts `manifest` to `post_url`.
      */
     public function manifest(Request $request): JsonResponse
     {
         $this->authorizeInstanceAdmin($request);
+        if ($this->app->source() !== null) {
+            return response()->json(['message' => __('messages.github_app_already_configured')], 409);
+        }
 
         $organization = trim((string) $request->query('organization', ''));
+        if ($organization !== '' && preg_match('/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/', $organization) !== 1) {
+            return response()->json(['message' => __('messages.github_organization_invalid')], 422);
+        }
         $web = rtrim((string) config('jotter.github.web_url', 'https://github.com'), '/');
         $nonce = Str::random(40);
         $request->session()->put('github_manifest_state', $nonce);
@@ -200,49 +258,59 @@ final class GitHubConnectController extends Controller
     }
 
     /**
-     * GitHub returns here with a one-hour code. The private key is written
-     * under storage/ (never public/) with mode 0600; the values to put in .env
-     * are shown once.
+     * GitHub sends the administrator's browser back here with a one-hour code.
+     * The App's id, slug, private key and webhook secret are stored in the
+     * database (key and secret encrypted with APP_KEY) and are never shown;
+     * the browser returns to Administration → Storage.
      */
-    public function manifestCallback(Request $request): JsonResponse
+    public function manifestCallback(Request $request): RedirectResponse
     {
         $this->authorizeInstanceAdmin($request);
         $expected = (string) $request->session()->pull('github_manifest_state', '');
         if ($expected === '' || ! hash_equals($expected, (string) $request->query('state', ''))) {
-            return response()->json(['message' => __('messages.github_state_invalid')], 403);
+            return $this->backToStorage('state_invalid');
+        }
+        if ($this->app->source() !== null) {
+            return $this->backToStorage('already_configured');
         }
 
         try {
             $app = $this->app->convertManifest((string) $request->query('code', ''));
-        } catch (GitHubApiError $error) {
-            return response()->json(['message' => $error->getMessage()], 422);
+        } catch (GitHubApiError) {
+            return $this->backToStorage('exchange_failed');
+        }
+        if ($app['id'] === '' || $app['slug'] === '' || openssl_pkey_get_private($app['pem']) === false) {
+            return $this->backToStorage('exchange_failed');
         }
 
-        $directory = storage_path('app/private');
-        if (! is_dir($directory)) {
-            mkdir($directory, 0700, true);
-        }
-        $path = $directory.'/github-app-'.preg_replace('/[^0-9]/', '', $app['id']).'.pem';
-        file_put_contents($path, $app['pem']);
-        chmod($path, 0600);
+        DB::transaction(function () use ($app, $request): void {
+            GitHubAppRegistration::query()->delete();
+            GitHubAppRegistration::query()->create([
+                'app_id' => $app['id'],
+                'slug' => $app['slug'],
+                'owner' => $app['owner'],
+                'html_url' => is_string($app['html_url']) ? $app['html_url'] : null,
+                'private_key' => $app['pem'],
+                'webhook_secret' => is_string($app['webhook_secret']) && $app['webhook_secret'] !== '' ? $app['webhook_secret'] : null,
+                'created_by' => $this->actorId($request),
+            ]);
+        });
+        app(GitHubAppRegistry::class)->forget();
 
         $this->audit->record(AuditEvent::VAULT_STORE_GITHUB_INSTALLED, null, null, $this->actorId($request), [
+            'action' => 'app_registered',
             'app_id' => $app['id'],
             'app_slug' => $app['slug'],
+            'owner' => $app['owner'],
             'manifest' => true,
         ]);
 
-        return response()->json(['data' => [
-            'app_id' => $app['id'],
-            'app_slug' => $app['slug'],
-            'html_url' => $app['html_url'],
-            'env' => [
-                'JOTTER_GITHUB_APP_ID' => $app['id'],
-                'JOTTER_GITHUB_APP_SLUG' => $app['slug'],
-                'JOTTER_GITHUB_APP_PRIVATE_KEY_PATH' => $path,
-                'JOTTER_GITHUB_WEBHOOK_SECRET' => $app['webhook_secret'],
-            ],
-        ]]);
+        return $this->backToStorage('registered');
+    }
+
+    private function backToStorage(string $result): RedirectResponse
+    {
+        return redirect('/?storage=github-app&result='.$result);
     }
 
     private function authorizeGitHub(Request $request, ?Tenant $tenant): void
