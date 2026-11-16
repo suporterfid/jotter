@@ -4,6 +4,11 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Standard first run: `jotter:install` — 2026-11-16
+
+- **`php artisan jotter:install --admin-email=…`** runs the migrations and, while the installation has no organization, creates the first organization, its workspace and the owner administrator. The defaults come from `JOTTER_TENANT_*` and `JOTTER_WORKSPACE_*`. The password goes to `--password-file` (mode 0600) or is printed once. The command also prints the cron line for the PHP binary that ran it, plus the doctor report. It is safe to repeat after an upgrade. Before this, the deploy steps only migrated: a new installation had no organization, and the admin panel was out of reach.
+- **`jotter:doctor`** fails `First organization and administrator` while the installation has no organization, workspace or administrator. The scheduler message now includes the exact cron line.
+
 ### GitHub App registered from the admin panel — 2026-11-16
 
 - **Administration → Storage → GitHub App of this installation.** An instance administrator registers the App in one step: the panel posts GitHub's manifest (permissions, `push` webhook, setup and callback URLs) and the callback stores the App in the new `github_app_registrations` table, with the private key and webhook secret encrypted with `APP_KEY`. Nothing is shown or written to disk, and no `.env` edit is needed. Before, the callback returned the four `JOTTER_GITHUB_*` values to copy into `.env` by hand. `.env` still wins when `JOTTER_GITHUB_APP_ID` is set. New endpoints: `GET`/`DELETE /api/admin/github/app`; the callback now redirects to `/?storage=github-app&result=…`.

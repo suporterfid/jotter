@@ -43,6 +43,22 @@ final class JotterDoctorCommandTest extends TestCase
             'jotter.instance_slug' => 'client-a',
         ]);
         SchedulerHeartbeat::record();
+        $tenant = \App\Models\Tenant::create(['slug' => 'client-a', 'name' => 'Client A']);
+        \App\Models\Workspace::create(['tenant_id' => $tenant->id, 'slug' => 'docs', 'name' => 'Docs', 'vault_path' => $this->vault]);
+        \App\Models\User::factory()->create(['is_admin' => true])
+            ->forceFill(['two_factor_secret' => \App\Domain\Auth\TwoFactor\Totp::generateSecret(), 'two_factor_confirmed_at' => now()])->save();
+    }
+
+    public function test_a_fresh_installation_fails_until_jotter_install_creates_the_first_organization(): void
+    {
+        $byId = fn (): array => array_column(app(InstanceDoctor::class)->run()->toArray()['checks'], null, 'id');
+
+        $this->assertSame('fail', $byId()['installed']['status']);
+        $this->assertStringContainsString('jotter:install --admin-email=', $byId()['installed']['message']);
+        $this->assertStringContainsString(base_path('artisan').' schedule:run', $byId()['scheduler']['message']);
+
+        $this->healthyProductionConfig();
+        $this->assertSame('pass', $byId()['installed']['status']);
     }
 
     public function test_doctor_passes_on_a_healthy_production_installation(): void
@@ -76,7 +92,7 @@ final class JotterDoctorCommandTest extends TestCase
         foreach ([
             'php_version', 'php_extensions', 'app_key', 'app_debug', 'app_url_https',
             'storage_writable', 'bootstrap_cache_writable', 'vault_path', 'vault_outside_docroot',
-            'vault_disk_space', 'database', 'migrations', 'mail_mailer', 'scheduler', 'instance_slug',
+            'vault_disk_space', 'database', 'migrations', 'installed', 'mail_mailer', 'scheduler', 'instance_slug',
         ] as $expected) {
             $this->assertContains($expected, $ids);
         }

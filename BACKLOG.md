@@ -73,6 +73,10 @@ Spec: `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md`. Pla
 
 ~~Follow-ups filed as issues~~ **Delivered 2026-11-06** (see CHANGELOG): WebDAV `ETag`/`If-Match`, so Obsidian writes get the same conflict protection ([#410](https://github.com/suporterfid/jotter/issues/410)); Client ID Metadata Documents in the OAuth server ([#411](https://github.com/suporterfid/jotter/issues/411)); opt-in semantic search over a rebuildable embeddings projection ([#412](https://github.com/suporterfid/jotter/issues/412), decision in `docs/decisions.md`); and manual MCP tokens for GrandpaSSOn users ([#414](https://github.com/suporterfid/jotter/issues/414)). Still open: check whether Remotely Save sends `If-Match`, and a live run of semantic search against a real provider.
 
+## First deploy on shared hosting (2026-11-16)
+
+- ~~**A new installation had no organization.**~~ **Delivered 2026-11-16:** `jotter:install` creates the first organization, workspace and administrator, prints the cron line for the right PHP binary, and the doctor fails until it has run. Found on the first Hostinger deploy, where the admin panel was unusable without an organization and a `cd … && php artisan …` cron entry never ran.
+
 ## Triage #390 (2026-08-31) — delivered 2026-11-08
 
 - ~~Self sign-up~~ **Delivered:** opt-in sign-up with administrator approval (`JOTTER_SIGNUP_ENABLED`).
