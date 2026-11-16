@@ -251,7 +251,8 @@ class GitHubClient
             $pending = Http::withHeaders($headers)
                 ->connectTimeout((int) config('jotter.github.connect_timeout', 3))
                 ->timeout((int) config('jotter.github.timeout', 10));
-            $response = match ($method) {
+            // A missing body is sent as none: GitHub refuses `[]` (an empty PHP array as JSON).
+            $response = $body === null && $method !== 'GET' ? $pending->send($method, $url) : match ($method) {
                 'GET' => $pending->get($url),
                 'POST' => $pending->post($url, $body ?? []),
                 'PATCH' => $pending->patch($url, $body ?? []),

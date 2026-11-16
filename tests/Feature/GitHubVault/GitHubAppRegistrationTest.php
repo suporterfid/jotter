@@ -97,7 +97,7 @@ class GitHubAppRegistrationTest extends TestCase
         $manifest = $this->actingAs($this->admin)->getJson('/api/admin/github/manifest')->assertOk();
         parse_str((string) parse_url($manifest->json('data.post_url'), PHP_URL_QUERY), $query);
         $this->actingAs($this->admin)->get('/api/admin/github/manifest/callback?code=bad&state='.$query['state'])
-            ->assertRedirect('/?storage=github-app&result=exchange_failed');
+            ->assertRedirect('/?storage=github-app&result=exchange_failed&detail=404');
         $this->assertSame(0, GitHubAppRegistration::query()->count());
 
         $this->actingAs($this->admin)->getJson('/api/admin/github/manifest?organization=not_valid!')->assertStatus(422);

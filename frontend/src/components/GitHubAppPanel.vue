@@ -3,6 +3,7 @@
     <h4>{{ t('vaultStores.githubApp.title') }}</h4>
     <p v-if="notice" :class="['admin-note', { 'vault-warning': notice !== 'registered' }]" data-testid="github-app-result">
       {{ t(`vaultStores.githubApp.result.${notice}`) }}
+      <template v-if="noticeDetail"> ({{ noticeDetail }})</template>
     </p>
     <div v-if="error" class="admin-error-banner">{{ error }}</div>
 
@@ -71,6 +72,7 @@ const error = ref('')
 // Back from GitHub's "Create GitHub App" screen: /?storage=github-app&result=…
 const returning = new URLSearchParams(window.location.search)
 const notice = ref<(typeof RESULTS)[number] | null>(null)
+const noticeDetail = (returning.get('detail') ?? '').replace(/[^a-z0-9_-]/gi, '').slice(0, 20)
 if (returning.get('storage') === 'github-app') {
   const result = returning.get('result') as (typeof RESULTS)[number] | null
   notice.value = result && RESULTS.includes(result) ? result : null

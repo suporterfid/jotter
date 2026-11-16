@@ -222,6 +222,11 @@ final class FakeGitHub
         if ($this->down) {
             return $this->json(['message' => 'Server Error'], 502);
         }
+        // Like api.github.com: a JSON body must be an object, so `[]` (what an
+        // empty PHP array encodes to) is refused before anything else.
+        if (trim((string) $request->body()) === '[]') {
+            return $this->json(['message' => "Invalid request.\n\nFor 'links/0/schema', [] is not a null or object."], 422);
+        }
 
         if (preg_match('#^/app/installations/(\d+)/access_tokens$#', $path, $m)) {
             return $this->accessToken($request, $m[1], $body);
