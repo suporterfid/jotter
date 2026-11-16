@@ -27,8 +27,14 @@ class GitHubProbe
         if (! ($repository['private'] ?? false)) {
             throw new GitHubApiError('The repository is public. Jotter only stores a workspace in a private repository.');
         }
-        // Installation tokens may omit `permissions`; the token itself was asked with contents:write.
-        if (isset($repository['permissions']) && ! ($repository['permissions']['push'] ?? false)) {
+        // App: GET /repos answers every `permissions` flag false for an installation
+        // token (V8, measured 2026-11-16), so trust what the token was granted.
+        // PAT: the repository's `permissions.push` is meaningful when present.
+        if ($client->usesApp()) {
+            if (($client->installationPermissions()['contents'] ?? null) !== 'write') {
+                throw new GitHubApiError('The GitHub App cannot write to this repository (Contents: read and write is required). Accept the new permissions in the App installation.');
+            }
+        } elseif (isset($repository['permissions']) && ! ($repository['permissions']['push'] ?? false)) {
             throw new GitHubApiError('The token cannot push to this repository (Contents: read and write is required).');
         }
 
