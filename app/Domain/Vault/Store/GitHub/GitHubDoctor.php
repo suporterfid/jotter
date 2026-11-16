@@ -101,7 +101,7 @@ class GitHubDoctor
             if ($state?->repo_size_kb !== null && $state->repo_size_kb > (int) config('jotter.github.repo_warn_kb', 800 * 1024)) {
                 $warnings[] = sprintf('%s: the repository is %d MB (GitHub recommends staying under 1 GB)', $name, (int) round($state->repo_size_kb / 1024));
             }
-            if ($workspace !== null && $state?->last_webhook_at === null && ! empty($store->settings['installation_id']) && (string) config('jotter.github.webhook_secret', '') !== '') {
+            if ($workspace !== null && $state?->last_webhook_at === null && ! empty($store->settings['installation_id']) && $this->app->webhookSecret() !== null) {
                 $warnings[] = "{$name}: no webhook delivery received yet (external edits arrive by polling, up to 5 minutes)";
             } elseif ($state?->last_webhook_at !== null && $state->last_webhook_at->lte(now()->subDays(7))) {
                 $warnings[] = "{$name}: last webhook delivery {$state->last_webhook_at->diffForHumans()}";

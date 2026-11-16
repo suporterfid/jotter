@@ -14,6 +14,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // One S3 client and store view per request: reads are memoized per request (#446).
         $this->app->scoped(\App\Domain\Vault\Store\S3\S3StoreFactory::class);
+        // The GitHub App registered from the admin panel, read once per request or job.
+        $this->app->scoped(\App\Domain\Vault\Store\GitHub\GitHubAppRegistry::class);
 
         $this->app->singleton(\App\Domain\Auth\Oidc\OidcClientInterface::class, function (): \App\Domain\Auth\Oidc\OidcClientInterface {
             return new \App\Domain\Auth\Oidc\JumbojettOidcClient;

@@ -4,6 +4,10 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### GitHub App registered from the admin panel — 2026-11-16
+
+- **Administration → Storage → GitHub App of this installation.** An instance administrator registers the App in one step: the panel posts GitHub's manifest (permissions, `push` webhook, setup and callback URLs) and the callback stores the App in the new `github_app_registrations` table, with the private key and webhook secret encrypted with `APP_KEY`. Nothing is shown or written to disk, and no `.env` edit is needed. Before, the callback returned the four `JOTTER_GITHUB_*` values to copy into `.env` by hand. `.env` still wins when `JOTTER_GITHUB_APP_ID` is set. New endpoints: `GET`/`DELETE /api/admin/github/app`; the callback now redirects to `/?storage=github-app&result=…`.
+
 ### Nothing of the app before sign-in — 2026-11-15
 
 - Signed out, the page now shows only the sign-in screen. The app shell (sidebar, notes list, version, command palette) is no longer rendered behind a grey overlay, and no workspace, notes or notification request is sent until a session exists. While `/auth/me` is pending the page stays blank, so the app never flashes on load. Logging out removes the shell from the page.

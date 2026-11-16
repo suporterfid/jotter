@@ -14,30 +14,92 @@ use Illuminate\Support\Facades\Http;
  */
 class GitHubAppAuth
 {
+    public const SOURCE_ENV = 'env';
+
+    public const SOURCE_DATABASE = 'database';
+
     public function configured(): bool
     {
-        return $this->appId() !== null && $this->privateKeyPath() !== null;
+        return $this->appId() !== null && $this->privateKeyPem() !== null;
+    }
+
+    /**
+     * Where the App comes from: JOTTER_GITHUB_APP_ID in .env wins over the App
+     * registered from the admin panel; null when neither exists.
+     */
+    public function source(): ?string
+    {
+        if ($this->envValue('app_id') !== null) {
+            return self::SOURCE_ENV;
+        }
+
+        return $this->registration() !== null ? self::SOURCE_DATABASE : null;
     }
 
     public function appId(): ?string
     {
-        $id = config('jotter.github.app_id');
-
-        return $id === null || $id === '' ? null : (string) $id;
+        return match ($this->source()) {
+            self::SOURCE_ENV => $this->envValue('app_id'),
+            self::SOURCE_DATABASE => (string) $this->registration()?->app_id,
+            default => null,
+        };
     }
 
     public function slug(): ?string
     {
-        $slug = config('jotter.github.app_slug');
+        $slug = match ($this->source()) {
+            self::SOURCE_ENV => $this->envValue('app_slug'),
+            self::SOURCE_DATABASE => $this->registration()?->slug,
+            default => null,
+        };
 
         return $slug === null || $slug === '' ? null : (string) $slug;
     }
 
+    /** Only in .env mode: the registered App keeps its key encrypted in the database. */
     public function privateKeyPath(): ?string
     {
-        $path = config('jotter.github.private_key_path');
+        return $this->source() === self::SOURCE_ENV ? $this->envValue('private_key_path') : null;
+    }
 
-        return $path === null || $path === '' ? null : (string) $path;
+    public function webhookSecret(): ?string
+    {
+        $secret = match ($this->source()) {
+            self::SOURCE_ENV => $this->envValue('webhook_secret'),
+            self::SOURCE_DATABASE => $this->registration()?->webhook_secret,
+            // A secret alone still verifies deliveries (an App configured by hand, key pending).
+            default => $this->envValue('webhook_secret'),
+        };
+
+        return $secret === null || $secret === '' ? null : (string) $secret;
+    }
+
+    public function registration(): ?\App\Models\GitHubAppRegistration
+    {
+        return app(GitHubAppRegistry::class)->current();
+    }
+
+    private function privateKeyPem(): ?string
+    {
+        if ($this->source() === self::SOURCE_DATABASE) {
+            $pem = (string) $this->registration()?->private_key;
+
+            return $pem === '' ? null : $pem;
+        }
+        $path = $this->privateKeyPath();
+        if ($path === null || ! is_readable($path)) {
+            return $path === null ? null : '';
+        }
+        $pem = file_get_contents($path);
+
+        return $pem === false ? '' : $pem;
+    }
+
+    private function envValue(string $key): ?string
+    {
+        $value = config('jotter.github.'.$key);
+
+        return $value === null || $value === '' ? null : (string) $value;
     }
 
     /**
@@ -47,6 +109,18 @@ class GitHubAppAuth
      */
     public function configurationProblems(): array
     {
+        if ($this->source() === self::SOURCE_DATABASE) {
+            $problems = [];
+            if (openssl_pkey_get_private((string) $this->privateKeyPem()) === false) {
+                $problems[] = 'the private key of the GitHub App registered in the admin panel is not a valid PEM key';
+            }
+            if ($this->webhookSecret() === null) {
+                $problems[] = 'the GitHub App registered in the admin panel has no webhook secret (external edits only arrive by polling)';
+            }
+
+            return $problems;
+        }
+
         $problems = [];
         $path = $this->privateKeyPath();
         if ($this->appId() === null) {
@@ -69,7 +143,7 @@ class GitHubAppAuth
                 $problems[] = 'the GitHub App private key is not a valid PEM key';
             }
         }
-        if ((string) config('jotter.github.webhook_secret', '') === '') {
+        if ($this->webhookSecret() === null) {
             $problems[] = 'JOTTER_GITHUB_WEBHOOK_SECRET is not set (external edits only arrive by polling)';
         }
 
@@ -80,13 +154,12 @@ class GitHubAppAuth
     public function jwt(?int $now = null): string
     {
         $appId = $this->appId();
-        $path = $this->privateKeyPath();
-        if ($appId === null || $path === null) {
-            throw new GitHubApiError('The GitHub App is not configured (JOTTER_GITHUB_APP_ID / JOTTER_GITHUB_APP_PRIVATE_KEY_PATH).');
+        $pem = $this->privateKeyPem();
+        if ($appId === null || $pem === null) {
+            throw new GitHubApiError('The GitHub App is not configured (register it in Administration → Storage, or set JOTTER_GITHUB_APP_ID / JOTTER_GITHUB_APP_PRIVATE_KEY_PATH).');
         }
 
-        $pem = is_readable($path) ? file_get_contents($path) : false;
-        $key = $pem === false ? false : openssl_pkey_get_private($pem);
+        $key = $pem === '' ? false : openssl_pkey_get_private($pem);
         if ($key === false) {
             throw new GitHubApiError('The GitHub App private key cannot be read.');
         }
@@ -218,7 +291,7 @@ class GitHubAppAuth
      * G1 manifest flow: exchange the temporary code for the new App's id, slug,
      * PEM key and webhook secret (shown once to the instance administrator).
      *
-     * @return array{id: string, slug: string, pem: string, webhook_secret: ?string, html_url: ?string}
+     * @return array{id: string, slug: string, pem: string, webhook_secret: ?string, html_url: ?string, owner: ?string}
      */
     public function convertManifest(string $code): array
     {
@@ -240,6 +313,7 @@ class GitHubAppAuth
             'pem' => (string) $response->json('pem'),
             'webhook_secret' => $response->json('webhook_secret'),
             'html_url' => $response->json('html_url'),
+            'owner' => is_string($response->json('owner.login')) ? $response->json('owner.login') : null,
         ];
     }
 

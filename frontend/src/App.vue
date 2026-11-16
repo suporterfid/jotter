@@ -711,7 +711,7 @@ onMounted(async () => {
 async function enterApp() {
   await initWorkspace()
   openNotificationPreferencesFromUrl()
-  if (new URLSearchParams(window.location.search).get('storage') === 'github') isAdminPanelOpen.value = true
+  if (['github', 'github-app'].includes(new URLSearchParams(window.location.search).get('storage') ?? '')) isAdminPanelOpen.value = true
 }
 
 onBeforeUnmount(() => {

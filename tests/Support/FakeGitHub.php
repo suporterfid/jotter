@@ -249,7 +249,12 @@ final class FakeGitHub
             return $this->json(['total_count' => count($repos), 'repositories' => $repos]);
         }
         if (preg_match('#^/app-manifests/([^/]+)/conversions$#', $path, $m)) {
-            return $this->json(['id' => 999, 'slug' => 'jotter-vault-test', 'pem' => "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----\n", 'webhook_secret' => 'whsec', 'html_url' => 'https://github.com/apps/jotter-vault-test'], 201);
+            if ($m[1] === 'bad') {
+                return $this->json(['message' => 'Not Found'], 404);
+            }
+
+            // The converted App becomes the App this fake verifies JWTs for.
+            return $this->json(['id' => 999, 'slug' => 'jotter-vault-test', 'owner' => ['login' => 'acme'], 'pem' => $this->createApp('999'), 'webhook_secret' => 'whsec', 'html_url' => 'https://github.com/apps/jotter-vault-test'], 201);
         }
 
         if (! preg_match('#^/repos/([^/]+)/([^/]+)(/.*)?$#', $path, $m)) {

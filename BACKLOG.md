@@ -35,6 +35,7 @@ Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–
    3. ~~#436 — PR C: `vault_stores` (admin API + Storage tab, encrypted credentials, SSRF guard, audit, doctor, `JOTTER_VAULT_DRIVERS`).~~ The `s3` and `github` drivers followed with #432 and #431.
    4. ~~#437 — PR E: `vault:move` engine (preflight, batched copy, SHA-256 verification, swap, HTTP 423, rollback, 7-day retention).~~
 2. ~~**GitHub vault — epic #431.**~~ **Implemented 2026-11-13** (see CHANGELOG). Code namespace is `App\Domain\Vault\Store\GitHub` (the plan said `Stores/GitHub`; it follows the common base).
+   - 2026-11-16: the GitHub App is registered from Administration → Storage (manifest flow, G1), kept encrypted in the database; `.env` remains an override. Before this, the callback only printed the four `.env` values.
    1. ~~#438 — Phase 2: validation spike.~~ Answered from docs and the test simulator in `docs/20261113-jotter-github-vault-spike.md`, with `scripts/github-vault-spike.sh`.
    2. ~~#439 — Phase 3 (PR F1): GitHub App + fine-grained PAT, install flow, read-only probe.~~
    3. ~~#440 — Phase 4 (PR F2): read driver, blob cache, `vault:pull`, `push` webhook.~~
