@@ -276,11 +276,18 @@ final class GitHubConnectController extends Controller
 
         try {
             $app = $this->app->convertManifest((string) $request->query('code', ''));
-        } catch (GitHubApiError) {
-            return $this->backToStorage('exchange_failed');
+        } catch (GitHubApiError $error) {
+            // GitHub's answer, never the code or any key: the admin needs it to retry.
+            \Illuminate\Support\Facades\Log::warning('GitHub App manifest conversion failed', ['status' => $error->status, 'error' => $error->getMessage()]);
+
+            return $this->backToStorage('exchange_failed', $error->status > 0 ? (string) $error->status : 'network');
         }
         if ($app['id'] === '' || $app['slug'] === '' || openssl_pkey_get_private($app['pem']) === false) {
-            return $this->backToStorage('exchange_failed');
+            \Illuminate\Support\Facades\Log::warning('GitHub App manifest conversion returned an incomplete App', [
+                'app_id' => $app['id'], 'slug' => $app['slug'], 'pem_valid' => openssl_pkey_get_private($app['pem']) !== false,
+            ]);
+
+            return $this->backToStorage('exchange_failed', 'incomplete');
         }
 
         DB::transaction(function () use ($app, $request): void {
@@ -308,9 +315,9 @@ final class GitHubConnectController extends Controller
         return $this->backToStorage('registered');
     }
 
-    private function backToStorage(string $result): RedirectResponse
+    private function backToStorage(string $result, ?string $detail = null): RedirectResponse
     {
-        return redirect('/?storage=github-app&result='.$result);
+        return redirect('/?storage=github-app&result='.$result.($detail === null ? '' : '&detail='.rawurlencode($detail)));
     }
 
     private function authorizeGitHub(Request $request, ?Tenant $tenant): void

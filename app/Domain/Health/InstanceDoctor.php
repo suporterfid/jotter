@@ -87,6 +87,7 @@ final class InstanceDoctor
             $this->checkVaultDiskSpace(),
             $databaseCheck,
             $this->checkPendingMigrations($databaseCheck->passed),
+            $this->checkInstalled($databaseCheck->passed),
             $this->checkMailer(),
             $this->checkMailFrom(),
             $this->checkScheduler(),
@@ -389,6 +390,39 @@ final class InstanceDoctor
      * should not be enough. Judged only where two-step verification applies
      * (local provider); OIDC sign-ins rely on the identity provider's MFA.
      */
+    /** The cron entry for this installation, with this PHP binary (hosts often run several PHP versions). */
+    public static function cronLine(): string
+    {
+        return sprintf('* * * * * %s %s schedule:run', PHP_BINARY, base_path('artisan'));
+    }
+
+    /**
+     * A fresh installation has no administrator, organization or workspace, so
+     * nobody can use it (not even the admin panel). `jotter:install` creates them.
+     */
+    private function checkInstalled(bool $databaseReachable): DoctorCheck
+    {
+        $label = 'First organization and administrator';
+        if (! $databaseReachable || ! \Illuminate\Support\Facades\Schema::hasTable('tenants')) {
+            return DoctorCheck::pass('installed', $label, true, 'Skipped: the database is not reachable or not migrated.');
+        }
+
+        $details = [
+            'tenants' => \App\Models\Tenant::query()->count(),
+            'workspaces' => \App\Models\Workspace::query()->count(),
+            'admins' => \App\Models\User::query()->where('is_admin', true)->count(),
+        ];
+        $missing = array_keys(array_filter($details, static fn (int $count): bool => $count === 0));
+        if ($missing === [] || ((string) config('jotter.auth_provider', 'local') !== 'local' && $missing === ['admins'])) {
+            return DoctorCheck::pass('installed', $label, true, sprintf('%d organization(s), %d workspace(s), %d administrator(s).', $details['tenants'], $details['workspaces'], $details['admins']), $details);
+        }
+
+        return DoctorCheck::fail('installed', $label, true, sprintf(
+            'No %s yet. Run: php artisan jotter:install --admin-email=<you@example.com>',
+            implode(', ', array_map(static fn (string $key): string => ['tenants' => 'organization', 'workspaces' => 'workspace', 'admins' => 'administrator'][$key], $missing)),
+        ), $details);
+    }
+
     private function checkAdminTwoFactor(bool $databaseReachable): DoctorCheck
     {
         if (! $databaseReachable || (string) config('jotter.auth_provider', 'local') !== 'local') {
@@ -765,7 +799,7 @@ final class InstanceDoctor
         $details = ['last_run_at' => $lastRun?->toIso8601String(), 'max_age_minutes' => self::SCHEDULER_MAX_AGE_MINUTES];
 
         if ($lastRun === null) {
-            return DoctorCheck::fail('scheduler', 'Scheduler heartbeat', true, 'No `schedule:run` recorded yet. Add the per-minute cron entry for this installation.', $details);
+            return DoctorCheck::fail('scheduler', 'Scheduler heartbeat', true, 'No `schedule:run` recorded yet. Add the per-minute cron entry for this installation: '.self::cronLine(), $details);
         }
 
         $ageMinutes = $lastRun->diffInMinutes(CarbonImmutable::now());

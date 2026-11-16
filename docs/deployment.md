@@ -38,10 +38,16 @@ To rehearse an installation before touching a host, extract the newest ZIP into
 3. Create `app/.env` from `app/.env.example` and provide unique production values. Never upload a development `.env`.
 4. Point the domain's document root at `app/public/`.
 5. Ensure `storage/` and `bootstrap/cache/` are writable by PHP.
-6. Run `php artisan migrate --force` using the host's PHP 8.2+ CLI facility.
+6. Run `php artisan key:generate` once, then the installer with the host's PHP 8.2+ CLI:
+   ```bash
+   php artisan jotter:install --admin-email=you@example.com --password-file=$HOME/jotter-admin-password
+   ```
+   It runs the migrations and, while the installation has no organization, creates the first organization, its workspace (vault folder under `VAULT_BASE_PATH`) and the owner administrator. Names and slugs default to `JOTTER_TENANT_NAME`/`JOTTER_TENANT_SLUG` and `JOTTER_WORKSPACE_NAME`/`JOTTER_WORKSPACE_SLUG`; override them with `--tenant-name`, `--tenant-slug`, `--workspace-name` and `--workspace-slug`. An existing user with that e-mail is reused and keeps the password. A new administrator gets a generated password, written to `--password-file` (mode 0600, never overwritten) or printed once; sign in, change it, and delete the file. Then it prints the cron line and the doctor report. Without an organization nobody can use the installation, not even the admin panel; `jotter:doctor` reports that as `[FAIL] First organization and administrator`.
 7. Keep debug mode off and use HTTPS.
-8. Add the single cron entry described under [Scheduled jobs](#scheduled-jobs-one-cron-entry-per-installation).
+8. Add the single cron entry `jotter:install` printed (see [Scheduled jobs](#scheduled-jobs-one-cron-entry-per-installation)). Use the exact PHP binary it shows: shared hosts often have several PHP versions, and the default `php` may not be the one the site uses. Prefer `/path/to/php /path/to/app/artisan schedule:run` over `cd /path && php artisan …`: some cron panels do not run compound commands.
 9. Run `php artisan jotter:doctor` and fix every `[FAIL]` before handing the installation over.
+
+**Upgrading.** Put the new code in place without touching `.env`, `storage/` and the vault, then run `php artisan jotter:install` again (no options): it runs the new migrations and creates nothing when an organization exists. More customers on the same installation: `tenant:provision` (`docs/hosted-operations.md`).
 
 ## Multiple instances on one shared host
 

@@ -299,12 +299,13 @@ class GitHubAppAuth
             $response = Http::withHeaders($this->headers(null))
                 ->connectTimeout((int) config('jotter.github.connect_timeout', 3))
                 ->timeout((int) config('jotter.github.timeout', 10))
-                ->post($this->apiUrl('/app-manifests/'.rawurlencode($code).'/conversions'));
+                // No body: GitHub refuses `[]`, which is what post() sends for no data.
+                ->send('POST', $this->apiUrl('/app-manifests/'.rawurlencode($code).'/conversions'));
         } catch (\Illuminate\Http\Client\ConnectionException $exception) {
             throw new GitHubApiError('GitHub is unreachable: '.$exception->getMessage());
         }
         if (! $response->successful()) {
-            throw new GitHubApiError('GitHub refused the App manifest code (HTTP '.$response->status().').', $response->status());
+            throw new GitHubApiError('GitHub refused the App manifest code (HTTP '.$response->status().'): '.mb_substr((string) ($response->json('message') ?? $response->body()), 0, 300), $response->status());
         }
 
         return [

@@ -222,6 +222,11 @@ final class FakeGitHub
         if ($this->down) {
             return $this->json(['message' => 'Server Error'], 502);
         }
+        // Like api.github.com: a JSON body must be an object, so `[]` (what an
+        // empty PHP array encodes to) is refused before anything else.
+        if (trim((string) $request->body()) === '[]') {
+            return $this->json(['message' => "Invalid request.\n\nFor 'links/0/schema', [] is not a null or object."], 422);
+        }
 
         if (preg_match('#^/app/installations/(\d+)/access_tokens$#', $path, $m)) {
             return $this->accessToken($request, $m[1], $body);
@@ -282,7 +287,12 @@ final class FakeGitHub
         if ($rest === '' && $method === 'GET') {
             return $this->json([
                 'full_name' => $full, 'private' => $repo['private'], 'size' => $repo['size'],
-                'default_branch' => 'main', 'permissions' => ['admin' => false, 'push' => $repo['push'], 'pull' => true],
+                'default_branch' => 'main',
+                // Measured live (V8, 2026-11-16): an installation token gets every flag false,
+                // whatever the App may do; only user tokens (PATs) get meaningful flags.
+                'permissions' => isset($this->tokens[$this->bearer($request)])
+                    ? ['admin' => false, 'maintain' => false, 'push' => false, 'triage' => false, 'pull' => false]
+                    : ['admin' => false, 'push' => $repo['push'], 'pull' => true],
             ]);
         }
 
@@ -445,6 +455,9 @@ final class FakeGitHub
     /**
      * @param  array<string, mixed>  $body
      */
+    /** @var array<string, string>|null What installation tokens get, when the installation accepted less. */
+    public ?array $grantedPermissions = null;
+
     private function accessToken(Request $request, string $installationId, array $body): PromiseInterface
     {
         if (! $this->validJwt($request)) {
@@ -470,7 +483,8 @@ final class FakeGitHub
         return $this->json([
             'token' => $token,
             'expires_at' => gmdate('Y-m-d\TH:i:s\Z', time() + 3600),
-            'permissions' => $body['permissions'] ?? ['contents' => 'write'],
+            // GitHub grants at most what the installation accepted.
+            'permissions' => $this->grantedPermissions ?? $body['permissions'] ?? ['contents' => 'write'],
         ], 201);
     }
 

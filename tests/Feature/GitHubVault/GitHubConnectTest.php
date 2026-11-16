@@ -129,6 +129,19 @@ class GitHubConnectTest extends TestCase
         $this->assertTrue($store->fresh()->settings['repository_empty']);
     }
 
+    public function test_an_app_store_is_checked_by_the_token_grant_not_the_repository_flags(): void
+    {
+        // GitHub answers push=false in GET /repos for every installation token (V8); the
+        // test above passes anyway. What decides is the permission granted to the token.
+        GitHubInstallation::create(['tenant_id' => $this->tenant->id, 'installation_id' => 77]);
+        $store = $this->appStore($this->tenant, 77);
+        $this->github->grantedPermissions = ['contents' => 'read', 'metadata' => 'read'];
+
+        $this->actingAs($this->owner)->postJson("/api/admin/vault-stores/{$store->id}/test")
+            ->assertStatus(422)->assertJsonPath('data.status', 'failed');
+        $this->assertStringContainsString('cannot write', (string) $store->fresh()->last_error);
+    }
+
     public function test_pat_mode_needs_a_token_and_confirmation_and_records_the_expiry(): void
     {
         $base = ['name' => 'PAT', 'driver' => 'github', 'settings' => ['owner' => 'acme', 'repo' => 'notes', 'branch' => 'main']];
