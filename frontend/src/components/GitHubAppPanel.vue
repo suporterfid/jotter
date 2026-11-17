@@ -143,7 +143,45 @@ onMounted(fetchStatus)
 
 <style scoped>
 .github-app {
-  margin-bottom: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: var(--space-3) 0;
+}
+.github-app h4 {
+  margin: 0 0 var(--space-2);
+}
+.github-app input {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+.github-app button {
+  align-self: flex-start;
+  background: var(--color-action-primary);
+  border: 1px solid var(--color-action-primary);
+  color: var(--color-action-primary-content);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  cursor: pointer;
+}
+.github-app button.warning-btn {
+  background: transparent;
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-fg);
+}
+.github-app button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 .vault-warning {
   color: var(--color-warning-fg);

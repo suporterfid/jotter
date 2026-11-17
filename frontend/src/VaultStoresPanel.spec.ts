@@ -64,12 +64,12 @@ describe('Vault stores (Storage tab)', () => {
     await flushPromises()
 
     const inputs = wrapper.findAll('[data-testid="vault-store-form"] input')
-    await inputs[0].setValue('Bucket')
-    await inputs[1].setValue('https://s3.example.com')
-    await inputs[2].setValue('acme-vaults')
+    await wrapper.find('[data-testid="vault-store-name"]').setValue('Bucket')
+    await inputs[0].setValue('https://s3.example.com')
+    await inputs[1].setValue('acme-vaults')
     await wrapper.find('[data-testid="vault-store-path-style"]').setValue(true)
-    await inputs[6].setValue('AKIA')
-    await inputs[7].setValue('secret')
+    await inputs[5].setValue('AKIA')
+    await inputs[6].setValue('secret')
     await wrapper.find('[data-testid="vault-store-form"]').trigger('submit')
     await flushPromises()
 
@@ -79,7 +79,29 @@ describe('Vault stores (Storage tab)', () => {
       settings: { endpoint: 'https://s3.example.com', bucket: 'acme-vaults', path_style: true },
       credentials: { access_key_id: 'AKIA', secret_access_key: 'secret' },
     })
-    expect((wrapper.findAll('[data-testid="vault-store-form"] input')[7].element as HTMLInputElement).value).toBe('')
+    expect((wrapper.findAll('[data-testid="vault-store-form"] input')[6].element as HTMLInputElement).value).toBe('')
+    expect(wrapper.find('[data-testid="vault-store-notice"]').text()).toContain('Saved "Bucket"')
+  })
+
+  it('shows the result of a connection test on the store itself', async () => {
+    routeGets({ enabled: true, drivers: ['local', 's3'] })
+    const wrapper = mount(VaultStoresPanel, {
+      props: { tenants: [{ id: 1, slug: 'acme', name: 'Acme' }], workspaces: [], drivers: ['local', 's3'] },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="vault-store-status-7"]').classes()).toContain('store-status-ok')
+    await wrapper.find('[data-testid="vault-store-test-7"]').trigger('click')
+    await flushPromises()
+    expect(apiPost).toHaveBeenCalledWith('/admin/vault-stores/7/test')
+    expect(wrapper.find('[data-testid="vault-store-test-result-7"]').text()).toContain('Connection OK')
+
+    apiPost.mockRejectedValueOnce({ response: { data: { message: 'The bucket refused the key.' } } })
+    await wrapper.find('[data-testid="vault-store-test-7"]').trigger('click')
+    await flushPromises()
+    const result = wrapper.find('[data-testid="vault-store-test-result-7"]')
+    expect(result.text()).toBe('The bucket refused the key.')
+    expect(result.classes()).toContain('store-test-failed')
   })
 
   it('shows the bucket versioning state and the move preflight warnings', async () => {
@@ -163,9 +185,10 @@ describe('Vault stores (Storage tab)', () => {
 
     expect(wrapper.find('[data-testid="github-install"]').exists()).toBe(false)
     const form = wrapper.find('[data-testid="vault-store-form"]')
-    await form.find('input').setValue('Notes')
-    await form.find('input[placeholder="Owner (user or organization)"]').setValue('acme')
-    await form.find('input[placeholder="Repository"]').setValue('notes')
+    await form.find('[data-testid="vault-store-name"]').setValue('Notes')
+    const inputs = form.findAll('input:not([type="checkbox"]):not([type="password"])')
+    await inputs[0].setValue('acme')
+    await inputs[1].setValue('notes')
     await form.find('input[type="password"]').setValue('github_pat_x')
     await wrapper.find('[data-testid="github-controller"]').setValue(true)
     await form.trigger('submit')
