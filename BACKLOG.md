@@ -46,7 +46,7 @@ Plans: `docs/20261113-jotter-pluggable-vault-stores-plan.md` (D1–D10, PRs A–
    8. ~~#445 — Phase 8 (PR H, GitHub part): docs, privacy policy draft, gradual rollout.~~
    9. **Owner action (P1, before opening GitHub to everyone):**
       - run `jt ci` and `jt release` / `release:verify` on the PR (Docker was not available where it was built);
-      - with a real App and a test repository, run the live checks V1–V8 of the spike doc, including G5: an external push visible in ≤ 10 s with the webhook;
+      - ~~with a real App and a test repository, run the live checks V1–V8 of the spike doc, including G5: an external push visible in ≤ 10 s with the webhook;~~ **Done 2026-11-17** (spike doc §4): V2–V7 confirmed, G5 met (external push visible in 3.5–4.5 s), V8 found a bug fixed in #456; V1 partial: repeat with a second installation before many tenants share one App;
       - then turn it on for one or two tenants with `JOTTER_GITHUB_BETA_TENANTS`.
    10. Follow-ups (P3): an opt-in `Co-authored-by` trailer from the user profile (G2; off is the safe default); a commit-count estimate in the move preflight (moves only get delayed by the budget, never fail).
 3. ~~**S3-compatible vault — epic #432.**~~ **Implemented 2026-11-13** (see CHANGELOG). Code namespace is `App\Domain\Vault\Store\S3`.
