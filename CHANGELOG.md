@@ -4,6 +4,11 @@ All notable changes to Jotter will be documented here. Decision records live in 
 
 ## Unreleased
 
+### Administration → Storage readable and answering — 2026-11-17
+
+- **Test connection shows its result** on the store itself ("Connection OK (time)" or GitHub's or the bucket's reason), and the button reads "Testing…" while it runs. Before, a test on a store that was already working changed nothing on screen. Each store is now a card with a coloured status, the time of the last check and its error.
+- **Saving a store says so** and highlights the new card. Every form field has a visible label, the GitHub form opens on the installed App instead of the personal-token mode, and the panel's inputs and buttons get the admin styles (the admin panel's scoped styles did not reach this component).
+
 ### Standard first run: `jotter:install` — 2026-11-16
 
 - **`php artisan jotter:install --admin-email=…`** runs the migrations and, while the installation has no organization, creates the first organization, its workspace and the owner administrator. The defaults come from `JOTTER_TENANT_*` and `JOTTER_WORKSPACE_*`. The password goes to `--password-file` (mode 0600) or is printed once. The command also prints the cron line for the PHP binary that ran it, plus the doctor report. It is safe to repeat after an upgrade. Before this, the deploy steps only migrated: a new installation had no organization, and the admin panel was out of reach.

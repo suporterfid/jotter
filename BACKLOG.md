@@ -76,6 +76,7 @@ Spec: `docs/superpowers/specs/2026-11-03-jotter-brain-multiagent-design.md`. Pla
 ## First deploy on shared hosting (2026-11-16)
 
 - ~~**A new installation had no organization.**~~ **Delivered 2026-11-16:** `jotter:install` creates the first organization, workspace and administrator, prints the cron line for the right PHP binary, and the doctor fails until it has run. Found on the first Hostinger deploy, where the admin panel was unusable without an organization and a `cd … && php artisan …` cron entry never ran.
+- ~~**Administration → Storage gave no feedback.**~~ **Delivered 2026-11-17:** Test connection shows its result on the store card, saving confirms and highlights the new store, every field has a label, and the panel's controls are styled. Found when "Test connection" on a working GitHub store appeared to do nothing.
 
 ## Triage #390 (2026-08-31) — delivered 2026-11-08
 
