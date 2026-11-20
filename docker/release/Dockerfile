@@ -1,6 +1,24 @@
 # syntax=docker/dockerfile:1
 
-FROM composer:2 AS vendor
+# Same PHP as docker/php/Dockerfile. The composer:2 image ships its own PHP,
+# which moves on its own schedule and broke the lock file's platform check (#461).
+FROM php:8.2-cli AS vendor
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        libicu-dev \
+        libonig-dev \
+        libzip-dev \
+        unzip \
+    && docker-php-ext-install -j"$(nproc)" \
+        bcmath \
+        intl \
+        mbstring \
+        zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
